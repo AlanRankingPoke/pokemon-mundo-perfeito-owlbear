@@ -1,0 +1,431 @@
+/* =====================================================
+   POKÉMON MUNDO PERFEITO — VISUAL BASE
+   ===================================================== */
+
+/* =====================================================
+   BASE GERAL
+   ===================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  background: linear-gradient(180deg, #f6f9fc 0%, #edf2f7 100%);
+  color: #1f2937;
+  font-size: 14px;
+}
+
+#app {
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+
+/* =====================================================
+   TEXTOS
+   ===================================================== */
+
+h1,
+h2,
+h3,
+h4,
+p {
+  font-family: Inter, Arial, Helvetica, sans-serif;
+}
+
+h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 25px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.35px;
+}
+
+h3 {
+  color: #25456f;
+  margin: 18px 0 10px;
+  font-size: 17px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.1px;
+}
+
+p {
+  color: #526176;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 700;
+  margin: 9px 0 5px;
+}
+
+label {
+  color: #46566e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+strong {
+  color: #24344f;
+  font-weight: 800;
+}
+
+
+/* =====================================================
+   DIVISORES
+   ===================================================== */
+
+hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #d8e1ec 12%,
+    #d8e1ec 88%,
+    transparent 100%
+  );
+  margin: 16px 0;
+}
+
+
+/* =====================================================
+   CAMPOS
+   ===================================================== */
+
+input,
+textarea,
+select {
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #cbd6e4;
+  border-radius: 9px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+input {
+  min-height: 36px;
+  padding: 7px 9px;
+}
+
+textarea {
+  padding: 10px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+select {
+  min-height: 36px;
+  padding: 6px 8px;
+}
+
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: #9bb4d3;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #4c8dff;
+  box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.13);
+  background: #ffffff;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #98a5b6;
+  opacity: 1;
+}
+
+
+/* =====================================================
+   BOTÕES GERAIS
+   ===================================================== */
+
+button {
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  border: 1px solid #c7d2df;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
+  color: #34445d;
+  cursor: pointer;
+  font-weight: 700;
+  transition:
+    transform 0.1s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+button:hover {
+  border-color: #4c8dff;
+  background: #edf4ff;
+  color: #245fb8;
+  box-shadow: 0 2px 7px rgba(76, 141, 255, 0.12);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.18);
+}
+
+
+/* =====================================================
+   ABAS — POKÉMON
+   ===================================================== */
+
+#paginaPokemon1,
+#paginaPokemon2,
+#paginaPokemon3,
+#paginaPokemon4 {
+  border: 1px solid #d0dae7;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f0f4f9 100%);
+  color: #33455f;
+  min-height: 54px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+  box-shadow: 0 2px 5px rgba(31, 50, 78, 0.05);
+}
+
+#paginaPokemon1:hover,
+#paginaPokemon2:hover,
+#paginaPokemon3:hover,
+#paginaPokemon4:hover {
+  border-color: #8db8f1;
+  background: linear-gradient(180deg, #f8fbff 0%, #eaf3ff 100%);
+  color: #2363b8;
+  box-shadow: 0 3px 9px rgba(76, 141, 255, 0.12);
+}
+
+
+/* =====================================================
+   ABAS — TREINADOR
+   ===================================================== */
+
+#paginaTreinador1,
+#paginaTreinador2,
+#paginaTreinador3,
+#paginaTreinador4 {
+  border: 1px solid #d0dae7;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f0f4f9 100%);
+  color: #33455f;
+  min-height: 54px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+  box-shadow: 0 2px 5px rgba(31, 50, 78, 0.05);
+}
+
+#paginaTreinador1:hover,
+#paginaTreinador2:hover,
+#paginaTreinador3:hover,
+#paginaTreinador4:hover {
+  border-color: #8db8f1;
+  background: linear-gradient(180deg, #f8fbff 0%, #eaf3ff 100%);
+  color: #2363b8;
+  box-shadow: 0 3px 9px rgba(76, 141, 255, 0.12);
+}
+
+
+/* =====================================================
+   TROCAR TIPO
+   ===================================================== */
+
+#trocarTipo {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f6fa 100%);
+  color: #4d5d72;
+  border: 1px solid #cbd6e3;
+  border-radius: 999px;
+  padding: 7px 13px;
+  min-height: 34px;
+  font-weight: 800;
+  box-shadow: 0 2px 5px rgba(31, 50, 78, 0.05);
+}
+
+#trocarTipo:hover {
+  background: #eaf3ff;
+  color: #245fae;
+  border-color: #8bb5f2;
+  box-shadow: 0 3px 8px rgba(76, 141, 255, 0.12);
+}
+
+
+/* =====================================================
+   BOTÕES PRINCIPAIS DE SALVAR
+   ===================================================== */
+
+#salvarPokemonStatus,
+#salvarPokemonMoves,
+#salvarPokemonPericias,
+#salvarPokemonTalentos,
+#salvarTreinadorStatus,
+#salvarTreinadorPerTal,
+#salvarTreinadorHabilidades,
+#salvarTreinadorAnotacoes {
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4c8dff 0%, #276bd9 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(39, 107, 217, 0.22);
+  min-height: 42px;
+  font-weight: 800;
+  padding: 9px 14px;
+}
+
+#salvarPokemonStatus:hover,
+#salvarPokemonMoves:hover,
+#salvarPokemonPericias:hover,
+#salvarPokemonTalentos:hover,
+#salvarTreinadorStatus:hover,
+#salvarTreinadorPerTal:hover,
+#salvarTreinadorHabilidades:hover,
+#salvarTreinadorAnotacoes:hover {
+  background: linear-gradient(135deg, #5c99ff 0%, #3276e5 100%);
+  color: #ffffff;
+  box-shadow: 0 5px 13px rgba(39, 107, 217, 0.28);
+}
+
+
+/* =====================================================
+   BOTÕES DE ROLAGEM
+   ===================================================== */
+
+.rolarSalvaguarda,
+.rolarPericiaPokemon,
+.rolarPericiaTreinador,
+.rolarAcerto,
+.rolarDano,
+.rolarD6,
+#rolarCaptura {
+  background: linear-gradient(180deg, #f4f9ff 0%, #e9f3ff 100%);
+  color: #2865be;
+  border: 1px solid #a9c8f3;
+  border-radius: 8px;
+  font-weight: 800;
+  box-shadow: 0 2px 5px rgba(76, 141, 255, 0.08);
+}
+
+.rolarSalvaguarda:hover,
+.rolarPericiaPokemon:hover,
+.rolarPericiaTreinador:hover,
+.rolarAcerto:hover,
+.rolarDano:hover,
+.rolarD6:hover,
+#rolarCaptura:hover {
+  background: #dcecff;
+  border-color: #6ca3ec;
+  color: #164f9f;
+  box-shadow: 0 3px 8px rgba(76, 141, 255, 0.15);
+}
+
+
+/* =====================================================
+   FÍSICO / ESPECIAL
+   ===================================================== */
+
+.categoriaGolpe {
+  border-radius: 8px !important;
+  background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%);
+  color: #34445d;
+  border-color: #ced8e4 !important;
+  font-weight: 800;
+}
+
+
+/* =====================================================
+   CARDS DE MOVES
+   ===================================================== */
+
+details {
+  background: #ffffff;
+  border: 1px solid #d7e0eb !important;
+  border-radius: 10px;
+  box-shadow: 0 2px 7px rgba(30, 50, 80, 0.055);
+  overflow: hidden;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+details:hover {
+  border-color: #a9c4e5 !important;
+  box-shadow: 0 3px 9px rgba(30, 50, 80, 0.075);
+}
+
+summary {
+  color: #273a55;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+
+/* =====================================================
+   AJUSTES VISUAIS DE FORMULÁRIO
+   ===================================================== */
+
+input[type="number"] {
+  appearance: auto;
+}
+
+textarea::-webkit-resizer {
+  opacity: 0.55;
+}
+
+
+/* =====================================================
+   SCROLLBAR
+   ===================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #a9b8ca;
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #879bb4;
+  background-clip: padding-box;
+}
+
+
+/* =====================================================
+   SELEÇÃO DE TEXTO
+   ===================================================== */
+
+::selection {
+  background: #b9d5ff;
+  color: #173b72;
+}

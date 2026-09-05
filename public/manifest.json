@@ -1,0 +1,12 @@
+{
+  "name": "Pokemon Mundo Perfeito",
+  "version": "0.1.0",
+  "manifest_version": 1,
+  "action": {
+    "title": "Pokemon",
+    "icon": "/pikachu.png",
+    "popover": "/",
+    "height": 600,
+    "width": 400
+  }
+}
