@@ -4,8 +4,8 @@
   "manifest_version": 1,
   "action": {
     "title": "Pokemon",
-    "icon": "/pikachu.png",
-    "popover": "/",
+    "icon": "/pokemon-mundo-perfeito-owlbear/pikachu.png",
+    "popover": "/pokemon-mundo-perfeito-owlbear/",
     "height": 600,
     "width": 400
   }
