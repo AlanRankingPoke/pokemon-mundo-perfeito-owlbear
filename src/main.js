@@ -296,12 +296,15 @@ const ESTILO_FICHA = `
   }
 
   .rolarSalvaguarda,
+  .rolarAtributo,
   .rolarPericiaPokemon,
   .rolarPericiaTreinador,
   .rolarAcerto,
   .rolarDano,
+  .rolarCritico,
   .rolarD6,
-  #rolarCaptura {
+  #rolarCaptura,
+  #rolarIniciativa {
     background: linear-gradient(180deg, #f4f9ff 0%, #e7f2ff 100%) !important;
     color:#2865be !important;
     border-color:#a8c7ef !important;
@@ -476,6 +479,37 @@ function formatarBonus(valor) {
     return numero > 0 ? `+${numero}` : `${numero}`;
 }
 
+function faixaCritico(estagio) {
+    const mapa = {
+        0: "20",
+        1: "17–20",
+        2: "14–20",
+        3: "11–20",
+        4: "8–20",
+        5: "5–20",
+        6: "2–20"
+    };
+
+    const valor = Math.max(0, Math.min(6, Number(estagio) || 0));
+    return mapa[valor];
+}
+
+function duplicarDadosFormula(formula) {
+    return String(formula || "").replace(
+        /(^|[^A-Za-z0-9_])(\d*)d(\d+)/gi,
+        (match, prefixo, quantidade, faces) => {
+            const qtd = quantidade === "" ? 1 : Number(quantidade);
+            return `${prefixo}${qtd * 2}d${faces}`;
+        }
+    );
+}
+
+function adicionarBonusNaFormula(formula, bonus) {
+    if (bonus > 0) return `${formula}+${bonus}`;
+    if (bonus < 0) return `${formula}${bonus}`;
+    return formula;
+}
+
 function formulaSalvaguarda(valor) {
     const numero = Number(
         String(valor ?? "")
@@ -588,107 +622,306 @@ async function rolarNoDicePlus(formula, nome, tipo = "") {
 // BARRA HP + CA
 // =====================================================
 
-async function criarStatusNoToken(
-    token,
-    hpAtual,
-    hpMax,
-    ca
-) {
-    const antigos =
-        await OBR.scene.items.getItems(
-            (item) =>
-                item.metadata?.[
-                    `${PREFIX}/statusToken`
-                ] === token.id
-        );
+const TIPOS_VISUAIS_HUD = [
+  "fundo",
+  "vida",
+  "hp-texto",
+  "ca-circulo",
+  "ca-texto"
+];
 
-    if (antigos.length) {
-        await OBR.scene.items.deleteItems(
-            antigos.map((item) => item.id)
-        );
+const filaHudPorToken = new Map();
+
+function prepararVisualHud(item) {
+  const comportamentos = new Set(
+    item.disableAttachmentBehavior || []
+  );
+
+  // O HUD deve acompanhar a POSIÇÃO do token, mas não pode
+  // herdar Flip/escala negativa nem rotação do token.
+  comportamentos.add("SCALE");
+  comportamentos.add("ROTATION");
+
+  item.disableAttachmentBehavior = [
+    ...comportamentos
+  ];
+
+  item.rotation = 0;
+  item.scale = { x: 1, y: 1 };
+
+  return item;
+}
+
+function ordenarHudMaisNovoPrimeiro(a, b) {
+  const dataA = Date.parse(a.lastModified || "") || 0;
+  const dataB = Date.parse(b.lastModified || "") || 0;
+
+  if (dataA !== dataB) {
+    return dataB - dataA;
+  }
+
+  // Desempate determinístico para dois jogadores que salvem
+  // praticamente no mesmo instante.
+  return String(a.id).localeCompare(String(b.id));
+}
+
+async function desduplicarHudToken(
+  tokenId,
+  tiposAtivos = TIPOS_VISUAIS_HUD
+) {
+  const ativos = new Set(tiposAtivos);
+
+  const visuais =
+    await OBR.scene.items.getItems(
+      (item) =>
+        item.metadata?.[
+          `${PREFIX}/statusToken`
+        ] === tokenId
+    );
+
+  const porTipo = new Map();
+
+  for (const item of visuais) {
+    const tipo =
+      item.metadata?.[
+        `${PREFIX}/tipoVisual`
+      ];
+
+    if (!porTipo.has(tipo)) {
+      porTipo.set(tipo, []);
     }
 
-    const bounds =
-        await OBR.scene.items.getItemBounds(
-            [token.id]
+    porTipo.get(tipo).push(item);
+  }
+
+  const apagar = [];
+
+  for (const [tipo, itens] of porTipo) {
+    const ordenados =
+      [...itens].sort(
+        ordenarHudMaisNovoPrimeiro
+      );
+
+    // Se este tipo não deveria existir agora (ex.: barra de
+    // vida quando o HP chegou a 0), apaga todas as cópias.
+    if (!ativos.has(tipo)) {
+      apagar.push(
+        ...ordenados.map(
+          (item) => item.id
+        )
+      );
+
+      continue;
+    }
+
+    // Mantém exatamente uma cópia de cada parte do HUD.
+    if (ordenados.length > 1) {
+      apagar.push(
+        ...ordenados
+          .slice(1)
+          .map((item) => item.id)
+      );
+    }
+  }
+
+  if (apagar.length) {
+    await OBR.scene.items.deleteItems(
+      [...new Set(apagar)]
+    );
+  }
+}
+
+async function corrigirHudExistente() {
+  const visuais =
+    await OBR.scene.items.getItems(
+      (item) =>
+        item.metadata?.[
+          `${PREFIX}/statusToken`
+        ] !== undefined
+    );
+
+  if (!visuais.length) {
+    return;
+  }
+
+  // Migra barras já existentes para a regra anti-Flip.
+  await OBR.scene.items.updateItems(
+    visuais,
+    (items) => {
+      for (const item of items) {
+        const comportamentos = new Set(
+          item.disableAttachmentBehavior || []
         );
 
-    const larguraBarra = Math.max(
+        comportamentos.add("SCALE");
+        comportamentos.add("ROTATION");
+
+        item.disableAttachmentBehavior = [
+          ...comportamentos
+        ];
+
+        item.rotation = 0;
+        item.scale = { x: 1, y: 1 };
+      }
+    }
+  );
+
+  // Também limpa duplicatas que tenham ficado de versões
+  // anteriores do plugin.
+  const tokens = [
+    ...new Set(
+      visuais
+        .map(
+          (item) =>
+            item.metadata?.[
+              `${PREFIX}/statusToken`
+            ]
+        )
+        .filter(Boolean)
+    )
+  ];
+
+  for (const tokenId of tokens) {
+    await desduplicarHudToken(tokenId);
+  }
+}
+
+async function executarEmFilaHud(
+  tokenId,
+  tarefa
+) {
+  const anterior =
+    filaHudPorToken.get(tokenId) ||
+    Promise.resolve();
+
+  const atual = anterior
+    .catch(() => {})
+    .then(tarefa);
+
+  filaHudPorToken.set(
+    tokenId,
+    atual
+  );
+
+  try {
+    return await atual;
+  }
+  finally {
+    if (
+      filaHudPorToken.get(tokenId) === atual
+    ) {
+      filaHudPorToken.delete(tokenId);
+    }
+  }
+}
+
+async function criarStatusNoToken(
+  token,
+  hpAtual,
+  hpMax,
+  ca
+) {
+  return executarEmFilaHud(
+    token.id,
+    async () => {
+      const antigos =
+        await OBR.scene.items.getItems(
+          (item) =>
+            item.metadata?.[
+              `${PREFIX}/statusToken`
+            ] === token.id
+        );
+
+      if (antigos.length) {
+        await OBR.scene.items.deleteItems(
+          antigos.map(
+            (item) => item.id
+          )
+        );
+      }
+
+      const bounds =
+        await OBR.scene.items.getItemBounds(
+          [token.id]
+        );
+
+      const larguraBarra = Math.max(
         100,
         Math.min(
-            180,
-            bounds.width * 0.85
+          180,
+          bounds.width * 0.85
         )
-    );
+      );
 
-    const alturaBarra = Math.max(
+      const alturaBarra = Math.max(
         20,
         Math.min(
-            30,
-            larguraBarra * 0.16
+          30,
+          larguraBarra * 0.16
         )
-    );
+      );
 
-    const tamanhoCA =
+      const tamanhoCA =
         alturaBarra * 1.4;
 
-    const espacoCA =
+      const espacoCA =
         alturaBarra * 0.35;
 
-    const larguraTotal =
+      const larguraTotal =
         larguraBarra +
         espacoCA +
         tamanhoCA;
 
-    const inicioX =
+      const inicioX =
         bounds.min.x +
         (
-            (bounds.width - larguraTotal)
-            / 2
+          (bounds.width - larguraTotal)
+          / 2
         );
 
-    const barraY =
+      const barraY =
         bounds.max.y +
         Math.max(
-            8,
-            bounds.height * 0.03
+          8,
+          bounds.height * 0.03
         );
 
-    let porcentagem =
+      let porcentagem =
         hpMax > 0
-            ? hpAtual / hpMax
-            : 0;
+          ? hpAtual / hpMax
+          : 0;
 
-    porcentagem =
+      porcentagem =
         Math.max(
-            0,
-            Math.min(
-                1,
-                porcentagem
-            )
+          0,
+          Math.min(
+            1,
+            porcentagem
+          )
         );
 
-    const larguraVida =
+      const larguraVida =
         larguraBarra * porcentagem;
 
-    let corVida = "#34C759";
+      let corVida = "#34C759";
 
-    if (porcentagem <= 0.50) {
+      if (porcentagem <= 0.50) {
         corVida = "#FFD60A";
-    }
+      }
 
-    if (porcentagem <= 0.25) {
+      if (porcentagem <= 0.25) {
         corVida = "#FF453A";
-    }
+      }
 
-    const fundoBarra =
-        buildShape()
+      const fundoBarra =
+        prepararVisualHud(
+          buildShape()
             .shapeType("RECTANGLE")
             .width(larguraBarra)
             .height(alturaBarra)
             .position({
-                x: inicioX,
-                y: barraY
+              x: inicioX,
+              y: barraY
             })
             .fillColor("#202020")
             .fillOpacity(1)
@@ -701,64 +934,68 @@ async function criarStatusNoToken(
             .locked(true)
             .disableHit(true)
             .metadata({
-                [`${PREFIX}/statusToken`]:
-                    token.id,
+              [`${PREFIX}/statusToken`]:
+                token.id,
 
-                [`${PREFIX}/tipoVisual`]:
-                    "fundo"
+              [`${PREFIX}/tipoVisual`]:
+                "fundo"
             })
-            .build();
-
-    let barraVida = null;
-
-    if (larguraVida > 0) {
-        barraVida =
-            buildShape()
-                .shapeType("RECTANGLE")
-                .width(larguraVida)
-                .height(alturaBarra)
-                .position({
-                    x: inicioX,
-                    y: barraY
-                })
-                .fillColor(corVida)
-                .fillOpacity(1)
-                .strokeWidth(0)
-                .layer("ATTACHMENT")
-                .zIndex(1)
-                .disableAutoZIndex(true)
-                .attachedTo(token.id)
-                .locked(true)
-                .disableHit(true)
-                .metadata({
-                    [`${PREFIX}/statusToken`]:
-                        token.id,
-
-                    [`${PREFIX}/tipoVisual`]:
-                        "vida"
-                })
-                .build();
-    }
-
-    const fonteHP =
-        Math.max(
-            16,
-            alturaBarra * 0.72
+            .build()
         );
 
-    const textoHP =
-        buildText()
+      let barraVida = null;
+
+      if (larguraVida > 0) {
+        barraVida =
+          prepararVisualHud(
+            buildShape()
+              .shapeType("RECTANGLE")
+              .width(larguraVida)
+              .height(alturaBarra)
+              .position({
+                x: inicioX,
+                y: barraY
+              })
+              .fillColor(corVida)
+              .fillOpacity(1)
+              .strokeWidth(0)
+              .layer("ATTACHMENT")
+              .zIndex(1)
+              .disableAutoZIndex(true)
+              .attachedTo(token.id)
+              .locked(true)
+              .disableHit(true)
+              .metadata({
+                [`${PREFIX}/statusToken`]:
+                  token.id,
+
+                [`${PREFIX}/tipoVisual`]:
+                  "vida"
+              })
+              .build()
+          );
+      }
+
+      const fonteHP =
+        Math.max(
+          16,
+          alturaBarra * 0.72
+        );
+
+      const textoHP =
+        prepararVisualHud(
+          buildText()
             .textType("PLAIN")
             .plainText(`${hpAtual}`)
             .position({
-                x: inicioX,
+              x: inicioX,
 
-                y:
-                    barraY +
-                    (
-                        (alturaBarra - fonteHP)
-                        / 2
-                    )
+              y:
+                barraY +
+                (
+                  (alturaBarra - fonteHP)
+                  / 2
+                )
             })
             .width(larguraBarra)
             .height("AUTO")
@@ -778,36 +1015,38 @@ async function criarStatusNoToken(
             .locked(true)
             .disableHit(true)
             .metadata({
-                [`${PREFIX}/statusToken`]:
-                    token.id,
+              [`${PREFIX}/statusToken`]:
+                token.id,
 
-                [`${PREFIX}/tipoVisual`]:
-                    "hp-texto"
+              [`${PREFIX}/tipoVisual`]:
+                "hp-texto"
             })
-            .build();
+            .build()
+        );
 
-    const caX =
+      const caX =
         inicioX +
         larguraBarra +
         espacoCA +
         8;
 
-    const caY =
+      const caY =
         barraY -
         (
-            (tamanhoCA - alturaBarra)
-            / 2
+          (tamanhoCA - alturaBarra)
+          / 2
         ) +
         3;
 
-    const circuloCA =
-        buildShape()
+      const circuloCA =
+        prepararVisualHud(
+          buildShape()
             .shapeType("CIRCLE")
             .width(tamanhoCA)
             .height(tamanhoCA)
             .position({
-                x: caX,
-                y: caY
+              x: caX,
+              y: caY
             })
             .fillColor("#2481CC")
             .fillOpacity(1)
@@ -820,29 +1059,31 @@ async function criarStatusNoToken(
             .locked(true)
             .disableHit(true)
             .metadata({
-                [`${PREFIX}/statusToken`]:
-                    token.id,
+              [`${PREFIX}/statusToken`]:
+                token.id,
 
-                [`${PREFIX}/tipoVisual`]:
-                    "ca-circulo"
+              [`${PREFIX}/tipoVisual`]:
+                "ca-circulo"
             })
-            .build();
+            .build()
+        );
 
-    const fonteCA =
+      const fonteCA =
         tamanhoCA * 0.45;
 
-    const textoCA =
-        buildText()
+      const textoCA =
+        prepararVisualHud(
+          buildText()
             .textType("PLAIN")
             .plainText(`${ca}`)
             .position({
-                x:
-                    caX -
-                    (tamanhoCA / 2),
+              x:
+                caX -
+                (tamanhoCA / 2),
 
-                y:
-                    caY -
-                    (tamanhoCA / 2)
+              y:
+                caY -
+                (tamanhoCA / 2)
             })
             .width(tamanhoCA)
             .height(tamanhoCA)
@@ -863,33 +1104,67 @@ async function criarStatusNoToken(
             .locked(true)
             .disableHit(true)
             .metadata({
-                [`${PREFIX}/statusToken`]:
-                    token.id,
+              [`${PREFIX}/statusToken`]:
+                token.id,
 
-                [`${PREFIX}/tipoVisual`]:
-                    "ca-texto"
+              [`${PREFIX}/tipoVisual`]:
+                "ca-texto"
             })
-            .build();
-
-    const elementos = [
-        fundoBarra
-    ];
-
-    if (barraVida) {
-        elementos.push(
-            barraVida
+            .build()
         );
-    }
 
-    elementos.push(
+      const elementos = [
+        fundoBarra
+      ];
+
+      if (barraVida) {
+        elementos.push(
+          barraVida
+        );
+      }
+
+      elementos.push(
         circuloCA,
         textoHP,
         textoCA
-    );
+      );
 
-    await OBR.scene.items.addItems(
+      await OBR.scene.items.addItems(
         elementos
-    );
+      );
+
+      const tiposAtivos = [
+        "fundo",
+        "hp-texto",
+        "ca-circulo",
+        "ca-texto"
+      ];
+
+      if (barraVida) {
+        tiposAtivos.push("vida");
+      }
+
+      // Duas passagens tornam a rotina convergente mesmo se
+      // dois usuários salvarem a mesma ficha quase juntos.
+      await new Promise(
+        (resolve) => setTimeout(resolve, 80)
+      );
+
+      await desduplicarHudToken(
+        token.id,
+        tiposAtivos
+      );
+
+      await new Promise(
+        (resolve) => setTimeout(resolve, 220)
+      );
+
+      await desduplicarHudToken(
+        token.id,
+        tiposAtivos
+      );
+    }
+  );
 }
 
 // =====================================================
@@ -1011,26 +1286,38 @@ async function pegarHpCaDaTela() {
 // =====================================================
 
 function criarLinhaAtributos(
-    titulo,
-    tipo,
-    valores
+  titulo,
+  tipo,
+  valores
 ) {
-    const rolavel =
-        tipo.includes("save");
+  const ehSalvaguarda =
+    tipo.includes("save");
 
-    const caixas =
-        ATRIBUTOS.map(
-            (atributo) => {
+  const ehModificador =
+    tipo.includes("mod");
 
-                const botao =
-                    rolavel
-                        ? `
+  const rolavel =
+    ehSalvaguarda || ehModificador;
+
+  const caixas =
+    ATRIBUTOS.map(
+      (atributo) => {
+
+        const tipoRolagem =
+          ehSalvaguarda
+            ? "Salvaguarda"
+            : "Modificador";
+
+        const botao =
+          rolavel
+            ? `
               <button
                 type="button"
-                class="rolarSalvaguarda"
+                class="rolarAtributo"
                 data-campo="${tipo}-${atributo}"
                 data-atributo="${atributo}"
-                title="Rolar salvaguarda de ${NOMES_ATRIBUTOS[atributo]}"
+                data-tipo-rolagem="${tipoRolagem}"
+                title="Rolar ${tipoRolagem.toLowerCase()} de ${NOMES_ATRIBUTOS[atributo]}"
                 style="
                   width:100%;
                   margin-top:4px;
@@ -1044,9 +1331,9 @@ function criarLinhaAtributos(
                 🎲 Rolar
               </button>
             `
-                        : "";
+            : "";
 
-                return `
+        return `
           <div style="
             flex:1;
             min-width:42px;
@@ -1078,10 +1365,10 @@ function criarLinhaAtributos(
 
           </div>
         `;
-            }
-        ).join("");
+      }
+    ).join("");
 
-    return `
+  return `
     <div style="
       margin-top:12px;
     ">
@@ -1104,47 +1391,90 @@ function criarLinhaAtributos(
 }
 
 function ativarRolagensSalvaguarda() {
-    document
-        .querySelectorAll(".rolarSalvaguarda")
-        .forEach(
-            (botao) => {
+  document
+    .querySelectorAll(".rolarAtributo")
+    .forEach(
+      (botao) => {
 
-                botao.addEventListener(
-                    "click",
-                    async () => {
+        botao.addEventListener(
+          "click",
+          async () => {
 
-                        const atributo =
-                            botao.dataset.atributo;
+            const atributo =
+              botao.dataset.atributo;
 
-                        const campo =
-                            document.querySelector(
-                                `#${botao.dataset.campo}`
-                            );
+            const tipoRolagem =
+              botao.dataset.tipoRolagem ||
+              "Modificador";
 
-                        const formula =
-                            formulaSalvaguarda(
-                                campo?.value
-                            );
+            const campo =
+              document.querySelector(
+                `#${botao.dataset.campo}`
+              );
 
-                        if (!formula) {
-                            alert(
-                                "Valor de salvaguarda inválido."
-                            );
+            const formula =
+              formulaSalvaguarda(
+                campo?.value
+              );
 
-                            return;
-                        }
+            if (!formula) {
+              alert(
+                `Valor de ${tipoRolagem.toLowerCase()} inválido.`
+              );
 
-                        await rolarNoDicePlus(
-                            formula,
-                            `Salvaguarda de ${
-                                NOMES_ATRIBUTOS[atributo] ||
-                                atributo.toUpperCase()
-                            }`
-                        );
-                    }
-                );
+              return;
             }
+
+            await rolarNoDicePlus(
+              formula,
+              `${tipoRolagem} de ${
+                NOMES_ATRIBUTOS[atributo] ||
+                atributo.toUpperCase()
+              }`
+            );
+          }
         );
+      }
+    );
+}
+
+function ativarRolagemIniciativa() {
+  const botao =
+    document.querySelector(
+      "#rolarIniciativa"
+    );
+
+  if (!botao) {
+    return;
+  }
+
+  botao.addEventListener(
+    "click",
+    async () => {
+      const campo =
+        document.querySelector(
+          "#iniciativa"
+        );
+
+      const formula =
+        formulaSalvaguarda(
+          campo?.value
+        );
+
+      if (!formula) {
+        alert(
+          "Valor de iniciativa inválido."
+        );
+
+        return;
+      }
+
+      await rolarNoDicePlus(
+        formula,
+        "Iniciativa"
+      );
+    }
+  );
 }
 
 // =====================================================
@@ -1152,22 +1482,23 @@ function ativarRolagensSalvaguarda() {
 // =====================================================
 
 function criarBuffs(
-    valores,
-    proficiencia
+  valores,
+  proficiencia
 ) {
-    return BUFFS.map(
-        (buff) => {
+  return BUFFS.map(
+    (buff) => {
 
-            const estagio =
-                Number(
-                    valores[buff.id]
-                ) || 0;
+      const estagio =
+        Number(
+          valores[buff.id]
+        ) || 0;
 
-            const bonus =
-                estagio *
-                proficiencia;
+      const bonus =
+        buff.id === "crit"
+          ? faixaCritico(estagio)
+          : estagio * proficiencia;
 
-            return `
+      return `
         <div style="
           width:76px;
           text-align:center;
@@ -1186,6 +1517,7 @@ function criarBuffs(
             class="campoBuff"
             type="number"
             step="1"
+            ${buff.id === "crit" ? 'min="0" max="6"' : ''}
             value="${estagio}"
             style="
               width:100%;
@@ -1203,13 +1535,13 @@ function criarBuffs(
               opacity:0.8;
             "
           >
-            ${formatarBonus(bonus)}
+            ${buff.id === "crit" ? bonus : formatarBonus(bonus)}
           </div>
 
         </div>
       `;
-        }
-    ).join("");
+    }
+  ).join("");
 }
 
 // =====================================================
@@ -2000,6 +2332,11 @@ function mostrarFichaTreinadorPagina1(
             `${PREFIX}/treinador-proficiencia`
         ] ?? 0;
 
+    const iniciativa =
+        token.metadata[
+            `${PREFIX}/treinador-iniciativa`
+        ] ?? "";
+
     const bonusCaptura =
         token.metadata[
             `${PREFIX}/treinador-captura-bonus`
@@ -2065,6 +2402,41 @@ function mostrarFichaTreinadorPagina1(
       type="number"
       value="${ca}"
     >
+
+    <hr>
+
+    <h3>⚡ Iniciativa</h3>
+
+    <div style="
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:12px;
+    ">
+      <input
+        id="iniciativa"
+        type="text"
+        value="${esc(iniciativa)}"
+        placeholder="+0"
+        style="
+          width:80px;
+          text-align:center;
+        "
+      >
+
+      <button
+        id="rolarIniciativa"
+        type="button"
+        style="
+          flex:1;
+          padding:8px;
+          font-weight:bold;
+          cursor:pointer;
+        "
+      >
+        🎲 Rolar Iniciativa
+      </button>
+    </div>
 
     <hr>
 
@@ -2162,6 +2534,7 @@ function mostrarFichaTreinadorPagina1(
     );
 
     ativarRolagensSalvaguarda();
+    ativarRolagemIniciativa();
 
     document
         .querySelector(
@@ -2221,6 +2594,12 @@ function mostrarFichaTreinadorPagina1(
                             )
                             .value
                     ) || 0;
+
+                const novaIniciativa =
+                    document
+                        .querySelector("#iniciativa")
+                        .value
+                        .trim();
 
                 const novoBonusCaptura =
                     document
@@ -2288,6 +2667,12 @@ function mostrarFichaTreinadorPagina1(
                                 `${PREFIX}/treinador-proficiencia`
                             ] =
                                 novaProficiencia;
+
+
+                            item.metadata[
+                                `${PREFIX}/treinador-iniciativa`
+                            ] =
+                                novaIniciativa;
 
                             item.metadata[
                                 `${PREFIX}/treinador-captura-bonus`
@@ -3483,6 +3868,12 @@ function mostrarFichaPokemon(token) {
             ] ?? 0
         );
 
+
+    const iniciativa =
+        token.metadata[
+            `${PREFIX}/iniciativa`
+        ] ?? "";
+
     const modificadores = {};
     const salvaguardas = {};
 
@@ -3562,6 +3953,34 @@ function mostrarFichaPokemon(token) {
             box-sizing:border-box;
           "
         >
+
+        <p>Iniciativa</p>
+
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input
+            id="iniciativa"
+            type="text"
+            value="${esc(iniciativa)}"
+            placeholder="+0"
+            style="
+              width:72px;
+              text-align:center;
+            "
+          >
+
+          <button
+            id="rolarIniciativa"
+            type="button"
+            style="
+              flex:1;
+              padding:7px 5px;
+              font-size:10px;
+              cursor:pointer;
+            "
+          >
+            🎲 Rolar
+          </button>
+        </div>
       </div>
 
       <div class="statusCard" style="
@@ -3679,6 +4098,7 @@ function mostrarFichaPokemon(token) {
 
     ativarCabecalhoPokemon(token);
     ativarRolagensSalvaguarda();
+    ativarRolagemIniciativa();
 
     document
         .querySelector(
@@ -3725,6 +4145,13 @@ function mostrarFichaPokemon(token) {
                             .querySelector("#proficiencia")
                             .value
                     ) || 0;
+
+
+                const novaIniciativa =
+                    document
+                        .querySelector("#iniciativa")
+                        .value
+                        .trim();
 
                 const novosModificadores = {};
                 const novasSalvaguardas = {};
@@ -3795,6 +4222,12 @@ function mostrarFichaPokemon(token) {
                                 `${PREFIX}/proficiencia`
                             ] =
                                 novaProficiencia;
+
+
+                            item.metadata[
+                                `${PREFIX}/iniciativa`
+                            ] =
+                                novaIniciativa;
 
                             ATRIBUTOS.forEach(
                                 (atributo) => {
@@ -4069,6 +4502,20 @@ function mostrarFichaPokemonMoves(token) {
                 🎲 DANO
               </button>
 
+              <button
+                type="button"
+                class="rolarCritico"
+                data-golpe="${numero}"
+                style="
+                  flex:1;
+                  padding:8px;
+                  cursor:pointer;
+                  font-weight:bold;
+                "
+              >
+                💥 CRÍTICO
+              </button>
+
             </div>
 
           </div>
@@ -4146,10 +4593,11 @@ function mostrarFichaPokemonMoves(token) {
 
                 if (campoBonus) {
                     campoBonus.textContent =
-                        formatarBonus(
-                            proficiencia *
-                            estagio
-                        );
+                        buff.id === "crit"
+                            ? faixaCritico(estagio)
+                            : formatarBonus(
+                                proficiencia * estagio
+                            );
                 }
             }
         );
@@ -4384,6 +4832,57 @@ document
       );
     }
   );
+    // =================================================
+    // ROLAR CRÍTICO — DOBRA SOMENTE OS DADOS
+    // =================================================
+
+    document
+        .querySelectorAll(".rolarCritico")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero = botao.dataset.golpe;
+                        const nome = document.querySelector(`#golpe${numero}Nome`).value;
+                        const formulaOriginal = document.querySelector(`#golpe${numero}Dano`).value.trim();
+
+                        if (!formulaOriginal) {
+                            alert("A fórmula de dano está vazia.");
+                            return;
+                        }
+
+                        const categoria = document.querySelector(`#golpe${numero}Categoria`).value;
+
+                        if (!categoria) {
+                            alert("Escolha se o golpe é FÍSICO ou ESPECIAL antes de rolar o crítico.");
+                            return;
+                        }
+
+                        let estagioBuff = 0;
+
+                        if (categoria === "fisico") {
+                            estagioBuff = Number(document.querySelector("#buff-atq")?.value) || 0;
+                        }
+
+                        if (categoria === "especial") {
+                            estagioBuff = Number(document.querySelector("#buff-atqsp")?.value) || 0;
+                        }
+
+                        const bonusBuff = estagioBuff * proficiencia;
+                        const formulaCritica = duplicarDadosFormula(formulaOriginal);
+                        const formulaFinal = adicionarBonusNaFormula(formulaCritica, bonusBuff);
+
+                        await rolarNoDicePlus(
+                            formulaFinal,
+                            nome || `Golpe ${numero}`,
+                            "Crítico"
+                        );
+                    }
+                );
+            }
+        );
+
     // =================================================
     // SALVAR MOVES / BUFFS
     // =================================================
@@ -4912,6 +5411,16 @@ async function mostrarTokenSelecionado() {
 
 OBR.onReady(
     async () => {
+
+        try {
+            await corrigirHudExistente();
+        }
+        catch (erro) {
+            console.warn(
+                "Não foi possível normalizar o HUD existente:",
+                erro
+            );
+        }
 
         await mostrarTokenSelecionado();
 
