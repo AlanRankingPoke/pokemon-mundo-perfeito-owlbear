@@ -262,8 +262,29 @@ const ESTILO_FICHA = `
   }
 
   #habilidadePokemon {
-    min-height:132px !important;
+    min-height:72px !important;
     background:#fbfdff !important;
+    resize:vertical !important;
+  }
+
+  .statusGridPokemon {
+    grid-template-columns:1fr !important;
+  }
+
+  .pokemonDetalhesCompactos {
+    margin-top:10px !important;
+    padding-top:9px !important;
+    border-top:1px solid #e1e8f0 !important;
+  }
+
+  .pokemonDetalhesCompactos p {
+    margin:5px 0 4px !important;
+  }
+
+  #itemPokemon {
+    width:100% !important;
+    min-height:34px !important;
+    box-sizing:border-box !important;
   }
 
   .proficienciaLinha {
@@ -4904,6 +4925,11 @@ function mostrarFichaPokemon(token) {
             `${PREFIX}/pokemon-habilidade`
         ] ?? "";
 
+    const itemPokemon =
+        token.metadata[
+            `${PREFIX}/pokemon-item`
+        ] ?? "";
+
     const movimento1 =
         token.metadata[
             `${PREFIX}/movimento1`
@@ -4972,7 +4998,7 @@ function mostrarFichaPokemon(token) {
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 1)}
 
-    <div class="statusGrid" style="
+    <div class="statusGrid statusGridPokemon" style="
       display:flex;
       gap:12px;
       align-items:flex-start;
@@ -5204,26 +5230,29 @@ function mostrarFichaPokemon(token) {
               >
             </div>
 
-      </div>
+            <div class="pokemonDetalhesCompactos">
+              <p>Habilidade</p>
 
-      <div class="statusCard" style="
-        flex:1.6;
-        min-width:180px;
-      ">
-        <p>Habilidade</p>
+              <textarea
+                id="habilidadePokemon"
+                rows="3"
+                placeholder="Escreva a habilidade do Pokémon..."
+                style="
+                  width:100%;
+                  box-sizing:border-box;
+                  padding:8px;
+                "
+              >${esc(habilidade)}</textarea>
 
-        <textarea
-          id="habilidadePokemon"
-          rows="5"
-          placeholder="Escreva a habilidade do Pokémon..."
-          style="
-            width:100%;
-            min-height:110px;
-            box-sizing:border-box;
-            padding:8px;
-            resize:vertical;
-          "
-        >${esc(habilidade)}</textarea>
+              <p>Item</p>
+
+              <input
+                id="itemPokemon"
+                type="text"
+                value="${esc(itemPokemon)}"
+                placeholder="Item carregado pelo Pokémon"
+              >
+            </div>
 
       </div>
     </div>
@@ -5345,6 +5374,12 @@ function mostrarFichaPokemon(token) {
                         .value
                         .trim();
 
+                const novoItemPokemon =
+                    document
+                        .querySelector("#itemPokemon")
+                        .value
+                        .trim();
+
                 const novaProficiencia =
                     Number(
                         document
@@ -5418,6 +5453,11 @@ function mostrarFichaPokemon(token) {
                                 `${PREFIX}/pokemon-habilidade`
                             ] =
                                 novaHabilidade;
+
+                            item.metadata[
+                                `${PREFIX}/pokemon-item`
+                            ] =
+                                novoItemPokemon;
 
                             item.metadata[
                                 `${PREFIX}/movimento1`
