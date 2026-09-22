@@ -2474,21 +2474,45 @@ function mostrarFichaTreinadorPagina1(
         1
     )}
 
-    <p>HP Atual</p>
+    <div style="
+      display:flex;
+      gap:8px;
+      align-items:flex-end;
+    ">
+      <div style="
+        flex:1;
+        min-width:0;
+      ">
+        <p>HP Atual</p>
 
-    <input
-      id="hpAtual"
-      type="number"
-      value="${hpAtual}"
-    >
+        <input
+          id="hpAtual"
+          type="number"
+          value="${hpAtual}"
+          style="
+            width:100%;
+            box-sizing:border-box;
+          "
+        >
+      </div>
 
-    <p>HP Máximo</p>
+      <div style="
+        flex:1;
+        min-width:0;
+      ">
+        <p>HP Máx.</p>
 
-    <input
-      id="hpMax"
-      type="number"
-      value="${hpMax}"
-    >
+        <input
+          id="hpMax"
+          type="number"
+          value="${hpMax}"
+          style="
+            width:100%;
+            box-sizing:border-box;
+          "
+        >
+      </div>
+    </div>
 
     <p>Alterar HP</p>
 
@@ -3993,29 +4017,45 @@ function mostrarFichaPokemon(token) {
         flex:1;
         min-width:120px;
       ">
-        <p>HP Atual</p>
+        <div style="
+          display:flex;
+          gap:8px;
+          align-items:flex-end;
+        ">
+          <div style="
+            flex:1;
+            min-width:0;
+          ">
+            <p>HP Atual</p>
 
-        <input
-          id="hpAtual"
-          type="number"
-          value="${hpAtual}"
-          style="
-            width:100%;
-            box-sizing:border-box;
-          "
-        >
+            <input
+              id="hpAtual"
+              type="number"
+              value="${hpAtual}"
+              style="
+                width:100%;
+                box-sizing:border-box;
+              "
+            >
+          </div>
 
-        <p>HP Máximo</p>
+          <div style="
+            flex:1;
+            min-width:0;
+          ">
+            <p>HP Máx.</p>
 
-        <input
-          id="hpMax"
-          type="number"
-          value="${hpMax}"
-          style="
-            width:100%;
-            box-sizing:border-box;
-          "
-        >
+            <input
+              id="hpMax"
+              type="number"
+              value="${hpMax}"
+              style="
+                width:100%;
+                box-sizing:border-box;
+              "
+            >
+          </div>
+        </div>
 
         <p>Alterar HP</p>
 
