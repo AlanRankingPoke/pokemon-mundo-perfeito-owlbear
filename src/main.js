@@ -272,19 +272,30 @@ const ESTILO_FICHA = `
   }
 
   .pokemonDetalhesCompactos {
-    margin-top:10px !important;
-    padding-top:9px !important;
+    margin-top:7px !important;
+    padding-top:6px !important;
     border-top:1px solid #e1e8f0 !important;
   }
 
   .pokemonDetalhesCompactos p {
-    margin:5px 0 4px !important;
+    margin:3px 0 3px !important;
   }
 
   #itemPokemon {
     width:100% !important;
-    min-height:34px !important;
+    min-height:32px !important;
     box-sizing:border-box !important;
+  }
+
+  /* Compacta a passagem Item -> Movimentação. */
+  #app .hrMovimento {
+    margin:5px 0 4px !important;
+  }
+
+  #app .tituloMovimento {
+    margin:0 0 5px !important;
+    padding:7px 9px !important;
+    font-size:15px !important;
   }
 
   .proficienciaLinha {
@@ -602,38 +613,39 @@ const ESTILO_FICHA = `
   .movimentoGrid {
     display:grid !important;
     grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
-    gap:10px 14px !important;
-    margin-top:8px !important;
+    gap:5px 7px !important;
+    margin-top:0 !important;
   }
 
   .movimentoTipo {
     display:flex !important;
     align-items:center !important;
     justify-content:space-between !important;
-    gap:8px !important;
+    gap:5px !important;
     min-width:0 !important;
-    padding:7px 9px !important;
+    padding:4px 6px !important;
     border:1px solid #dbe5f0 !important;
-    border-radius:12px !important;
+    border-radius:10px !important;
     background:#fbfdff !important;
   }
 
   .movimentoNome {
-    font-size:12px !important;
+    font-size:11px !important;
+    line-height:1.05 !important;
     font-weight:800 !important;
     color:#506177 !important;
     min-width:0 !important;
   }
 
   .movimentoValor {
-    width:52px !important;
-    height:52px !important;
-    min-height:52px !important;
-    flex:0 0 52px !important;
-    padding:4px !important;
+    width:44px !important;
+    height:44px !important;
+    min-height:44px !important;
+    flex:0 0 44px !important;
+    padding:3px !important;
     border-radius:50% !important;
     text-align:center !important;
-    font-size:15px !important;
+    font-size:14px !important;
     font-weight:900 !important;
     appearance:textfield;
   }
@@ -647,14 +659,15 @@ const ESTILO_FICHA = `
   .movimentoTexto {
     display:flex !important;
     flex-direction:column !important;
-    gap:2px !important;
+    gap:0 !important;
     min-width:0 !important;
   }
 
   .movimentoMeta {
-    min-height:14px !important;
-    font-size:9px !important;
-    line-height:1.15 !important;
+    min-height:10px !important;
+    margin-top:1px !important;
+    font-size:8px !important;
+    line-height:1 !important;
     font-weight:800 !important;
     color:#7a8da5 !important;
     white-space:nowrap !important;
@@ -5769,9 +5782,9 @@ function mostrarFichaPokemon(token) {
       </div>
     </div>
 
-    <hr>
+    <hr class="hrMovimento">
 
-    <h3>Movimentação</h3>
+    <h3 class="tituloMovimento">Movimentação</h3>
 
     <div class="movimentoGrid">
       <div class="movimentoTipo">
