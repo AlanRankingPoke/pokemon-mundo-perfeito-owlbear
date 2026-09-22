@@ -599,6 +599,51 @@ const ESTILO_FICHA = `
     width:100% !important;
   }
 
+  .movimentoGrid {
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:10px 14px !important;
+    margin-top:8px !important;
+  }
+
+  .movimentoTipo {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:8px !important;
+    min-width:0 !important;
+    padding:7px 9px !important;
+    border:1px solid #dbe5f0 !important;
+    border-radius:12px !important;
+    background:#fbfdff !important;
+  }
+
+  .movimentoNome {
+    font-size:12px !important;
+    font-weight:800 !important;
+    color:#506177 !important;
+    min-width:0 !important;
+  }
+
+  .movimentoValor {
+    width:52px !important;
+    height:52px !important;
+    min-height:52px !important;
+    flex:0 0 52px !important;
+    padding:4px !important;
+    border-radius:50% !important;
+    text-align:center !important;
+    font-size:15px !important;
+    font-weight:900 !important;
+    appearance:textfield;
+  }
+
+  .movimentoValor::-webkit-outer-spin-button,
+  .movimentoValor::-webkit-inner-spin-button {
+    -webkit-appearance:none;
+    margin:0;
+  }
+
   .rolarSalvaguarda,
   .rolarAtributo,
   .rolarPericiaPokemon,
@@ -4930,19 +4975,34 @@ function mostrarFichaPokemon(token) {
             `${PREFIX}/pokemon-item`
         ] ?? "";
 
-    const movimento1 =
+    const movimentoCaminhada =
         token.metadata[
-            `${PREFIX}/movimento1`
+            `${PREFIX}/movimento-caminhada`
         ] ?? "";
 
-    const movimento2 =
+    const movimentoEscalada =
         token.metadata[
-            `${PREFIX}/movimento2`
+            `${PREFIX}/movimento-escalada`
         ] ?? "";
 
-    const movimento3 =
+    const movimentoVoo =
         token.metadata[
-            `${PREFIX}/movimento3`
+            `${PREFIX}/movimento-voo`
+        ] ?? "";
+
+    const movimentoNatacao =
+        token.metadata[
+            `${PREFIX}/movimento-natacao`
+        ] ?? "";
+
+    const movimentoEscavacao =
+        token.metadata[
+            `${PREFIX}/movimento-escavacao`
+        ] ?? "";
+
+    const movimentoFlutuacao =
+        token.metadata[
+            `${PREFIX}/movimento-flutuacao`
         ] ?? "";
 
     const proficiencia =
@@ -5261,34 +5321,84 @@ function mostrarFichaPokemon(token) {
 
     <h3>Movimentação</h3>
 
-    <div class="movimentoLinha" style="
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-    ">
-      <input
-        id="movimento1"
-        type="text"
-        value="${esc(movimento1)}"
-        placeholder="Ex: 9m"
-        style="width:75px;"
-      >
+    <div class="movimentoGrid">
+      <div class="movimentoTipo">
+        <span class="movimentoNome">Caminhada</span>
+        <input
+          id="movimentoCaminhada"
+          class="movimentoValor"
+          type="number"
+          min="0"
+          step="1"
+          value="${esc(movimentoCaminhada)}"
+          placeholder="0"
+        >
+      </div>
 
-      <input
-        id="movimento2"
-        type="text"
-        value="${esc(movimento2)}"
-        placeholder="Ex: Voo"
-        style="width:75px;"
-      >
+      <div class="movimentoTipo">
+        <span class="movimentoNome">Escalada</span>
+        <input
+          id="movimentoEscalada"
+          class="movimentoValor"
+          type="number"
+          min="0"
+          step="1"
+          value="${esc(movimentoEscalada)}"
+          placeholder="0"
+        >
+      </div>
 
-      <input
-        id="movimento3"
-        type="text"
-        value="${esc(movimento3)}"
-        placeholder="Ex: Nado"
-        style="width:75px;"
-      >
+      <div class="movimentoTipo">
+        <span class="movimentoNome">Voo</span>
+        <input
+          id="movimentoVoo"
+          class="movimentoValor"
+          type="number"
+          min="0"
+          step="1"
+          value="${esc(movimentoVoo)}"
+          placeholder="0"
+        >
+      </div>
+
+      <div class="movimentoTipo">
+        <span class="movimentoNome">Natação</span>
+        <input
+          id="movimentoNatacao"
+          class="movimentoValor"
+          type="number"
+          min="0"
+          step="1"
+          value="${esc(movimentoNatacao)}"
+          placeholder="0"
+        >
+      </div>
+
+      <div class="movimentoTipo">
+        <span class="movimentoNome">Escavação</span>
+        <input
+          id="movimentoEscavacao"
+          class="movimentoValor"
+          type="number"
+          min="0"
+          step="1"
+          value="${esc(movimentoEscavacao)}"
+          placeholder="0"
+        >
+      </div>
+
+      <div class="movimentoTipo">
+        <span class="movimentoNome">Flutuação</span>
+        <input
+          id="movimentoFlutuacao"
+          class="movimentoValor"
+          type="number"
+          min="0"
+          step="1"
+          value="${esc(movimentoFlutuacao)}"
+          placeholder="0"
+        >
+      </div>
     </div>
 
     <hr>
@@ -5350,21 +5460,39 @@ function mostrarFichaPokemon(token) {
                     return;
                 }
 
-                const mov1 =
+                const movimentoCaminhadaNovo =
                     document
-                        .querySelector("#movimento1")
+                        .querySelector("#movimentoCaminhada")
                         .value
                         .trim();
 
-                const mov2 =
+                const movimentoEscaladaNovo =
                     document
-                        .querySelector("#movimento2")
+                        .querySelector("#movimentoEscalada")
                         .value
                         .trim();
 
-                const mov3 =
+                const movimentoVooNovo =
                     document
-                        .querySelector("#movimento3")
+                        .querySelector("#movimentoVoo")
+                        .value
+                        .trim();
+
+                const movimentoNatacaoNovo =
+                    document
+                        .querySelector("#movimentoNatacao")
+                        .value
+                        .trim();
+
+                const movimentoEscavacaoNovo =
+                    document
+                        .querySelector("#movimentoEscavacao")
+                        .value
+                        .trim();
+
+                const movimentoFlutuacaoNovo =
+                    document
+                        .querySelector("#movimentoFlutuacao")
                         .value
                         .trim();
 
@@ -5460,19 +5588,34 @@ function mostrarFichaPokemon(token) {
                                 novoItemPokemon;
 
                             item.metadata[
-                                `${PREFIX}/movimento1`
+                                `${PREFIX}/movimento-caminhada`
                             ] =
-                                mov1;
+                                movimentoCaminhadaNovo;
 
                             item.metadata[
-                                `${PREFIX}/movimento2`
+                                `${PREFIX}/movimento-escalada`
                             ] =
-                                mov2;
+                                movimentoEscaladaNovo;
 
                             item.metadata[
-                                `${PREFIX}/movimento3`
+                                `${PREFIX}/movimento-voo`
                             ] =
-                                mov3;
+                                movimentoVooNovo;
+
+                            item.metadata[
+                                `${PREFIX}/movimento-natacao`
+                            ] =
+                                movimentoNatacaoNovo;
+
+                            item.metadata[
+                                `${PREFIX}/movimento-escavacao`
+                            ] =
+                                movimentoEscavacaoNovo;
+
+                            item.metadata[
+                                `${PREFIX}/movimento-flutuacao`
+                            ] =
+                                movimentoFlutuacaoNovo;
 
                             item.metadata[
                                 `${PREFIX}/proficiencia`
