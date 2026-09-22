@@ -305,12 +305,14 @@ const ESTILO_FICHA = `
     text-align:center !important;
   }
 
-  .superEfetivoWrap {
+  .superEfetivoWrap,
+  .resistenteWrap {
     position:relative;
     flex:0 0 auto;
   }
 
-  #botaoSuperEfetivo {
+  #botaoSuperEfetivo,
+  #botaoResistente {
     min-height:34px !important;
     padding:6px 9px !important;
     font-size:10px !important;
@@ -318,13 +320,29 @@ const ESTILO_FICHA = `
     cursor:pointer !important;
   }
 
-  #botaoSuperEfetivo.ativo {
-    background:linear-gradient(135deg, #ff7b61 0%, #e85858 100%) !important;
+  /* Super Efetivo: 2x laranja, 4x vermelho. */
+  #botaoSuperEfetivo.super2 {
+    background:linear-gradient(135deg, #ffb347 0%, #f28c28 100%) !important;
     color:#fff !important;
-    border-color:#d94b4b !important;
+    border-color:#dc7a18 !important;
   }
 
-  .opcoesSuperEfetivo {
+  #botaoSuperEfetivo.super4 {
+    background:linear-gradient(135deg, #ff6666 0%, #d93636 100%) !important;
+    color:#fff !important;
+    border-color:#c72d2d !important;
+  }
+
+  /* Resistente usa azul para ficar visualmente diferente do Super Efetivo. */
+  #botaoResistente.resistente2,
+  #botaoResistente.resistente4 {
+    background:linear-gradient(135deg, #65a9ff 0%, #367bd4 100%) !important;
+    color:#fff !important;
+    border-color:#2f6dbd !important;
+  }
+
+  .opcoesSuperEfetivo,
+  .opcoesResistente {
     display:none;
     position:absolute;
     z-index:50;
@@ -338,11 +356,13 @@ const ESTILO_FICHA = `
     box-shadow:0 6px 18px rgba(28,54,86,.16);
   }
 
-  .opcoesSuperEfetivo.aberto {
+  .opcoesSuperEfetivo.aberto,
+  .opcoesResistente.aberto {
     display:flex;
   }
 
-  .multiplicadorSuperEfetivo {
+  .multiplicadorSuperEfetivo,
+  .divisorResistente {
     min-width:42px !important;
     min-height:32px !important;
     padding:5px 8px !important;
@@ -350,10 +370,30 @@ const ESTILO_FICHA = `
     cursor:pointer !important;
   }
 
-  .multiplicadorSuperEfetivo.ativo {
-    background:#e85858 !important;
+  .multiplicadorSuperEfetivo[data-fator="1"].ativo,
+  .divisorResistente[data-fator="1"].ativo {
+    background:#eef2f7 !important;
+    color:#31445e !important;
+    border-color:#aebdce !important;
+  }
+
+  .multiplicadorSuperEfetivo[data-fator="2"].ativo {
+    background:#f28c28 !important;
     color:#fff !important;
-    border-color:#d94b4b !important;
+    border-color:#dc7a18 !important;
+  }
+
+  .multiplicadorSuperEfetivo[data-fator="4"].ativo {
+    background:#d93636 !important;
+    color:#fff !important;
+    border-color:#c72d2d !important;
+  }
+
+  .divisorResistente[data-fator="0.5"].ativo,
+  .divisorResistente[data-fator="0.25"].ativo {
+    background:#3f82e8 !important;
+    color:#fff !important;
+    border-color:#2868c9 !important;
   }
 
   .movimentoLinha {
@@ -1328,7 +1368,7 @@ async function pegarHpCaDaTela() {
             return null;
         }
 
-        const multiplicadorSuperEfetivo =
+        const fatorDano =
             Number(
                 document
                     .querySelector("#multiplicadorHp")
@@ -1340,8 +1380,12 @@ async function pegarHpCaDaTela() {
         }
 
         else if (operador === "-") {
-            hpAtual -=
-                valor * multiplicadorSuperEfetivo;
+            // Super Efetivo usa fator 2/4. Resistente usa 0.5/0.25.
+            // Math.floor mantém o dano inteiro quando houver divisão.
+            const danoCalculado =
+                Math.floor(valor * fatorDano);
+
+            hpAtual -= danoCalculado;
         }
 
         else if (operador === "=") {
@@ -1774,66 +1818,127 @@ function criarSlots(
 // =====================================================
 
 function ativarCalculadoraHp() {
-    const botao =
+    const botaoSuper =
         document.querySelector("#botaoSuperEfetivo");
 
-    const opcoes =
+    const opcoesSuper =
         document.querySelector("#opcoesSuperEfetivo");
+
+    const botaoResistente =
+        document.querySelector("#botaoResistente");
+
+    const opcoesResistente =
+        document.querySelector("#opcoesResistente");
 
     const multiplicador =
         document.querySelector("#multiplicadorHp");
 
-    if (!botao || !opcoes || !multiplicador) {
+    if (
+        !botaoSuper ||
+        !opcoesSuper ||
+        !botaoResistente ||
+        !opcoesResistente ||
+        !multiplicador
+    ) {
         return;
     }
 
     const atualizarVisual = () => {
-        const valor = Number(multiplicador.value) || 1;
+        const fator =
+            Number(multiplicador.value) || 1;
 
-        botao.classList.toggle(
-            "ativo",
-            valor === 2 || valor === 4
+        botaoSuper.classList.remove(
+            "super2",
+            "super4"
         );
 
-        botao.textContent =
-            valor === 2
-                ? "Super Efetivo 2x"
-                : valor === 4
-                    ? "Super Efetivo 4x"
-                    : "Super Efetivo";
+        botaoResistente.classList.remove(
+            "resistente2",
+            "resistente4"
+        );
+
+        if (fator === 2) {
+            botaoSuper.classList.add("super2");
+            botaoSuper.textContent = "Super Efetivo 2x";
+        }
+        else if (fator === 4) {
+            botaoSuper.classList.add("super4");
+            botaoSuper.textContent = "Super Efetivo 4x";
+        }
+        else {
+            botaoSuper.textContent = "Super Efetivo";
+        }
+
+        if (fator === 0.5) {
+            botaoResistente.classList.add("resistente2");
+            botaoResistente.textContent = "Resistente 2x";
+        }
+        else if (fator === 0.25) {
+            botaoResistente.classList.add("resistente4");
+            botaoResistente.textContent = "Resistente 4x";
+        }
+        else {
+            botaoResistente.textContent = "Resistente";
+        }
 
         document
-            .querySelectorAll(".multiplicadorSuperEfetivo")
+            .querySelectorAll(
+                ".multiplicadorSuperEfetivo"
+            )
             .forEach((opcao) => {
                 opcao.classList.toggle(
                     "ativo",
-                    Number(opcao.dataset.multiplicador) === valor
+                    Number(opcao.dataset.fator) === fator
+                );
+            });
+
+        document
+            .querySelectorAll(
+                ".divisorResistente"
+            )
+            .forEach((opcao) => {
+                opcao.classList.toggle(
+                    "ativo",
+                    Number(opcao.dataset.fator) === fator
                 );
             });
     };
 
-    botao.addEventListener("click", () => {
-        opcoes.classList.toggle("aberto");
+    botaoSuper.addEventListener("click", () => {
+        opcoesResistente.classList.remove("aberto");
+        opcoesSuper.classList.toggle("aberto");
+    });
+
+    botaoResistente.addEventListener("click", () => {
+        opcoesSuper.classList.remove("aberto");
+        opcoesResistente.classList.toggle("aberto");
     });
 
     document
-        .querySelectorAll(".multiplicadorSuperEfetivo")
+        .querySelectorAll(
+            ".multiplicadorSuperEfetivo"
+        )
         .forEach((opcao) => {
             opcao.addEventListener("click", () => {
-                const escolhido =
-                    Number(opcao.dataset.multiplicador) || 1;
-
-                const atual =
-                    Number(multiplicador.value) || 1;
-
-                // Clicar novamente no multiplicador ativo volta ao dano normal.
                 multiplicador.value =
-                    atual === escolhido
-                        ? "1"
-                        : String(escolhido);
+                    opcao.dataset.fator || "1";
 
                 atualizarVisual();
-                opcoes.classList.remove("aberto");
+                opcoesSuper.classList.remove("aberto");
+            });
+        });
+
+    document
+        .querySelectorAll(
+            ".divisorResistente"
+        )
+        .forEach((opcao) => {
+            opcao.addEventListener("click", () => {
+                multiplicador.value =
+                    opcao.dataset.fator || "1";
+
+                atualizarVisual();
+                opcoesResistente.classList.remove("aberto");
             });
         });
 
@@ -2698,7 +2803,15 @@ function mostrarFichaTreinadorPagina1(
           <button
             type="button"
             class="multiplicadorSuperEfetivo"
-            data-multiplicador="2"
+            data-fator="1"
+          >
+            Neutro
+          </button>
+
+          <button
+            type="button"
+            class="multiplicadorSuperEfetivo"
+            data-fator="2"
           >
             2x
           </button>
@@ -2706,7 +2819,45 @@ function mostrarFichaTreinadorPagina1(
           <button
             type="button"
             class="multiplicadorSuperEfetivo"
-            data-multiplicador="4"
+            data-fator="4"
+          >
+            4x
+          </button>
+        </div>
+      </div>
+
+      <div class="resistenteWrap">
+        <button
+          id="botaoResistente"
+          type="button"
+        >
+          Resistente
+        </button>
+
+        <div
+          id="opcoesResistente"
+          class="opcoesResistente"
+        >
+          <button
+            type="button"
+            class="divisorResistente"
+            data-fator="1"
+          >
+            Neutro
+          </button>
+
+          <button
+            type="button"
+            class="divisorResistente"
+            data-fator="0.5"
+          >
+            2x
+          </button>
+
+          <button
+            type="button"
+            class="divisorResistente"
+            data-fator="0.25"
           >
             4x
           </button>
@@ -4263,7 +4414,15 @@ function mostrarFichaPokemon(token) {
                   <button
                     type="button"
                     class="multiplicadorSuperEfetivo"
-                    data-multiplicador="2"
+                    data-fator="1"
+                  >
+                    Neutro
+                  </button>
+
+                  <button
+                    type="button"
+                    class="multiplicadorSuperEfetivo"
+                    data-fator="2"
                   >
                     2x
                   </button>
@@ -4271,7 +4430,45 @@ function mostrarFichaPokemon(token) {
                   <button
                     type="button"
                     class="multiplicadorSuperEfetivo"
-                    data-multiplicador="4"
+                    data-fator="4"
+                  >
+                    4x
+                  </button>
+                </div>
+              </div>
+
+              <div class="resistenteWrap">
+                <button
+                  id="botaoResistente"
+                  type="button"
+                >
+                  Resistente
+                </button>
+
+                <div
+                  id="opcoesResistente"
+                  class="opcoesResistente"
+                >
+                  <button
+                    type="button"
+                    class="divisorResistente"
+                    data-fator="1"
+                  >
+                    Neutro
+                  </button>
+
+                  <button
+                    type="button"
+                    class="divisorResistente"
+                    data-fator="0.5"
+                  >
+                    2x
+                  </button>
+
+                  <button
+                    type="button"
+                    class="divisorResistente"
+                    data-fator="0.25"
                   >
                     4x
                   </button>
