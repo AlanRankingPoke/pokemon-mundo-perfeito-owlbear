@@ -325,6 +325,19 @@ const ESTILO_FICHA = `
     box-shadow:0 5px 12px rgba(40,107,215,.22) !important;
   }
 
+  /* Salvamento é automático: os antigos botões continuam apenas como
+     gatilhos internos para reaproveitar a lógica já validada. */
+  #salvarPokemonStatus,
+  #salvarPokemonMoves,
+  #salvarPokemonPericias,
+  #salvarPokemonTalentos,
+  #salvarTreinadorStatus,
+  #salvarTreinadorPerTal,
+  #salvarTreinadorHabilidades,
+  #salvarTreinadorAnotacoes {
+    display:none !important;
+  }
+
   details {
     background:#fff !important;
     border:1px solid #d7e1ec !important;
@@ -1678,6 +1691,96 @@ function criarSlots(
 }
 
 // =====================================================
+// AUTOSAVE
+// =====================================================
+
+const IDS_BOTOES_AUTOSAVE = [
+    "salvarPokemonStatus",
+    "salvarPokemonMoves",
+    "salvarPokemonPericias",
+    "salvarPokemonTalentos",
+    "salvarTreinadorStatus",
+    "salvarTreinadorPerTal",
+    "salvarTreinadorHabilidades",
+    "salvarTreinadorAnotacoes"
+];
+
+function ativarAutosaveDaTela() {
+    const app = document.querySelector("#app");
+
+    if (!app) {
+        return;
+    }
+
+    const botaoSalvar = IDS_BOTOES_AUTOSAVE
+        .map((id) => document.querySelector(`#${id}`))
+        .find(Boolean);
+
+    if (!botaoSalvar || botaoSalvar.dataset.autosaveAtivo === "1") {
+        return;
+    }
+
+    botaoSalvar.dataset.autosaveAtivo = "1";
+    botaoSalvar.style.display = "none";
+
+    let temporizador = null;
+
+    const programarSalvamento = (atraso = 650) => {
+        if (temporizador) {
+            clearTimeout(temporizador);
+        }
+
+        temporizador = setTimeout(() => {
+            // A aba pode ter sido trocada durante o debounce.
+            if (!document.body.contains(botaoSalvar)) {
+                return;
+            }
+
+            botaoSalvar.click();
+        }, atraso);
+    };
+
+    app.querySelectorAll("input, textarea, select")
+        .forEach((campo) => {
+            // Alterar HP é uma operação (+20, -34, =50), não um campo
+            // comum. Aplicamos somente quando o usuário termina a edição
+            // para evitar executar valores parciais, como apenas "-".
+            if (campo.id === "alterarHp") {
+                campo.addEventListener("change", () => {
+                    if (campo.value.trim() !== "") {
+                        programarSalvamento(100);
+                    }
+                });
+
+                campo.addEventListener("blur", () => {
+                    if (campo.value.trim() !== "") {
+                        programarSalvamento(100);
+                    }
+                });
+
+                return;
+            }
+
+            campo.addEventListener("input", () => {
+                programarSalvamento(650);
+            });
+
+            campo.addEventListener("change", () => {
+                programarSalvamento(200);
+            });
+        });
+
+    // Categoria físico/especial altera um input hidden por código,
+    // portanto também precisa disparar o autosave explicitamente.
+    app.querySelectorAll(".categoriaGolpe")
+        .forEach((botao) => {
+            botao.addEventListener("click", () => {
+                programarSalvamento(120);
+            });
+        });
+}
+
+// =====================================================
 // DEFINE TIPO
 // =====================================================
 
@@ -2727,10 +2830,6 @@ function mostrarFichaTreinadorPagina1(
                     dados.hpMax,
                     dados.ca
                 );
-
-                alert(
-                    "Status do treinador salvo!"
-                );
             }
         );
 }
@@ -2920,10 +3019,6 @@ function mostrarFichaTreinadorPerTal(
                             }
                         }
                     }
-                );
-
-                alert(
-                    "Perícias e talentos salvos!"
                 );
             }
         );
@@ -3244,10 +3339,6 @@ function mostrarFichaTreinadorHabilidades(
                         }
                     }
                 );
-
-                alert(
-                    "Habilidades do treinador salvas!"
-                );
             }
         );
 }
@@ -3344,10 +3435,6 @@ function mostrarFichaTreinadorAnotacoes(
                                 novasAnotacoes;
                         }
                     }
-                );
-
-                alert(
-                    "Anotações salvas!"
                 );
             }
         );
@@ -4271,10 +4358,6 @@ function mostrarFichaPokemon(token) {
                     dados.hpMax,
                     dados.ca
                 );
-
-                alert(
-                    "Status do Pokémon salvo!"
-                );
             }
         );
 }
@@ -5014,10 +5097,6 @@ document
                         }
                     }
                 );
-
-                alert(
-                    "Moves e buffs salvos!"
-                );
             }
         );
 }
@@ -5137,10 +5216,6 @@ function mostrarFichaPokemonPericias(
                             );
                         }
                     }
-                );
-
-                alert(
-                    "Perícias do Pokémon salvas!"
                 );
             }
         );
@@ -5337,10 +5412,6 @@ function mostrarFichaPokemonTalentos(
                         }
                     }
                 );
-
-                alert(
-                    "Talentos do Pokémon salvos!"
-                );
             }
         );
 }
@@ -5422,7 +5493,21 @@ OBR.onReady(
             );
         }
 
+        const app = document.querySelector("#app");
+
+        if (app) {
+            const observerAutosave = new MutationObserver(
+                () => ativarAutosaveDaTela()
+            );
+
+            observerAutosave.observe(
+                app,
+                { childList: true, subtree: true }
+            );
+        }
+
         await mostrarTokenSelecionado();
+        ativarAutosaveDaTela();
 
         OBR.player.onChange(
             async () => {
