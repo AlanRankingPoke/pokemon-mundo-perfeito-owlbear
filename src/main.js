@@ -693,6 +693,7 @@ const ESTILO_FICHA = `
   .rolarAcerto,
   .rolarDano,
   .rolarCritico,
+  .rolarDobrarDados,
   .rolarTesteCriticoCD,
   .rolarPassouCD,
   .rolarReprovouCD,
@@ -6317,6 +6318,19 @@ function mostrarFichaPokemonMoves(token) {
                     `${PREFIX}/golpe${i}Dano`
                 ] ?? "",
 
+            dobrarDadosVezes:
+                Math.max(
+                    1,
+                    Math.min(
+                        10,
+                        Number(
+                            token.metadata[
+                                `${PREFIX}/golpe${i}DobrarDadosVezes`
+                            ] ?? 1
+                        ) || 1
+                    )
+                ),
+
             cd:
                 token.metadata[
                     `${PREFIX}/golpe${i}CD`
@@ -6361,11 +6375,14 @@ function mostrarFichaPokemonMoves(token) {
           border-radius:6px;
           padding:7px;
         ">
-          <summary style="
-            cursor:pointer;
-            font-weight:bold;
-          ">
-            ${numero}. ${esc(titulo)}
+          <summary
+            id="golpe${numero}Resumo"
+            style="
+              cursor:pointer;
+              font-weight:bold;
+            "
+          >
+            ${esc(titulo)}
           </summary>
 
           <div style="margin-top:10px;">
@@ -6590,6 +6607,54 @@ function mostrarFichaPokemonMoves(token) {
                     "
                   >
                 </div>
+              </div>
+
+              <div style="
+                display:flex;
+                justify-content:flex-end;
+                align-items:center;
+                gap:6px;
+                margin-bottom:8px;
+              ">
+                <button
+                  type="button"
+                  class="rolarDobrarDados"
+                  data-golpe="${numero}"
+                  style="
+                    min-height:32px !important;
+                    height:32px;
+                    padding:5px 10px !important;
+                    cursor:pointer;
+                    font-size:10px;
+                    font-weight:bold;
+                    white-space:nowrap;
+                  "
+                >
+                  🎲 DOBRAR DADOS
+                </button>
+
+                <select
+                  id="golpe${numero}DobrarDadosVezes"
+                  title="Quantidade de vezes que os dados serão dobrados"
+                  style="
+                    width:62px;
+                    min-height:32px !important;
+                    height:32px;
+                    padding:4px 6px !important;
+                    text-align:center;
+                    font-size:10px;
+                    font-weight:bold;
+                    cursor:pointer;
+                  "
+                >
+                  ${Array.from(
+                      { length: 10 },
+                      (_, i) => i + 1
+                  ).map(
+                      (vezes) =>
+                          `<option value="${vezes}" ${golpe.dobrarDadosVezes === vezes ? "selected" : ""}>${vezes}x</option>`
+                  ).join("")}
+                </select>
               </div>
 
               <div style="display:flex; gap:6px;">
@@ -7091,6 +7156,43 @@ function mostrarFichaPokemonMoves(token) {
         );
 
     // =================================================
+    // NOME DINÂMICO NO CABEÇALHO DO MOVE
+    // =================================================
+
+    for (let numero = 1; numero <= 5; numero++) {
+        const campoNome =
+            document.querySelector(
+                `#golpe${numero}Nome`
+            );
+
+        const resumo =
+            document.querySelector(
+                `#golpe${numero}Resumo`
+            );
+
+        if (!campoNome || !resumo) {
+            continue;
+        }
+
+        const atualizarResumo = () => {
+            const nome = campoNome.value.trim();
+
+            resumo.textContent =
+                nome || `Move ${numero}`;
+        };
+
+        campoNome.addEventListener(
+            "input",
+            atualizarResumo
+        );
+
+        campoNome.addEventListener(
+            "change",
+            atualizarResumo
+        );
+    }
+
+    // =================================================
     // FÍSICO / ESPECIAL
     // =================================================
 
@@ -7198,6 +7300,35 @@ function mostrarFichaPokemonMoves(token) {
         );
     }
 
+    function dobrarDadosPorVezes(
+        formula,
+        vezes
+    ) {
+        const quantidadeDobras =
+            Math.max(
+                1,
+                Math.min(
+                    10,
+                    Number(vezes) || 1
+                )
+            );
+
+        const multiplicador =
+            Math.pow(2, quantidadeDobras);
+
+        return String(formula || "").replace(
+            /(^|[^A-Za-z0-9_])(\d*)d(\d+)/gi,
+            (match, prefixo, quantidade, faces) => {
+                const qtdOriginal =
+                    quantidade === ""
+                        ? 1
+                        : Number(quantidade);
+
+                return `${prefixo}${qtdOriginal * multiplicador}d${faces}`;
+            }
+        );
+    }
+
     // =================================================
     // M.ACERTO
     // =================================================
@@ -7278,6 +7409,72 @@ function mostrarFichaPokemonMoves(token) {
                             formulaFinal,
                             nomeGolpe(numero),
                             "Dano"
+                        );
+                    }
+                );
+            }
+        );
+
+    document
+        .querySelectorAll(".rolarDobrarDados")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const formulaOriginal =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}Dano`
+                                )
+                                .value
+                                .trim();
+
+                        if (!formulaOriginal) {
+                            alert(
+                                "A fórmula de dano está vazia."
+                            );
+
+                            return;
+                        }
+
+                        const campoDobras =
+                            document.querySelector(
+                                `#golpe${numero}DobrarDadosVezes`
+                            );
+
+                        const vezes =
+                            Math.max(
+                                1,
+                                Math.min(
+                                    10,
+                                    Number(campoDobras?.value) || 1
+                                )
+                            );
+
+                        const formulaDadosDobrados =
+                            dobrarDadosPorVezes(
+                                formulaOriginal,
+                                vezes
+                            );
+
+                        const formulaFinal =
+                            formulaDanoComBuff(
+                                numero,
+                                formulaDadosDobrados
+                            );
+
+                        if (!formulaFinal) {
+                            return;
+                        }
+
+                        await rolarNoDicePlus(
+                            formulaFinal,
+                            nomeGolpe(numero),
+                            `Dobrar Dados ${vezes}x`
                         );
                     }
                 );
@@ -7657,6 +7854,21 @@ function mostrarFichaPokemonMoves(token) {
                                 .value
                                 .trim(),
 
+                        dobrarDadosVezes:
+                            Math.max(
+                                1,
+                                Math.min(
+                                    10,
+                                    Number(
+                                        document
+                                            .querySelector(
+                                                `#golpe${i}DobrarDadosVezes`
+                                            )
+                                            ?.value
+                                    ) || 1
+                                )
+                            ),
+
                         cd:
                             document
                                 .querySelector(
@@ -7712,6 +7924,10 @@ function mostrarFichaPokemonMoves(token) {
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Dano`
                                     ] = golpe.dano;
+
+                                    item.metadata[
+                                        `${PREFIX}/golpe${numero}DobrarDadosVezes`
+                                    ] = golpe.dobrarDadosVezes;
 
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}CD`
