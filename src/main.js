@@ -2403,14 +2403,18 @@ function criarBuffs(
 
       return `
         <div style="
-          width:76px;
+          width:62px;
           text-align:center;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
         ">
 
           <div style="
-            font-size:11px;
+            font-size:10px;
             font-weight:bold;
-            margin-bottom:4px;
+            margin-bottom:2px;
+            line-height:1.05;
           ">
             ${buff.nome}
           </div>
@@ -2423,19 +2427,23 @@ function criarBuffs(
             ${buff.id === "crit" ? 'min="0" max="6"' : ''}
             value="${estagio}"
             style="
-              width:100%;
+              width:54px;
+              min-height:28px !important;
+              height:28px;
               box-sizing:border-box;
               text-align:center;
-              padding:5px;
+              padding:2px 4px !important;
+              font-weight:bold;
             "
           >
 
           <div
             id="bonus-${buff.id}"
             style="
-              font-size:11px;
-              margin-top:3px;
-              opacity:0.8;
+              font-size:10px;
+              margin-top:1px;
+              line-height:1;
+              opacity:0.82;
             "
           >
             ${buff.id === "crit" ? bonus : formatarBonus(bonus)}
@@ -6419,6 +6427,28 @@ function mostrarFichaPokemonMoves(token) {
         }
     );
 
+    const lerTalentoAtivo = (id) => {
+        const valor =
+            token.metadata[
+                `${PREFIX}/talento-${id}`
+            ];
+
+        return (
+            valor === true ||
+            valor === 1 ||
+            valor === "1" ||
+            valor === "true"
+        );
+    };
+
+    const talentosCombate = {
+        mestreCorpo: lerTalentoAtivo("mestre-corpo"),
+        mestreDistancia: lerTalentoAtivo("mestre-distancia"),
+        atacanteBestial: lerTalentoAtivo("atacante-bestial"),
+        disputador: lerTalentoAtivo("disputador"),
+        investidaPoderosa: lerTalentoAtivo("investida-poderosa")
+    };
+
     const golpes = [];
 
     for (
@@ -7168,12 +7198,21 @@ function mostrarFichaPokemonMoves(token) {
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 2)}
 
-    <h3>Buffs / Estágios</h3>
+    <h3 style="
+      text-align:center;
+      margin:4px 0 5px;
+      line-height:1.05;
+    ">Buffs / Estágios</h3>
 
     <div style="
       display:flex;
-      gap:6px;
+      justify-content:center;
+      align-items:flex-start;
+      gap:3px;
+      row-gap:4px;
       flex-wrap:wrap;
+      margin:0 auto 5px;
+      max-width:100%;
     ">
       ${criarBuffs(
           buffs,
@@ -7181,9 +7220,61 @@ function mostrarFichaPokemonMoves(token) {
       )}
     </div>
 
-    <hr>
+    <div style="
+      text-align:center;
+      font-size:10px;
+      font-weight:900;
+      margin:2px 0 4px;
+      opacity:0.9;
+    ">
+      TALENTOS DE COMBATE
+    </div>
 
-    <h3>Moves</h3>
+    <div style="
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:4px;
+      margin:0 0 6px;
+    ">
+      <input id="talento-mestre-corpo" type="hidden" value="${talentosCombate.mestreCorpo ? "1" : "0"}">
+      <input id="talento-mestre-distancia" type="hidden" value="${talentosCombate.mestreDistancia ? "1" : "0"}">
+      <input id="talento-atacante-bestial" type="hidden" value="${talentosCombate.atacanteBestial ? "1" : "0"}">
+      <input id="talento-disputador" type="hidden" value="${talentosCombate.disputador ? "1" : "0"}">
+      <input id="talento-investida-poderosa" type="hidden" value="${talentosCombate.investidaPoderosa ? "1" : "0"}">
+
+      <button type="button" class="talentoCombate" data-talento="mestre-corpo"
+        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.mestreCorpo ? "1" : "0.55"}; border:${talentosCombate.mestreCorpo ? "2px solid #4C8DFF" : "1px solid #666"};">
+        MESTRE CORPO A CORPO
+      </button>
+
+      <button type="button" class="talentoCombate" data-talento="mestre-distancia"
+        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.mestreDistancia ? "1" : "0.55"}; border:${talentosCombate.mestreDistancia ? "2px solid #4C8DFF" : "1px solid #666"};">
+        MESTRE À DISTÂNCIA
+      </button>
+
+      <button type="button" class="talentoCombate" data-talento="atacante-bestial"
+        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.atacanteBestial ? "1" : "0.55"}; border:${talentosCombate.atacanteBestial ? "2px solid #4C8DFF" : "1px solid #666"};">
+        ATACANTE BESTIAL
+      </button>
+
+      <button type="button" class="talentoCombate" data-talento="disputador"
+        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.disputador ? "1" : "0.55"}; border:${talentosCombate.disputador ? "2px solid #4C8DFF" : "1px solid #666"};">
+        DISPUTADOR
+      </button>
+
+      <button type="button" class="talentoCombate" data-talento="investida-poderosa"
+        style="grid-column:1 / -1; min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.investidaPoderosa ? "1" : "0.55"}; border:${talentosCombate.investidaPoderosa ? "2px solid #4C8DFF" : "1px solid #666"};">
+        INVESTIDA PODEROSA
+      </button>
+    </div>
+
+    <div style="border-top:1px solid #555; margin:2px 0 3px;"></div>
+
+    <h3 style="
+      text-align:center;
+      margin:3px 0 5px;
+      line-height:1.05;
+    ">Moves</h3>
 
     ${htmlGolpes}
 
@@ -7516,6 +7607,66 @@ function mostrarFichaPokemonMoves(token) {
     }
 
     // =================================================
+    // TALENTOS DE COMBATE — BOTÕES GLOBAIS
+    // =================================================
+
+    function talentoCombateAtivo(id) {
+        return (
+            document
+                .querySelector(`#talento-${id}`)
+                ?.value === "1"
+        );
+    }
+
+    function atualizarVisualTalento(botao, ativo) {
+        botao.style.opacity = ativo ? "1" : "0.55";
+        botao.style.border =
+            ativo
+                ? "2px solid #4C8DFF"
+                : "1px solid #666";
+    }
+
+    document
+        .querySelectorAll(".talentoCombate")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    () => {
+                        const id =
+                            botao.dataset.talento;
+
+                        const campo =
+                            document.querySelector(
+                                `#talento-${id}`
+                            );
+
+                        if (!campo) {
+                            return;
+                        }
+
+                        const ativo =
+                            campo.value !== "1";
+
+                        campo.value =
+                            ativo ? "1" : "0";
+
+                        atualizarVisualTalento(
+                            botao,
+                            ativo
+                        );
+
+                        // Talentos mudam fórmulas de rolagem; salva
+                        // imediatamente para persistir a seleção.
+                        document
+                            .querySelector("#salvarPokemonMoves")
+                            ?.click();
+                    }
+                );
+            }
+        );
+
+    // =================================================
     // FÍSICO / ESPECIAL
     // =================================================
 
@@ -7576,16 +7727,78 @@ function mostrarFichaPokemonMoves(token) {
         );
     }
 
-    function formulaDanoComBuff(
-        numero,
-        formulaOriginal
-    ) {
-        const categoria =
+    function categoriaGolpeAtual(numero) {
+        return (
             document
                 .querySelector(
                     `#golpe${numero}Categoria`
                 )
-                ?.value || "";
+                ?.value || ""
+        );
+    }
+
+    function formulaComVantagem(formula) {
+        const base =
+            String(formula || "").trim();
+
+        if (!base) {
+            return base;
+        }
+
+        // Dice+: rola a expressão completa duas vezes e mantém
+        // o maior total. Assim a vantagem funciona inclusive
+        // em fórmulas como 2d10+15 ou 3d8+1d6+7.
+        return `(${base},${base})kh1`;
+    }
+
+    function formulaAcertoComTalentos(
+        numero,
+        formulaOriginal
+    ) {
+        const categoria =
+            categoriaGolpeAtual(numero);
+
+        let bonusTalento = 0;
+
+        if (
+            categoria === "fisico" &&
+            talentoCombateAtivo("mestre-corpo")
+        ) {
+            bonusTalento -= 5;
+        }
+
+        if (
+            categoria === "especial" &&
+            talentoCombateAtivo("mestre-distancia")
+        ) {
+            bonusTalento -= 5;
+        }
+
+        let formulaFinal =
+            adicionarBonusNaFormula(
+                formulaOriginal,
+                bonusTalento
+            );
+
+        if (talentoCombateAtivo("disputador")) {
+            formulaFinal =
+                formulaComVantagem(
+                    formulaFinal
+                );
+        }
+
+        return formulaFinal;
+    }
+
+    function formulaDanoComBuff(
+        numero,
+        formulaOriginal,
+        opcoes = {}
+    ) {
+        const incluirBonusMestres =
+            opcoes.incluirBonusMestres !== false;
+        const categoria =
+            categoriaGolpeAtual(numero);
 
         if (!categoria) {
             alert(
@@ -7617,10 +7830,46 @@ function mostrarFichaPokemonMoves(token) {
                 proficiencia
             );
 
-        return adicionarBonusNaFormula(
-            formulaOriginal,
-            bonusBuff
-        );
+        let bonusTalentos = 0;
+
+        if (categoria === "fisico") {
+            if (
+                incluirBonusMestres &&
+                talentoCombateAtivo("mestre-corpo")
+            ) {
+                bonusTalentos += 10;
+            }
+
+            if (talentoCombateAtivo("investida-poderosa")) {
+                bonusTalentos += 5;
+            }
+        }
+
+        if (
+            incluirBonusMestres &&
+            categoria === "especial" &&
+            talentoCombateAtivo("mestre-distancia")
+        ) {
+            bonusTalentos += 10;
+        }
+
+        let formulaFinal =
+            adicionarBonusNaFormula(
+                formulaOriginal,
+                bonusBuff + bonusTalentos
+            );
+
+        if (
+            categoria === "fisico" &&
+            talentoCombateAtivo("atacante-bestial")
+        ) {
+            formulaFinal =
+                formulaComVantagem(
+                    formulaFinal
+                );
+        }
+
+        return formulaFinal;
     }
 
     function dobrarDadosPorVezes(
@@ -7682,8 +7931,14 @@ function mostrarFichaPokemonMoves(token) {
                             return;
                         }
 
+                        const formulaFinal =
+                            formulaAcertoComTalentos(
+                                numero,
+                                formula
+                            );
+
                         await rolarNoDicePlus(
-                            formula,
+                            formulaFinal,
                             nomeGolpe(numero),
                             "Acerto"
                         );
@@ -7845,38 +8100,20 @@ function mostrarFichaPokemonMoves(token) {
                             return;
                         }
 
-                        const buffId =
-                            categoria === "fisico"
-                                ? "atq"
-                                : "atqsp";
-
-                        const estagioBuff =
-                            normalizarEstagioBuff(
-                                document
-                                    .querySelector(
-                                        `#buff-${buffId}`
-                                    )
-                                    ?.value,
-                                buffId
-                            );
-
-                        const bonusBuff =
-                            bonusPorEstagio(
-                                buffId,
-                                estagioBuff,
-                                proficiencia
-                            );
-
                         const formulaCritica =
                             duplicarDadosFormula(
                                 formulaOriginal
                             );
 
                         const formulaFinal =
-                            adicionarBonusNaFormula(
-                                formulaCritica,
-                                bonusBuff
+                            formulaDanoComBuff(
+                                numero,
+                                formulaCritica
                             );
+
+                        if (!formulaFinal) {
+                            return;
+                        }
 
                         await rolarNoDicePlus(
                             formulaFinal,
@@ -7941,7 +8178,8 @@ function mostrarFichaPokemonMoves(token) {
                         const formulaComBuff =
                             formulaDanoComBuff(
                                 numero,
-                                formulaOriginal
+                                formulaOriginal,
+                                { incluirBonusMestres: false }
                             );
 
                         if (!formulaComBuff) {
@@ -8050,38 +8288,20 @@ function mostrarFichaPokemonMoves(token) {
                             return;
                         }
 
-                        const buffId =
-                            categoria === "fisico"
-                                ? "atq"
-                                : "atqsp";
-
-                        const estagioBuff =
-                            normalizarEstagioBuff(
-                                document
-                                    .querySelector(
-                                        `#buff-${buffId}`
-                                    )
-                                    ?.value,
-                                buffId
-                            );
-
-                        const bonusBuff =
-                            bonusPorEstagio(
-                                buffId,
-                                estagioBuff,
-                                proficiencia
-                            );
-
                         const formulaCritica =
                             duplicarDadosFormula(
                                 formulaOriginal
                             );
 
                         const formulaFinal =
-                            adicionarBonusNaFormula(
-                                formulaCritica,
-                                bonusBuff
+                            formulaDanoComBuff(
+                                numero,
+                                formulaCritica
                             );
+
+                        if (!formulaFinal) {
+                            return;
+                        }
 
                         await rolarNoDicePlus(
                             formulaFinal,
@@ -8376,6 +8596,19 @@ function mostrarFichaPokemonMoves(token) {
                     }
                 );
 
+                const novosTalentos = {
+                    mestreCorpo:
+                        talentoCombateAtivo("mestre-corpo"),
+                    mestreDistancia:
+                        talentoCombateAtivo("mestre-distancia"),
+                    atacanteBestial:
+                        talentoCombateAtivo("atacante-bestial"),
+                    disputador:
+                        talentoCombateAtivo("disputador"),
+                    investidaPoderosa:
+                        talentoCombateAtivo("investida-poderosa")
+                };
+
                 const novosGolpes = [];
 
                 for (
@@ -8504,6 +8737,26 @@ function mostrarFichaPokemonMoves(token) {
                                         novosBuffs[buff.id];
                                 }
                             );
+
+                            item.metadata[
+                                `${PREFIX}/talento-mestre-corpo`
+                            ] = novosTalentos.mestreCorpo;
+
+                            item.metadata[
+                                `${PREFIX}/talento-mestre-distancia`
+                            ] = novosTalentos.mestreDistancia;
+
+                            item.metadata[
+                                `${PREFIX}/talento-atacante-bestial`
+                            ] = novosTalentos.atacanteBestial;
+
+                            item.metadata[
+                                `${PREFIX}/talento-disputador`
+                            ] = novosTalentos.disputador;
+
+                            item.metadata[
+                                `${PREFIX}/talento-investida-poderosa`
+                            ] = novosTalentos.investidaPoderosa;
 
                             novosGolpes.forEach(
                                 (golpe, index) => {
