@@ -883,6 +883,42 @@ function formatarBonus(valor) {
     return numero > 0 ? `+${numero}` : `${numero}`;
 }
 
+// =====================================================
+// ESTÁGIOS POSITIVOS E NEGATIVOS
+// =====================================================
+
+function normalizarEstagioBuff(valor, id = "") {
+    let estagio = Number(valor);
+
+    if (Number.isNaN(estagio)) {
+        estagio = 0;
+    }
+
+    estagio = Math.trunc(estagio);
+
+    // CRIT continua usando a faixa própria de 0 a 6.
+    // Os demais estágios aceitam valores positivos e negativos,
+    // preservando a regra já usada pelo sistema sem impor um novo limite.
+    if (id === "crit") {
+        return Math.max(0, Math.min(6, estagio));
+    }
+
+    return estagio;
+}
+
+function bonusPorEstagio(id, estagio, proficiencia) {
+    const valorEstagio = normalizarEstagioBuff(estagio, id);
+    const prof = Number(proficiencia) || 0;
+
+    // EVAS é sempre ±1 por estágio.
+    if (id === "evas") {
+        return valorEstagio;
+    }
+
+    // Os demais buffs/debuffs numéricos usam Proficiência × estágio.
+    return valorEstagio * prof;
+}
+
 function numeroDecimal(valor) {
     const texto =
         String(valor ?? "")
@@ -925,7 +961,10 @@ function movimentoComVelocidade(
     }
 
     const bonus =
-        (Number(estagioVelocidade) || 0) * 1.5;
+        normalizarEstagioBuff(
+            estagioVelocidade,
+            "vel"
+        ) * 1.5;
 
     return Math.max(
         0,
@@ -1777,7 +1816,11 @@ async function pegarHpCaDaTela(aplicarCalculadora = false) {
             }
 
             const bonusDefesa =
-                estagioDefesa * proficienciaAtual;
+                bonusPorEstagio(
+                    tipoMove === "fisico" ? "def" : "defsp",
+                    estagioDefesa,
+                    proficienciaAtual
+                );
 
             // Defesa positiva reduz o dano; defesa negativa aumenta.
             // Dano nunca fica abaixo de 0.
@@ -1974,11 +2017,12 @@ function ativarRolagensSalvaguarda(token) {
               }
 
               const estagioEvasao =
-                Number(
+                normalizarEstagioBuff(
                   token?.metadata?.[
                     `${PREFIX}/buff-evas`
-                  ] ?? 0
-                ) || 0;
+                  ] ?? 0,
+                  "evas"
+                );
 
               valorRolagem =
                 valorBase + estagioEvasao;
@@ -2079,11 +2123,12 @@ function ativarRolagemIniciativa(token) {
     // VEL: cada estágio concede +1x Proficiência na iniciativa.
     // Estágios negativos também reduzem a iniciativa.
     const estagioVelocidade =
-      Number(
+      normalizarEstagioBuff(
         token?.metadata?.[
           `${PREFIX}/buff-vel`
-        ] ?? 0
-      ) || 0;
+        ] ?? 0,
+        "vel"
+      );
 
     const bonusVelocidade =
       estagioVelocidade * proficiencia;
@@ -2203,16 +2248,19 @@ function criarBuffs(
     (buff) => {
 
       const estagio =
-        Number(
-          valores[buff.id]
-        ) || 0;
+        normalizarEstagioBuff(
+          valores[buff.id],
+          buff.id
+        );
 
       const bonus =
         buff.id === "crit"
           ? faixaCritico(estagio)
-          : buff.id === "evas"
-            ? estagio
-            : estagio * proficiencia;
+          : bonusPorEstagio(
+              buff.id,
+              estagio,
+              proficiencia
+            );
 
       return `
         <div style="
@@ -2757,7 +2805,10 @@ function normalizarMovimentoBase(valor) {
 }
 
 function bonusMovimentoPorVelocidade(estagioVelocidade) {
-    return (Number(estagioVelocidade) || 0) * 1.5;
+    return normalizarEstagioBuff(
+        estagioVelocidade,
+        "vel"
+    ) * 1.5;
 }
 
 function salvarMovimentoBaseNoToken(
@@ -3713,11 +3764,12 @@ function mostrarFichaTreinadorPagina1(
         ) || 0;
 
     const estagioEvasao =
-        Number(
+        normalizarEstagioBuff(
             token.metadata[
                 `${PREFIX}/buff-evas`
-            ] ?? 0
-        ) || 0;
+            ] ?? 0,
+            "evas"
+        );
 
     const ca =
         caBase + estagioEvasao;
@@ -3765,11 +3817,12 @@ function mostrarFichaTreinadorPagina1(
         ] === true;
 
     const estagioVelocidade =
-        Number(
+        normalizarEstagioBuff(
             token.metadata[
                 `${PREFIX}/buff-vel`
-            ] ?? 0
-        ) || 0;
+            ] ?? 0,
+            "vel"
+        );
 
     const iniciativa =
         (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
@@ -5421,11 +5474,12 @@ function mostrarFichaPokemon(token) {
         ) || 0;
 
     const estagioEvasao =
-        Number(
+        normalizarEstagioBuff(
             token.metadata[
                 `${PREFIX}/buff-evas`
-            ] ?? 0
-        ) || 0;
+            ] ?? 0,
+            "evas"
+        );
 
     const ca =
         caBase + estagioEvasao;
@@ -5507,11 +5561,12 @@ function mostrarFichaPokemon(token) {
         ] === true;
 
     const estagioVelocidade =
-        Number(
+        normalizarEstagioBuff(
             token.metadata[
                 `${PREFIX}/buff-vel`
-            ] ?? 0
-        ) || 0;
+            ] ?? 0,
+            "vel"
+        );
 
     const iniciativa =
         (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
@@ -6500,9 +6555,10 @@ function mostrarFichaPokemonMoves(token) {
                 }
 
                 const estagio =
-                    Number(
-                        campoBuff.value
-                    ) || 0;
+                    normalizarEstagioBuff(
+                        campoBuff.value,
+                        buff.id
+                    );
 
                 const campoBonus =
                     document.querySelector(
@@ -6513,11 +6569,13 @@ function mostrarFichaPokemonMoves(token) {
                     campoBonus.textContent =
                         buff.id === "crit"
                             ? faixaCritico(estagio)
-                            : buff.id === "evas"
-                                ? formatarBonus(estagio)
-                                : formatarBonus(
-                                    proficiencia * estagio
-                                );
+                            : formatarBonus(
+                                bonusPorEstagio(
+                                    buff.id,
+                                    estagio,
+                                    proficiencia
+                                )
+                              );
                 }
             }
         );
@@ -6539,7 +6597,10 @@ function mostrarFichaPokemonMoves(token) {
                             campo.id.replace("buff-", "");
 
                         const valorBuff =
-                            Number(campo.value) || 0;
+                            normalizarEstagioBuff(
+                                campo.value,
+                                buffId
+                            );
 
                         // Atualiza a cópia local imediatamente.
                         token.metadata[
@@ -6597,6 +6658,23 @@ function mostrarFichaPokemonMoves(token) {
                                         );
                                     }
                                 });
+                    }
+                );
+
+                campo.addEventListener(
+                    "change",
+                    () => {
+                        const buffId =
+                            campo.id.replace("buff-", "");
+
+                        campo.value = String(
+                            normalizarEstagioBuff(
+                                campo.value,
+                                buffId
+                            )
+                        );
+
+                        atualizarBuffsPagina();
                     }
                 );
             }
@@ -6797,8 +6875,11 @@ document
           }
 
           const bonusBuff =
-            estagioBuff *
-            proficiencia;
+            bonusPorEstagio(
+              categoria === "fisico" ? "atq" : "atqsp",
+              estagioBuff,
+              proficiencia
+            );
 
           const formulaFinal =
             bonusBuff > 0
@@ -6854,7 +6935,11 @@ document
                             estagioBuff = Number(document.querySelector("#buff-atqsp")?.value) || 0;
                         }
 
-                        const bonusBuff = estagioBuff * proficiencia;
+                        const bonusBuff = bonusPorEstagio(
+                            categoria === "fisico" ? "atq" : "atqsp",
+                            estagioBuff,
+                            proficiencia
+                        );
                         const formulaCritica = duplicarDadosFormula(formulaOriginal);
                         const formulaFinal = adicionarBonusNaFormula(formulaCritica, bonusBuff);
 
@@ -6886,13 +6971,14 @@ document
                     (buff) => {
 
                         novosBuffs[buff.id] =
-                            Number(
+                            normalizarEstagioBuff(
                                 document
                                     .querySelector(
                                         `#buff-${buff.id}`
                                     )
-                                    .value
-                            ) || 0;
+                                    .value,
+                                buff.id
+                            );
                     }
                 );
 
