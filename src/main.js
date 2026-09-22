@@ -365,6 +365,86 @@ const ESTILO_FICHA = `
     border-color:#1d743f !important;
   }
 
+  /* Iniciativa: bloco próprio abaixo da Calculadora. */
+  .iniciativaBloco {
+    width:100% !important;
+    margin-top:12px !important;
+    padding-top:3px !important;
+  }
+
+  .iniciativaTitulo {
+    width:100% !important;
+    text-align:center !important;
+    margin:6px 0 6px !important;
+    color:#53647a !important;
+    font-size:12px !important;
+    font-weight:800 !important;
+  }
+
+  .iniciativaLinha {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:6px !important;
+    flex-wrap:wrap !important;
+    width:100% !important;
+  }
+
+  #iniciativa {
+    width:66px !important;
+    min-height:36px !important;
+    text-align:center !important;
+    font-weight:800 !important;
+  }
+
+  #rolarIniciativa {
+    flex:0 0 38px !important;
+    width:38px !important;
+    min-height:36px !important;
+    padding:5px !important;
+    font-size:13px !important;
+  }
+
+  .iniciativaCheck {
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:5px !important;
+    min-height:36px !important;
+    padding:5px 9px !important;
+    border-radius:999px !important;
+    font-size:10px !important;
+    white-space:nowrap !important;
+    cursor:pointer !important;
+  }
+
+  .iniciativaCheckBolinha {
+    width:17px !important;
+    height:17px !important;
+    border-radius:50% !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    border:2px solid #9fb1c7 !important;
+    background:#fff !important;
+    color:transparent !important;
+    font-size:10px !important;
+    font-weight:900 !important;
+    line-height:1 !important;
+  }
+
+  .iniciativaCheck.ativo {
+    background:#eaf3ff !important;
+    color:#245fae !important;
+    border-color:#7aa8e6 !important;
+  }
+
+  .iniciativaCheck.ativo .iniciativaCheckBolinha {
+    background:#3f82e8 !important;
+    border-color:#2868c9 !important;
+    color:#fff !important;
+  }
+
   /* Super Efetivo: 2x laranja, 4x vermelho. */
   #botaoSuperEfetivo.super2 {
     background:linear-gradient(135deg, #ffb347 0%, #f28c28 100%) !important;
@@ -1727,59 +1807,158 @@ function ativarRolagensSalvaguarda() {
 }
 
 function ativarRolagemIniciativa() {
-  const botao =
-    document.querySelector(
-      "#rolarIniciativa"
-    );
+  const botaoRolar =
+    document.querySelector("#rolarIniciativa");
 
   const campoIniciativa =
-    document.querySelector(
-      "#iniciativa"
-    );
+    document.querySelector("#iniciativa");
 
   const campoDestreza =
-    document.querySelector(
-      "#treinador-mod-des"
-    ) ||
-    document.querySelector(
-      "#mod-des"
-    );
+    document.querySelector("#treinador-mod-des") ||
+    document.querySelector("#mod-des");
 
-  if (!botao || !campoDestreza) {
+  const campoProficiencia =
+    document.querySelector("#treinadorProficiencia") ||
+    document.querySelector("#proficiencia");
+
+  const campoAlerta =
+    document.querySelector("#iniciativaAlerta");
+
+  const campoHabilidade =
+    document.querySelector("#iniciativaHabilidade");
+
+  const botaoAlerta =
+    document.querySelector("#botaoIniciativaAlerta");
+
+  const botaoHabilidade =
+    document.querySelector("#botaoIniciativaHabilidade");
+
+  if (
+    !botaoRolar ||
+    !campoIniciativa ||
+    !campoDestreza ||
+    !campoAlerta ||
+    !campoHabilidade ||
+    !botaoAlerta ||
+    !botaoHabilidade
+  ) {
     return;
   }
 
-  const sincronizarIniciativa = () => {
-    if (campoIniciativa) {
-      campoIniciativa.value =
-        String(campoDestreza.value ?? "").trim();
+  const numeroCampo = (valor) => {
+    const numero = Number(
+      String(valor ?? "")
+        .trim()
+        .replace(",", ".")
+    );
+
+    return Number.isNaN(numero) ? 0 : numero;
+  };
+
+  const iniciativaTotal = () => {
+    const destreza =
+      numeroCampo(campoDestreza.value);
+
+    const proficiencia =
+      numeroCampo(campoProficiencia?.value);
+
+    const bonusAlerta =
+      campoAlerta.value === "1"
+        ? 5
+        : 0;
+
+    const bonusHabilidade =
+      campoHabilidade.value === "1"
+        ? proficiencia * 2
+        : 0;
+
+    return (
+      destreza +
+      bonusAlerta +
+      bonusHabilidade
+    );
+  };
+
+  const atualizarVisual = () => {
+    const total = iniciativaTotal();
+
+    campoIniciativa.value = String(total);
+
+    botaoAlerta.classList.toggle(
+      "ativo",
+      campoAlerta.value === "1"
+    );
+
+    botaoHabilidade.classList.toggle(
+      "ativo",
+      campoHabilidade.value === "1"
+    );
+  };
+
+  const salvarEstado = () => {
+    const botaoSalvarStatus =
+      document.querySelector(
+        "#salvarPokemonStatus, #salvarTreinadorStatus"
+      );
+
+    if (botaoSalvarStatus) {
+      botaoSalvarStatus.click();
     }
   };
 
-  // A iniciativa sempre acompanha o modificador de Destreza.
-  sincronizarIniciativa();
+  const alternar = (campo) => {
+    campo.value =
+      campo.value === "1"
+        ? "0"
+        : "1";
+
+    atualizarVisual();
+    salvarEstado();
+  };
 
   campoDestreza.addEventListener(
     "input",
-    sincronizarIniciativa
+    atualizarVisual
   );
 
   campoDestreza.addEventListener(
     "change",
-    sincronizarIniciativa
+    atualizarVisual
   );
 
-  botao.addEventListener(
+  if (campoProficiencia) {
+    campoProficiencia.addEventListener(
+      "input",
+      atualizarVisual
+    );
+
+    campoProficiencia.addEventListener(
+      "change",
+      atualizarVisual
+    );
+  }
+
+  botaoAlerta.addEventListener(
+    "click",
+    () => alternar(campoAlerta)
+  );
+
+  botaoHabilidade.addEventListener(
+    "click",
+    () => alternar(campoHabilidade)
+  );
+
+  botaoRolar.addEventListener(
     "click",
     async () => {
       const formula =
         formulaSalvaguarda(
-          campoDestreza.value
+          iniciativaTotal()
         );
 
       if (!formula) {
         alert(
-          "Valor de Destreza inválido para iniciativa."
+          "Não foi possível calcular a iniciativa."
         );
 
         return;
@@ -1791,6 +1970,8 @@ function ativarRolagemIniciativa() {
       );
     }
   );
+
+  atualizarVisual();
 }
 
 // =====================================================
@@ -2972,7 +3153,20 @@ function mostrarFichaTreinadorPagina1(
         }
     );
 
-    const iniciativa = modificadores.des ?? "";
+    const iniciativaAlerta =
+        token.metadata[
+            `${PREFIX}/treinador-iniciativa-alerta`
+        ] === true;
+
+    const iniciativaHabilidade =
+        token.metadata[
+            `${PREFIX}/treinador-iniciativa-habilidade`
+        ] === true;
+
+    const iniciativa =
+        (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
+        (iniciativaAlerta ? 5 : 0) +
+        (iniciativaHabilidade ? (Number(proficiencia) || 0) * 2 : 0);
 
     app.innerHTML = `
     ${ESTILO_FICHA}
@@ -3029,25 +3223,6 @@ function mostrarFichaTreinadorPagina1(
         >
       </div>
 
-      <div style="flex:1; min-width:0;">
-        <p>Inic.</p>
-        <div style="display:flex; gap:4px; align-items:center;">
-          <input
-            id="iniciativa"
-            type="text"
-            value="${esc(iniciativa)}"
-            readonly
-            title="Iniciativa = modificador de Destreza"
-            style="width:100%; min-width:0; box-sizing:border-box; text-align:center;"
-          >
-          <button
-            id="rolarIniciativa"
-            type="button"
-            title="Rolar iniciativa usando Destreza"
-            style="flex:0 0 34px; width:34px; min-height:36px; padding:5px; font-size:13px; cursor:pointer;"
-          >🎲</button>
-        </div>
-      </div>
     </div>
 
     <div class="calculadoraHpLinha">
@@ -3164,6 +3339,57 @@ function mostrarFichaTreinadorPagina1(
       >
     </div>
 
+    <div class="iniciativaBloco">
+      <p class="iniciativaTitulo">Iniciativa</p>
+
+      <div class="iniciativaLinha">
+        <input
+          id="iniciativa"
+          type="text"
+          value="${esc(iniciativa)}"
+          readonly
+          title="Iniciativa = DES + Alerta + Habilidade"
+        >
+
+        <button
+          id="rolarIniciativa"
+          type="button"
+          title="Rolar iniciativa"
+        >🎲</button>
+
+        <button
+          id="botaoIniciativaAlerta"
+          class="iniciativaCheck ${iniciativaAlerta ? "ativo" : ""}"
+          type="button"
+          title="Alerta: +5 na iniciativa"
+        >
+          <span class="iniciativaCheckBolinha">✓</span>
+          <span>Alerta</span>
+        </button>
+
+        <button
+          id="botaoIniciativaHabilidade"
+          class="iniciativaCheck ${iniciativaHabilidade ? "ativo" : ""}"
+          type="button"
+          title="Habilidade: +2x Prof na iniciativa"
+        >
+          <span class="iniciativaCheckBolinha">✓</span>
+          <span>Habilidade</span>
+        </button>
+      </div>
+
+      <input
+        id="iniciativaAlerta"
+        type="hidden"
+        value="${iniciativaAlerta ? "1" : "0"}"
+      >
+
+      <input
+        id="iniciativaHabilidade"
+        type="hidden"
+        value="${iniciativaHabilidade ? "1" : "0"}"
+      >
+    </div>
 
     <hr>
 
@@ -3320,6 +3546,16 @@ function mostrarFichaTreinadorPagina1(
                         .value
                         .trim();
 
+                const iniciativaAlertaAtiva =
+                    document
+                        .querySelector("#iniciativaAlerta")
+                        ?.value === "1";
+
+                const iniciativaHabilidadeAtiva =
+                    document
+                        .querySelector("#iniciativaHabilidade")
+                        ?.value === "1";
+
                 const novoBonusCaptura =
                     document
                         .querySelector(
@@ -3392,6 +3628,16 @@ function mostrarFichaTreinadorPagina1(
                                 `${PREFIX}/treinador-iniciativa`
                             ] =
                                 novaIniciativa;
+
+                            item.metadata[
+                                `${PREFIX}/treinador-iniciativa-alerta`
+                            ] =
+                                iniciativaAlertaAtiva;
+
+                            item.metadata[
+                                `${PREFIX}/treinador-iniciativa-habilidade`
+                            ] =
+                                iniciativaHabilidadeAtiva;
 
                             item.metadata[
                                 `${PREFIX}/treinador-captura-bonus`
@@ -4592,7 +4838,20 @@ function mostrarFichaPokemon(token) {
         }
     );
 
-    const iniciativa = modificadores.des ?? "";
+    const iniciativaAlerta =
+        token.metadata[
+            `${PREFIX}/iniciativa-alerta`
+        ] === true;
+
+    const iniciativaHabilidade =
+        token.metadata[
+            `${PREFIX}/iniciativa-habilidade`
+        ] === true;
+
+    const iniciativa =
+        (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
+        (iniciativaAlerta ? 5 : 0) +
+        (iniciativaHabilidade ? proficiencia * 2 : 0);
 
     app.innerHTML = `
     ${ESTILO_FICHA}
@@ -4656,26 +4915,6 @@ function mostrarFichaPokemon(token) {
             >
           </div>
 
-
-          <div style="flex:0.95; min-width:0;">
-            <p>Inic.</p>
-            <div style="display:flex; gap:3px; align-items:center;">
-              <input
-                id="iniciativa"
-                type="text"
-                value="${esc(iniciativa)}"
-                readonly
-                title="Iniciativa = modificador de Destreza"
-                style="width:100%; min-width:0; box-sizing:border-box; text-align:center;"
-              >
-              <button
-                id="rolarIniciativa"
-                type="button"
-                title="Rolar iniciativa usando Destreza"
-                style="flex:0 0 32px; width:32px; min-height:36px; padding:4px; font-size:12px; cursor:pointer;"
-              >🎲</button>
-            </div>
-          </div>
         </div>
 
             <div class="calculadoraHpLinha">
@@ -4789,6 +5028,58 @@ function mostrarFichaPokemon(token) {
                 id="multiplicadorHp"
                 type="hidden"
                 value="1"
+              >
+            </div>
+
+            <div class="iniciativaBloco">
+              <p class="iniciativaTitulo">Iniciativa</p>
+
+              <div class="iniciativaLinha">
+                <input
+                  id="iniciativa"
+                  type="text"
+                  value="${esc(iniciativa)}"
+                  readonly
+                  title="Iniciativa = DES + Alerta + Habilidade"
+                >
+
+                <button
+                  id="rolarIniciativa"
+                  type="button"
+                  title="Rolar iniciativa"
+                >🎲</button>
+
+                <button
+                  id="botaoIniciativaAlerta"
+                  class="iniciativaCheck ${iniciativaAlerta ? "ativo" : ""}"
+                  type="button"
+                  title="Alerta: +5 na iniciativa"
+                >
+                  <span class="iniciativaCheckBolinha">✓</span>
+                  <span>Alerta</span>
+                </button>
+
+                <button
+                  id="botaoIniciativaHabilidade"
+                  class="iniciativaCheck ${iniciativaHabilidade ? "ativo" : ""}"
+                  type="button"
+                  title="Habilidade: +2x Prof na iniciativa"
+                >
+                  <span class="iniciativaCheckBolinha">✓</span>
+                  <span>Habilidade</span>
+                </button>
+              </div>
+
+              <input
+                id="iniciativaAlerta"
+                type="hidden"
+                value="${iniciativaAlerta ? "1" : "0"}"
+              >
+
+              <input
+                id="iniciativaHabilidade"
+                type="hidden"
+                value="${iniciativaHabilidade ? "1" : "0"}"
               >
             </div>
 
@@ -4947,6 +5238,16 @@ function mostrarFichaPokemon(token) {
                         .value
                         .trim();
 
+                const iniciativaAlertaAtiva =
+                    document
+                        .querySelector("#iniciativaAlerta")
+                        ?.value === "1";
+
+                const iniciativaHabilidadeAtiva =
+                    document
+                        .querySelector("#iniciativaHabilidade")
+                        ?.value === "1";
+
                 const novosModificadores = {};
                 const novasSalvaguardas = {};
 
@@ -5022,6 +5323,16 @@ function mostrarFichaPokemon(token) {
                                 `${PREFIX}/iniciativa`
                             ] =
                                 novaIniciativa;
+
+                            item.metadata[
+                                `${PREFIX}/iniciativa-alerta`
+                            ] =
+                                iniciativaAlertaAtiva;
+
+                            item.metadata[
+                                `${PREFIX}/iniciativa-habilidade`
+                            ] =
+                                iniciativaHabilidadeAtiva;
 
                             ATRIBUTOS.forEach(
                                 (atributo) => {
