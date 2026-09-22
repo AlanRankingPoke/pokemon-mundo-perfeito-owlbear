@@ -704,8 +704,7 @@ async function criarStatusNoToken(
             .layer("ATTACHMENT")
             .zIndex(0)
             .disableAutoZIndex(true)
-            .attachedTo(token.id)
-            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+            .disableAttachmentBehavior(["ROTATION", "SCALE", "POSITION", "VISIBLE", "COPY"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -735,8 +734,7 @@ async function criarStatusNoToken(
                 .layer("ATTACHMENT")
                 .zIndex(1)
                 .disableAutoZIndex(true)
-                .attachedTo(token.id)
-                .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+                .disableAttachmentBehavior(["ROTATION", "SCALE", "POSITION", "VISIBLE", "COPY"])
                 .locked(true)
                 .disableHit(true)
                 .metadata({
@@ -783,8 +781,7 @@ async function criarStatusNoToken(
             .layer("ATTACHMENT")
             .zIndex(10)
             .disableAutoZIndex(true)
-            .attachedTo(token.id)
-            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+            .disableAttachmentBehavior(["ROTATION", "SCALE", "POSITION", "VISIBLE", "COPY"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -826,8 +823,7 @@ async function criarStatusNoToken(
             .layer("ATTACHMENT")
             .zIndex(1)
             .disableAutoZIndex(true)
-            .attachedTo(token.id)
-            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+            .disableAttachmentBehavior(["ROTATION", "SCALE", "POSITION", "VISIBLE", "COPY"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -870,8 +866,7 @@ async function criarStatusNoToken(
             .layer("ATTACHMENT")
             .zIndex(20)
             .disableAutoZIndex(true)
-            .attachedTo(token.id)
-            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+            .disableAttachmentBehavior(["ROTATION", "SCALE", "POSITION", "VISIBLE", "COPY"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -4786,6 +4781,93 @@ function mostrarFichaPokemonTalentos(
 }
 
 
+
+// =====================================================
+// HUD: ACOMPANHA SOMENTE A POSIÇÃO DO TOKEN
+// =====================================================
+
+const posicoesHudToken = new Map();
+let sincronizandoHud = false;
+
+async function sincronizarPosicaoHud(items) {
+    if (sincronizandoHud) {
+        return;
+    }
+
+    const tokensComFicha =
+        items.filter(
+            (item) =>
+                item.metadata?.[
+                    `${PREFIX}/tipoFicha`
+                ] === "pokemon" ||
+                item.metadata?.[
+                    `${PREFIX}/tipoFicha`
+                ] === "treinador"
+        );
+
+    for (const token of tokensComFicha) {
+        const anterior =
+            posicoesHudToken.get(token.id);
+
+        const atual = {
+            x: token.position.x,
+            y: token.position.y
+        };
+
+        if (!anterior) {
+            posicoesHudToken.set(
+                token.id,
+                atual
+            );
+
+            continue;
+        }
+
+        const dx =
+            atual.x - anterior.x;
+
+        const dy =
+            atual.y - anterior.y;
+
+        // Flip, rotação e escala não mudam token.position.
+        // Portanto o HUD só anda quando o token realmente é movido.
+        if (dx === 0 && dy === 0) {
+            continue;
+        }
+
+        const hud =
+            items.filter(
+                (item) =>
+                    item.metadata?.[
+                        `${PREFIX}/statusToken`
+                    ] === token.id
+            );
+
+        if (hud.length) {
+            sincronizandoHud = true;
+
+            try {
+                await OBR.scene.items.updateItems(
+                    hud,
+                    (status) => {
+                        for (const item of status) {
+                            item.position.x += dx;
+                            item.position.y += dy;
+                        }
+                    }
+                );
+            } finally {
+                sincronizandoHud = false;
+            }
+        }
+
+        posicoesHudToken.set(
+            token.id,
+            atual
+        );
+    }
+}
+
 // =====================================================
 // SALVAMENTO AUTOMÁTICO
 // =====================================================
@@ -4851,11 +4933,24 @@ function agendarSalvamentoAutomatico() {
 
     timerSalvamentoAutomatico =
         setTimeout(
-            () => {
+            async () => {
                 const botao =
                     botaoSalvarDaPaginaAtual();
 
                 if (!botao) {
+                    return;
+                }
+
+                const podeAtualizarCharacter =
+                    await OBR.player.hasPermission(
+                        "CHARACTER_UPDATE"
+                    );
+
+                if (!podeAtualizarCharacter) {
+                    mostrarEstadoSalvamentoAutomatico(
+                        "⚠ Sem permissão para salvar este token"
+                    );
+
                     return;
                 }
 
@@ -4986,6 +5081,36 @@ OBR.onReady(
     async () => {
 
         await mostrarTokenSelecionado();
+
+        const itensIniciaisHud =
+            await OBR.scene.items.getItems();
+
+        for (const item of itensIniciaisHud) {
+            if (
+                item.metadata?.[
+                    `${PREFIX}/tipoFicha`
+                ] === "pokemon" ||
+                item.metadata?.[
+                    `${PREFIX}/tipoFicha`
+                ] === "treinador"
+            ) {
+                posicoesHudToken.set(
+                    item.id,
+                    {
+                        x: item.position.x,
+                        y: item.position.y
+                    }
+                );
+            }
+        }
+
+        OBR.scene.items.onChange(
+            async (items) => {
+                await sincronizarPosicaoHud(
+                    items
+                );
+            }
+        );
 
         OBR.player.onChange(
             async () => {
