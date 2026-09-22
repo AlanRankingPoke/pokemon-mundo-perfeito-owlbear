@@ -1116,6 +1116,140 @@ async function rolarNoDicePlus(formula, nome, tipo = "") {
     );
 }
 
+// Mesma integração do Dice+, mas aguardando o total da rolagem.
+// Usada pelos Moves de CURA para aplicar o resultado diretamente no HP.
+async function rolarNoDicePlusComResultado(formula, nome, tipo = "") {
+    formula = String(formula || "").trim();
+
+    if (!formula) {
+        alert("A fórmula da rolagem está vazia.");
+        return null;
+    }
+
+    if (!(await dicePlusPronto())) {
+        alert("Dice+ não foi encontrado.");
+        return null;
+    }
+
+    const playerId = await OBR.player.getId();
+    const playerName = await OBR.player.getName();
+
+    const nomeSeguro =
+        limparRotuloDice(nome) || "Rolagem";
+
+    const tipoSeguro =
+        limparRotuloDice(tipo);
+
+    const rotulo =
+        tipoSeguro
+            ? `${nomeSeguro} ${tipoSeguro}`
+            : nomeSeguro;
+
+    const formulaCompleta =
+        `${formula} # ${rotulo}`;
+
+    const rollId =
+        `pokemon_${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2, 8)}`;
+
+    return new Promise(async (resolve) => {
+        let terminou = false;
+        let temporizador = null;
+
+        const finalizar = (valor) => {
+            if (terminou) {
+                return;
+            }
+
+            terminou = true;
+
+            if (temporizador) {
+                clearTimeout(temporizador);
+            }
+
+            unsubscribeResultado();
+            unsubscribeErro();
+            resolve(valor);
+        };
+
+        const unsubscribeResultado = OBR.broadcast.onMessage(
+            `${PREFIX}/roll-result`,
+            (event) => {
+                const dados = event.data;
+
+                if (dados?.rollId !== rollId) {
+                    return;
+                }
+
+                const total = Number(
+                    dados?.result?.totalValue
+                );
+
+                finalizar(
+                    Number.isFinite(total)
+                        ? total
+                        : null
+                );
+            }
+        );
+
+        const unsubscribeErro = OBR.broadcast.onMessage(
+            `${PREFIX}/roll-error`,
+            (event) => {
+                const dados = event.data;
+
+                if (dados?.rollId !== rollId) {
+                    return;
+                }
+
+                alert(
+                    dados?.error
+                        ? `Erro na rolagem: ${dados.error}`
+                        : "Não foi possível concluir a rolagem."
+                );
+
+                finalizar(null);
+            }
+        );
+
+        temporizador = setTimeout(() => {
+            if (!terminou) {
+                alert(
+                    "A rolagem demorou demais para retornar o resultado."
+                );
+
+                finalizar(null);
+            }
+        }, 30000);
+
+        try {
+            await OBR.broadcast.sendMessage(
+                "dice-plus/roll-request",
+                {
+                    rollId,
+                    playerId,
+                    playerName,
+                    rollTarget: "everyone",
+                    diceNotation: formulaCompleta,
+                    showResults: true,
+                    timestamp: Date.now(),
+                    source: PREFIX
+                },
+                { destination: "ALL" }
+            );
+        }
+        catch (erro) {
+            console.error(
+                "Erro ao solicitar rolagem de cura no Dice+:",
+                erro
+            );
+
+            finalizar(null);
+        }
+    });
+}
+
 // =====================================================
 // BARRA HP + CA
 // =====================================================
@@ -6339,6 +6473,21 @@ function mostrarFichaPokemonMoves(token) {
             danoCD:
                 token.metadata[
                     `${PREFIX}/golpe${i}DanoCD`
+                ] ?? "",
+
+            cura:
+                token.metadata[
+                    `${PREFIX}/golpe${i}Cura`
+                ] ?? "",
+
+            buffAcerto:
+                token.metadata[
+                    `${PREFIX}/golpe${i}BuffAcerto`
+                ] ?? "",
+
+            statusNome:
+                token.metadata[
+                    `${PREFIX}/golpe${i}StatusNome`
                 ] ?? ""
         });
     }
@@ -6807,32 +6956,206 @@ function mostrarFichaPokemonMoves(token) {
 
             <div
               id="golpe${numero}PainelCura"
-              style="
-                display:${tipoInicial === "cura" ? "block" : "none"};
-                padding:10px;
-                border:1px dashed #c8d5e5;
-                border-radius:8px;
-                color:#6c7d93;
-                font-size:11px;
-                text-align:center;
-              "
+              style="display:${tipoInicial === "cura" ? "block" : "none"};"
             >
-              Categoria CURAS selecionada. A mecânica própria de cura pode ser configurada na próxima etapa.
+              <div style="
+                display:flex;
+                align-items:flex-end;
+                gap:7px;
+                margin-bottom:5px;
+              ">
+                <div style="flex:1; min-width:0;">
+                  <label style="display:block; margin-bottom:3px;">Dados de Cura</label>
+                  <input
+                    id="golpe${numero}Cura"
+                    type="text"
+                    value="${esc(golpe.cura)}"
+                    placeholder="Ex: 2d8+5"
+                    style="
+                      width:100%;
+                      min-height:32px !important;
+                      height:32px;
+                      padding:5px 7px !important;
+                      box-sizing:border-box;
+                    "
+                  >
+                </div>
+
+                <button
+                  type="button"
+                  class="rolarCura"
+                  data-golpe="${numero}"
+                  style="
+                    min-width:112px;
+                    min-height:32px !important;
+                    height:32px;
+                    padding:5px 8px !important;
+                    cursor:pointer;
+                    font-size:10px;
+                    font-weight:bold;
+                    white-space:nowrap;
+                  "
+                >
+                  💚 CURAR
+                </button>
+              </div>
+
+              <div
+                id="golpe${numero}CuraInfo"
+                style="
+                  min-height:15px;
+                  font-size:9px;
+                  color:#6c7d93;
+                  text-align:right;
+                "
+              ></div>
             </div>
 
             <div
               id="golpe${numero}PainelBuffDebuff"
-              style="
-                display:${tipoInicial === "buffdebuff" ? "block" : "none"};
-                padding:10px;
-                border:1px dashed #c8d5e5;
-                border-radius:8px;
-                color:#6c7d93;
-                font-size:11px;
-                text-align:center;
-              "
+              style="display:${tipoInicial === "buffdebuff" ? "block" : "none"};"
             >
-              Categoria BUFFS / DEBUFFS selecionada. A mecânica própria desta categoria pode ser configurada na próxima etapa.
+              <div style="
+                display:grid;
+                grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr);
+                align-items:end;
+                gap:6px;
+                margin-bottom:9px;
+              ">
+                <div style="min-width:0;">
+                  <label style="display:block; margin-bottom:3px;">Acerto</label>
+                  <input
+                    id="golpe${numero}BuffAcerto"
+                    type="text"
+                    value="${esc(golpe.buffAcerto)}"
+                    placeholder="Ex: 1d20+8"
+                    style="
+                      width:100%;
+                      min-height:32px !important;
+                      height:32px;
+                      padding:5px 7px !important;
+                      box-sizing:border-box;
+                    "
+                  >
+                </div>
+
+                <button
+                  type="button"
+                  class="rolarAcertoBuffDebuff"
+                  data-golpe="${numero}"
+                  style="
+                    min-height:32px !important;
+                    height:32px;
+                    padding:5px 8px !important;
+                    cursor:pointer;
+                    font-size:9px;
+                    font-weight:bold;
+                    white-space:nowrap;
+                  "
+                >
+                  🎲 ACERTO
+                </button>
+
+                <div style="min-width:0;">
+                  <label style="display:block; margin-bottom:3px;">Status causado</label>
+                  <input
+                    id="golpe${numero}StatusNome"
+                    type="text"
+                    value="${esc(golpe.statusNome)}"
+                    placeholder="Ex: Queimadura"
+                    style="
+                      width:100%;
+                      min-height:32px !important;
+                      height:32px;
+                      padding:5px 7px !important;
+                      box-sizing:border-box;
+                    "
+                  >
+                </div>
+              </div>
+
+              <div style="
+                padding:7px;
+                border:1px solid #dbe5f0;
+                border-radius:8px;
+                margin-bottom:7px;
+              ">
+                <div style="
+                  font-size:9px;
+                  font-weight:bold;
+                  margin-bottom:5px;
+                ">
+                  BUFF +1 ESTÁGIO
+                </div>
+
+                <div style="
+                  display:grid;
+                  grid-template-columns:repeat(4, minmax(0, 1fr));
+                  gap:5px;
+                ">
+                  ${BUFFS.map(
+                      (buff) => `
+                        <button
+                          type="button"
+                          class="alterarBuffMove"
+                          data-golpe="${numero}"
+                          data-buff="${buff.id}"
+                          data-delta="1"
+                          style="
+                            min-height:30px !important;
+                            padding:4px 2px !important;
+                            cursor:pointer;
+                            font-size:9px;
+                            font-weight:bold;
+                          "
+                        >
+                          +1 ${buff.nome}
+                        </button>
+                      `
+                  ).join("")}
+                </div>
+              </div>
+
+              <div style="
+                padding:7px;
+                border:1px solid #dbe5f0;
+                border-radius:8px;
+              ">
+                <div style="
+                  font-size:9px;
+                  font-weight:bold;
+                  margin-bottom:5px;
+                ">
+                  DEBUFF -1 ESTÁGIO
+                </div>
+
+                <div style="
+                  display:grid;
+                  grid-template-columns:repeat(4, minmax(0, 1fr));
+                  gap:5px;
+                ">
+                  ${BUFFS.map(
+                      (buff) => `
+                        <button
+                          type="button"
+                          class="alterarBuffMove"
+                          data-golpe="${numero}"
+                          data-buff="${buff.id}"
+                          data-delta="-1"
+                          style="
+                            min-height:30px !important;
+                            padding:4px 2px !important;
+                            cursor:pointer;
+                            font-size:9px;
+                            font-weight:bold;
+                          "
+                        >
+                          -1 ${buff.nome}
+                        </button>
+                      `
+                  ).join("")}
+                </div>
+              </div>
             </div>
 
           </div>
@@ -7771,6 +8094,264 @@ function mostrarFichaPokemonMoves(token) {
         );
 
     // =================================================
+    // CURAS
+    // =================================================
+
+    async function aplicarCuraNoHp(valorCura) {
+        const cura =
+            Math.max(0, Number(valorCura) || 0);
+
+        const hpAtualAnterior =
+            Number(
+                token.metadata[
+                    `${PREFIX}/hpAtual`
+                ] ?? 0
+            ) || 0;
+
+        const hpMax =
+            Math.max(
+                1,
+                Number(
+                    token.metadata[
+                        `${PREFIX}/hpMax`
+                    ] ?? 100
+                ) || 1
+            );
+
+        const hpAtualNovo =
+            Math.max(
+                0,
+                Math.min(
+                    hpMax,
+                    hpAtualAnterior + cura
+                )
+            );
+
+        token.metadata[
+            `${PREFIX}/hpAtual`
+        ] = hpAtualNovo;
+
+        await OBR.scene.items.updateItems(
+            [token.id],
+            (items) => {
+                for (const item of items) {
+                    item.metadata[
+                        `${PREFIX}/hpAtual`
+                    ] = hpAtualNovo;
+                }
+            }
+        );
+
+        const caBase =
+            Number(
+                token.metadata[
+                    `${PREFIX}/ca`
+                ] ?? 10
+            ) || 0;
+
+        const evasao =
+            normalizarEstagioBuff(
+                token.metadata[
+                    `${PREFIX}/buff-evas`
+                ] ?? 0,
+                "evas"
+            );
+
+        await criarStatusNoToken(
+            token,
+            hpAtualNovo,
+            hpMax,
+            caBase + evasao
+        );
+
+        return {
+            curaRolada: cura,
+            curaAplicada:
+                Math.max(
+                    0,
+                    hpAtualNovo - hpAtualAnterior
+                ),
+            hpAnterior: hpAtualAnterior,
+            hpAtual: hpAtualNovo,
+            hpMax
+        };
+    }
+
+    document
+        .querySelectorAll(".rolarCura")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const formula =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}Cura`
+                                )
+                                ?.value
+                                .trim();
+
+                        if (!formula) {
+                            alert(
+                                "A fórmula de cura está vazia."
+                            );
+
+                            return;
+                        }
+
+                        botao.disabled = true;
+
+                        try {
+                            const resultado =
+                                await rolarNoDicePlusComResultado(
+                                    formula,
+                                    nomeGolpe(numero),
+                                    "Cura"
+                                );
+
+                            if (resultado === null) {
+                                return;
+                            }
+
+                            const dadosCura =
+                                await aplicarCuraNoHp(
+                                    resultado
+                                );
+
+                            const info =
+                                document.querySelector(
+                                    `#golpe${numero}CuraInfo`
+                                );
+
+                            if (info) {
+                                info.textContent =
+                                    `Rolou ${dadosCura.curaRolada} · ` +
+                                    `Curou +${dadosCura.curaAplicada} · ` +
+                                    `HP ${dadosCura.hpAnterior} → ${dadosCura.hpAtual}/${dadosCura.hpMax}`;
+                            }
+                        }
+                        finally {
+                            botao.disabled = false;
+                        }
+                    }
+                );
+            }
+        );
+
+    // =================================================
+    // BUFFS / DEBUFFS DOS MOVES
+    // =================================================
+
+    document
+        .querySelectorAll(".rolarAcertoBuffDebuff")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const formula =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}BuffAcerto`
+                                )
+                                ?.value
+                                .trim();
+
+                        if (!formula) {
+                            alert(
+                                "A fórmula de acerto está vazia."
+                            );
+
+                            return;
+                        }
+
+                        const statusNome =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}StatusNome`
+                                )
+                                ?.value
+                                .trim();
+
+                        await rolarNoDicePlus(
+                            formula,
+                            nomeGolpe(numero),
+                            statusNome
+                                ? `Acerto · ${statusNome}`
+                                : "Acerto"
+                        );
+                    }
+                );
+            }
+        );
+
+    document
+        .querySelectorAll(".alterarBuffMove")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    () => {
+                        const buffId =
+                            botao.dataset.buff;
+
+                        const delta =
+                            Number(
+                                botao.dataset.delta
+                            ) || 0;
+
+                        const campoBuff =
+                            document.querySelector(
+                                `#buff-${buffId}`
+                            );
+
+                        if (!campoBuff || !delta) {
+                            return;
+                        }
+
+                        const atual =
+                            normalizarEstagioBuff(
+                                campoBuff.value,
+                                buffId
+                            );
+
+                        const novo =
+                            normalizarEstagioBuff(
+                                atual + delta,
+                                buffId
+                            );
+
+                        campoBuff.value =
+                            String(novo);
+
+                        // Usa o mesmo fluxo da tabela principal: atualiza
+                        // bônus visual, metadata e efeitos ligados ao buff.
+                        campoBuff.dispatchEvent(
+                            new Event(
+                                "input",
+                                { bubbles: true }
+                            )
+                        );
+
+                        campoBuff.dispatchEvent(
+                            new Event(
+                                "change",
+                                { bubbles: true }
+                            )
+                        );
+                    }
+                );
+            }
+        );
+
+    // =================================================
     // SALVAR MOVES / BUFFS
     // =================================================
 
@@ -7883,7 +8464,31 @@ function mostrarFichaPokemonMoves(token) {
                                     `#golpe${i}DanoCD`
                                 )
                                 .value
-                                .trim()
+                                .trim(),
+
+                        cura:
+                            document
+                                .querySelector(
+                                    `#golpe${i}Cura`
+                                )
+                                ?.value
+                                .trim() || "",
+
+                        buffAcerto:
+                            document
+                                .querySelector(
+                                    `#golpe${i}BuffAcerto`
+                                )
+                                ?.value
+                                .trim() || "",
+
+                        statusNome:
+                            document
+                                .querySelector(
+                                    `#golpe${i}StatusNome`
+                                )
+                                ?.value
+                                .trim() || ""
                     });
                 }
 
@@ -7936,6 +8541,18 @@ function mostrarFichaPokemonMoves(token) {
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}DanoCD`
                                     ] = golpe.danoCD;
+
+                                    item.metadata[
+                                        `${PREFIX}/golpe${numero}Cura`
+                                    ] = golpe.cura;
+
+                                    item.metadata[
+                                        `${PREFIX}/golpe${numero}BuffAcerto`
+                                    ] = golpe.buffAcerto;
+
+                                    item.metadata[
+                                        `${PREFIX}/golpe${numero}StatusNome`
+                                    ] = golpe.statusNome;
                                 }
                             );
                         }
