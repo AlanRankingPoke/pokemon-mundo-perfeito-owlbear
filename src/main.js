@@ -705,6 +705,7 @@ async function criarStatusNoToken(
             .zIndex(0)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
+            .disableAttachmentBehavior(["SCALE", "ROTATION"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -735,6 +736,7 @@ async function criarStatusNoToken(
                 .zIndex(1)
                 .disableAutoZIndex(true)
                 .attachedTo(token.id)
+                .disableAttachmentBehavior(["SCALE", "ROTATION"])
                 .locked(true)
                 .disableHit(true)
                 .metadata({
@@ -782,6 +784,7 @@ async function criarStatusNoToken(
             .zIndex(10)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
+            .disableAttachmentBehavior(["SCALE", "ROTATION"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -824,6 +827,7 @@ async function criarStatusNoToken(
             .zIndex(1)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
+            .disableAttachmentBehavior(["SCALE", "ROTATION"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -867,6 +871,7 @@ async function criarStatusNoToken(
             .zIndex(20)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
+            .disableAttachmentBehavior(["SCALE", "ROTATION"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -2388,10 +2393,6 @@ function mostrarFichaTreinadorPagina1(
                     dados.hpMax,
                     dados.ca
                 );
-
-                alert(
-                    "Status do treinador salvo!"
-                );
             }
         );
 }
@@ -2581,10 +2582,6 @@ function mostrarFichaTreinadorPerTal(
                             }
                         }
                     }
-                );
-
-                alert(
-                    "Perícias e talentos salvos!"
                 );
             }
         );
@@ -2905,10 +2902,6 @@ function mostrarFichaTreinadorHabilidades(
                         }
                     }
                 );
-
-                alert(
-                    "Habilidades do treinador salvas!"
-                );
             }
         );
 }
@@ -3005,10 +2998,6 @@ function mostrarFichaTreinadorAnotacoes(
                                 novasAnotacoes;
                         }
                     }
-                );
-
-                alert(
-                    "Anotações salvas!"
                 );
             }
         );
@@ -3884,10 +3873,6 @@ function mostrarFichaPokemon(token) {
                     dados.hpMax,
                     dados.ca
                 );
-
-                alert(
-                    "Status do Pokémon salvo!"
-                );
             }
         );
 }
@@ -4561,10 +4546,6 @@ document
                         }
                     }
                 );
-
-                alert(
-                    "Moves e buffs salvos!"
-                );
             }
         );
 }
@@ -4684,10 +4665,6 @@ function mostrarFichaPokemonPericias(
                             );
                         }
                     }
-                );
-
-                alert(
-                    "Perícias do Pokémon salvas!"
                 );
             }
         );
@@ -4884,13 +4861,142 @@ function mostrarFichaPokemonTalentos(
                         }
                     }
                 );
-
-                alert(
-                    "Talentos do Pokémon salvos!"
-                );
             }
         );
 }
+
+
+// =====================================================
+// SALVAMENTO AUTOMÁTICO
+// =====================================================
+
+let timerSalvamentoAutomatico = null;
+
+const BOTOES_SALVAR_AUTOMATICO = [
+    "#salvarPokemonStatus",
+    "#salvarPokemonMoves",
+    "#salvarPokemonPericias",
+    "#salvarPokemonTalentos",
+    "#salvarTreinadorStatus",
+    "#salvarTreinadorPerTal",
+    "#salvarTreinadorHabilidades",
+    "#salvarTreinadorAnotacoes"
+];
+
+function botaoSalvarDaPaginaAtual() {
+    for (const seletor of BOTOES_SALVAR_AUTOMATICO) {
+        const botao =
+            document.querySelector(seletor);
+
+        if (botao) {
+            return botao;
+        }
+    }
+
+    return null;
+}
+
+function mostrarEstadoSalvamentoAutomatico(texto) {
+    const app =
+        document.querySelector("#app");
+
+    if (!app) {
+        return;
+    }
+
+    let aviso =
+        app.querySelector(".pmAutoSaveInfo");
+
+    if (!aviso) {
+        aviso =
+            document.createElement("div");
+
+        aviso.className =
+            "pmAutoSaveInfo";
+
+        app.appendChild(aviso);
+    }
+
+    aviso.textContent = texto;
+}
+
+function agendarSalvamentoAutomatico() {
+    clearTimeout(
+        timerSalvamentoAutomatico
+    );
+
+    mostrarEstadoSalvamentoAutomatico(
+        "Salvando..."
+    );
+
+    timerSalvamentoAutomatico =
+        setTimeout(
+            () => {
+                const botao =
+                    botaoSalvarDaPaginaAtual();
+
+                if (!botao) {
+                    return;
+                }
+
+                botao.click();
+
+                mostrarEstadoSalvamentoAutomatico(
+                    "✓ Salvo automaticamente"
+                );
+            },
+            600
+        );
+}
+
+// Inputs, selects e textareas:
+// espera o jogador parar de digitar antes de salvar.
+document.addEventListener(
+    "input",
+    (evento) => {
+        const alvo = evento.target;
+
+        if (
+            alvo instanceof HTMLInputElement ||
+            alvo instanceof HTMLTextAreaElement ||
+            alvo instanceof HTMLSelectElement
+        ) {
+            agendarSalvamentoAutomatico();
+        }
+    }
+);
+
+document.addEventListener(
+    "change",
+    (evento) => {
+        const alvo = evento.target;
+
+        if (
+            alvo instanceof HTMLInputElement ||
+            alvo instanceof HTMLTextAreaElement ||
+            alvo instanceof HTMLSelectElement
+        ) {
+            agendarSalvamentoAutomatico();
+        }
+    }
+);
+
+// FÍSICO / ESPECIAL altera um campo escondido via JavaScript,
+// então também dispara o autosave ao clicar nesses botões.
+document.addEventListener(
+    "click",
+    (evento) => {
+        const botaoCategoria =
+            evento.target.closest?.(
+                ".categoriaGolpe"
+            );
+
+        if (botaoCategoria) {
+            agendarSalvamentoAutomatico();
+        }
+    }
+);
+
 
 // =====================================================
 // ABRE TOKEN
