@@ -285,6 +285,77 @@ const ESTILO_FICHA = `
     font-weight:800 !important;
   }
 
+  .calculadoraHpLinha {
+    display:flex !important;
+    align-items:flex-end !important;
+    gap:6px !important;
+    margin-top:8px !important;
+    position:relative;
+  }
+
+  .calculadoraHpCampo {
+    flex:1 1 76px !important;
+    min-width:58px !important;
+    max-width:100px !important;
+  }
+
+  .calculadoraHpCampo #alterarHp {
+    width:100% !important;
+    min-height:34px !important;
+    text-align:center !important;
+  }
+
+  .superEfetivoWrap {
+    position:relative;
+    flex:0 0 auto;
+  }
+
+  #botaoSuperEfetivo {
+    min-height:34px !important;
+    padding:6px 9px !important;
+    font-size:10px !important;
+    white-space:nowrap !important;
+    cursor:pointer !important;
+  }
+
+  #botaoSuperEfetivo.ativo {
+    background:linear-gradient(135deg, #ff7b61 0%, #e85858 100%) !important;
+    color:#fff !important;
+    border-color:#d94b4b !important;
+  }
+
+  .opcoesSuperEfetivo {
+    display:none;
+    position:absolute;
+    z-index:50;
+    left:0;
+    top:calc(100% + 5px);
+    gap:5px;
+    padding:6px;
+    border:1px solid #d8e2ee;
+    border-radius:9px;
+    background:#fff;
+    box-shadow:0 6px 18px rgba(28,54,86,.16);
+  }
+
+  .opcoesSuperEfetivo.aberto {
+    display:flex;
+  }
+
+  .multiplicadorSuperEfetivo {
+    min-width:42px !important;
+    min-height:32px !important;
+    padding:5px 8px !important;
+    font-size:11px !important;
+    cursor:pointer !important;
+  }
+
+  .multiplicadorSuperEfetivo.ativo {
+    background:#e85858 !important;
+    color:#fff !important;
+    border-color:#d94b4b !important;
+  }
+
   .movimentoLinha {
     display:grid !important;
     grid-template-columns:repeat(3, minmax(70px, 1fr)) !important;
@@ -1251,18 +1322,26 @@ async function pegarHpCaDaTela() {
 
         if (Number.isNaN(valor)) {
             alert(
-                "Alteração de HP inválida."
+                "Valor da calculadora inválido."
             );
 
             return null;
         }
+
+        const multiplicadorSuperEfetivo =
+            Number(
+                document
+                    .querySelector("#multiplicadorHp")
+                    ?.value ?? 1
+            ) || 1;
 
         if (operador === "+") {
             hpAtual += valor;
         }
 
         else if (operador === "-") {
-            hpAtual -= valor;
+            hpAtual -=
+                valor * multiplicadorSuperEfetivo;
         }
 
         else if (operador === "=") {
@@ -1691,6 +1770,77 @@ function criarSlots(
 }
 
 // =====================================================
+// CALCULADORA DE HP
+// =====================================================
+
+function ativarCalculadoraHp() {
+    const botao =
+        document.querySelector("#botaoSuperEfetivo");
+
+    const opcoes =
+        document.querySelector("#opcoesSuperEfetivo");
+
+    const multiplicador =
+        document.querySelector("#multiplicadorHp");
+
+    if (!botao || !opcoes || !multiplicador) {
+        return;
+    }
+
+    const atualizarVisual = () => {
+        const valor = Number(multiplicador.value) || 1;
+
+        botao.classList.toggle(
+            "ativo",
+            valor === 2 || valor === 4
+        );
+
+        botao.textContent =
+            valor === 2
+                ? "Super Efetivo 2x"
+                : valor === 4
+                    ? "Super Efetivo 4x"
+                    : "Super Efetivo";
+
+        document
+            .querySelectorAll(".multiplicadorSuperEfetivo")
+            .forEach((opcao) => {
+                opcao.classList.toggle(
+                    "ativo",
+                    Number(opcao.dataset.multiplicador) === valor
+                );
+            });
+    };
+
+    botao.addEventListener("click", () => {
+        opcoes.classList.toggle("aberto");
+    });
+
+    document
+        .querySelectorAll(".multiplicadorSuperEfetivo")
+        .forEach((opcao) => {
+            opcao.addEventListener("click", () => {
+                const escolhido =
+                    Number(opcao.dataset.multiplicador) || 1;
+
+                const atual =
+                    Number(multiplicador.value) || 1;
+
+                // Clicar novamente no multiplicador ativo volta ao dano normal.
+                multiplicador.value =
+                    atual === escolhido
+                        ? "1"
+                        : String(escolhido);
+
+                atualizarVisual();
+                opcoes.classList.remove("aberto");
+            });
+        });
+
+    atualizarVisual();
+}
+
+// =====================================================
 // AUTOSAVE
 // =====================================================
 
@@ -1742,7 +1892,7 @@ function ativarAutosaveDaTela() {
 
     app.querySelectorAll("input, textarea, select")
         .forEach((campo) => {
-            // Alterar HP é uma operação (+20, -34, =50), não um campo
+            // Calculadora é uma operação (+20, -34, =50), não um campo
             // comum. Aplicamos somente quando o usuário termina a edição
             // para evitar executar valores parciais, como apenas "-".
             if (campo.id === "alterarHp") {
@@ -2523,13 +2673,52 @@ function mostrarFichaTreinadorPagina1(
       </div>
     </div>
 
-    <p>Alterar HP</p>
+    <div class="calculadoraHpLinha">
+      <div class="calculadoraHpCampo">
+        <p>Calculadora</p>
+        <input
+          id="alterarHp"
+          type="text"
+          placeholder="-34, +20, =50"
+        >
+      </div>
 
-    <input
-      id="alterarHp"
-      type="text"
-      placeholder="-34, +20 ou =50"
-    >
+      <div class="superEfetivoWrap">
+        <button
+          id="botaoSuperEfetivo"
+          type="button"
+        >
+          Super Efetivo
+        </button>
+
+        <div
+          id="opcoesSuperEfetivo"
+          class="opcoesSuperEfetivo"
+        >
+          <button
+            type="button"
+            class="multiplicadorSuperEfetivo"
+            data-multiplicador="2"
+          >
+            2x
+          </button>
+
+          <button
+            type="button"
+            class="multiplicadorSuperEfetivo"
+            data-multiplicador="4"
+          >
+            4x
+          </button>
+        </div>
+      </div>
+
+      <input
+        id="multiplicadorHp"
+        type="hidden"
+        value="1"
+      >
+    </div>
 
     <hr>
 
@@ -2644,6 +2833,7 @@ function mostrarFichaTreinadorPagina1(
 
     ativarRolagensSalvaguarda();
     ativarRolagemIniciativa();
+    ativarCalculadoraHp();
 
     document
         .querySelector(
@@ -4048,17 +4238,52 @@ function mostrarFichaPokemon(token) {
           </div>
         </div>
 
-        <p>Alterar HP</p>
-
-        <input
-          id="alterarHp"
-          type="text"
-          placeholder="-34, +20 ou =50"
-          style="
-            width:100%;
-            box-sizing:border-box;
-          "
-        >
+            <div class="calculadoraHpLinha">
+              <div class="calculadoraHpCampo">
+                <p>Calculadora</p>
+                <input
+                  id="alterarHp"
+                  type="text"
+                  placeholder="-34, +20, =50"
+                >
+              </div>
+        
+              <div class="superEfetivoWrap">
+                <button
+                  id="botaoSuperEfetivo"
+                  type="button"
+                >
+                  Super Efetivo
+                </button>
+        
+                <div
+                  id="opcoesSuperEfetivo"
+                  class="opcoesSuperEfetivo"
+                >
+                  <button
+                    type="button"
+                    class="multiplicadorSuperEfetivo"
+                    data-multiplicador="2"
+                  >
+                    2x
+                  </button>
+        
+                  <button
+                    type="button"
+                    class="multiplicadorSuperEfetivo"
+                    data-multiplicador="4"
+                  >
+                    4x
+                  </button>
+                </div>
+              </div>
+        
+              <input
+                id="multiplicadorHp"
+                type="hidden"
+                value="1"
+              >
+            </div>
 
         <p>Iniciativa</p>
 
@@ -4177,6 +4402,7 @@ function mostrarFichaPokemon(token) {
     ativarCabecalhoPokemon(token);
     ativarRolagensSalvaguarda();
     ativarRolagemIniciativa();
+    ativarCalculadoraHp();
 
     document
         .querySelector(
