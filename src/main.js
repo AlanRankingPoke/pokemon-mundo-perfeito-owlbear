@@ -705,7 +705,7 @@ async function criarStatusNoToken(
             .zIndex(0)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
-            .disableAttachmentBehavior(["SCALE", "ROTATION"])
+            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -736,7 +736,7 @@ async function criarStatusNoToken(
                 .zIndex(1)
                 .disableAutoZIndex(true)
                 .attachedTo(token.id)
-                .disableAttachmentBehavior(["SCALE", "ROTATION"])
+                .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
                 .locked(true)
                 .disableHit(true)
                 .metadata({
@@ -784,7 +784,7 @@ async function criarStatusNoToken(
             .zIndex(10)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
-            .disableAttachmentBehavior(["SCALE", "ROTATION"])
+            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -827,7 +827,7 @@ async function criarStatusNoToken(
             .zIndex(1)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
-            .disableAttachmentBehavior(["SCALE", "ROTATION"])
+            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -871,7 +871,7 @@ async function criarStatusNoToken(
             .zIndex(20)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
-            .disableAttachmentBehavior(["SCALE", "ROTATION"])
+            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -2195,17 +2195,7 @@ function mostrarFichaTreinadorPagina1(
 
     <br>
 
-    <button
-      id="salvarTreinadorStatus"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Status
-    </button>
+    <button id="salvarTreinadorStatus" type="button" hidden aria-hidden="true"></button>
   `;
 
     ativarCabecalhoTreinador(
@@ -2474,17 +2464,7 @@ function mostrarFichaTreinadorPerTal(
 
     </div>
 
-    <button
-      id="salvarTreinadorPerTal"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Perícias / Talentos
-    </button>
+    <button id="salvarTreinadorPerTal" type="button" hidden aria-hidden="true"></button>
   `;
 
     ativarCabecalhoTreinador(
@@ -2732,17 +2712,7 @@ function mostrarFichaTreinadorHabilidades(
 
     <br>
 
-    <button
-      id="salvarTreinadorHabilidades"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Habilidades
-    </button>
+    <button id="salvarTreinadorHabilidades" type="button" hidden aria-hidden="true"></button>
   `;
 
     ativarCabecalhoTreinador(
@@ -2952,17 +2922,7 @@ function mostrarFichaTreinadorAnotacoes(
 
     <br><br>
 
-    <button
-      id="salvarTreinadorAnotacoes"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Anotações
-    </button>
+    <button id="salvarTreinadorAnotacoes" type="button" hidden aria-hidden="true"></button>
   `;
 
     ativarCabecalhoTreinador(
@@ -3699,17 +3659,7 @@ function mostrarFichaPokemon(token) {
 
     <br>
 
-    <button
-      id="salvarPokemonStatus"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Status
-    </button>
+    <button id="salvarPokemonStatus" type="button" hidden aria-hidden="true"></button>
   `;
 
     ativarCabecalhoPokemon(token);
@@ -4136,17 +4086,7 @@ function mostrarFichaPokemonMoves(token) {
 
     <br>
 
-    <button
-      id="salvarPokemonMoves"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Moves / Buffs
-    </button>
+    <button id="salvarPokemonMoves" type="button" hidden aria-hidden="true"></button>
   `;
 
     ativarCabecalhoPokemon(token);
@@ -4591,17 +4531,7 @@ function mostrarFichaPokemonPericias(
 
     <br>
 
-    <button
-      id="salvarPokemonPericias"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Perícias
-    </button>
+    <button id="salvarPokemonPericias" type="button" hidden aria-hidden="true"></button>
   `;
 
     ativarCabecalhoPokemon(token);
@@ -4780,17 +4710,7 @@ function mostrarFichaPokemonTalentos(
 
     <br>
 
-    <button
-      id="salvarPokemonTalentos"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Talentos
-    </button>
+    <button id="salvarPokemonTalentos" type="button" hidden aria-hidden="true"></button>
   `;
 
     ativarCabecalhoPokemon(token);
