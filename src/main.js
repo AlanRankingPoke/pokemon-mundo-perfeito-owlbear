@@ -117,6 +117,16 @@ const ESTILO_FICHA = `
     transform: translateY(1px);
   }
 
+  /* Talentos de combate ativos: destaque forte e persistente em laranja. */
+  #app .talentoCombate.ativo,
+  #app .talentoCombate.ativo:hover {
+    background: linear-gradient(180deg, #f59e0b 0%, #e97808 100%) !important;
+    color:#ffffff !important;
+    border-color:#c96505 !important;
+    box-shadow:0 3px 9px rgba(217,119,6,.34) !important;
+    opacity:1 !important;
+  }
+
   #app hr {
     border: 0 !important;
     height: 1px !important;
@@ -197,7 +207,6 @@ const ESTILO_FICHA = `
   #paginaPokemon1,
   #paginaPokemon2,
   #paginaPokemon3,
-  #paginaPokemon4,
   #paginaTreinador1,
   #paginaTreinador2,
   #paginaTreinador3,
@@ -216,7 +225,6 @@ const ESTILO_FICHA = `
   #paginaPokemon1[style*="opacity:1"],
   #paginaPokemon2[style*="opacity:1"],
   #paginaPokemon3[style*="opacity:1"],
-  #paginaPokemon4[style*="opacity:1"],
   #paginaTreinador1[style*="opacity:1"],
   #paginaTreinador2[style*="opacity:1"],
   #paginaTreinador3[style*="opacity:1"],
@@ -5176,20 +5184,6 @@ function menuPokemon(paginaAtual) {
         PERÍCIAS
       </button>
 
-      <button
-        id="paginaPokemon4"
-        style="
-          flex:1;
-          min-width:75px;
-          padding:8px 4px;
-          font-size:11px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 4 ? "1" : "0.65"};
-        "
-      >
-        TALENTOS
-      </button>
     </div>
   `;
 }
@@ -5291,28 +5285,6 @@ function ativarMenuPokemon(token) {
             }
         );
 
-    document
-        .querySelector("#paginaPokemon4")
-        .addEventListener(
-            "click",
-            async () => {
-
-                await salvamentoMovimentoPendente.catch(() => {});
-
-                const tokenAtualizado =
-                    await pegarTokenAtualizado(
-                        token.id
-                    );
-
-                if (!tokenAtualizado) {
-                    return;
-                }
-
-                mostrarFichaPokemonTalentos(
-                    tokenAtualizado
-                );
-            }
-        );
 }
 
 function cabecalhoPokemon(
@@ -5958,12 +5930,12 @@ function mostrarFichaPokemon(token) {
             </div>
 
             <div class="pokemonDetalhesCompactos">
-              <p>Habilidade</p>
+              <p>Habilidades / Talentos</p>
 
               <textarea
                 id="habilidadePokemon"
                 rows="3"
-                placeholder="Escreva a habilidade do Pokémon..."
+                placeholder="Escreva as habilidades e talentos do Pokémon..."
                 style="
                   width:100%;
                   box-sizing:border-box;
@@ -7242,28 +7214,28 @@ function mostrarFichaPokemonMoves(token) {
       <input id="talento-disputador" type="hidden" value="${talentosCombate.disputador ? "1" : "0"}">
       <input id="talento-investida-poderosa" type="hidden" value="${talentosCombate.investidaPoderosa ? "1" : "0"}">
 
-      <button type="button" class="talentoCombate" data-talento="mestre-corpo"
-        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.mestreCorpo ? "1" : "0.55"}; border:${talentosCombate.mestreCorpo ? "2px solid #4C8DFF" : "1px solid #666"};">
+      <button type="button" class="talentoCombate ${talentosCombate.mestreCorpo ? "ativo" : ""}" data-talento="mestre-corpo"
+        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.mestreCorpo ? "1" : "0.55"}; border:${talentosCombate.mestreCorpo ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.mestreCorpo ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.mestreCorpo ? "#fff" : ""}; box-shadow:${talentosCombate.mestreCorpo ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         MESTRE CORPO A CORPO
       </button>
 
-      <button type="button" class="talentoCombate" data-talento="mestre-distancia"
-        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.mestreDistancia ? "1" : "0.55"}; border:${talentosCombate.mestreDistancia ? "2px solid #4C8DFF" : "1px solid #666"};">
+      <button type="button" class="talentoCombate ${talentosCombate.mestreDistancia ? "ativo" : ""}" data-talento="mestre-distancia"
+        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.mestreDistancia ? "1" : "0.55"}; border:${talentosCombate.mestreDistancia ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.mestreDistancia ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.mestreDistancia ? "#fff" : ""}; box-shadow:${talentosCombate.mestreDistancia ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         MESTRE À DISTÂNCIA
       </button>
 
-      <button type="button" class="talentoCombate" data-talento="atacante-bestial"
-        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.atacanteBestial ? "1" : "0.55"}; border:${talentosCombate.atacanteBestial ? "2px solid #4C8DFF" : "1px solid #666"};">
+      <button type="button" class="talentoCombate ${talentosCombate.atacanteBestial ? "ativo" : ""}" data-talento="atacante-bestial"
+        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.atacanteBestial ? "1" : "0.55"}; border:${talentosCombate.atacanteBestial ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.atacanteBestial ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.atacanteBestial ? "#fff" : ""}; box-shadow:${talentosCombate.atacanteBestial ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         ATACANTE BESTIAL
       </button>
 
-      <button type="button" class="talentoCombate" data-talento="disputador"
-        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.disputador ? "1" : "0.55"}; border:${talentosCombate.disputador ? "2px solid #4C8DFF" : "1px solid #666"};">
+      <button type="button" class="talentoCombate ${talentosCombate.disputador ? "ativo" : ""}" data-talento="disputador"
+        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.disputador ? "1" : "0.55"}; border:${talentosCombate.disputador ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.disputador ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.disputador ? "#fff" : ""}; box-shadow:${talentosCombate.disputador ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         DISPUTADOR
       </button>
 
-      <button type="button" class="talentoCombate" data-talento="investida-poderosa"
-        style="grid-column:1 / -1; min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.investidaPoderosa ? "1" : "0.55"}; border:${talentosCombate.investidaPoderosa ? "2px solid #4C8DFF" : "1px solid #666"};">
+      <button type="button" class="talentoCombate ${talentosCombate.investidaPoderosa ? "ativo" : ""}" data-talento="investida-poderosa"
+        style="grid-column:1 / -1; min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.investidaPoderosa ? "1" : "0.55"}; border:${talentosCombate.investidaPoderosa ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.investidaPoderosa ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.investidaPoderosa ? "#fff" : ""}; box-shadow:${talentosCombate.investidaPoderosa ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         INVESTIDA PODEROSA
       </button>
     </div>
@@ -7619,11 +7591,8 @@ function mostrarFichaPokemonMoves(token) {
     }
 
     function atualizarVisualTalento(botao, ativo) {
+        botao.classList.toggle("ativo", ativo);
         botao.style.opacity = ativo ? "1" : "0.55";
-        botao.style.border =
-            ativo
-                ? "2px solid #4C8DFF"
-                : "1px solid #666";
     }
 
     document
