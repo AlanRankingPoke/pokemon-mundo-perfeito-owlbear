@@ -375,9 +375,21 @@ const ESTILO_FICHA = `
   }
 
   .opcoesSuperEfetivo.aberto,
-  .opcoesResistente.aberto,
+  .opcoesResistente.aberto {
+    display:flex;
+  }
+
+  /* O menu Move abre para baixo com as opções empilhadas. */
   .opcoesMove.aberto {
     display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    min-width:100%;
+  }
+
+  .opcoesMove .tipoMoveHp {
+    width:100% !important;
+    min-width:86px !important;
   }
 
   .multiplicadorSuperEfetivo,
