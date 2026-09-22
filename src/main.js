@@ -6348,23 +6348,6 @@ function mostrarFichaPokemonMoves(token) {
             margin-top:10px;
           ">
 
-            <label>Nome</label><br>
-
-            <input
-              id="golpe${numero}Nome"
-              type="text"
-              value="${esc(golpe.nome)}"
-              placeholder="Nome do golpe"
-              style="
-                width:95%;
-                margin-bottom:8px;
-              "
-            >
-
-            <br>
-
-            <label>Categoria</label>
-
             <input
               id="golpe${numero}Categoria"
               type="hidden"
@@ -6373,21 +6356,52 @@ function mostrarFichaPokemonMoves(token) {
 
             <div style="
               display:flex;
+              align-items:flex-end;
               gap:6px;
-              margin-top:5px;
-              margin-bottom:10px;
+              margin-bottom:8px;
             ">
+
+              <div style="
+                flex:1;
+                min-width:0;
+              ">
+                <label style="
+                  display:block;
+                  margin-bottom:3px;
+                ">Nome</label>
+
+                <input
+                  id="golpe${numero}Nome"
+                  type="text"
+                  value="${esc(golpe.nome)}"
+                  placeholder="Nome do golpe"
+                  style="
+                    width:100%;
+                    min-height:32px !important;
+                    height:32px;
+                    padding:5px 7px !important;
+                    box-sizing:border-box;
+                  "
+                >
+              </div>
 
               <button
                 type="button"
                 class="categoriaGolpe"
                 data-golpe="${numero}"
                 data-categoria="fisico"
+                title="Move físico"
                 style="
-                  flex:1;
-                  padding:7px 4px;
+                  flex:0 0 78px;
+                  min-height:32px !important;
+                  height:32px;
+                  padding:4px 5px !important;
+                  box-sizing:border-box;
                   cursor:pointer;
+                  font-size:9px;
+                  line-height:1;
                   font-weight:bold;
+                  white-space:nowrap;
                   opacity:${categoriaInicial === "fisico" ? "1" : "0.55"};
                   border:${categoriaInicial === "fisico" ? "2px solid #FFFFFF" : "1px solid #666"};
                 "
@@ -6400,11 +6414,18 @@ function mostrarFichaPokemonMoves(token) {
                 class="categoriaGolpe"
                 data-golpe="${numero}"
                 data-categoria="especial"
+                title="Move especial"
                 style="
-                  flex:1;
-                  padding:7px 4px;
+                  flex:0 0 82px;
+                  min-height:32px !important;
+                  height:32px;
+                  padding:4px 5px !important;
+                  box-sizing:border-box;
                   cursor:pointer;
+                  font-size:9px;
+                  line-height:1;
                   font-weight:bold;
+                  white-space:nowrap;
                   opacity:${categoriaInicial === "especial" ? "1" : "0.55"};
                   border:${categoriaInicial === "especial" ? "2px solid #FFFFFF" : "1px solid #666"};
                 "
@@ -6414,33 +6435,56 @@ function mostrarFichaPokemonMoves(token) {
 
             </div>
 
-            <label>Acerto</label><br>
+            <div style="
+              display:grid;
+              grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+              gap:8px;
+              margin-bottom:9px;
+            ">
 
-            <input
-              id="golpe${numero}Acerto"
-              type="text"
-              value="${esc(golpe.acerto)}"
-              placeholder="Ex: 1d20+8"
-              style="
-                width:95%;
-                margin-bottom:8px;
-              "
-            >
+              <div style="min-width:0;">
+                <label style="
+                  display:block;
+                  margin-bottom:3px;
+                ">Acerto</label>
 
-            <br>
+                <input
+                  id="golpe${numero}Acerto"
+                  type="text"
+                  value="${esc(golpe.acerto)}"
+                  placeholder="Ex: 1d20+8"
+                  style="
+                    width:100%;
+                    min-height:32px !important;
+                    height:32px;
+                    padding:5px 7px !important;
+                    box-sizing:border-box;
+                  "
+                >
+              </div>
 
-            <label>Dano</label><br>
+              <div style="min-width:0;">
+                <label style="
+                  display:block;
+                  margin-bottom:3px;
+                ">Dano</label>
 
-            <input
-              id="golpe${numero}Dano"
-              type="text"
-              value="${esc(golpe.dano)}"
-              placeholder="Ex: 3d8+5"
-              style="
-                width:95%;
-                margin-bottom:10px;
-              "
-            >
+                <input
+                  id="golpe${numero}Dano"
+                  type="text"
+                  value="${esc(golpe.dano)}"
+                  placeholder="Ex: 3d8+5"
+                  style="
+                    width:100%;
+                    min-height:32px !important;
+                    height:32px;
+                    padding:5px 7px !important;
+                    box-sizing:border-box;
+                  "
+                >
+              </div>
+
+            </div>
 
             <div style="
               display:flex;
