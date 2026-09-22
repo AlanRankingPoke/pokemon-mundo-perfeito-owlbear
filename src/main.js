@@ -1489,6 +1489,18 @@ async function pegarHpCaDaTela(aplicarCalculadora = false) {
                 .value
         );
 
+    // A CA exibida já inclui o bônus de EVAS.
+    // A CA-base é o valor salvo no token para impedir acúmulo do bônus.
+    const bonusEvasaoCa =
+        Number(
+            document
+                .querySelector("#bonusEvasaoCa")
+                ?.value ?? 0
+        ) || 0;
+
+    const caBase =
+        ca - bonusEvasaoCa;
+
     const alterarHp =
         document
             .querySelector("#alterarHp")
@@ -1645,6 +1657,7 @@ async function pegarHpCaDaTela(aplicarCalculadora = false) {
         hpAtual,
         hpMax,
         ca,
+        caBase,
         calculadoraAplicada: aplicarCalculadora && alterarHp !== ""
     };
 }
@@ -2445,6 +2458,10 @@ function ativarCalculadoraHp() {
 // AUTOSAVE
 // =====================================================
 
+// Fila usada para garantir que VEL/EVAS terminem de salvar antes
+// de a aba STATUS reler o token.
+let salvamentoBuffPendente = Promise.resolve();
+
 const IDS_BOTOES_AUTOSAVE = [
     "salvarPokemonStatus",
     "salvarPokemonMoves",
@@ -3164,10 +3181,22 @@ function mostrarFichaTreinadorPagina1(
             `${PREFIX}/hpMax`
         ] ?? 100;
 
+    const caBase =
+        Number(
+            token.metadata[
+                `${PREFIX}/ca`
+            ] ?? 10
+        ) || 0;
+
+    const estagioEvasao =
+        Number(
+            token.metadata[
+                `${PREFIX}/buff-evas`
+            ] ?? 0
+        ) || 0;
+
     const ca =
-        token.metadata[
-            `${PREFIX}/ca`
-        ] ?? 10;
+        caBase + estagioEvasao;
 
     const proficiencia =
         token.metadata[
@@ -3280,6 +3309,12 @@ function mostrarFichaTreinadorPagina1(
       </div>
 
     </div>
+
+    <input
+      id="bonusEvasaoCa"
+      type="hidden"
+      value="${estagioEvasao}"
+    >
 
     <div class="calculadoraHpLinha">
       <p class="calculadoraTitulo">Calculadora</p>
@@ -3672,7 +3707,7 @@ function mostrarFichaTreinadorPagina1(
                             item.metadata[
                                 `${PREFIX}/ca`
                             ] =
-                                dados.ca;
+                                dados.caBase;
 
                             item.metadata[
                                 `${PREFIX}/treinador-proficiencia`
@@ -3744,18 +3779,11 @@ function mostrarFichaTreinadorPagina1(
                         .value = "";
                 }
 
-                const bonusEvasaoHud =
-                    Number(
-                        token.metadata[
-                            `${PREFIX}/buff-evas`
-                        ] ?? 0
-                    ) || 0;
-
                 await criarStatusNoToken(
                     token,
                     dados.hpAtual,
                     dados.hpMax,
-                    dados.ca + bonusEvasaoHud
+                    dados.ca
                 );
             }
         );
@@ -4473,6 +4501,10 @@ function ativarMenuPokemon(token) {
             "click",
             async () => {
 
+                // Garante que mudanças recentes de VEL/EVAS já estejam
+                // no metadata antes de calcular CA e Iniciativa.
+                await salvamentoBuffPendente.catch(() => {});
+
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
@@ -4850,10 +4882,22 @@ function mostrarFichaPokemon(token) {
             `${PREFIX}/hpMax`
         ] ?? 100;
 
+    const caBase =
+        Number(
+            token.metadata[
+                `${PREFIX}/ca`
+            ] ?? 10
+        ) || 0;
+
+    const estagioEvasao =
+        Number(
+            token.metadata[
+                `${PREFIX}/buff-evas`
+            ] ?? 0
+        ) || 0;
+
     const ca =
-        token.metadata[
-            `${PREFIX}/ca`
-        ] ?? 10;
+        caBase + estagioEvasao;
 
     const habilidade =
         token.metadata[
@@ -4987,6 +5031,12 @@ function mostrarFichaPokemon(token) {
           </div>
 
         </div>
+
+        <input
+          id="bonusEvasaoCa"
+          type="hidden"
+          value="${estagioEvasao}"
+        >
 
             <div class="calculadoraHpLinha">
               <p class="calculadoraTitulo">Calculadora</p>
@@ -5362,7 +5412,7 @@ function mostrarFichaPokemon(token) {
                             item.metadata[
                                 `${PREFIX}/ca`
                             ] =
-                                dados.ca;
+                                dados.caBase;
 
                             item.metadata[
                                 `${PREFIX}/pokemon-habilidade`
@@ -5443,18 +5493,11 @@ function mostrarFichaPokemon(token) {
                         .value = "";
                 }
 
-                const bonusEvasaoHud =
-                    Number(
-                        token.metadata[
-                            `${PREFIX}/buff-evas`
-                        ] ?? 0
-                    ) || 0;
-
                 await criarStatusNoToken(
                     token,
                     dados.hpAtual,
                     dados.hpMax,
-                    dados.ca + bonusEvasaoHud
+                    dados.ca
                 );
             }
         );
@@ -5795,7 +5838,72 @@ function mostrarFichaPokemonMoves(token) {
 
                 campo.addEventListener(
                     "input",
-                    atualizarBuffsPagina
+                    () => {
+                        atualizarBuffsPagina();
+
+                        const buffId =
+                            campo.id.replace("buff-", "");
+
+                        const valorBuff =
+                            Number(campo.value) || 0;
+
+                        // Atualiza a cópia local imediatamente.
+                        token.metadata[
+                            `${PREFIX}/buff-${buffId}`
+                        ] = valorBuff;
+
+                        // E grava o estágio imediatamente no Owlbear, sem
+                        // depender do debounce do autosave geral da página.
+                        salvamentoBuffPendente =
+                            salvamentoBuffPendente
+                                .catch(() => {})
+                                .then(async () => {
+                                    await OBR.scene.items.updateItems(
+                                        [token.id],
+                                        (items) => {
+                                            for (const item of items) {
+                                                item.metadata[
+                                                    `${PREFIX}/buff-${buffId}`
+                                                ] = valorBuff;
+                                            }
+                                        }
+                                    );
+
+                                    // EVAS também atualiza o HUD de CA na hora.
+                                    if (buffId === "evas") {
+                                        const hpAtualHud =
+                                            Number(
+                                                token.metadata[
+                                                    `${PREFIX}/hpAtual`
+                                                ] ?? 100
+                                            ) || 0;
+
+                                        const hpMaxHud =
+                                            Math.max(
+                                                1,
+                                                Number(
+                                                    token.metadata[
+                                                        `${PREFIX}/hpMax`
+                                                    ] ?? 100
+                                                ) || 1
+                                            );
+
+                                        const caBaseHud =
+                                            Number(
+                                                token.metadata[
+                                                    `${PREFIX}/ca`
+                                                ] ?? 10
+                                            ) || 0;
+
+                                        await criarStatusNoToken(
+                                            token,
+                                            hpAtualHud,
+                                            hpMaxHud,
+                                            caBaseHud + valorBuff
+                                        );
+                                    }
+                                });
+                    }
                 );
             }
         );
