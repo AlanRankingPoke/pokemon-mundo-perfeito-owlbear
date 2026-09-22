@@ -705,7 +705,7 @@ async function criarStatusNoToken(
             .zIndex(0)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
-            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+            .disableAttachmentBehavior(["SCALE", "ROTATION"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -736,7 +736,7 @@ async function criarStatusNoToken(
                 .zIndex(1)
                 .disableAutoZIndex(true)
                 .attachedTo(token.id)
-                .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+                .disableAttachmentBehavior(["SCALE", "ROTATION"])
                 .locked(true)
                 .disableHit(true)
                 .metadata({
@@ -784,7 +784,7 @@ async function criarStatusNoToken(
             .zIndex(10)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
-            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+            .disableAttachmentBehavior(["SCALE", "ROTATION"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -827,7 +827,7 @@ async function criarStatusNoToken(
             .zIndex(1)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
-            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+            .disableAttachmentBehavior(["SCALE", "ROTATION"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -871,7 +871,7 @@ async function criarStatusNoToken(
             .zIndex(20)
             .disableAutoZIndex(true)
             .attachedTo(token.id)
-            .disableAttachmentBehavior(["ROTATION", "SCALE", "ATTACHMENT", "VISIBLE", "COPY"])
+            .disableAttachmentBehavior(["SCALE", "ROTATION"])
             .locked(true)
             .disableHit(true)
             .metadata({
@@ -2195,7 +2195,17 @@ function mostrarFichaTreinadorPagina1(
 
     <br>
 
-    <button id="salvarTreinadorStatus" type="button" hidden aria-hidden="true"></button>
+    <button
+      id="salvarTreinadorStatus"
+      style="
+        width:100%;
+        padding:10px;
+        font-weight:bold;
+        cursor:pointer;
+      "
+    >
+      Salvar Status
+    </button>
   `;
 
     ativarCabecalhoTreinador(
@@ -2383,6 +2393,10 @@ function mostrarFichaTreinadorPagina1(
                     dados.hpMax,
                     dados.ca
                 );
+
+                alert(
+                    "Status do treinador salvo!"
+                );
             }
         );
 }
@@ -2464,7 +2478,17 @@ function mostrarFichaTreinadorPerTal(
 
     </div>
 
-    <button id="salvarTreinadorPerTal" type="button" hidden aria-hidden="true"></button>
+    <button
+      id="salvarTreinadorPerTal"
+      style="
+        width:100%;
+        padding:10px;
+        font-weight:bold;
+        cursor:pointer;
+      "
+    >
+      Salvar Perícias / Talentos
+    </button>
   `;
 
     ativarCabecalhoTreinador(
@@ -2562,6 +2586,10 @@ function mostrarFichaTreinadorPerTal(
                             }
                         }
                     }
+                );
+
+                alert(
+                    "Perícias e talentos salvos!"
                 );
             }
         );
@@ -2712,7 +2740,17 @@ function mostrarFichaTreinadorHabilidades(
 
     <br>
 
-    <button id="salvarTreinadorHabilidades" type="button" hidden aria-hidden="true"></button>
+    <button
+      id="salvarTreinadorHabilidades"
+      style="
+        width:100%;
+        padding:10px;
+        font-weight:bold;
+        cursor:pointer;
+      "
+    >
+      Salvar Habilidades
+    </button>
   `;
 
     ativarCabecalhoTreinador(
@@ -2872,6 +2910,10 @@ function mostrarFichaTreinadorHabilidades(
                         }
                     }
                 );
+
+                alert(
+                    "Habilidades do treinador salvas!"
+                );
             }
         );
 }
@@ -2922,7 +2964,17 @@ function mostrarFichaTreinadorAnotacoes(
 
     <br><br>
 
-    <button id="salvarTreinadorAnotacoes" type="button" hidden aria-hidden="true"></button>
+    <button
+      id="salvarTreinadorAnotacoes"
+      style="
+        width:100%;
+        padding:10px;
+        font-weight:bold;
+        cursor:pointer;
+      "
+    >
+      Salvar Anotações
+    </button>
   `;
 
     ativarCabecalhoTreinador(
@@ -2958,6 +3010,10 @@ function mostrarFichaTreinadorAnotacoes(
                                 novasAnotacoes;
                         }
                     }
+                );
+
+                alert(
+                    "Anotações salvas!"
                 );
             }
         );
@@ -3659,7 +3715,17 @@ function mostrarFichaPokemon(token) {
 
     <br>
 
-    <button id="salvarPokemonStatus" type="button" hidden aria-hidden="true"></button>
+    <button
+      id="salvarPokemonStatus"
+      style="
+        width:100%;
+        padding:10px;
+        font-weight:bold;
+        cursor:pointer;
+      "
+    >
+      Salvar Status
+    </button>
   `;
 
     ativarCabecalhoPokemon(token);
@@ -3822,6 +3888,10 @@ function mostrarFichaPokemon(token) {
                     dados.hpAtual,
                     dados.hpMax,
                     dados.ca
+                );
+
+                alert(
+                    "Status do Pokémon salvo!"
                 );
             }
         );
@@ -4086,7 +4156,17 @@ function mostrarFichaPokemonMoves(token) {
 
     <br>
 
-    <button id="salvarPokemonMoves" type="button" hidden aria-hidden="true"></button>
+    <button
+      id="salvarPokemonMoves"
+      style="
+        width:100%;
+        padding:10px;
+        font-weight:bold;
+        cursor:pointer;
+      "
+    >
+      Salvar Moves / Buffs
+    </button>
   `;
 
     ativarCabecalhoPokemon(token);
@@ -4486,6 +4566,10 @@ document
                         }
                     }
                 );
+
+                alert(
+                    "Moves e buffs salvos!"
+                );
             }
         );
 }
@@ -4531,7 +4615,17 @@ function mostrarFichaPokemonPericias(
 
     <br>
 
-    <button id="salvarPokemonPericias" type="button" hidden aria-hidden="true"></button>
+    <button
+      id="salvarPokemonPericias"
+      style="
+        width:100%;
+        padding:10px;
+        font-weight:bold;
+        cursor:pointer;
+      "
+    >
+      Salvar Perícias
+    </button>
   `;
 
     ativarCabecalhoPokemon(token);
@@ -4595,6 +4689,10 @@ function mostrarFichaPokemonPericias(
                             );
                         }
                     }
+                );
+
+                alert(
+                    "Perícias do Pokémon salvas!"
                 );
             }
         );
@@ -4710,7 +4808,17 @@ function mostrarFichaPokemonTalentos(
 
     <br>
 
-    <button id="salvarPokemonTalentos" type="button" hidden aria-hidden="true"></button>
+    <button
+      id="salvarPokemonTalentos"
+      style="
+        width:100%;
+        padding:10px;
+        font-weight:bold;
+        cursor:pointer;
+      "
+    >
+      Salvar Talentos
+    </button>
   `;
 
     ativarCabecalhoPokemon(token);
@@ -4781,142 +4889,13 @@ function mostrarFichaPokemonTalentos(
                         }
                     }
                 );
+
+                alert(
+                    "Talentos do Pokémon salvos!"
+                );
             }
         );
 }
-
-
-// =====================================================
-// SALVAMENTO AUTOMÁTICO
-// =====================================================
-
-let timerSalvamentoAutomatico = null;
-
-const BOTOES_SALVAR_AUTOMATICO = [
-    "#salvarPokemonStatus",
-    "#salvarPokemonMoves",
-    "#salvarPokemonPericias",
-    "#salvarPokemonTalentos",
-    "#salvarTreinadorStatus",
-    "#salvarTreinadorPerTal",
-    "#salvarTreinadorHabilidades",
-    "#salvarTreinadorAnotacoes"
-];
-
-function botaoSalvarDaPaginaAtual() {
-    for (const seletor of BOTOES_SALVAR_AUTOMATICO) {
-        const botao =
-            document.querySelector(seletor);
-
-        if (botao) {
-            return botao;
-        }
-    }
-
-    return null;
-}
-
-function mostrarEstadoSalvamentoAutomatico(texto) {
-    const app =
-        document.querySelector("#app");
-
-    if (!app) {
-        return;
-    }
-
-    let aviso =
-        app.querySelector(".pmAutoSaveInfo");
-
-    if (!aviso) {
-        aviso =
-            document.createElement("div");
-
-        aviso.className =
-            "pmAutoSaveInfo";
-
-        app.appendChild(aviso);
-    }
-
-    aviso.textContent = texto;
-}
-
-function agendarSalvamentoAutomatico() {
-    clearTimeout(
-        timerSalvamentoAutomatico
-    );
-
-    mostrarEstadoSalvamentoAutomatico(
-        "Salvando..."
-    );
-
-    timerSalvamentoAutomatico =
-        setTimeout(
-            () => {
-                const botao =
-                    botaoSalvarDaPaginaAtual();
-
-                if (!botao) {
-                    return;
-                }
-
-                botao.click();
-
-                mostrarEstadoSalvamentoAutomatico(
-                    "✓ Salvo automaticamente"
-                );
-            },
-            600
-        );
-}
-
-// Inputs, selects e textareas:
-// espera o jogador parar de digitar antes de salvar.
-document.addEventListener(
-    "input",
-    (evento) => {
-        const alvo = evento.target;
-
-        if (
-            alvo instanceof HTMLInputElement ||
-            alvo instanceof HTMLTextAreaElement ||
-            alvo instanceof HTMLSelectElement
-        ) {
-            agendarSalvamentoAutomatico();
-        }
-    }
-);
-
-document.addEventListener(
-    "change",
-    (evento) => {
-        const alvo = evento.target;
-
-        if (
-            alvo instanceof HTMLInputElement ||
-            alvo instanceof HTMLTextAreaElement ||
-            alvo instanceof HTMLSelectElement
-        ) {
-            agendarSalvamentoAutomatico();
-        }
-    }
-);
-
-// FÍSICO / ESPECIAL altera um campo escondido via JavaScript,
-// então também dispara o autosave ao clicar nesses botões.
-document.addEventListener(
-    "click",
-    (evento) => {
-        const botaoCategoria =
-            evento.target.closest?.(
-                ".categoriaGolpe"
-            );
-
-        if (botaoCategoria) {
-            agendarSalvamentoAutomatico();
-        }
-    }
-);
-
 
 // =====================================================
 // ABRE TOKEN
