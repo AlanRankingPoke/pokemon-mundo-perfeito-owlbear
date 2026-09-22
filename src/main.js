@@ -287,17 +287,40 @@ const ESTILO_FICHA = `
 
   .calculadoraHpLinha {
     display:flex !important;
-    align-items:flex-end !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
     gap:6px !important;
     margin-top:8px !important;
     position:relative;
+    width:100% !important;
+  }
+
+  .calculadoraTitulo {
+    width:100% !important;
+    text-align:center !important;
+    margin:8px 0 4px !important;
+  }
+
+  .calculadoraControles {
+    display:flex !important;
+    align-items:flex-end !important;
+    justify-content:center !important;
+    gap:6px !important;
     flex-wrap:wrap !important;
+    width:100% !important;
   }
 
   .calculadoraHpCampo {
     flex:1 1 76px !important;
     min-width:58px !important;
     max-width:100px !important;
+  }
+
+  .calculadoraAcao {
+    display:flex !important;
+    justify-content:center !important;
+    width:100% !important;
+    margin-top:3px !important;
   }
 
   .calculadoraHpCampo #alterarHp {
@@ -325,6 +348,11 @@ const ESTILO_FICHA = `
   }
 
   #botaoCalcularHp {
+    width:58% !important;
+    min-width:170px !important;
+    max-width:260px !important;
+    min-height:38px !important;
+    padding:7px 18px !important;
     background:linear-gradient(135deg, #42b96b 0%, #269653 100%) !important;
     color:#fff !important;
     border-color:#218447 !important;
@@ -1704,26 +1732,54 @@ function ativarRolagemIniciativa() {
       "#rolarIniciativa"
     );
 
-  if (!botao) {
+  const campoIniciativa =
+    document.querySelector(
+      "#iniciativa"
+    );
+
+  const campoDestreza =
+    document.querySelector(
+      "#treinador-mod-des"
+    ) ||
+    document.querySelector(
+      "#mod-des"
+    );
+
+  if (!botao || !campoDestreza) {
     return;
   }
+
+  const sincronizarIniciativa = () => {
+    if (campoIniciativa) {
+      campoIniciativa.value =
+        String(campoDestreza.value ?? "").trim();
+    }
+  };
+
+  // A iniciativa sempre acompanha o modificador de Destreza.
+  sincronizarIniciativa();
+
+  campoDestreza.addEventListener(
+    "input",
+    sincronizarIniciativa
+  );
+
+  campoDestreza.addEventListener(
+    "change",
+    sincronizarIniciativa
+  );
 
   botao.addEventListener(
     "click",
     async () => {
-      const campo =
-        document.querySelector(
-          "#iniciativa"
-        );
-
       const formula =
         formulaSalvaguarda(
-          campo?.value
+          campoDestreza.value
         );
 
       if (!formula) {
         alert(
-          "Valor de iniciativa inválido."
+          "Valor de Destreza inválido para iniciativa."
         );
 
         return;
@@ -2889,11 +2945,6 @@ function mostrarFichaTreinadorPagina1(
             `${PREFIX}/treinador-proficiencia`
         ] ?? 0;
 
-    const iniciativa =
-        token.metadata[
-            `${PREFIX}/treinador-iniciativa`
-        ] ?? "";
-
     const bonusCaptura =
         token.metadata[
             `${PREFIX}/treinador-captura-bonus`
@@ -2920,6 +2971,8 @@ function mostrarFichaTreinadorPagina1(
                 ] ?? "";
         }
     );
+
+    const iniciativa = modificadores.des ?? "";
 
     app.innerHTML = `
     ${ESTILO_FICHA}
@@ -2975,17 +3028,39 @@ function mostrarFichaTreinadorPagina1(
           style="width:100%; box-sizing:border-box; text-align:center;"
         >
       </div>
+
+      <div style="flex:1; min-width:0;">
+        <p>Inic.</p>
+        <div style="display:flex; gap:4px; align-items:center;">
+          <input
+            id="iniciativa"
+            type="text"
+            value="${esc(iniciativa)}"
+            readonly
+            title="Iniciativa = modificador de Destreza"
+            style="width:100%; min-width:0; box-sizing:border-box; text-align:center;"
+          >
+          <button
+            id="rolarIniciativa"
+            type="button"
+            title="Rolar iniciativa usando Destreza"
+            style="flex:0 0 34px; width:34px; min-height:36px; padding:5px; font-size:13px; cursor:pointer;"
+          >🎲</button>
+        </div>
+      </div>
     </div>
 
     <div class="calculadoraHpLinha">
-      <div class="calculadoraHpCampo">
-        <p>Calculadora</p>
-        <input
-          id="alterarHp"
-          type="text"
-          placeholder="-34, +20, =50"
-        >
-      </div>
+      <p class="calculadoraTitulo">Calculadora</p>
+
+      <div class="calculadoraControles">
+        <div class="calculadoraHpCampo">
+          <input
+            id="alterarHp"
+            type="text"
+            placeholder="-34, 20, =50"
+          >
+        </div>
 
       <div class="superEfetivoWrap">
         <button
@@ -3072,7 +3147,11 @@ function mostrarFichaTreinadorPagina1(
         </div>
       </div>
 
-      <button id="botaoCalcularHp" type="button">Calcular</button>
+      </div>
+
+      <div class="calculadoraAcao">
+        <button id="botaoCalcularHp" type="button">Calcular</button>
+      </div>
 
       <input id="tipoMoveHpSelecionado" type="hidden" value="neutro">
       <input id="estagioDefHp" type="hidden" value="0">
@@ -3085,40 +3164,6 @@ function mostrarFichaTreinadorPagina1(
       >
     </div>
 
-    <hr>
-
-    <h3>⚡ Iniciativa</h3>
-
-    <div style="
-      display:flex;
-      align-items:center;
-      gap:8px;
-      margin-bottom:12px;
-    ">
-      <input
-        id="iniciativa"
-        type="text"
-        value="${esc(iniciativa)}"
-        placeholder="+0"
-        style="
-          width:80px;
-          text-align:center;
-        "
-      >
-
-      <button
-        id="rolarIniciativa"
-        type="button"
-        style="
-          flex:1;
-          padding:8px;
-          font-weight:bold;
-          cursor:pointer;
-        "
-      >
-        🎲 Rolar Iniciativa
-      </button>
-    </div>
 
     <hr>
 
@@ -4529,11 +4574,6 @@ function mostrarFichaPokemon(token) {
         );
 
 
-    const iniciativa =
-        token.metadata[
-            `${PREFIX}/iniciativa`
-        ] ?? "";
-
     const modificadores = {};
     const salvaguardas = {};
 
@@ -4551,6 +4591,8 @@ function mostrarFichaPokemon(token) {
                 ] ?? "";
         }
     );
+
+    const iniciativa = modificadores.des ?? "";
 
     app.innerHTML = `
     ${ESTILO_FICHA}
@@ -4613,17 +4655,40 @@ function mostrarFichaPokemon(token) {
               style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
+
+
+          <div style="flex:0.95; min-width:0;">
+            <p>Inic.</p>
+            <div style="display:flex; gap:3px; align-items:center;">
+              <input
+                id="iniciativa"
+                type="text"
+                value="${esc(iniciativa)}"
+                readonly
+                title="Iniciativa = modificador de Destreza"
+                style="width:100%; min-width:0; box-sizing:border-box; text-align:center;"
+              >
+              <button
+                id="rolarIniciativa"
+                type="button"
+                title="Rolar iniciativa usando Destreza"
+                style="flex:0 0 32px; width:32px; min-height:36px; padding:4px; font-size:12px; cursor:pointer;"
+              >🎲</button>
+            </div>
+          </div>
         </div>
 
             <div class="calculadoraHpLinha">
-              <div class="calculadoraHpCampo">
-                <p>Calculadora</p>
-                <input
-                  id="alterarHp"
-                  type="text"
-                  placeholder="-34, +20, =50"
-                >
-              </div>
+              <p class="calculadoraTitulo">Calculadora</p>
+
+              <div class="calculadoraControles">
+                <div class="calculadoraHpCampo">
+                  <input
+                    id="alterarHp"
+                    type="text"
+                    placeholder="-34, 20, =50"
+                  >
+                </div>
         
               <div class="superEfetivoWrap">
                 <button
@@ -4710,7 +4775,11 @@ function mostrarFichaPokemon(token) {
                 </div>
               </div>
 
-              <button id="botaoCalcularHp" type="button">Calcular</button>
+              </div>
+
+              <div class="calculadoraAcao">
+                <button id="botaoCalcularHp" type="button">Calcular</button>
+              </div>
 
               <input id="tipoMoveHpSelecionado" type="hidden" value="neutro">
               <input id="estagioDefHp" type="hidden" value="${Number(token.metadata[`${PREFIX}/buff-def`] ?? 0)}">
@@ -4723,33 +4792,6 @@ function mostrarFichaPokemon(token) {
               >
             </div>
 
-        <p>Iniciativa</p>
-
-        <div style="display:flex; gap:6px; align-items:center;">
-          <input
-            id="iniciativa"
-            type="text"
-            value="${esc(iniciativa)}"
-            placeholder="+0"
-            style="
-              width:72px;
-              text-align:center;
-            "
-          >
-
-          <button
-            id="rolarIniciativa"
-            type="button"
-            style="
-              flex:1;
-              padding:7px 5px;
-              font-size:10px;
-              cursor:pointer;
-            "
-          >
-            🎲 Rolar
-          </button>
-        </div>
       </div>
 
       <div class="statusCard" style="
