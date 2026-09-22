@@ -644,6 +644,35 @@ const ESTILO_FICHA = `
     margin:0;
   }
 
+  .movimentoTexto {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:2px !important;
+    min-width:0 !important;
+  }
+
+  .movimentoMeta {
+    min-height:14px !important;
+    font-size:9px !important;
+    line-height:1.15 !important;
+    font-weight:800 !important;
+    color:#7a8da5 !important;
+    white-space:nowrap !important;
+  }
+
+  .movimentoValor {
+    border-color:#a8c7ef !important;
+    background:linear-gradient(180deg, #ffffff 0%, #f3f8ff 100%) !important;
+  }
+
+  .movimentoValor:not(:focus) {
+    color:#245fae !important;
+  }
+
+  .movimentoValor:focus {
+    color:#203149 !important;
+  }
+
   .rolarSalvaguarda,
   .rolarAtributo,
   .rolarPericiaPokemon,
@@ -839,6 +868,56 @@ function limparRotuloDice(texto) {
 function formatarBonus(valor) {
     const numero = Number(valor) || 0;
     return numero > 0 ? `+${numero}` : `${numero}`;
+}
+
+function numeroDecimal(valor) {
+    const texto =
+        String(valor ?? "")
+            .trim()
+            .replace(",", ".");
+
+    if (texto === "") {
+        return null;
+    }
+
+    const numero = Number(texto);
+
+    return Number.isFinite(numero)
+        ? numero
+        : null;
+}
+
+function formatarDecimal(valor) {
+    const numero = numeroDecimal(valor);
+
+    if (numero === null) {
+        return "";
+    }
+
+    const arredondado =
+        Math.round(numero * 1000) / 1000;
+
+    return String(arredondado)
+        .replace(".", ",");
+}
+
+function movimentoComVelocidade(
+    valorBase,
+    estagioVelocidade
+) {
+    const base = numeroDecimal(valorBase);
+
+    if (base === null) {
+        return "";
+    }
+
+    const bonus =
+        (Number(estagioVelocidade) || 0) * 1.5;
+
+    return Math.max(
+        0,
+        base + bonus
+    );
 }
 
 function faixaCritico(estagio) {
@@ -2528,6 +2607,10 @@ function ativarCalculadoraHp() {
 // de a aba STATUS reler o token.
 let salvamentoBuffPendente = Promise.resolve();
 
+// Fila separada para os 6 deslocamentos. Assim, ao trocar de aba,
+// o valor-base digitado termina de ser gravado antes de a ficha reler o token.
+let salvamentoMovimentoPendente = Promise.resolve();
+
 const IDS_BOTOES_AUTOSAVE = [
     "salvarPokemonStatus",
     "salvarPokemonMoves",
@@ -2583,6 +2666,13 @@ function ativarAutosaveDaTela() {
                 return;
             }
 
+            // Os círculos de movimentação têm autosave próprio. O valor exibido
+            // pode ser o TOTAL (base + VEL), então o autosave genérico não deve
+            // tentar interpretar/salvar esse campo diretamente.
+            if (campo.classList.contains("movimentoValor")) {
+                return;
+            }
+
             campo.addEventListener("input", () => {
                 programarSalvamento(650);
             });
@@ -2600,6 +2690,361 @@ function ativarAutosaveDaTela() {
                 programarSalvamento(120);
             });
         });
+}
+
+
+// =====================================================
+// MOVIMENTAÇÃO + BUFF DE VELOCIDADE
+// =====================================================
+
+const CAMPOS_MOVIMENTACAO = [
+    {
+        id: "movimentoCaminhada",
+        metaId: "metaMovimentoCaminhada",
+        chave: "movimento-caminhada"
+    },
+    {
+        id: "movimentoEscalada",
+        metaId: "metaMovimentoEscalada",
+        chave: "movimento-escalada"
+    },
+    {
+        id: "movimentoVoo",
+        metaId: "metaMovimentoVoo",
+        chave: "movimento-voo"
+    },
+    {
+        id: "movimentoNatacao",
+        metaId: "metaMovimentoNatacao",
+        chave: "movimento-natacao"
+    },
+    {
+        id: "movimentoEscavacao",
+        metaId: "metaMovimentoEscavacao",
+        chave: "movimento-escavacao"
+    },
+    {
+        id: "movimentoFlutuacao",
+        metaId: "metaMovimentoFlutuacao",
+        chave: "movimento-flutuacao"
+    }
+];
+
+function normalizarMovimentoBase(valor) {
+    const numero = numeroDecimal(valor);
+
+    if (numero === null) {
+        return null;
+    }
+
+    return Math.max(
+        0,
+        Math.round(numero * 1000) / 1000
+    );
+}
+
+function bonusMovimentoPorVelocidade(estagioVelocidade) {
+    return (Number(estagioVelocidade) || 0) * 1.5;
+}
+
+function salvarMovimentoBaseNoToken(
+    token,
+    chave,
+    valorBase
+) {
+    const valorSalvar =
+        valorBase === null
+            ? ""
+            : valorBase;
+
+    // Atualiza também a cópia local para qualquer cálculo/reabertura imediata.
+    token.metadata[
+        `${PREFIX}/${chave}`
+    ] = valorSalvar;
+
+    salvamentoMovimentoPendente =
+        salvamentoMovimentoPendente
+            .catch(() => {})
+            .then(async () => {
+                await OBR.scene.items.updateItems(
+                    [token.id],
+                    (items) => {
+                        for (const item of items) {
+                            item.metadata[
+                                `${PREFIX}/${chave}`
+                            ] = valorSalvar;
+                        }
+                    }
+                );
+            });
+
+    return salvamentoMovimentoPendente;
+}
+
+function ativarMovimentacaoComVelocidade(
+    token,
+    estagioVelocidade
+) {
+    const bonusVelocidade =
+        bonusMovimentoPorVelocidade(
+            estagioVelocidade
+        );
+
+    const atualizarMeta = (
+        campo,
+        meta
+    ) => {
+        if (!meta) {
+            return;
+        }
+
+        const base =
+            normalizarMovimentoBase(
+                campo.dataset.base
+            );
+
+        if (base === null) {
+            meta.textContent = "";
+            return;
+        }
+
+        const total =
+            movimentoComVelocidade(
+                base,
+                estagioVelocidade
+            );
+
+        if (bonusVelocidade === 0) {
+            meta.textContent =
+                `Atual ${formatarDecimal(total)}`;
+            return;
+        }
+
+        const sinal =
+            bonusVelocidade > 0
+                ? "+"
+                : "";
+
+        meta.textContent =
+            `Base ${formatarDecimal(base)} · VEL ${sinal}${formatarDecimal(bonusVelocidade)}`;
+    };
+
+    const mostrarBase = (
+        campo,
+        meta
+    ) => {
+        const base =
+            normalizarMovimentoBase(
+                campo.dataset.base
+            );
+
+        campo.value =
+            base === null
+                ? ""
+                : formatarDecimal(base);
+
+        atualizarMeta(
+            campo,
+            meta
+        );
+    };
+
+    const mostrarTotal = (
+        campo,
+        meta
+    ) => {
+        const base =
+            normalizarMovimentoBase(
+                campo.dataset.base
+            );
+
+        campo.value =
+            base === null
+                ? ""
+                : formatarDecimal(
+                    movimentoComVelocidade(
+                        base,
+                        estagioVelocidade
+                    )
+                );
+
+        atualizarMeta(
+            campo,
+            meta
+        );
+    };
+
+    CAMPOS_MOVIMENTACAO.forEach(
+        ({ id, metaId, chave }) => {
+            const campo =
+                document.querySelector(
+                    `#${id}`
+                );
+
+            const meta =
+                document.querySelector(
+                    `#${metaId}`
+                );
+
+            if (!campo) {
+                return;
+            }
+
+            // O data-base vem diretamente do metadata, nunca do total exibido.
+            const baseInicial =
+                normalizarMovimentoBase(
+                    campo.dataset.base
+                );
+
+            campo.dataset.base =
+                baseInicial === null
+                    ? ""
+                    : String(baseInicial);
+
+            // Fora da edição, o círculo mostra o valor FINAL já com VEL.
+            mostrarTotal(
+                campo,
+                meta
+            );
+
+            campo.addEventListener(
+                "focus",
+                () => {
+                    // Durante a edição, mostramos o valor BASE para o jogador
+                    // não salvar acidentalmente o bônus de VEL como parte da base.
+                    mostrarBase(
+                        campo,
+                        meta
+                    );
+
+                    campo.select?.();
+                }
+            );
+
+            let temporizadorMovimento = null;
+
+            const salvarBaseAtual = () => {
+                const base =
+                    normalizarMovimentoBase(
+                        campo.dataset.base
+                    );
+
+                return salvarMovimentoBaseNoToken(
+                    token,
+                    chave,
+                    base
+                );
+            };
+
+            const programarSalvamentoMovimento = () => {
+                if (temporizadorMovimento) {
+                    clearTimeout(
+                        temporizadorMovimento
+                    );
+                }
+
+                temporizadorMovimento = setTimeout(
+                    () => {
+                        temporizadorMovimento = null;
+                        salvarBaseAtual();
+                    },
+                    350
+                );
+            };
+
+            campo.addEventListener(
+                "input",
+                () => {
+                    const texto =
+                        campo.value.trim();
+
+                    if (texto === "") {
+                        campo.dataset.base = "";
+                        atualizarMeta(
+                            campo,
+                            meta
+                        );
+                        programarSalvamentoMovimento();
+                        return;
+                    }
+
+                    const base =
+                        normalizarMovimentoBase(
+                            texto
+                        );
+
+                    // Enquanto houver um texto realmente inválido, mantemos o
+                    // último valor-base válido e esperamos o usuário terminar.
+                    if (base === null) {
+                        return;
+                    }
+
+                    campo.dataset.base =
+                        String(base);
+
+                    atualizarMeta(
+                        campo,
+                        meta
+                    );
+
+                    // Autosave próprio da movimentação. Salva sempre a BASE,
+                    // nunca o total que aparece quando o campo perde o foco.
+                    programarSalvamentoMovimento();
+                }
+            );
+
+            campo.addEventListener(
+                "blur",
+                () => {
+                    if (temporizadorMovimento) {
+                        clearTimeout(
+                            temporizadorMovimento
+                        );
+                        temporizadorMovimento = null;
+                    }
+
+                    // O input já deixou a BASE correta no dataset. Primeiro
+                    // colocamos essa gravação na fila e depois mostramos o total.
+                    salvarBaseAtual();
+
+                    mostrarTotal(
+                        campo,
+                        meta
+                    );
+                }
+            );
+
+            campo.addEventListener(
+                "keydown",
+                (evento) => {
+                    if (evento.key === "Enter") {
+                        evento.preventDefault();
+                        campo.blur();
+                    }
+                }
+            );
+        }
+    );
+}
+
+function pegarMovimentoBase(campoId) {
+    const campo =
+        document.querySelector(
+            `#${campoId}`
+        );
+
+    if (!campo) {
+        return "";
+    }
+
+    const numero =
+        normalizarMovimentoBase(
+            campo.dataset.base
+        );
+
+    return numero === null
+        ? ""
+        : numero;
 }
 
 // =====================================================
@@ -4570,6 +5015,7 @@ function ativarMenuPokemon(token) {
                 // Garante que mudanças recentes de VEL/EVAS já estejam
                 // no metadata antes de calcular CA e Iniciativa.
                 await salvamentoBuffPendente.catch(() => {});
+                await salvamentoMovimentoPendente.catch(() => {});
 
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
@@ -4592,6 +5038,8 @@ function ativarMenuPokemon(token) {
             "click",
             async () => {
 
+                await salvamentoMovimentoPendente.catch(() => {});
+
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
@@ -4613,6 +5061,8 @@ function ativarMenuPokemon(token) {
             "click",
             async () => {
 
+                await salvamentoMovimentoPendente.catch(() => {});
+
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
@@ -4633,6 +5083,8 @@ function ativarMenuPokemon(token) {
         .addEventListener(
             "click",
             async () => {
+
+                await salvamentoMovimentoPendente.catch(() => {});
 
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
@@ -5323,80 +5775,128 @@ function mostrarFichaPokemon(token) {
 
     <div class="movimentoGrid">
       <div class="movimentoTipo">
-        <span class="movimentoNome">Caminhada</span>
+        <div class="movimentoTexto">
+          <span class="movimentoNome">Caminhada</span>
+          <span
+            id="metaMovimentoCaminhada"
+            class="movimentoMeta"
+          ></span>
+        </div>
+
         <input
           id="movimentoCaminhada"
           class="movimentoValor"
-          type="number"
-          min="0"
-          step="1"
-          value="${esc(movimentoCaminhada)}"
+          type="text"
+          inputmode="decimal"
+          data-base="${esc(formatarDecimal(movimentoCaminhada))}"
+          value="${esc(formatarDecimal(movimentoComVelocidade(movimentoCaminhada, estagioVelocidade)))}"
           placeholder="0"
+          title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
 
       <div class="movimentoTipo">
-        <span class="movimentoNome">Escalada</span>
+        <div class="movimentoTexto">
+          <span class="movimentoNome">Escalada</span>
+          <span
+            id="metaMovimentoEscalada"
+            class="movimentoMeta"
+          ></span>
+        </div>
+
         <input
           id="movimentoEscalada"
           class="movimentoValor"
-          type="number"
-          min="0"
-          step="1"
-          value="${esc(movimentoEscalada)}"
+          type="text"
+          inputmode="decimal"
+          data-base="${esc(formatarDecimal(movimentoEscalada))}"
+          value="${esc(formatarDecimal(movimentoComVelocidade(movimentoEscalada, estagioVelocidade)))}"
           placeholder="0"
+          title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
 
       <div class="movimentoTipo">
-        <span class="movimentoNome">Voo</span>
+        <div class="movimentoTexto">
+          <span class="movimentoNome">Voo</span>
+          <span
+            id="metaMovimentoVoo"
+            class="movimentoMeta"
+          ></span>
+        </div>
+
         <input
           id="movimentoVoo"
           class="movimentoValor"
-          type="number"
-          min="0"
-          step="1"
-          value="${esc(movimentoVoo)}"
+          type="text"
+          inputmode="decimal"
+          data-base="${esc(formatarDecimal(movimentoVoo))}"
+          value="${esc(formatarDecimal(movimentoComVelocidade(movimentoVoo, estagioVelocidade)))}"
           placeholder="0"
+          title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
 
       <div class="movimentoTipo">
-        <span class="movimentoNome">Natação</span>
+        <div class="movimentoTexto">
+          <span class="movimentoNome">Natação</span>
+          <span
+            id="metaMovimentoNatacao"
+            class="movimentoMeta"
+          ></span>
+        </div>
+
         <input
           id="movimentoNatacao"
           class="movimentoValor"
-          type="number"
-          min="0"
-          step="1"
-          value="${esc(movimentoNatacao)}"
+          type="text"
+          inputmode="decimal"
+          data-base="${esc(formatarDecimal(movimentoNatacao))}"
+          value="${esc(formatarDecimal(movimentoComVelocidade(movimentoNatacao, estagioVelocidade)))}"
           placeholder="0"
+          title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
 
       <div class="movimentoTipo">
-        <span class="movimentoNome">Escavação</span>
+        <div class="movimentoTexto">
+          <span class="movimentoNome">Escavação</span>
+          <span
+            id="metaMovimentoEscavacao"
+            class="movimentoMeta"
+          ></span>
+        </div>
+
         <input
           id="movimentoEscavacao"
           class="movimentoValor"
-          type="number"
-          min="0"
-          step="1"
-          value="${esc(movimentoEscavacao)}"
+          type="text"
+          inputmode="decimal"
+          data-base="${esc(formatarDecimal(movimentoEscavacao))}"
+          value="${esc(formatarDecimal(movimentoComVelocidade(movimentoEscavacao, estagioVelocidade)))}"
           placeholder="0"
+          title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
 
       <div class="movimentoTipo">
-        <span class="movimentoNome">Flutuação</span>
+        <div class="movimentoTexto">
+          <span class="movimentoNome">Flutuação</span>
+          <span
+            id="metaMovimentoFlutuacao"
+            class="movimentoMeta"
+          ></span>
+        </div>
+
         <input
           id="movimentoFlutuacao"
           class="movimentoValor"
-          type="number"
-          min="0"
-          step="1"
-          value="${esc(movimentoFlutuacao)}"
+          type="text"
+          inputmode="decimal"
+          data-base="${esc(formatarDecimal(movimentoFlutuacao))}"
+          value="${esc(formatarDecimal(movimentoComVelocidade(movimentoFlutuacao, estagioVelocidade)))}"
           placeholder="0"
+          title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
     </div>
@@ -5434,6 +5934,10 @@ function mostrarFichaPokemon(token) {
     ativarRolagensSalvaguarda(token);
     ativarRolagemIniciativa(token);
     ativarCalculadoraHp();
+    ativarMovimentacaoComVelocidade(
+        token,
+        estagioVelocidade
+    );
 
     document
         .querySelector(
@@ -5461,40 +5965,34 @@ function mostrarFichaPokemon(token) {
                 }
 
                 const movimentoCaminhadaNovo =
-                    document
-                        .querySelector("#movimentoCaminhada")
-                        .value
-                        .trim();
+                    pegarMovimentoBase(
+                        "movimentoCaminhada"
+                    );
 
                 const movimentoEscaladaNovo =
-                    document
-                        .querySelector("#movimentoEscalada")
-                        .value
-                        .trim();
+                    pegarMovimentoBase(
+                        "movimentoEscalada"
+                    );
 
                 const movimentoVooNovo =
-                    document
-                        .querySelector("#movimentoVoo")
-                        .value
-                        .trim();
+                    pegarMovimentoBase(
+                        "movimentoVoo"
+                    );
 
                 const movimentoNatacaoNovo =
-                    document
-                        .querySelector("#movimentoNatacao")
-                        .value
-                        .trim();
+                    pegarMovimentoBase(
+                        "movimentoNatacao"
+                    );
 
                 const movimentoEscavacaoNovo =
-                    document
-                        .querySelector("#movimentoEscavacao")
-                        .value
-                        .trim();
+                    pegarMovimentoBase(
+                        "movimentoEscavacao"
+                    );
 
                 const movimentoFlutuacaoNovo =
-                    document
-                        .querySelector("#movimentoFlutuacao")
-                        .value
-                        .trim();
+                    pegarMovimentoBase(
+                        "movimentoFlutuacao"
+                    );
 
                 const novaHabilidade =
                     document
