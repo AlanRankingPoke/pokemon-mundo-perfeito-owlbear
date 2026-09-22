@@ -693,6 +693,10 @@ const ESTILO_FICHA = `
   .rolarAcerto,
   .rolarDano,
   .rolarCritico,
+  .rolarTesteCriticoCD,
+  .rolarPassouCD,
+  .rolarReprovouCD,
+  .rolarCriticoCD,
   .rolarD6,
   #rolarCaptura,
   #rolarIniciativa {
@@ -6271,7 +6275,6 @@ function mostrarFichaPokemonMoves(token) {
 
     BUFFS.forEach(
         (buff) => {
-
             buffs[buff.id] =
                 Number(
                     token.metadata[
@@ -6289,6 +6292,11 @@ function mostrarFichaPokemonMoves(token) {
         i++
     ) {
         golpes.push({
+            tipo:
+                token.metadata[
+                    `${PREFIX}/golpe${i}Tipo`
+                ] ?? "",
+
             nome:
                 token.metadata[
                     `${PREFIX}/golpe${i}Nome`
@@ -6307,6 +6315,16 @@ function mostrarFichaPokemonMoves(token) {
             dano:
                 token.metadata[
                     `${PREFIX}/golpe${i}Dano`
+                ] ?? "",
+
+            cd:
+                token.metadata[
+                    `${PREFIX}/golpe${i}CD`
+                ] ?? "",
+
+            danoCD:
+                token.metadata[
+                    `${PREFIX}/golpe${i}DanoCD`
                 ] ?? ""
         });
     }
@@ -6315,13 +6333,14 @@ function mostrarFichaPokemonMoves(token) {
 
     golpes.forEach(
         (golpe, index) => {
+            const numero = index + 1;
+            const titulo = golpe.nome || `Move ${numero}`;
 
-            const numero =
-                index + 1;
-
-            const titulo =
-                golpe.nome ||
-                `Golpe ${numero}`;
+            const tipoInicial =
+                ["macerto", "mcd", "cura", "buffdebuff"]
+                    .includes(golpe.tipo)
+                    ? golpe.tipo
+                    : "";
 
             const categoriaInicial =
                 golpe.categoria === "especial"
@@ -6329,6 +6348,11 @@ function mostrarFichaPokemonMoves(token) {
                     : golpe.categoria === "fisico"
                         ? "fisico"
                         : "";
+
+            const mostrarNome = tipoInicial !== "";
+            const ehAtaque =
+                tipoInicial === "macerto" ||
+                tipoInicial === "mcd";
 
             htmlGolpes += `
         <details style="
@@ -6344,9 +6368,13 @@ function mostrarFichaPokemonMoves(token) {
             ${numero}. ${esc(titulo)}
           </summary>
 
-          <div style="
-            margin-top:10px;
-          ">
+          <div style="margin-top:10px;">
+
+            <input
+              id="golpe${numero}Tipo"
+              type="hidden"
+              value="${tipoInicial}"
+            >
 
             <input
               id="golpe${numero}Categoria"
@@ -6355,188 +6383,394 @@ function mostrarFichaPokemonMoves(token) {
             >
 
             <div style="
-              display:flex;
-              align-items:flex-end;
-              gap:6px;
-              margin-bottom:8px;
-            ">
-
-              <div style="
-                flex:1;
-                min-width:0;
-              ">
-                <label style="
-                  display:block;
-                  margin-bottom:3px;
-                ">Nome</label>
-
-                <input
-                  id="golpe${numero}Nome"
-                  type="text"
-                  value="${esc(golpe.nome)}"
-                  placeholder="Nome do golpe"
-                  style="
-                    width:100%;
-                    min-height:32px !important;
-                    height:32px;
-                    padding:5px 7px !important;
-                    box-sizing:border-box;
-                  "
-                >
-              </div>
-
-              <button
-                type="button"
-                class="categoriaGolpe"
-                data-golpe="${numero}"
-                data-categoria="fisico"
-                title="Move físico"
-                style="
-                  flex:0 0 78px;
-                  min-height:32px !important;
-                  height:32px;
-                  padding:4px 5px !important;
-                  box-sizing:border-box;
-                  cursor:pointer;
-                  font-size:9px;
-                  line-height:1;
-                  font-weight:bold;
-                  white-space:nowrap;
-                  opacity:${categoriaInicial === "fisico" ? "1" : "0.55"};
-                  border:${categoriaInicial === "fisico" ? "2px solid #FFFFFF" : "1px solid #666"};
-                "
-              >
-                ⚔️ FÍSICO
-              </button>
-
-              <button
-                type="button"
-                class="categoriaGolpe"
-                data-golpe="${numero}"
-                data-categoria="especial"
-                title="Move especial"
-                style="
-                  flex:0 0 82px;
-                  min-height:32px !important;
-                  height:32px;
-                  padding:4px 5px !important;
-                  box-sizing:border-box;
-                  cursor:pointer;
-                  font-size:9px;
-                  line-height:1;
-                  font-weight:bold;
-                  white-space:nowrap;
-                  opacity:${categoriaInicial === "especial" ? "1" : "0.55"};
-                  border:${categoriaInicial === "especial" ? "2px solid #FFFFFF" : "1px solid #666"};
-                "
-              >
-                ✨ ESPECIAL
-              </button>
-
-            </div>
-
-            <div style="
               display:grid;
-              grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
-              gap:8px;
+              grid-template-columns:repeat(4, minmax(0, 1fr));
+              gap:5px;
               margin-bottom:9px;
             ">
+              <button
+                type="button"
+                class="tipoMove"
+                data-golpe="${numero}"
+                data-tipo="macerto"
+                style="
+                  min-height:34px !important;
+                  padding:5px 3px !important;
+                  font-size:9px;
+                  line-height:1.05;
+                  cursor:pointer;
+                  opacity:${tipoInicial === "macerto" ? "1" : "0.62"};
+                  border:${tipoInicial === "macerto" ? "2px solid #4C8DFF" : "1px solid #c9d5e3"};
+                "
+              >
+                M.ACERTO
+              </button>
 
-              <div style="min-width:0;">
-                <label style="
-                  display:block;
-                  margin-bottom:3px;
-                ">Acerto</label>
+              <button
+                type="button"
+                class="tipoMove"
+                data-golpe="${numero}"
+                data-tipo="mcd"
+                style="
+                  min-height:34px !important;
+                  padding:5px 3px !important;
+                  font-size:9px;
+                  line-height:1.05;
+                  cursor:pointer;
+                  opacity:${tipoInicial === "mcd" ? "1" : "0.62"};
+                  border:${tipoInicial === "mcd" ? "2px solid #4C8DFF" : "1px solid #c9d5e3"};
+                "
+              >
+                M.CD
+              </button>
 
-                <input
-                  id="golpe${numero}Acerto"
-                  type="text"
-                  value="${esc(golpe.acerto)}"
-                  placeholder="Ex: 1d20+8"
-                  style="
-                    width:100%;
-                    min-height:32px !important;
-                    height:32px;
-                    padding:5px 7px !important;
-                    box-sizing:border-box;
-                  "
-                >
-              </div>
+              <button
+                type="button"
+                class="tipoMove"
+                data-golpe="${numero}"
+                data-tipo="cura"
+                style="
+                  min-height:34px !important;
+                  padding:5px 3px !important;
+                  font-size:9px;
+                  line-height:1.05;
+                  cursor:pointer;
+                  opacity:${tipoInicial === "cura" ? "1" : "0.62"};
+                  border:${tipoInicial === "cura" ? "2px solid #4C8DFF" : "1px solid #c9d5e3"};
+                "
+              >
+                CURAS
+              </button>
 
-              <div style="min-width:0;">
-                <label style="
-                  display:block;
-                  margin-bottom:3px;
-                ">Dano</label>
-
-                <input
-                  id="golpe${numero}Dano"
-                  type="text"
-                  value="${esc(golpe.dano)}"
-                  placeholder="Ex: 3d8+5"
-                  style="
-                    width:100%;
-                    min-height:32px !important;
-                    height:32px;
-                    padding:5px 7px !important;
-                    box-sizing:border-box;
-                  "
-                >
-              </div>
-
+              <button
+                type="button"
+                class="tipoMove"
+                data-golpe="${numero}"
+                data-tipo="buffdebuff"
+                style="
+                  min-height:34px !important;
+                  padding:5px 2px !important;
+                  font-size:8px;
+                  line-height:1.05;
+                  cursor:pointer;
+                  opacity:${tipoInicial === "buffdebuff" ? "1" : "0.62"};
+                  border:${tipoInicial === "buffdebuff" ? "2px solid #4C8DFF" : "1px solid #c9d5e3"};
+                "
+              >
+                BUFFS / DEBUFFS
+              </button>
             </div>
 
-            <div style="
-              display:flex;
-              gap:6px;
-            ">
+            <div
+              id="golpe${numero}BlocoNome"
+              style="display:${mostrarNome ? "block" : "none"};"
+            >
+              <div style="
+                display:flex;
+                align-items:flex-end;
+                gap:6px;
+                margin-bottom:8px;
+              ">
+                <div style="flex:1; min-width:0;">
+                  <label style="display:block; margin-bottom:3px;">Nome</label>
+                  <input
+                    id="golpe${numero}Nome"
+                    type="text"
+                    value="${esc(golpe.nome)}"
+                    placeholder="Nome do move"
+                    style="
+                      width:100%;
+                      min-height:32px !important;
+                      height:32px;
+                      padding:5px 7px !important;
+                      box-sizing:border-box;
+                    "
+                  >
+                </div>
 
-              <button
-                type="button"
-                class="rolarAcerto"
-                data-golpe="${numero}"
-                style="
-                  flex:1;
-                  padding:8px;
-                  cursor:pointer;
-                  font-weight:bold;
-                "
-              >
-                🎲 ACERTO
-              </button>
+                <div
+                  id="golpe${numero}GrupoCategoria"
+                  style="
+                    display:${ehAtaque ? "flex" : "none"};
+                    gap:5px;
+                    flex:0 0 auto;
+                  "
+                >
+                  <button
+                    type="button"
+                    class="categoriaGolpe"
+                    data-golpe="${numero}"
+                    data-categoria="fisico"
+                    title="Move físico"
+                    style="
+                      width:72px;
+                      min-height:32px !important;
+                      height:32px;
+                      padding:4px 4px !important;
+                      box-sizing:border-box;
+                      cursor:pointer;
+                      font-size:9px;
+                      line-height:1;
+                      font-weight:bold;
+                      white-space:nowrap;
+                      opacity:${categoriaInicial === "fisico" ? "1" : "0.55"};
+                      border:${categoriaInicial === "fisico" ? "2px solid #FFFFFF" : "1px solid #666"};
+                    "
+                  >
+                    ⚔️ FÍSICO
+                  </button>
 
-              <button
-                type="button"
-                class="rolarDano"
-                data-golpe="${numero}"
-                style="
-                  flex:1;
-                  padding:8px;
-                  cursor:pointer;
-                  font-weight:bold;
-                "
-              >
-                🎲 DANO
-              </button>
+                  <button
+                    type="button"
+                    class="categoriaGolpe"
+                    data-golpe="${numero}"
+                    data-categoria="especial"
+                    title="Move especial"
+                    style="
+                      width:76px;
+                      min-height:32px !important;
+                      height:32px;
+                      padding:4px 4px !important;
+                      box-sizing:border-box;
+                      cursor:pointer;
+                      font-size:9px;
+                      line-height:1;
+                      font-weight:bold;
+                      white-space:nowrap;
+                      opacity:${categoriaInicial === "especial" ? "1" : "0.55"};
+                      border:${categoriaInicial === "especial" ? "2px solid #FFFFFF" : "1px solid #666"};
+                    "
+                  >
+                    ✨ ESPECIAL
+                  </button>
+                </div>
+              </div>
+            </div>
 
-              <button
-                type="button"
-                class="rolarCritico"
-                data-golpe="${numero}"
-                style="
-                  flex:1;
-                  padding:8px;
-                  cursor:pointer;
-                  font-weight:bold;
-                "
-              >
-                💥 CRÍTICO
-              </button>
+            <div
+              id="golpe${numero}PainelMAcerto"
+              style="display:${tipoInicial === "macerto" ? "block" : "none"};"
+            >
+              <div style="
+                display:grid;
+                grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+                gap:8px;
+                margin-bottom:9px;
+              ">
+                <div style="min-width:0;">
+                  <label style="display:block; margin-bottom:3px;">Acerto</label>
+                  <input
+                    id="golpe${numero}Acerto"
+                    type="text"
+                    value="${esc(golpe.acerto)}"
+                    placeholder="Ex: 1d20+8"
+                    style="
+                      width:100%;
+                      min-height:32px !important;
+                      height:32px;
+                      padding:5px 7px !important;
+                      box-sizing:border-box;
+                    "
+                  >
+                </div>
 
+                <div style="min-width:0;">
+                  <label style="display:block; margin-bottom:3px;">Dano</label>
+                  <input
+                    id="golpe${numero}Dano"
+                    type="text"
+                    value="${esc(golpe.dano)}"
+                    placeholder="Ex: 3d8+5"
+                    style="
+                      width:100%;
+                      min-height:32px !important;
+                      height:32px;
+                      padding:5px 7px !important;
+                      box-sizing:border-box;
+                    "
+                  >
+                </div>
+              </div>
+
+              <div style="display:flex; gap:6px;">
+                <button
+                  type="button"
+                  class="rolarAcerto"
+                  data-golpe="${numero}"
+                  style="flex:1; padding:8px; cursor:pointer; font-weight:bold;"
+                >
+                  🎲 ACERTO
+                </button>
+
+                <button
+                  type="button"
+                  class="rolarDano"
+                  data-golpe="${numero}"
+                  style="flex:1; padding:8px; cursor:pointer; font-weight:bold;"
+                >
+                  🎲 DANO
+                </button>
+
+                <button
+                  type="button"
+                  class="rolarCritico"
+                  data-golpe="${numero}"
+                  style="flex:1; padding:8px; cursor:pointer; font-weight:bold;"
+                >
+                  💥 CRÍTICO
+                </button>
+              </div>
+            </div>
+
+            <div
+              id="golpe${numero}PainelMCD"
+              style="display:${tipoInicial === "mcd" ? "block" : "none"};"
+            >
+              <div style="
+                display:flex;
+                align-items:flex-end;
+                gap:7px;
+                margin-bottom:8px;
+              ">
+                <div style="width:105px; flex:0 0 105px;">
+                  <label style="display:block; margin-bottom:3px;">CD</label>
+                  <input
+                    id="golpe${numero}CD"
+                    type="number"
+                    value="${esc(golpe.cd)}"
+                    placeholder="Ex: 15"
+                    style="
+                      width:100%;
+                      min-height:32px !important;
+                      height:32px;
+                      padding:5px 7px !important;
+                      text-align:center;
+                      box-sizing:border-box;
+                    "
+                  >
+                </div>
+
+                <button
+                  type="button"
+                  class="rolarTesteCriticoCD"
+                  data-golpe="${numero}"
+                  style="
+                    flex:1;
+                    min-height:32px !important;
+                    height:32px;
+                    padding:5px 7px !important;
+                    cursor:pointer;
+                    font-size:10px;
+                    font-weight:bold;
+                  "
+                >
+                  🎲 TESTE CRÍTICO
+                </button>
+              </div>
+
+              <div style="margin-bottom:8px;">
+                <label style="display:block; margin-bottom:3px;">Dano</label>
+                <input
+                  id="golpe${numero}DanoCD"
+                  type="text"
+                  value="${esc(golpe.danoCD)}"
+                  placeholder="Ex: 1d10+10"
+                  style="
+                    width:100%;
+                    min-height:32px !important;
+                    height:32px;
+                    padding:5px 7px !important;
+                    box-sizing:border-box;
+                  "
+                >
+              </div>
+
+              <div style="
+                display:grid;
+                grid-template-columns:repeat(3, minmax(0, 1fr));
+                gap:6px;
+              ">
+                <button
+                  type="button"
+                  class="rolarPassouCD"
+                  data-golpe="${numero}"
+                  style="
+                    min-height:38px !important;
+                    padding:6px 4px !important;
+                    cursor:pointer;
+                    font-size:9px;
+                    line-height:1.1;
+                    font-weight:bold;
+                  "
+                >
+                  ✅ PASSOU NA CD
+                </button>
+
+                <button
+                  type="button"
+                  class="rolarReprovouCD"
+                  data-golpe="${numero}"
+                  style="
+                    min-height:38px !important;
+                    padding:6px 4px !important;
+                    cursor:pointer;
+                    font-size:9px;
+                    line-height:1.1;
+                    font-weight:bold;
+                  "
+                >
+                  ❌ REPROVOU CD
+                </button>
+
+                <button
+                  type="button"
+                  class="rolarCriticoCD"
+                  data-golpe="${numero}"
+                  style="
+                    min-height:38px !important;
+                    padding:6px 4px !important;
+                    cursor:pointer;
+                    font-size:9px;
+                    line-height:1.1;
+                    font-weight:bold;
+                  "
+                >
+                  💥 GOLPE CRÍTICO
+                </button>
+              </div>
+            </div>
+
+            <div
+              id="golpe${numero}PainelCura"
+              style="
+                display:${tipoInicial === "cura" ? "block" : "none"};
+                padding:10px;
+                border:1px dashed #c8d5e5;
+                border-radius:8px;
+                color:#6c7d93;
+                font-size:11px;
+                text-align:center;
+              "
+            >
+              Categoria CURAS selecionada. A mecânica própria de cura pode ser configurada na próxima etapa.
+            </div>
+
+            <div
+              id="golpe${numero}PainelBuffDebuff"
+              style="
+                display:${tipoInicial === "buffdebuff" ? "block" : "none"};
+                padding:10px;
+                border:1px dashed #c8d5e5;
+                border-radius:8px;
+                color:#6c7d93;
+                font-size:11px;
+                text-align:center;
+              "
+            >
+              Categoria BUFFS / DEBUFFS selecionada. A mecânica própria desta categoria pode ser configurada na próxima etapa.
             </div>
 
           </div>
-
         </details>
       `;
         }
@@ -6553,12 +6787,10 @@ function mostrarFichaPokemonMoves(token) {
       gap:6px;
       flex-wrap:wrap;
     ">
-
       ${criarBuffs(
           buffs,
           proficiencia
       )}
-
     </div>
 
     <hr>
@@ -6585,10 +6817,8 @@ function mostrarFichaPokemonMoves(token) {
     ativarCabecalhoPokemon(token);
 
     function atualizarBuffsPagina() {
-
         BUFFS.forEach(
             (buff) => {
-
                 const campoBuff =
                     document.querySelector(
                         `#buff-${buff.id}`
@@ -6626,12 +6856,9 @@ function mostrarFichaPokemonMoves(token) {
     }
 
     document
-        .querySelectorAll(
-            ".campoBuff"
-        )
+        .querySelectorAll(".campoBuff")
         .forEach(
             (campo) => {
-
                 campo.addEventListener(
                     "input",
                     () => {
@@ -6646,13 +6873,10 @@ function mostrarFichaPokemonMoves(token) {
                                 buffId
                             );
 
-                        // Atualiza a cópia local imediatamente.
                         token.metadata[
                             `${PREFIX}/buff-${buffId}`
                         ] = valorBuff;
 
-                        // E grava o estágio imediatamente no Owlbear, sem
-                        // depender do debounce do autosave geral da página.
                         salvamentoBuffPendente =
                             salvamentoBuffPendente
                                 .catch(() => {})
@@ -6668,7 +6892,6 @@ function mostrarFichaPokemonMoves(token) {
                                         }
                                     );
 
-                                    // EVAS também atualiza o HUD de CA na hora.
                                     if (buffId === "evas") {
                                         const hpAtualHud =
                                             Number(
@@ -6724,21 +6947,160 @@ function mostrarFichaPokemonMoves(token) {
             }
         );
 
+    function atualizarTipoMoveVisual(numero, tipo) {
+        const tiposValidos =
+            ["macerto", "mcd", "cura", "buffdebuff"];
+
+        const tipoSeguro =
+            tiposValidos.includes(tipo)
+                ? tipo
+                : "";
+
+        const campoTipo =
+            document.querySelector(
+                `#golpe${numero}Tipo`
+            );
+
+        if (campoTipo) {
+            campoTipo.value = tipoSeguro;
+        }
+
+        document
+            .querySelectorAll(
+                `.tipoMove[data-golpe="${numero}"]`
+            )
+            .forEach(
+                (opcao) => {
+                    const ativo =
+                        opcao.dataset.tipo === tipoSeguro;
+
+                    opcao.style.opacity =
+                        ativo ? "1" : "0.62";
+
+                    opcao.style.border =
+                        ativo
+                            ? "2px solid #4C8DFF"
+                            : "1px solid #c9d5e3";
+
+                    opcao.style.background =
+                        ativo
+                            ? "#eaf3ff"
+                            : "";
+                }
+            );
+
+        const blocoNome =
+            document.querySelector(
+                `#golpe${numero}BlocoNome`
+            );
+
+        const grupoCategoria =
+            document.querySelector(
+                `#golpe${numero}GrupoCategoria`
+            );
+
+        const painelMAcerto =
+            document.querySelector(
+                `#golpe${numero}PainelMAcerto`
+            );
+
+        const painelMCD =
+            document.querySelector(
+                `#golpe${numero}PainelMCD`
+            );
+
+        const painelCura =
+            document.querySelector(
+                `#golpe${numero}PainelCura`
+            );
+
+        const painelBuffDebuff =
+            document.querySelector(
+                `#golpe${numero}PainelBuffDebuff`
+            );
+
+        const ehAtaque =
+            tipoSeguro === "macerto" ||
+            tipoSeguro === "mcd";
+
+        if (blocoNome) {
+            blocoNome.style.display =
+                tipoSeguro ? "block" : "none";
+        }
+
+        if (grupoCategoria) {
+            grupoCategoria.style.display =
+                ehAtaque ? "flex" : "none";
+        }
+
+        if (painelMAcerto) {
+            painelMAcerto.style.display =
+                tipoSeguro === "macerto"
+                    ? "block"
+                    : "none";
+        }
+
+        if (painelMCD) {
+            painelMCD.style.display =
+                tipoSeguro === "mcd"
+                    ? "block"
+                    : "none";
+        }
+
+        if (painelCura) {
+            painelCura.style.display =
+                tipoSeguro === "cura"
+                    ? "block"
+                    : "none";
+        }
+
+        if (painelBuffDebuff) {
+            painelBuffDebuff.style.display =
+                tipoSeguro === "buffdebuff"
+                    ? "block"
+                    : "none";
+        }
+    }
+
+    document
+        .querySelectorAll(".tipoMove")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const tipo =
+                            botao.dataset.tipo;
+
+                        atualizarTipoMoveVisual(
+                            numero,
+                            tipo
+                        );
+
+                        // O tipo do move é uma escolha estrutural. Salva
+                        // imediatamente para não depender do debounce geral.
+                        document
+                            .querySelector("#salvarPokemonMoves")
+                            ?.click();
+                    }
+                );
+            }
+        );
+
     // =================================================
     // FÍSICO / ESPECIAL
     // =================================================
 
     document
-        .querySelectorAll(
-            ".categoriaGolpe"
-        )
+        .querySelectorAll(".categoriaGolpe")
         .forEach(
             (botao) => {
-
                 botao.addEventListener(
                     "click",
                     () => {
-
                         const numero =
                             botao.dataset.golpe;
 
@@ -6759,15 +7121,12 @@ function mostrarFichaPokemonMoves(token) {
                             )
                             .forEach(
                                 (opcao) => {
-
                                     const ativo =
                                         opcao.dataset.categoria ===
                                         categoria;
 
                                     opcao.style.opacity =
-                                        ativo
-                                            ? "1"
-                                            : "0.55";
+                                        ativo ? "1" : "0.55";
 
                                     opcao.style.border =
                                         ativo
@@ -6780,171 +7139,150 @@ function mostrarFichaPokemonMoves(token) {
             }
         );
 
-    // =================================================
-// ROLAR ACERTO
-// BUFF NÃO ENTRA AQUI
-// =================================================
-
-document
-  .querySelectorAll(
-    ".rolarAcerto"
-  )
-  .forEach(
-    (botao) => {
-
-      botao.addEventListener(
-        "click",
-        async () => {
-
-          const numero =
-            botao.dataset.golpe;
-
-          const nome =
+    function nomeGolpe(numero) {
+        return (
             document
-              .querySelector(
-                `#golpe${numero}Nome`
-              )
-              .value;
-
-          const formula =
-            document
-              .querySelector(
-                `#golpe${numero}Acerto`
-              )
-              .value
-              .trim();
-
-          if (!formula) {
-            alert(
-              "A fórmula de acerto está vazia."
-            );
-
-            return;
-          }
-
-          await rolarNoDicePlus(
-            formula,
-            nome ||
-              `Golpe ${numero}`,
-            "Acerto"
-          );
-        }
-      );
+                .querySelector(
+                    `#golpe${numero}Nome`
+                )
+                ?.value
+                .trim() ||
+            `Move ${numero}`
+        );
     }
-  );
 
-
-// =================================================
-// ROLAR DANO + BUFF AUTOMÁTICO
-// =================================================
-
-document
-  .querySelectorAll(
-    ".rolarDano"
-  )
-  .forEach(
-    (botao) => {
-
-      botao.addEventListener(
-        "click",
-        async () => {
-
-          const numero =
-            botao.dataset.golpe;
-
-          const nome =
+    function formulaDanoComBuff(
+        numero,
+        formulaOriginal
+    ) {
+        const categoria =
             document
-              .querySelector(
-                `#golpe${numero}Nome`
-              )
-              .value;
+                .querySelector(
+                    `#golpe${numero}Categoria`
+                )
+                ?.value || "";
 
-          const formulaOriginal =
-            document
-              .querySelector(
-                `#golpe${numero}Dano`
-              )
-              .value
-              .trim();
-
-          if (!formulaOriginal) {
+        if (!categoria) {
             alert(
-              "A fórmula de dano está vazia."
+                "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o dano."
             );
 
-            return;
-          }
+            return null;
+        }
 
-          const categoria =
-            document
-              .querySelector(
-                `#golpe${numero}Categoria`
-              )
-              .value;
-
-          if (!categoria) {
-            alert(
-              "Escolha se o golpe é FÍSICO ou ESPECIAL antes de rolar o dano."
-            );
-
-            return;
-          }
-
-          let estagioBuff = 0;
-
-          if (
+        const buffId =
             categoria === "fisico"
-          ) {
-            estagioBuff =
-              Number(
-                document
-                  .querySelector(
-                    "#buff-atq"
-                  )
-                  ?.value
-              ) || 0;
-          }
+                ? "atq"
+                : "atqsp";
 
-          if (
-            categoria === "especial"
-          ) {
-            estagioBuff =
-              Number(
+        const estagioBuff =
+            normalizarEstagioBuff(
                 document
-                  .querySelector(
-                    "#buff-atqsp"
-                  )
-                  ?.value
-              ) || 0;
-          }
-
-          const bonusBuff =
-            bonusPorEstagio(
-              categoria === "fisico" ? "atq" : "atqsp",
-              estagioBuff,
-              proficiencia
+                    .querySelector(
+                        `#buff-${buffId}`
+                    )
+                    ?.value,
+                buffId
             );
 
-          const formulaFinal =
-            bonusBuff > 0
-              ? `${formulaOriginal}+${bonusBuff}`
-              : bonusBuff < 0
-                ? `${formulaOriginal}${bonusBuff}`
-                : formulaOriginal;
+        const bonusBuff =
+            bonusPorEstagio(
+                buffId,
+                estagioBuff,
+                proficiencia
+            );
 
-          await rolarNoDicePlus(
-            formulaFinal,
-            nome ||
-              `Golpe ${numero}`,
-            "Dano"
-          );
-        }
-      );
+        return adicionarBonusNaFormula(
+            formulaOriginal,
+            bonusBuff
+        );
     }
-  );
+
     // =================================================
-    // ROLAR CRÍTICO — DOBRA SOMENTE OS DADOS
+    // M.ACERTO
     // =================================================
+
+    document
+        .querySelectorAll(".rolarAcerto")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const formula =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}Acerto`
+                                )
+                                .value
+                                .trim();
+
+                        if (!formula) {
+                            alert(
+                                "A fórmula de acerto está vazia."
+                            );
+
+                            return;
+                        }
+
+                        await rolarNoDicePlus(
+                            formula,
+                            nomeGolpe(numero),
+                            "Acerto"
+                        );
+                    }
+                );
+            }
+        );
+
+    document
+        .querySelectorAll(".rolarDano")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const formulaOriginal =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}Dano`
+                                )
+                                .value
+                                .trim();
+
+                        if (!formulaOriginal) {
+                            alert(
+                                "A fórmula de dano está vazia."
+                            );
+
+                            return;
+                        }
+
+                        const formulaFinal =
+                            formulaDanoComBuff(
+                                numero,
+                                formulaOriginal
+                            );
+
+                        if (!formulaFinal) {
+                            return;
+                        }
+
+                        await rolarNoDicePlus(
+                            formulaFinal,
+                            nomeGolpe(numero),
+                            "Dano"
+                        );
+                    }
+                );
+            }
+        );
 
     document
         .querySelectorAll(".rolarCritico")
@@ -6953,44 +7291,282 @@ document
                 botao.addEventListener(
                     "click",
                     async () => {
-                        const numero = botao.dataset.golpe;
-                        const nome = document.querySelector(`#golpe${numero}Nome`).value;
-                        const formulaOriginal = document.querySelector(`#golpe${numero}Dano`).value.trim();
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const formulaOriginal =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}Dano`
+                                )
+                                .value
+                                .trim();
 
                         if (!formulaOriginal) {
-                            alert("A fórmula de dano está vazia.");
+                            alert(
+                                "A fórmula de dano está vazia."
+                            );
+
                             return;
                         }
 
-                        const categoria = document.querySelector(`#golpe${numero}Categoria`).value;
+                        const categoria =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}Categoria`
+                                )
+                                ?.value || "";
 
                         if (!categoria) {
-                            alert("Escolha se o golpe é FÍSICO ou ESPECIAL antes de rolar o crítico.");
+                            alert(
+                                "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico."
+                            );
+
                             return;
                         }
 
-                        let estagioBuff = 0;
+                        const buffId =
+                            categoria === "fisico"
+                                ? "atq"
+                                : "atqsp";
 
-                        if (categoria === "fisico") {
-                            estagioBuff = Number(document.querySelector("#buff-atq")?.value) || 0;
-                        }
+                        const estagioBuff =
+                            normalizarEstagioBuff(
+                                document
+                                    .querySelector(
+                                        `#buff-${buffId}`
+                                    )
+                                    ?.value,
+                                buffId
+                            );
 
-                        if (categoria === "especial") {
-                            estagioBuff = Number(document.querySelector("#buff-atqsp")?.value) || 0;
-                        }
+                        const bonusBuff =
+                            bonusPorEstagio(
+                                buffId,
+                                estagioBuff,
+                                proficiencia
+                            );
 
-                        const bonusBuff = bonusPorEstagio(
-                            categoria === "fisico" ? "atq" : "atqsp",
-                            estagioBuff,
-                            proficiencia
-                        );
-                        const formulaCritica = duplicarDadosFormula(formulaOriginal);
-                        const formulaFinal = adicionarBonusNaFormula(formulaCritica, bonusBuff);
+                        const formulaCritica =
+                            duplicarDadosFormula(
+                                formulaOriginal
+                            );
+
+                        const formulaFinal =
+                            adicionarBonusNaFormula(
+                                formulaCritica,
+                                bonusBuff
+                            );
 
                         await rolarNoDicePlus(
                             formulaFinal,
-                            nome || `Golpe ${numero}`,
+                            nomeGolpe(numero),
                             "Crítico"
+                        );
+                    }
+                );
+            }
+        );
+
+    // =================================================
+    // M.CD
+    // =================================================
+
+    document
+        .querySelectorAll(".rolarTesteCriticoCD")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        await rolarNoDicePlus(
+                            "1d20",
+                            nomeGolpe(numero),
+                            "Teste Crítico"
+                        );
+                    }
+                );
+            }
+        );
+
+    document
+        .querySelectorAll(".rolarPassouCD")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const formulaOriginal =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}DanoCD`
+                                )
+                                .value
+                                .trim();
+
+                        if (!formulaOriginal) {
+                            alert(
+                                "A fórmula de dano está vazia."
+                            );
+
+                            return;
+                        }
+
+                        const formulaComBuff =
+                            formulaDanoComBuff(
+                                numero,
+                                formulaOriginal
+                            );
+
+                        if (!formulaComBuff) {
+                            return;
+                        }
+
+                        // Divide o TOTAL final por 2. Os parênteses garantem
+                        // que modificadores fixos também sejam reduzidos.
+                        const formulaFinal =
+                            `(${formulaComBuff})/2`;
+
+                        await rolarNoDicePlus(
+                            formulaFinal,
+                            nomeGolpe(numero),
+                            "Passou na CD"
+                        );
+                    }
+                );
+            }
+        );
+
+    document
+        .querySelectorAll(".rolarReprovouCD")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const formulaOriginal =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}DanoCD`
+                                )
+                                .value
+                                .trim();
+
+                        if (!formulaOriginal) {
+                            alert(
+                                "A fórmula de dano está vazia."
+                            );
+
+                            return;
+                        }
+
+                        const formulaFinal =
+                            formulaDanoComBuff(
+                                numero,
+                                formulaOriginal
+                            );
+
+                        if (!formulaFinal) {
+                            return;
+                        }
+
+                        await rolarNoDicePlus(
+                            formulaFinal,
+                            nomeGolpe(numero),
+                            "Reprovou CD"
+                        );
+                    }
+                );
+            }
+        );
+
+    document
+        .querySelectorAll(".rolarCriticoCD")
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const numero =
+                            botao.dataset.golpe;
+
+                        const formulaOriginal =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}DanoCD`
+                                )
+                                .value
+                                .trim();
+
+                        if (!formulaOriginal) {
+                            alert(
+                                "A fórmula de dano está vazia."
+                            );
+
+                            return;
+                        }
+
+                        const categoria =
+                            document
+                                .querySelector(
+                                    `#golpe${numero}Categoria`
+                                )
+                                ?.value || "";
+
+                        if (!categoria) {
+                            alert(
+                                "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico."
+                            );
+
+                            return;
+                        }
+
+                        const buffId =
+                            categoria === "fisico"
+                                ? "atq"
+                                : "atqsp";
+
+                        const estagioBuff =
+                            normalizarEstagioBuff(
+                                document
+                                    .querySelector(
+                                        `#buff-${buffId}`
+                                    )
+                                    ?.value,
+                                buffId
+                            );
+
+                        const bonusBuff =
+                            bonusPorEstagio(
+                                buffId,
+                                estagioBuff,
+                                proficiencia
+                            );
+
+                        const formulaCritica =
+                            duplicarDadosFormula(
+                                formulaOriginal
+                            );
+
+                        const formulaFinal =
+                            adicionarBonusNaFormula(
+                                formulaCritica,
+                                bonusBuff
+                            );
+
+                        await rolarNoDicePlus(
+                            formulaFinal,
+                            nomeGolpe(numero),
+                            "Golpe Crítico"
                         );
                     }
                 );
@@ -7002,18 +7578,14 @@ document
     // =================================================
 
     document
-        .querySelector(
-            "#salvarPokemonMoves"
-        )
+        .querySelector("#salvarPokemonMoves")
         .addEventListener(
             "click",
             async () => {
-
                 const novosBuffs = {};
 
                 BUFFS.forEach(
                     (buff) => {
-
                         novosBuffs[buff.id] =
                             normalizarEstagioBuff(
                                 document
@@ -7033,6 +7605,12 @@ document
                     i <= 5;
                     i++
                 ) {
+                    const tipoCampo =
+                        document
+                            .querySelector(
+                                `#golpe${i}Tipo`
+                            )
+                            .value;
 
                     const categoriaCampo =
                         document
@@ -7042,6 +7620,12 @@ document
                             .value;
 
                     novosGolpes.push({
+                        tipo:
+                            ["macerto", "mcd", "cura", "buffdebuff"]
+                                .includes(tipoCampo)
+                                ? tipoCampo
+                                : "",
+
                         nome:
                             document
                                 .querySelector(
@@ -7071,6 +7655,22 @@ document
                                     `#golpe${i}Dano`
                                 )
                                 .value
+                                .trim(),
+
+                        cd:
+                            document
+                                .querySelector(
+                                    `#golpe${i}CD`
+                                )
+                                .value
+                                .trim(),
+
+                        danoCD:
+                            document
+                                .querySelector(
+                                    `#golpe${i}DanoCD`
+                                )
+                                .value
                                 .trim()
                     });
                 }
@@ -7078,60 +7678,54 @@ document
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
-
-                        for (
-                            const item
-                            of items
-                        ) {
-
+                        for (const item of items) {
                             BUFFS.forEach(
                                 (buff) => {
-
                                     item.metadata[
                                         `${PREFIX}/buff-${buff.id}`
                                     ] =
-                                        novosBuffs[
-                                            buff.id
-                                        ];
+                                        novosBuffs[buff.id];
                                 }
                             );
 
                             novosGolpes.forEach(
-                                (
-                                    golpe,
-                                    index
-                                ) => {
-
+                                (golpe, index) => {
                                     const numero =
                                         index + 1;
 
                                     item.metadata[
+                                        `${PREFIX}/golpe${numero}Tipo`
+                                    ] = golpe.tipo;
+
+                                    item.metadata[
                                         `${PREFIX}/golpe${numero}Nome`
-                                    ] =
-                                        golpe.nome;
+                                    ] = golpe.nome;
 
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Categoria`
-                                    ] =
-                                        golpe.categoria;
+                                    ] = golpe.categoria;
 
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Acerto`
-                                    ] =
-                                        golpe.acerto;
+                                    ] = golpe.acerto;
 
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Dano`
-                                    ] =
-                                        golpe.dano;
+                                    ] = golpe.dano;
+
+                                    item.metadata[
+                                        `${PREFIX}/golpe${numero}CD`
+                                    ] = golpe.cd;
+
+                                    item.metadata[
+                                        `${PREFIX}/golpe${numero}DanoCD`
+                                    ] = golpe.danoCD;
                                 }
                             );
                         }
                     }
                 );
 
-                // EVAS também altera a CA visível no HUD imediatamente.
-                // A CA salva no token continua sendo a CA-base.
                 const hpAtualHud =
                     Number(
                         token.metadata[
