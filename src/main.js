@@ -2476,40 +2476,49 @@ function mostrarFichaTreinadorPagina1(
 
     <div style="
       display:flex;
-      gap:8px;
+      gap:6px;
       align-items:flex-end;
+      width:100%;
     ">
-      <div style="
-        flex:1;
-        min-width:0;
-      ">
+      <div style="flex:1; min-width:0;">
         <p>HP Atual</p>
-
         <input
           id="hpAtual"
           type="number"
           value="${hpAtual}"
-          style="
-            width:100%;
-            box-sizing:border-box;
-          "
+          style="width:100%; box-sizing:border-box; text-align:center;"
         >
       </div>
 
-      <div style="
-        flex:1;
-        min-width:0;
-      ">
+      <div style="flex:1; min-width:0;">
         <p>HP Máx.</p>
-
         <input
           id="hpMax"
           type="number"
           value="${hpMax}"
-          style="
-            width:100%;
-            box-sizing:border-box;
-          "
+          style="width:100%; box-sizing:border-box; text-align:center;"
+        >
+      </div>
+
+      <div style="flex:1; min-width:0;">
+        <p>CA</p>
+        <input
+          id="ca"
+          type="number"
+          value="${ca}"
+          style="width:100%; box-sizing:border-box; text-align:center;"
+        >
+      </div>
+
+      <div style="flex:1; min-width:0;">
+        <p>Prof</p>
+        <input
+          id="treinadorProficiencia"
+          type="number"
+          min="0"
+          step="1"
+          value="${proficiencia}"
+          style="width:100%; box-sizing:border-box; text-align:center;"
         >
       </div>
     </div>
@@ -2520,14 +2529,6 @@ function mostrarFichaTreinadorPagina1(
       id="alterarHp"
       type="text"
       placeholder="-34, +20 ou =50"
-    >
-
-    <p>CA</p>
-
-    <input
-      id="ca"
-      type="number"
-      value="${ca}"
     >
 
     <hr>
@@ -2564,25 +2565,6 @@ function mostrarFichaTreinadorPagina1(
         🎲 Rolar Iniciativa
       </button>
     </div>
-
-    <hr>
-
-    <h3>
-      Proficiência
-    </h3>
-
-    <input
-      id="treinadorProficiencia"
-      type="number"
-      min="0"
-      step="1"
-      value="${proficiencia}"
-      style="
-        width:80px;
-        text-align:center;
-        padding:6px;
-      "
-    >
 
     <hr>
 
@@ -4019,40 +4001,49 @@ function mostrarFichaPokemon(token) {
       ">
         <div style="
           display:flex;
-          gap:8px;
+          gap:5px;
           align-items:flex-end;
+          width:100%;
         ">
-          <div style="
-            flex:1;
-            min-width:0;
-          ">
+          <div style="flex:1; min-width:0;">
             <p>HP Atual</p>
-
             <input
               id="hpAtual"
               type="number"
               value="${hpAtual}"
-              style="
-                width:100%;
-                box-sizing:border-box;
-              "
+              style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
 
-          <div style="
-            flex:1;
-            min-width:0;
-          ">
+          <div style="flex:1; min-width:0;">
             <p>HP Máx.</p>
-
             <input
               id="hpMax"
               type="number"
               value="${hpMax}"
-              style="
-                width:100%;
-                box-sizing:border-box;
-              "
+              style="width:100%; box-sizing:border-box; text-align:center;"
+            >
+          </div>
+
+          <div style="flex:0.8; min-width:0;">
+            <p>CA</p>
+            <input
+              id="ca"
+              type="number"
+              value="${ca}"
+              style="width:100%; box-sizing:border-box; text-align:center;"
+            >
+          </div>
+
+          <div style="flex:0.8; min-width:0;">
+            <p>Prof</p>
+            <input
+              id="proficiencia"
+              type="number"
+              min="0"
+              step="1"
+              value="${proficiencia}"
+              style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
         </div>
@@ -4063,18 +4054,6 @@ function mostrarFichaPokemon(token) {
           id="alterarHp"
           type="text"
           placeholder="-34, +20 ou =50"
-          style="
-            width:100%;
-            box-sizing:border-box;
-          "
-        >
-
-        <p>CA</p>
-
-        <input
-          id="ca"
-          type="number"
-          value="${ca}"
           style="
             width:100%;
             box-sizing:border-box;
@@ -4129,34 +4108,6 @@ function mostrarFichaPokemon(token) {
           "
         >${esc(habilidade)}</textarea>
 
-        <div class="proficienciaLinha" style="
-          margin-top:10px;
-          display:flex;
-          align-items:center;
-          gap:8px;
-        ">
-          <span style="
-            font-size:12px;
-            font-weight:bold;
-          ">
-            Proficiência
-          </span>
-
-          <input
-            id="proficiencia"
-            type="number"
-            min="0"
-            step="1"
-            value="${proficiencia}"
-            style="
-              width:55px;
-              height:28px;
-              box-sizing:border-box;
-              text-align:center;
-              font-size:13px;
-            "
-          >
-        </div>
       </div>
     </div>
 
