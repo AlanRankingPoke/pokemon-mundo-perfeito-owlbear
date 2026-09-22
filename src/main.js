@@ -1758,7 +1758,7 @@ function criarLinhaAtributos(
   `;
 }
 
-function ativarRolagensSalvaguarda() {
+function ativarRolagensSalvaguarda(token) {
   document
     .querySelectorAll(".rolarAtributo")
     .forEach(
@@ -1780,9 +1780,42 @@ function ativarRolagensSalvaguarda() {
                 `#${botao.dataset.campo}`
               );
 
+            let valorRolagem =
+              campo?.value;
+
+            // EVAS: cada estágio concede +1 em TODAS as salvaguardas.
+            // O valor salvo na ficha continua sendo o valor-base, evitando
+            // somar o bônus novamente a cada autosave.
+            if (tipoRolagem === "Salvaguarda") {
+              const valorBase =
+                Number(
+                  String(campo?.value ?? "")
+                    .trim()
+                    .replace(",", ".")
+                );
+
+              if (Number.isNaN(valorBase)) {
+                alert(
+                  "Valor de salvaguarda inválido."
+                );
+
+                return;
+              }
+
+              const estagioEvasao =
+                Number(
+                  token?.metadata?.[
+                    `${PREFIX}/buff-evas`
+                  ] ?? 0
+                ) || 0;
+
+              valorRolagem =
+                valorBase + estagioEvasao;
+            }
+
             const formula =
               formulaSalvaguarda(
-                campo?.value
+                valorRolagem
               );
 
             if (!formula) {
@@ -1806,7 +1839,7 @@ function ativarRolagensSalvaguarda() {
     );
 }
 
-function ativarRolagemIniciativa() {
+function ativarRolagemIniciativa(token) {
   const botaoRolar =
     document.querySelector("#rolarIniciativa");
 
@@ -1872,8 +1905,21 @@ function ativarRolagemIniciativa() {
         ? proficiencia * 2
         : 0;
 
+    // VEL: cada estágio concede +1x Proficiência na iniciativa.
+    // Estágios negativos também reduzem a iniciativa.
+    const estagioVelocidade =
+      Number(
+        token?.metadata?.[
+          `${PREFIX}/buff-vel`
+        ] ?? 0
+      ) || 0;
+
+    const bonusVelocidade =
+      estagioVelocidade * proficiencia;
+
     return (
       destreza +
+      bonusVelocidade +
       bonusAlerta +
       bonusHabilidade
     );
@@ -1993,7 +2039,9 @@ function criarBuffs(
       const bonus =
         buff.id === "crit"
           ? faixaCritico(estagio)
-          : estagio * proficiencia;
+          : buff.id === "evas"
+            ? estagio
+            : estagio * proficiencia;
 
       return `
         <div style="
@@ -3163,8 +3211,16 @@ function mostrarFichaTreinadorPagina1(
             `${PREFIX}/treinador-iniciativa-habilidade`
         ] === true;
 
+    const estagioVelocidade =
+        Number(
+            token.metadata[
+                `${PREFIX}/buff-vel`
+            ] ?? 0
+        ) || 0;
+
     const iniciativa =
         (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
+        (estagioVelocidade * (Number(proficiencia) || 0)) +
         (iniciativaAlerta ? 5 : 0) +
         (iniciativaHabilidade ? (Number(proficiencia) || 0) * 2 : 0);
 
@@ -3348,7 +3404,7 @@ function mostrarFichaTreinadorPagina1(
           type="text"
           value="${esc(iniciativa)}"
           readonly
-          title="Iniciativa = DES + Alerta + Habilidade"
+          title="Iniciativa = DES + (VEL × Prof) + Alerta + Habilidade"
         >
 
         <button
@@ -3467,8 +3523,8 @@ function mostrarFichaTreinadorPagina1(
         token
     );
 
-    ativarRolagensSalvaguarda();
-    ativarRolagemIniciativa();
+    ativarRolagensSalvaguarda(token);
+    ativarRolagemIniciativa(token);
     ativarCalculadoraHp();
 
     document
@@ -3688,11 +3744,18 @@ function mostrarFichaTreinadorPagina1(
                         .value = "";
                 }
 
+                const bonusEvasaoHud =
+                    Number(
+                        token.metadata[
+                            `${PREFIX}/buff-evas`
+                        ] ?? 0
+                    ) || 0;
+
                 await criarStatusNoToken(
                     token,
                     dados.hpAtual,
                     dados.hpMax,
-                    dados.ca
+                    dados.ca + bonusEvasaoHud
                 );
             }
         );
@@ -4848,8 +4911,16 @@ function mostrarFichaPokemon(token) {
             `${PREFIX}/iniciativa-habilidade`
         ] === true;
 
+    const estagioVelocidade =
+        Number(
+            token.metadata[
+                `${PREFIX}/buff-vel`
+            ] ?? 0
+        ) || 0;
+
     const iniciativa =
         (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
+        (estagioVelocidade * proficiencia) +
         (iniciativaAlerta ? 5 : 0) +
         (iniciativaHabilidade ? proficiencia * 2 : 0);
 
@@ -5040,7 +5111,7 @@ function mostrarFichaPokemon(token) {
                   type="text"
                   value="${esc(iniciativa)}"
                   readonly
-                  title="Iniciativa = DES + Alerta + Habilidade"
+                  title="Iniciativa = DES + (VEL × Prof) + Alerta + Habilidade"
                 >
 
                 <button
@@ -5171,8 +5242,8 @@ function mostrarFichaPokemon(token) {
   `;
 
     ativarCabecalhoPokemon(token);
-    ativarRolagensSalvaguarda();
-    ativarRolagemIniciativa();
+    ativarRolagensSalvaguarda(token);
+    ativarRolagemIniciativa(token);
     ativarCalculadoraHp();
 
     document
@@ -5372,11 +5443,18 @@ function mostrarFichaPokemon(token) {
                         .value = "";
                 }
 
+                const bonusEvasaoHud =
+                    Number(
+                        token.metadata[
+                            `${PREFIX}/buff-evas`
+                        ] ?? 0
+                    ) || 0;
+
                 await criarStatusNoToken(
                     token,
                     dados.hpAtual,
                     dados.hpMax,
-                    dados.ca
+                    dados.ca + bonusEvasaoHud
                 );
             }
         );
@@ -5698,9 +5776,11 @@ function mostrarFichaPokemonMoves(token) {
                     campoBonus.textContent =
                         buff.id === "crit"
                             ? faixaCritico(estagio)
-                            : formatarBonus(
-                                proficiencia * estagio
-                            );
+                            : buff.id === "evas"
+                                ? formatarBonus(estagio)
+                                : formatarBonus(
+                                    proficiencia * estagio
+                                );
                 }
             }
         );
@@ -6116,6 +6196,43 @@ document
                             );
                         }
                     }
+                );
+
+                // EVAS também altera a CA visível no HUD imediatamente.
+                // A CA salva no token continua sendo a CA-base.
+                const hpAtualHud =
+                    Number(
+                        token.metadata[
+                            `${PREFIX}/hpAtual`
+                        ] ?? 100
+                    ) || 0;
+
+                const hpMaxHud =
+                    Math.max(
+                        1,
+                        Number(
+                            token.metadata[
+                                `${PREFIX}/hpMax`
+                            ] ?? 100
+                        ) || 1
+                    );
+
+                const caBaseHud =
+                    Number(
+                        token.metadata[
+                            `${PREFIX}/ca`
+                        ] ?? 10
+                    ) || 0;
+
+                const caEfetivaHud =
+                    caBaseHud +
+                    (Number(novosBuffs.evas) || 0);
+
+                await criarStatusNoToken(
+                    token,
+                    hpAtualHud,
+                    hpMaxHud,
+                    caEfetivaHud
                 );
             }
         );
