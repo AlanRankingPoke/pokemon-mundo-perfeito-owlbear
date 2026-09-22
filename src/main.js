@@ -291,6 +291,7 @@ const ESTILO_FICHA = `
     gap:6px !important;
     margin-top:8px !important;
     position:relative;
+    flex-wrap:wrap !important;
   }
 
   .calculadoraHpCampo {
@@ -306,18 +307,34 @@ const ESTILO_FICHA = `
   }
 
   .superEfetivoWrap,
-  .resistenteWrap {
+  .resistenteWrap,
+  .moveWrap {
     position:relative;
     flex:0 0 auto;
   }
 
   #botaoSuperEfetivo,
-  #botaoResistente {
+  #botaoResistente,
+  #botaoMove,
+  #botaoCalcularHp {
     min-height:34px !important;
     padding:6px 9px !important;
     font-size:10px !important;
     white-space:nowrap !important;
     cursor:pointer !important;
+  }
+
+  #botaoCalcularHp {
+    background:linear-gradient(135deg, #42b96b 0%, #269653 100%) !important;
+    color:#fff !important;
+    border-color:#218447 !important;
+    font-weight:900 !important;
+  }
+
+  #botaoCalcularHp:hover {
+    background:linear-gradient(135deg, #36aa5f 0%, #207f47 100%) !important;
+    color:#fff !important;
+    border-color:#1d743f !important;
   }
 
   /* Super Efetivo: 2x laranja, 4x vermelho. */
@@ -342,7 +359,8 @@ const ESTILO_FICHA = `
   }
 
   .opcoesSuperEfetivo,
-  .opcoesResistente {
+  .opcoesResistente,
+  .opcoesMove {
     display:none;
     position:absolute;
     z-index:50;
@@ -357,12 +375,14 @@ const ESTILO_FICHA = `
   }
 
   .opcoesSuperEfetivo.aberto,
-  .opcoesResistente.aberto {
+  .opcoesResistente.aberto,
+  .opcoesMove.aberto {
     display:flex;
   }
 
   .multiplicadorSuperEfetivo,
-  .divisorResistente {
+  .divisorResistente,
+  .tipoMoveHp {
     min-width:42px !important;
     min-height:32px !important;
     padding:5px 8px !important;
@@ -394,6 +414,38 @@ const ESTILO_FICHA = `
     background:#3f82e8 !important;
     color:#fff !important;
     border-color:#2868c9 !important;
+  }
+
+
+  /* Move: Físico usa DEF; Especial usa DEFSP; Neutro ignora defesa de estágio. */
+  #botaoMove.moveFisico {
+    background:linear-gradient(135deg, #f59a55 0%, #d96e2b 100%) !important;
+    color:#fff !important;
+    border-color:#c55f22 !important;
+  }
+
+  #botaoMove.moveEspecial {
+    background:linear-gradient(135deg, #9b7cff 0%, #6f52d9 100%) !important;
+    color:#fff !important;
+    border-color:#6045c6 !important;
+  }
+
+  .tipoMoveHp[data-tipo="neutro"].ativo {
+    background:#eef2f7 !important;
+    color:#31445e !important;
+    border-color:#aebdce !important;
+  }
+
+  .tipoMoveHp[data-tipo="fisico"].ativo {
+    background:#d96e2b !important;
+    color:#fff !important;
+    border-color:#c55f22 !important;
+  }
+
+  .tipoMoveHp[data-tipo="especial"].ativo {
+    background:#6f52d9 !important;
+    color:#fff !important;
+    border-color:#6045c6 !important;
   }
 
   .movimentoLinha {
@@ -1295,7 +1347,7 @@ async function criarStatusNoToken(
 // HP + CA DA TELA
 // =====================================================
 
-async function pegarHpCaDaTela() {
+async function pegarHpCaDaTela(aplicarCalculadora = false) {
     let hpAtual =
         Number(
             document
@@ -1351,14 +1403,34 @@ async function pegarHpCaDaTela() {
         hpMax = 1;
     }
 
-    if (alterarHp !== "") {
-        const operador =
+    if (aplicarCalculadora && alterarHp === "") {
+        alert("Digite um valor na Calculadora antes de calcular.");
+        return null;
+    }
+
+    if (aplicarCalculadora && alterarHp !== "") {
+        const primeiroCaractere =
             alterarHp.charAt(0);
 
+        const temOperadorExplicito =
+            primeiroCaractere === "+" ||
+            primeiroCaractere === "-" ||
+            primeiroCaractere === "=";
+
+        // Sem sinal, o valor é interpretado como CURA.
+        // Ex.: 50 = +50 HP.
+        const operador =
+            temOperadorExplicito
+                ? primeiroCaractere
+                : "+";
+
+        const textoValor =
+            temOperadorExplicito
+                ? alterarHp.substring(1)
+                : alterarHp;
+
         const valor =
-            Number(
-                alterarHp.substring(1)
-            );
+            Number(textoValor);
 
         if (Number.isNaN(valor)) {
             alert(
@@ -1380,10 +1452,49 @@ async function pegarHpCaDaTela() {
         }
 
         else if (operador === "-") {
-            // Super Efetivo usa fator 2/4. Resistente usa 0.5/0.25.
-            // Math.floor mantém o dano inteiro quando houver divisão.
-            const danoCalculado =
+            // Primeiro aplica Super Efetivo / Resistente.
+            let danoCalculado =
                 Math.floor(valor * fatorDano);
+
+            // Depois aplica a defesa de estágio conforme o tipo do Move.
+            // DEF e DEFSP usam a mesma regra visual da página de buffs:
+            // bônus = estágio × proficiência.
+            const tipoMove =
+                document
+                    .querySelector("#tipoMoveHpSelecionado")
+                    ?.value || "neutro";
+
+            const proficienciaAtual =
+                Number(
+                    document.querySelector("#proficiencia")?.value ??
+                    document.querySelector("#treinadorProficiencia")?.value ??
+                    0
+                ) || 0;
+
+            let estagioDefesa = 0;
+
+            if (tipoMove === "fisico") {
+                estagioDefesa =
+                    Number(
+                        document.querySelector("#estagioDefHp")?.value ?? 0
+                    ) || 0;
+            }
+            else if (tipoMove === "especial") {
+                estagioDefesa =
+                    Number(
+                        document.querySelector("#estagioDefSpHp")?.value ?? 0
+                    ) || 0;
+            }
+
+            const bonusDefesa =
+                estagioDefesa * proficienciaAtual;
+
+            // Defesa positiva reduz o dano; defesa negativa aumenta.
+            // Dano nunca fica abaixo de 0.
+            danoCalculado = Math.max(
+                0,
+                Math.floor(danoCalculado - bonusDefesa)
+            );
 
             hpAtual -= danoCalculado;
         }
@@ -1394,7 +1505,7 @@ async function pegarHpCaDaTela() {
 
         else {
             alert(
-                "Use -34, +20 ou =50."
+                "Use -34 para dano, 20 ou +20 para cura, ou =50 para definir o HP."
             );
 
             return null;
@@ -1413,7 +1524,8 @@ async function pegarHpCaDaTela() {
     return {
         hpAtual,
         hpMax,
-        ca
+        ca,
+        calculadoraAplicada: aplicarCalculadora && alterarHp !== ""
     };
 }
 
@@ -1833,12 +1945,28 @@ function ativarCalculadoraHp() {
     const multiplicador =
         document.querySelector("#multiplicadorHp");
 
+    const botaoMove =
+        document.querySelector("#botaoMove");
+
+    const opcoesMove =
+        document.querySelector("#opcoesMove");
+
+    const tipoMoveSelecionado =
+        document.querySelector("#tipoMoveHpSelecionado");
+
+    const botaoCalcular =
+        document.querySelector("#botaoCalcularHp");
+
     if (
         !botaoSuper ||
         !opcoesSuper ||
         !botaoResistente ||
         !opcoesResistente ||
-        !multiplicador
+        !multiplicador ||
+        !botaoMove ||
+        !opcoesMove ||
+        !tipoMoveSelecionado ||
+        !botaoCalcular
     ) {
         return;
     }
@@ -1881,6 +2009,35 @@ function ativarCalculadoraHp() {
             botaoResistente.textContent = "Resistente";
         }
 
+        const tipoMove =
+            tipoMoveSelecionado.value || "neutro";
+
+        botaoMove.classList.remove(
+            "moveFisico",
+            "moveEspecial"
+        );
+
+        if (tipoMove === "fisico") {
+            botaoMove.classList.add("moveFisico");
+            botaoMove.textContent = "Move Físico";
+        }
+        else if (tipoMove === "especial") {
+            botaoMove.classList.add("moveEspecial");
+            botaoMove.textContent = "Move Especial";
+        }
+        else {
+            botaoMove.textContent = "Move";
+        }
+
+        document
+            .querySelectorAll(".tipoMoveHp")
+            .forEach((opcao) => {
+                opcao.classList.toggle(
+                    "ativo",
+                    opcao.dataset.tipo === tipoMove
+                );
+            });
+
         document
             .querySelectorAll(
                 ".multiplicadorSuperEfetivo"
@@ -1906,12 +2063,20 @@ function ativarCalculadoraHp() {
 
     botaoSuper.addEventListener("click", () => {
         opcoesResistente.classList.remove("aberto");
+        opcoesMove.classList.remove("aberto");
         opcoesSuper.classList.toggle("aberto");
     });
 
     botaoResistente.addEventListener("click", () => {
         opcoesSuper.classList.remove("aberto");
+        opcoesMove.classList.remove("aberto");
         opcoesResistente.classList.toggle("aberto");
+    });
+
+    botaoMove.addEventListener("click", () => {
+        opcoesSuper.classList.remove("aberto");
+        opcoesResistente.classList.remove("aberto");
+        opcoesMove.classList.toggle("aberto");
     });
 
     document
@@ -1941,6 +2106,40 @@ function ativarCalculadoraHp() {
                 opcoesResistente.classList.remove("aberto");
             });
         });
+
+    document
+        .querySelectorAll(".tipoMoveHp")
+        .forEach((opcao) => {
+            opcao.addEventListener("click", () => {
+                tipoMoveSelecionado.value =
+                    opcao.dataset.tipo || "neutro";
+
+                atualizarVisual();
+                opcoesMove.classList.remove("aberto");
+            });
+        });
+
+    botaoCalcular.addEventListener("click", () => {
+        const campoCalculadora =
+            document.querySelector("#alterarHp");
+
+        if (!campoCalculadora?.value.trim()) {
+            alert("Digite um valor na Calculadora antes de calcular.");
+            return;
+        }
+
+        const botaoSalvarStatus =
+            document.querySelector(
+                "#salvarPokemonStatus, #salvarTreinadorStatus"
+            );
+
+        if (!botaoSalvarStatus) {
+            return;
+        }
+
+        botaoSalvarStatus.dataset.aplicarCalculadora = "1";
+        botaoSalvarStatus.click();
+    });
 
     atualizarVisual();
 }
@@ -1997,22 +2196,10 @@ function ativarAutosaveDaTela() {
 
     app.querySelectorAll("input, textarea, select")
         .forEach((campo) => {
-            // Calculadora é uma operação (+20, -34, =50), não um campo
-            // comum. Aplicamos somente quando o usuário termina a edição
-            // para evitar executar valores parciais, como apenas "-".
+            // A Calculadora só pode alterar o HP quando o botão CALCULAR
+            // for pressionado. Digitar, sair do campo ou trocar opções não
+            // executa dano/cura automaticamente.
             if (campo.id === "alterarHp") {
-                campo.addEventListener("change", () => {
-                    if (campo.value.trim() !== "") {
-                        programarSalvamento(100);
-                    }
-                });
-
-                campo.addEventListener("blur", () => {
-                    if (campo.value.trim() !== "") {
-                        programarSalvamento(100);
-                    }
-                });
-
                 return;
             }
 
@@ -2864,6 +3051,21 @@ function mostrarFichaTreinadorPagina1(
         </div>
       </div>
 
+      <div class="moveWrap">
+        <button id="botaoMove" type="button">Move</button>
+        <div id="opcoesMove" class="opcoesMove">
+          <button type="button" class="tipoMoveHp" data-tipo="neutro">Neutro</button>
+          <button type="button" class="tipoMoveHp" data-tipo="fisico">Físico</button>
+          <button type="button" class="tipoMoveHp" data-tipo="especial">Especial</button>
+        </div>
+      </div>
+
+      <button id="botaoCalcularHp" type="button">Calcular</button>
+
+      <input id="tipoMoveHpSelecionado" type="hidden" value="neutro">
+      <input id="estagioDefHp" type="hidden" value="0">
+      <input id="estagioDefSpHp" type="hidden" value="0">
+
       <input
         id="multiplicadorHp"
         type="hidden"
@@ -3029,8 +3231,18 @@ function mostrarFichaTreinadorPagina1(
             "click",
             async () => {
 
+                const botaoSalvarStatus =
+                    document.querySelector("#salvarTreinadorStatus");
+
+                const aplicarCalculadora =
+                    botaoSalvarStatus?.dataset.aplicarCalculadora === "1";
+
+                if (botaoSalvarStatus) {
+                    botaoSalvarStatus.dataset.aplicarCalculadora = "0";
+                }
+
                 const dados =
-                    await pegarHpCaDaTela();
+                    await pegarHpCaDaTela(aplicarCalculadora);
 
                 if (!dados) {
                     return;
@@ -3165,11 +3377,13 @@ function mostrarFichaTreinadorPagina1(
                     .value =
                         dados.hpMax;
 
-                document
-                    .querySelector(
-                        "#alterarHp"
-                    )
-                    .value = "";
+                if (dados.calculadoraAplicada) {
+                    document
+                        .querySelector(
+                            "#alterarHp"
+                        )
+                        .value = "";
+                }
 
                 await criarStatusNoToken(
                     token,
@@ -4475,6 +4689,21 @@ function mostrarFichaPokemon(token) {
                 </div>
               </div>
         
+              <div class="moveWrap">
+                <button id="botaoMove" type="button">Move</button>
+                <div id="opcoesMove" class="opcoesMove">
+                  <button type="button" class="tipoMoveHp" data-tipo="neutro">Neutro</button>
+                  <button type="button" class="tipoMoveHp" data-tipo="fisico">Físico</button>
+                  <button type="button" class="tipoMoveHp" data-tipo="especial">Especial</button>
+                </div>
+              </div>
+
+              <button id="botaoCalcularHp" type="button">Calcular</button>
+
+              <input id="tipoMoveHpSelecionado" type="hidden" value="neutro">
+              <input id="estagioDefHp" type="hidden" value="${Number(token.metadata[`${PREFIX}/buff-def`] ?? 0)}">
+              <input id="estagioDefSpHp" type="hidden" value="${Number(token.metadata[`${PREFIX}/buff-defsp`] ?? 0)}">
+
               <input
                 id="multiplicadorHp"
                 type="hidden"
@@ -4609,8 +4838,18 @@ function mostrarFichaPokemon(token) {
             "click",
             async () => {
 
+                const botaoSalvarStatus =
+                    document.querySelector("#salvarPokemonStatus");
+
+                const aplicarCalculadora =
+                    botaoSalvarStatus?.dataset.aplicarCalculadora === "1";
+
+                if (botaoSalvarStatus) {
+                    botaoSalvarStatus.dataset.aplicarCalculadora = "0";
+                }
+
                 const dados =
-                    await pegarHpCaDaTela();
+                    await pegarHpCaDaTela(aplicarCalculadora);
 
                 if (!dados) {
                     return;
@@ -4762,9 +5001,11 @@ function mostrarFichaPokemon(token) {
                     .value =
                         dados.hpMax;
 
-                document
-                    .querySelector("#alterarHp")
-                    .value = "";
+                if (dados.calculadoraAplicada) {
+                    document
+                        .querySelector("#alterarHp")
+                        .value = "";
+                }
 
                 await criarStatusNoToken(
                     token,
