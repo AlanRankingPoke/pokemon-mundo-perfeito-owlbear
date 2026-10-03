@@ -3,6 +3,16 @@ import "./style.css";
 
 const PREFIX = "pokemon-mundo-perfeito";
 
+const MODO_APRESENTADOR_INICIATIVA =
+    new URLSearchParams(window.location.search)
+        .get("view") === "initiative";
+
+const ID_POPOVER_INICIATIVA =
+    `${PREFIX}/apresentador-iniciativa`;
+
+const META_INICIATIVA_TRACKER =
+    `${PREFIX}/initiative-tracker`;
+
 const ESTILO_FICHA = `
 <style>
   :root {
@@ -792,6 +802,636 @@ const ESTILO_FICHA = `
   }
 </style>
 `;
+
+
+
+// =====================================================
+// APRESENTADOR DE INICIATIVA
+// =====================================================
+
+function urlApresentadorIniciativa() {
+    const url = new URL(window.location.href);
+
+    url.searchParams.set(
+        "view",
+        "initiative"
+    );
+
+    return url.toString();
+}
+
+async function abrirApresentadorIniciativa() {
+    let larguraViewport = 900;
+
+    try {
+        larguraViewport =
+            await OBR.viewport.getWidth();
+    }
+    catch (_) {
+        // Usa o valor-padrão se a viewport ainda não estiver pronta.
+    }
+
+    const largura =
+        Math.max(
+            360,
+            Math.min(
+                920,
+                Number(larguraViewport || 900) - 36
+            )
+        );
+
+    const centroX =
+        Math.max(
+            largura / 2 + 10,
+            Number(larguraViewport || largura) / 2
+        );
+
+    // Fecha uma instância antiga antes de reabrir na posição correta.
+    try {
+        await OBR.popover.close(
+            ID_POPOVER_INICIATIVA
+        );
+    }
+    catch (_) {}
+
+    await OBR.popover.open({
+        id: ID_POPOVER_INICIATIVA,
+        url: urlApresentadorIniciativa(),
+        width: largura,
+        height: 126,
+
+        anchorReference: "POSITION",
+        anchorPosition: {
+            left: centroX,
+            top: 10
+        },
+
+        anchorOrigin: {
+            horizontal: "CENTER",
+            vertical: "TOP"
+        },
+
+        transformOrigin: {
+            horizontal: "CENTER",
+            vertical: "TOP"
+        },
+
+        hidePaper: true,
+        disableClickAway: true
+    });
+}
+
+async function salvarResultadoIniciativa(
+    token,
+    total
+) {
+    const numero = Number(total);
+
+    if (!Number.isFinite(numero)) {
+        return;
+    }
+
+    await OBR.scene.items.updateItems(
+        [token.id],
+        (items) => {
+            for (const item of items) {
+                item.metadata[
+                    META_INICIATIVA_TRACKER
+                ] = {
+                    total: numero,
+                    atualizadoEm: Date.now()
+                };
+            }
+        }
+    );
+
+    // Mantém a cópia local coerente enquanto a ficha continuar aberta.
+    token.metadata[
+        META_INICIATIVA_TRACKER
+    ] = {
+        total: numero,
+        atualizadoEm: Date.now()
+    };
+}
+
+async function ajustarResultadoIniciativa(
+    tokenId,
+    delta
+) {
+    const ajuste = Number(delta);
+
+    if (!Number.isFinite(ajuste) || ajuste === 0) {
+        return;
+    }
+
+    await OBR.scene.items.updateItems(
+        [tokenId],
+        (items) => {
+            for (const item of items) {
+                const dadosAtuais =
+                    dadosIniciativaDoItem(item);
+
+                if (!dadosAtuais) {
+                    continue;
+                }
+
+                item.metadata[
+                    META_INICIATIVA_TRACKER
+                ] = {
+                    total:
+                        dadosAtuais.total + ajuste,
+                    atualizadoEm: Date.now()
+                };
+            }
+        }
+    );
+}
+
+async function removerDaIniciativa(tokenId) {
+    await OBR.scene.items.updateItems(
+        [tokenId],
+        (items) => {
+            for (const item of items) {
+                delete item.metadata[
+                    META_INICIATIVA_TRACKER
+                ];
+            }
+        }
+    );
+}
+
+function dadosIniciativaDoItem(item) {
+    const dados =
+        item?.metadata?.[
+            META_INICIATIVA_TRACKER
+        ];
+
+    if (!dados) {
+        return null;
+    }
+
+    const total =
+        Number(
+            typeof dados === "object"
+                ? dados.total
+                : dados
+        );
+
+    if (!Number.isFinite(total)) {
+        return null;
+    }
+
+    return {
+        total,
+        atualizadoEm:
+            Number(
+                typeof dados === "object"
+                    ? dados.atualizadoEm
+                    : 0
+            ) || 0
+    };
+}
+
+function criarCardApresentadorIniciativa(
+    item,
+    dados
+) {
+    const imagem =
+        item.type === "IMAGE"
+            ? item.image?.url || ""
+            : "";
+
+    const nome =
+        item.name || "Token";
+
+    return `
+        <div class="initCard" title="${esc(nome)}">
+            <div class="initImagemWrap">
+                ${
+                    imagem
+                        ? `
+                            <img
+                                class="initImagem"
+                                src="${esc(imagem)}"
+                                alt="${esc(nome)}"
+                            >
+                        `
+                        : `
+                            <div class="initImagemFallback">
+                                🐾
+                            </div>
+                        `
+                }
+
+                <button
+                    class="initRemover"
+                    type="button"
+                    data-remover-iniciativa="${esc(item.id)}"
+                    title="Remover este participante da iniciativa"
+                >
+                    ×
+                </button>
+            </div>
+
+            <div class="initValorLinha">
+                <button
+                    class="initAjustar"
+                    type="button"
+                    data-ajustar-iniciativa="${esc(item.id)}"
+                    data-delta="-1"
+                    title="Diminuir iniciativa em 1"
+                >−</button>
+
+                <div class="initValor">
+                    ${dados.total}
+                </div>
+
+                <button
+                    class="initAjustar"
+                    type="button"
+                    data-ajustar-iniciativa="${esc(item.id)}"
+                    data-delta="1"
+                    title="Aumentar iniciativa em 1"
+                >+</button>
+            </div>
+
+            <div class="initNome">
+                ${esc(nome)}
+            </div>
+        </div>
+    `;
+}
+
+async function iniciarApresentadorIniciativa() {
+    const app =
+        document.querySelector("#app");
+
+    if (!app) {
+        return;
+    }
+
+    document.documentElement.style.background =
+        "transparent";
+
+    document.body.style.margin = "0";
+    document.body.style.background = "transparent";
+    document.body.style.overflow = "hidden";
+
+    const papel = document.createElement("div");
+
+    papel.id = "initiativePresenterRoot";
+
+    papel.innerHTML = `
+        <style>
+            html,
+            body {
+                width:100%;
+                height:100%;
+                margin:0;
+                padding:0;
+                background:transparent !important;
+                font-family:Inter, Arial, sans-serif;
+            }
+
+            #app {
+                width:100%;
+                height:100%;
+                margin:0;
+                padding:0;
+                background:transparent !important;
+            }
+
+            #initiativePresenterRoot {
+                width:100%;
+                height:100%;
+                box-sizing:border-box;
+                display:flex;
+                align-items:flex-start;
+                justify-content:center;
+                padding:7px 9px 6px;
+                background:transparent;
+            }
+
+            .initBarra {
+                max-width:100%;
+                min-height:110px;
+                display:flex;
+                align-items:center;
+                justify-content:flex-start;
+                gap:7px;
+                padding:7px 9px;
+                box-sizing:border-box;
+                overflow-x:auto;
+                overflow-y:hidden;
+                border:1px solid rgba(255,255,255,.18);
+                border-radius:16px;
+                background:rgba(22, 30, 44, .94);
+                box-shadow:
+                    0 8px 28px rgba(0,0,0,.28),
+                    inset 0 1px 0 rgba(255,255,255,.06);
+                backdrop-filter:blur(10px);
+            }
+
+            .initBarra::-webkit-scrollbar {
+                height:5px;
+            }
+
+            .initBarra::-webkit-scrollbar-thumb {
+                border-radius:99px;
+                background:rgba(255,255,255,.22);
+            }
+
+            .initCard {
+                width:72px;
+                min-width:72px;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                justify-content:flex-start;
+                gap:2px;
+                position:relative;
+            }
+
+            .initCard:first-child .initImagemWrap {
+                border-color:#f59e0b;
+                box-shadow:
+                    0 0 0 2px rgba(245,158,11,.20),
+                    0 0 15px rgba(245,158,11,.55);
+            }
+
+            .initImagemWrap {
+                width:58px;
+                height:58px;
+                position:relative;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                overflow:visible;
+                border:2px solid #6d7c94;
+                border-radius:13px;
+                background:#f4f7fb;
+                box-sizing:border-box;
+                box-shadow:0 3px 9px rgba(0,0,0,.18);
+            }
+
+            .initImagem {
+                width:100%;
+                height:100%;
+                object-fit:contain;
+                display:block;
+                border-radius:10px;
+            }
+
+            .initImagemFallback {
+                font-size:29px;
+                line-height:1;
+            }
+
+            .initValorLinha {
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                gap:2px;
+                margin-top:1px;
+            }
+
+            .initValor {
+                min-width:30px;
+                padding:2px 5px;
+                border-radius:999px;
+                background:#2e72d2;
+                color:#fff;
+                font-size:14px;
+                font-weight:1000;
+                line-height:1.2;
+                text-align:center;
+                box-shadow:0 2px 5px rgba(0,0,0,.18);
+            }
+
+            .initAjustar {
+                width:18px;
+                height:18px;
+                min-width:18px;
+                min-height:18px;
+                padding:0;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                border:1px solid #71829b;
+                border-radius:6px;
+                background:#27364b;
+                color:#ffffff;
+                font-size:14px;
+                font-weight:1000;
+                line-height:1;
+                cursor:pointer;
+                box-shadow:0 2px 4px rgba(0,0,0,.16);
+            }
+
+            .initAjustar:hover {
+                border-color:#a9c7ef;
+                background:#365273;
+            }
+
+            .initAjustar:active {
+                transform:translateY(1px);
+            }
+
+            .initCard:first-child .initValor {
+                background:#e97808;
+            }
+
+            .initNome {
+                width:70px;
+                overflow:hidden;
+                white-space:nowrap;
+                text-overflow:ellipsis;
+                color:#eef4ff;
+                font-size:9px;
+                font-weight:800;
+                text-align:center;
+                line-height:1.1;
+            }
+
+            .initRemover {
+                width:18px;
+                height:18px;
+                min-height:18px;
+                padding:0;
+                position:absolute;
+                top:-7px;
+                right:-7px;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                border:1px solid #ff8585;
+                border-radius:50%;
+                background:#cc3d3d;
+                color:white;
+                font-size:13px;
+                font-weight:900;
+                line-height:1;
+                cursor:pointer;
+            }
+
+            .initVazio {
+                min-width:280px;
+                padding:23px 28px;
+                box-sizing:border-box;
+                border:1px solid rgba(255,255,255,.16);
+                border-radius:15px;
+                background:rgba(22, 30, 44, .94);
+                color:#e8eef8;
+                font-size:12px;
+                font-weight:800;
+                text-align:center;
+                box-shadow:0 8px 28px rgba(0,0,0,.24);
+            }
+        </style>
+
+        <div
+            id="initiativePresenterList"
+            class="initBarra"
+        ></div>
+    `;
+
+    app.replaceChildren(papel);
+
+    const lista =
+        document.querySelector(
+            "#initiativePresenterList"
+        );
+
+    const renderizar = (items) => {
+        const iniciativas = [];
+
+        for (const item of items || []) {
+            const dados =
+                dadosIniciativaDoItem(item);
+
+            if (!dados) {
+                continue;
+            }
+
+            iniciativas.push({
+                item,
+                dados
+            });
+        }
+
+        iniciativas.sort(
+            (a, b) =>
+                b.dados.total - a.dados.total ||
+                a.dados.atualizadoEm - b.dados.atualizadoEm ||
+                String(a.item.name || "")
+                    .localeCompare(
+                        String(b.item.name || "")
+                    )
+        );
+
+        if (!iniciativas.length) {
+            lista.className = "";
+            lista.innerHTML = `
+                <div class="initVazio">
+                    Aguardando iniciativas...
+                </div>
+            `;
+            return;
+        }
+
+        lista.className = "initBarra";
+        lista.innerHTML =
+            iniciativas
+                .map(
+                    ({ item, dados }) =>
+                        criarCardApresentadorIniciativa(
+                            item,
+                            dados
+                        )
+                )
+                .join("");
+    };
+
+    app.addEventListener(
+        "click",
+        async (evento) => {
+            const botaoAjustar =
+                evento.target.closest?.(
+                    "[data-ajustar-iniciativa]"
+                );
+
+            if (botaoAjustar) {
+                const tokenId =
+                    botaoAjustar.dataset
+                        .ajustarIniciativa;
+
+                const delta =
+                    Number(
+                        botaoAjustar.dataset.delta
+                    );
+
+                if (
+                    tokenId &&
+                    Number.isFinite(delta) &&
+                    delta !== 0
+                ) {
+                    try {
+                        await ajustarResultadoIniciativa(
+                            tokenId,
+                            delta
+                        );
+                    }
+                    catch (erro) {
+                        console.warn(
+                            "Não foi possível ajustar a iniciativa:",
+                            erro
+                        );
+                    }
+                }
+
+                return;
+            }
+
+            const botaoRemover =
+                evento.target.closest?.(
+                    "[data-remover-iniciativa]"
+                );
+
+            if (!botaoRemover) {
+                return;
+            }
+
+            const tokenId =
+                botaoRemover.dataset
+                    .removerIniciativa;
+
+            if (!tokenId) {
+                return;
+            }
+
+            try {
+                await removerDaIniciativa(
+                    tokenId
+                );
+            }
+            catch (erro) {
+                console.warn(
+                    "Não foi possível remover o participante da iniciativa:",
+                    erro
+                );
+            }
+        }
+    );
+
+    const itensAtuais =
+        await OBR.scene.items.getItems();
+
+    renderizar(itensAtuais);
+
+    OBR.scene.items.onChange(
+        renderizar
+    );
+}
 
 
 const ATRIBUTOS = ["for", "des", "con", "int", "sab", "car"];
@@ -2228,6 +2868,12 @@ function ativarRolagemIniciativa(token) {
   const botaoHabilidade =
     document.querySelector("#botaoIniciativaHabilidade");
 
+  const botaoAbrirPainel =
+    document.querySelector("#abrirApresentadorIniciativa");
+
+  const botaoRemoverIniciativa =
+    document.querySelector("#removerDaIniciativa");
+
   if (
     !botaoRolar ||
     !campoIniciativa ||
@@ -2373,12 +3019,42 @@ function ativarRolagemIniciativa(token) {
         return;
       }
 
-      await rolarNoDicePlus(
-        formula,
-        "Iniciativa"
+      const resultado =
+        await rolarNoDicePlusComResultado(
+          formula,
+          "Iniciativa"
+        );
+
+      if (resultado === null) {
+        return;
+      }
+
+      await salvarResultadoIniciativa(
+        token,
+        resultado
       );
+
+      await abrirApresentadorIniciativa();
     }
   );
+
+  if (botaoAbrirPainel) {
+    botaoAbrirPainel.addEventListener(
+      "click",
+      () => abrirApresentadorIniciativa()
+    );
+  }
+
+  if (botaoRemoverIniciativa) {
+    botaoRemoverIniciativa.addEventListener(
+      "click",
+      async () => {
+        await removerDaIniciativa(
+          token.id
+        );
+      }
+    );
+  }
 
   atualizarVisual();
 }
@@ -4177,8 +4853,34 @@ function mostrarFichaTreinadorPagina1(
         <button
           id="rolarIniciativa"
           type="button"
-          title="Rolar iniciativa"
+          title="Rolar iniciativa e entrar no apresentador"
         >🎲</button>
+
+        <button
+          id="abrirApresentadorIniciativa"
+          type="button"
+          title="Abrir apresentador de iniciativa"
+          style="
+            min-width:38px;
+            min-height:36px;
+            padding:5px 7px;
+            font-size:12px;
+            cursor:pointer;
+          "
+        >📋</button>
+
+        <button
+          id="removerDaIniciativa"
+          type="button"
+          title="Remover este token da iniciativa"
+          style="
+            min-width:38px;
+            min-height:36px;
+            padding:5px 7px;
+            font-size:12px;
+            cursor:pointer;
+          "
+        >✕</button>
 
         <button
           id="botaoIniciativaAlerta"
@@ -5892,8 +6594,34 @@ function mostrarFichaPokemon(token) {
                 <button
                   id="rolarIniciativa"
                   type="button"
-                  title="Rolar iniciativa"
+                  title="Rolar iniciativa e entrar no apresentador"
                 >🎲</button>
+
+                <button
+                  id="abrirApresentadorIniciativa"
+                  type="button"
+                  title="Abrir apresentador de iniciativa"
+                  style="
+                    min-width:38px;
+                    min-height:36px;
+                    padding:5px 7px;
+                    font-size:12px;
+                    cursor:pointer;
+                  "
+                >📋</button>
+
+                <button
+                  id="removerDaIniciativa"
+                  type="button"
+                  title="Remover este token da iniciativa"
+                  style="
+                    min-width:38px;
+                    min-height:36px;
+                    padding:5px 7px;
+                    font-size:12px;
+                    cursor:pointer;
+                  "
+                >✕</button>
 
                 <button
                   id="botaoIniciativaAlerta"
@@ -9200,6 +9928,11 @@ async function mostrarTokenSelecionado() {
 
 OBR.onReady(
     async () => {
+
+        if (MODO_APRESENTADOR_INICIATIVA) {
+            await iniciarApresentadorIniciativa();
+            return;
+        }
 
         try {
             await corrigirHudExistente();
