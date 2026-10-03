@@ -712,7 +712,6 @@ const ESTILO_FICHA = `
   .rolarDano,
   .rolarCritico,
   .rolarDobrarDados,
-  .rolarTesteCriticoCD,
   .rolarPassouCD,
   .rolarReprovouCD,
   .rolarCriticoCD,
@@ -1110,6 +1109,7 @@ async function iniciarApresentadorIniciativa() {
                 justify-content:center;
                 padding:7px 9px 6px;
                 background:transparent;
+                overflow:hidden;
             }
 
             .initBarra {
@@ -1123,6 +1123,8 @@ async function iniciarApresentadorIniciativa() {
                 box-sizing:border-box;
                 overflow-x:auto;
                 overflow-y:hidden;
+                scrollbar-width:none;
+                -ms-overflow-style:none;
                 border:1px solid rgba(255,255,255,.18);
                 border-radius:16px;
                 background:rgba(22, 30, 44, .94);
@@ -1133,12 +1135,9 @@ async function iniciarApresentadorIniciativa() {
             }
 
             .initBarra::-webkit-scrollbar {
-                height:5px;
-            }
-
-            .initBarra::-webkit-scrollbar-thumb {
-                border-radius:99px;
-                background:rgba(255,255,255,.22);
+                display:none;
+                width:0;
+                height:0;
             }
 
             .initCard {
@@ -1563,8 +1562,9 @@ function bonusPorEstagio(id, estagio, proficiencia) {
     const valorEstagio = normalizarEstagioBuff(estagio, id);
     const prof = Number(proficiencia) || 0;
 
-    // EVAS é sempre ±1 por estágio.
-    if (id === "evas") {
+    // EVAS e PRES (Precisão) são sempre ±1 por estágio.
+    // Precisão não multiplica pela Proficiência.
+    if (id === "evas" || id === "pres") {
         return valorEstagio;
     }
 
@@ -7127,6 +7127,13 @@ function mostrarFichaPokemonMoves(token) {
         }
     );
 
+    // PRES = Precisão. Cada estágio vale exatamente ±1.
+    const precisaoInicial =
+        normalizarEstagioBuff(
+            buffs.pres ?? 0,
+            "pres"
+        );
+
     const lerTalentoAtivo = (id) => {
         const valor =
             token.metadata[
@@ -7571,18 +7578,22 @@ function mostrarFichaPokemonMoves(token) {
               style="display:${tipoInicial === "mcd" ? "block" : "none"};"
             >
               <div style="
-                display:flex;
-                align-items:flex-end;
+                display:grid;
+                grid-template-columns:minmax(90px, 120px) minmax(0, 1fr);
+                align-items:end;
                 gap:7px;
                 margin-bottom:8px;
               ">
-                <div style="width:105px; flex:0 0 105px;">
-                  <label style="display:block; margin-bottom:3px;">CD</label>
+                <div style="min-width:0;">
+                  <label style="display:block; margin-bottom:3px;">CD Base</label>
                   <input
                     id="golpe${numero}CD"
+                    class="cdBaseMove"
+                    data-golpe="${numero}"
                     type="number"
                     value="${esc(golpe.cd)}"
                     placeholder="Ex: 15"
+                    title="A CD atual é a CD Base menos os estágios de Precisão."
                     style="
                       width:100%;
                       min-height:32px !important;
@@ -7594,22 +7605,31 @@ function mostrarFichaPokemonMoves(token) {
                   >
                 </div>
 
-                <button
-                  type="button"
-                  class="rolarTesteCriticoCD"
-                  data-golpe="${numero}"
+                <div
+                  id="golpe${numero}CDAtual"
+                  class="cdAtualPrecisao"
+                  data-cd-base="${esc(golpe.cd)}"
                   style="
-                    flex:1;
-                    min-height:32px !important;
-                    height:32px;
-                    padding:5px 7px !important;
-                    cursor:pointer;
+                    min-height:32px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    padding:5px 8px;
+                    box-sizing:border-box;
+                    border:1px solid #a8c7ef;
+                    border-radius:8px;
+                    background:#f4f9ff;
+                    color:#2865be;
                     font-size:10px;
-                    font-weight:bold;
+                    font-weight:900;
+                    text-align:center;
                   "
+                  title="CD atual após aplicar Precisão"
                 >
-                  🎲 TESTE CRÍTICO
-                </button>
+                  ${golpe.cd === ""
+                      ? "CD ATUAL —"
+                      : `CD ATUAL ${Number(golpe.cd) - precisaoInicial}`}
+                </div>
               </div>
 
               <div style="margin-bottom:8px;">
@@ -8046,6 +8066,10 @@ function mostrarFichaPokemonMoves(token) {
                         const buffId =
                             campo.id.replace("buff-", "");
 
+                        if (buffId === "pres") {
+                            atualizarCDsComPrecisao();
+                        }
+
                         const valorBuff =
                             normalizarEstagioBuff(
                                 campo.value,
@@ -8121,10 +8145,32 @@ function mostrarFichaPokemonMoves(token) {
                         );
 
                         atualizarBuffsPagina();
+
+                        if (buffId === "pres") {
+                            atualizarCDsComPrecisao();
+                        }
                     }
                 );
             }
         );
+
+    // A CD salva continua sendo a CD BASE. O indicador mostra a CD efetiva
+    // e reage imediatamente a mudanças de Precisão ou da própria CD Base.
+    document
+        .querySelectorAll(".cdBaseMove")
+        .forEach((campo) => {
+            campo.addEventListener(
+                "input",
+                atualizarCDsComPrecisao
+            );
+
+            campo.addEventListener(
+                "change",
+                atualizarCDsComPrecisao
+            );
+        });
+
+    atualizarCDsComPrecisao();
 
     function atualizarTipoMoveVisual(numero, tipo) {
         const tiposValidos =
@@ -8434,6 +8480,82 @@ function mostrarFichaPokemonMoves(token) {
         );
     }
 
+    function estagioPrecisaoAtual() {
+        return normalizarEstagioBuff(
+            document
+                .querySelector("#buff-pres")
+                ?.value ?? buffs.pres ?? 0,
+            "pres"
+        );
+    }
+
+    function adicionarPrecisaoAoAcerto(formula) {
+        return adicionarBonusNaFormula(
+            formula,
+            estagioPrecisaoAtual()
+        );
+    }
+
+    function atualizarCDsComPrecisao() {
+        const precisao =
+            estagioPrecisaoAtual();
+
+        for (let numero = 1; numero <= 5; numero++) {
+            const campoCD =
+                document.querySelector(
+                    `#golpe${numero}CD`
+                );
+
+            const indicador =
+                document.querySelector(
+                    `#golpe${numero}CDAtual`
+                );
+
+            if (!campoCD || !indicador) {
+                continue;
+            }
+
+            const textoBase =
+                String(campoCD.value ?? "").trim();
+
+            if (textoBase === "") {
+                indicador.textContent =
+                    "CD ATUAL —";
+                indicador.title =
+                    "Defina a CD Base do move.";
+                continue;
+            }
+
+            const cdBase = Number(
+                textoBase.replace(",", ".")
+            );
+
+            if (!Number.isFinite(cdBase)) {
+                indicador.textContent =
+                    "CD ATUAL —";
+                continue;
+            }
+
+            const cdAtual =
+                cdBase - precisao;
+
+            indicador.textContent =
+                `CD ATUAL ${formatarDecimal(cdAtual)}`;
+
+            if (precisao === 0) {
+                indicador.title =
+                    `CD Base ${formatarDecimal(cdBase)} · Precisão 0`;
+            }
+            else {
+                const sinalPrecisao =
+                    precisao > 0 ? "+" : "";
+
+                indicador.title =
+                    `CD Base ${formatarDecimal(cdBase)} · Precisão ${sinalPrecisao}${precisao} · CD Atual ${formatarDecimal(cdAtual)}`;
+            }
+        }
+    }
+
     function formulaComVantagem(formula) {
         const base =
             String(formula || "").trim();
@@ -8455,7 +8577,9 @@ function mostrarFichaPokemonMoves(token) {
         const categoria =
             categoriaGolpeAtual(numero);
 
-        let bonusTalento = 0;
+        // Precisão concede +1/-1 no acerto por estágio.
+        let bonusTalento =
+            estagioPrecisaoAtual();
 
         if (
             categoria === "fisico" &&
@@ -8827,26 +8951,6 @@ function mostrarFichaPokemonMoves(token) {
     // =================================================
 
     document
-        .querySelectorAll(".rolarTesteCriticoCD")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-
-                        await rolarNoDicePlus(
-                            "1d20",
-                            nomeGolpe(numero),
-                            "Teste Crítico"
-                        );
-                    }
-                );
-            }
-        );
-
-    document
         .querySelectorAll(".rolarPassouCD")
         .forEach(
             (botao) => {
@@ -9197,8 +9301,15 @@ function mostrarFichaPokemonMoves(token) {
                                 ?.value
                                 .trim();
 
+                        // Moves de Buff/Debuff também recebem ±1 no
+                        // acerto para cada estágio de Precisão.
+                        const formulaFinal =
+                            adicionarPrecisaoAoAcerto(
+                                formula
+                            );
+
                         await rolarNoDicePlus(
-                            formula,
+                            formulaFinal,
                             nomeGolpe(numero),
                             statusNome
                                 ? `Acerto · ${statusNome}`
