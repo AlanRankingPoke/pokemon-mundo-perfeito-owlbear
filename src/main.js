@@ -8,6 +8,12 @@ const ID_POPOVER_INICIATIVA =
     `${PREFIX}/apresentador-iniciativa`;
 const META_INICIATIVA_TRACKER =
     `${PREFIX}/initiative-tracker`;
+
+const META_AURA_VENENO_TESTE =
+    `${PREFIX}/aura-veneno-teste`;
+
+const META_AURA_VENENO_VISUAL =
+    `${PREFIX}/aura-veneno-visual`;
 const ESTILO_FICHA = `
 <style>
   :root {
@@ -4657,15 +4663,15 @@ function menuPokemon(paginaAtual) {
         id="paginaPokemon3"
         style="
           flex:1;
-          min-width:75px;
+          min-width:110px;
           padding:8px 4px;
-          font-size:11px;
+          font-size:10px;
           font-weight:bold;
           cursor:pointer;
           opacity:${paginaAtual === 3 ? "1" : "0.65"};
         "
       >
-        PERÍCIAS
+        PERÍCIAS / DEBUFF
       </button>
     </div>
   `;
@@ -4859,95 +4865,320 @@ function ativarCabecalhoPokemon(token) {
         );
     ativarMenuPokemon(token);
 }
-function criarPericiasPokemon(valores) {
-    return PERICIAS.map(
-        (grupo) => {
-            if (!grupo.pericias.length) {
-                return `
-          <div style="
-            margin-bottom:12px;
-            border:1px solid #555;
-            border-radius:6px;
-            padding:8px;
-          ">
-            <strong>
-              ${grupo.atributo} — ${grupo.nomeAtributo}
-            </strong>
-            <div style="
-              font-size:12px;
-              opacity:0.7;
-              margin-top:5px;
-            ">
-              Nenhuma perícia
-            </div>
-          </div>
-        `;
+async function removerAuraVenenoTeste(
+    tokenId,
+    atualizarMetadata = true
+) {
+    const visuais =
+        await OBR.scene.items.getItems(
+            (item) =>
+                item.metadata?.[
+                    META_AURA_VENENO_VISUAL
+                ] === tokenId
+        );
+
+    if (visuais.length) {
+        await OBR.scene.items.deleteItems(
+            visuais.map((item) => item.id)
+        );
+    }
+
+    if (atualizarMetadata) {
+        await OBR.scene.items.updateItems(
+            [tokenId],
+            (items) => {
+                for (const item of items) {
+                    item.metadata[
+                        META_AURA_VENENO_TESTE
+                    ] = false;
+                }
             }
-            const linhas =
-                grupo.pericias.map(
-                    (pericia) => `
-            <div style="
-              display:flex;
-              align-items:center;
-              gap:6px;
-              margin-bottom:7px;
-            ">
-              <span style="
-                flex:1;
-                font-size:13px;
-              ">
-                ${pericia.nome}
-              </span>
-              <input
-                id="pokemon-pericia-${pericia.id}"
-                type="text"
-                value="${esc(valores[pericia.id])}"
-                placeholder="+0"
-                style="
-                  width:60px;
-                  box-sizing:border-box;
-                  text-align:center;
-                  padding:5px;
-                "
-              >
-              <button
-                type="button"
-                class="rolarPericiaPokemon"
-                data-pericia="${pericia.id}"
-                data-nome="${esc(pericia.nome)}"
-                style="
-                  width:72px;
-                  padding:5px 3px;
-                  box-sizing:border-box;
-                  font-size:10px;
-                  font-weight:bold;
-                  cursor:pointer;
-                "
-              >
-                🎲 Rolar
-              </button>
-            </div>
-          `
-                ).join("");
-            return `
-        <div style="
-          margin-bottom:12px;
-          border:1px solid #555;
-          border-radius:6px;
-          padding:8px;
-        ">
-          <div style="
-            font-weight:bold;
-            margin-bottom:8px;
-          ">
-            ${grupo.atributo} — ${grupo.nomeAtributo}
-          </div>
-          ${linhas}
-        </div>
-      `;
-        }
-    ).join("");
+        );
+    }
 }
+
+async function criarAuraVenenoTeste(token) {
+    await removerAuraVenenoTeste(
+        token.id,
+        false
+    );
+
+    const bounds =
+        await OBR.scene.items.getItemBounds(
+            [token.id]
+        );
+
+    const centro = {
+        x: bounds.min.x + bounds.width / 2,
+        y: bounds.min.y + bounds.height / 2
+    };
+
+    const base =
+        Math.max(
+            70,
+            Math.max(
+                bounds.width,
+                bounds.height
+            )
+        );
+
+    const criarCirculo = (
+        multiplicador,
+        fillOpacity,
+        strokeOpacity,
+        strokeWidth,
+        cor,
+        tipo
+    ) => {
+        const tamanho =
+            base * multiplicador;
+
+        return buildShape()
+            .shapeType("CIRCLE")
+            .width(tamanho)
+            .height(tamanho)
+            .position({
+                x: centro.x - tamanho / 2,
+                y: centro.y - tamanho / 2
+            })
+            .fillColor(cor)
+            .fillOpacity(fillOpacity)
+            .strokeColor(cor)
+            .strokeOpacity(strokeOpacity)
+            .strokeWidth(strokeWidth)
+            // MOUNT fica abaixo de CHARACTER, deixando
+            // o brilho atrás do token em vez de cobri-lo.
+            .layer("MOUNT")
+            .zIndex(999999)
+            .disableAutoZIndex(true)
+            .attachedTo(token.id)
+            .locked(true)
+            .disableHit(true)
+            .metadata({
+                [META_AURA_VENENO_VISUAL]:
+                    token.id,
+                [`${PREFIX}/aura-veneno-parte`]:
+                    tipo
+            })
+            .build();
+    };
+
+    const auraExterna =
+        criarCirculo(
+            1.34,
+            0.055,
+            0.22,
+            9,
+            "#7C3AED",
+            "externa"
+        );
+
+    const auraInterna =
+        criarCirculo(
+            1.18,
+            0.09,
+            0.88,
+            5,
+            "#C084FC",
+            "interna"
+        );
+
+    await OBR.scene.items.addItems([
+        auraExterna,
+        auraInterna
+    ]);
+
+    await OBR.scene.items.updateItems(
+        [token.id],
+        (items) => {
+            for (const item of items) {
+                item.metadata[
+                    META_AURA_VENENO_TESTE
+                ] = true;
+            }
+        }
+    );
+
+    token.metadata[
+        META_AURA_VENENO_TESTE
+    ] = true;
+}
+
+async function alternarAuraVenenoTeste(token) {
+    const visuais =
+        await OBR.scene.items.getItems(
+            (item) =>
+                item.metadata?.[
+                    META_AURA_VENENO_VISUAL
+                ] === token.id
+        );
+
+    const ativa =
+        token.metadata[
+            META_AURA_VENENO_TESTE
+        ] === true ||
+        visuais.length > 0;
+
+    if (ativa) {
+        await removerAuraVenenoTeste(
+            token.id
+        );
+
+        token.metadata[
+            META_AURA_VENENO_TESTE
+        ] = false;
+
+        return false;
+    }
+
+    await criarAuraVenenoTeste(token);
+    return true;
+}
+
+function atualizarBotaoAuraVenenoTeste(
+    ativo
+) {
+    const botao =
+        document.querySelector(
+            "#venenoTeste"
+        );
+
+    if (!botao) {
+        return;
+    }
+
+    botao.classList.toggle(
+        "ativo",
+        ativo
+    );
+
+    botao.textContent =
+        ativo
+            ? "☠ VENENO TESTE ✓"
+            : "☠ VENENO TESTE";
+
+    botao.title =
+        ativo
+            ? "Clique para remover a aura roxa de teste."
+            : "Clique para aplicar uma aura roxa de teste ao token.";
+
+    botao.style.background =
+        ativo
+            ? "linear-gradient(135deg,#8b5cf6,#6d28d9)"
+            : "";
+
+    botao.style.color =
+        ativo
+            ? "#ffffff"
+            : "";
+
+    botao.style.borderColor =
+        ativo
+            ? "#7c3aed"
+            : "";
+}
+
+function criarPericiasPokemon(valores) {
+    const pericias =
+        PERICIAS.flatMap(
+            (grupo) =>
+                grupo.pericias.map(
+                    (pericia) => ({
+                        ...pericia,
+                        atributo:
+                            grupo.atributo
+                    })
+                )
+        );
+
+    return `
+      <div style="
+        display:grid;
+        grid-template-columns:repeat(2,minmax(145px,1fr));
+        gap:6px;
+        width:100%;
+      ">
+        ${pericias.map(
+            (pericia) => `
+              <div style="
+                min-width:0;
+                display:grid;
+                grid-template-columns:minmax(0,1fr) 45px 32px;
+                align-items:center;
+                gap:4px;
+                padding:5px 6px;
+                border:1px solid #dbe5f0;
+                border-radius:8px;
+                background:#fbfdff;
+              ">
+                <div style="
+                  min-width:0;
+                  overflow:hidden;
+                ">
+                  <div style="
+                    overflow:hidden;
+                    white-space:nowrap;
+                    text-overflow:ellipsis;
+                    font-size:10px;
+                    font-weight:800;
+                    color:#33475f;
+                  ">
+                    ${pericia.nome}
+                  </div>
+                  <div style="
+                    margin-top:1px;
+                    font-size:7px;
+                    font-weight:900;
+                    color:#8798ad;
+                  ">
+                    ${pericia.atributo}
+                  </div>
+                </div>
+
+                <input
+                  id="pokemon-pericia-${pericia.id}"
+                  type="text"
+                  value="${esc(valores[pericia.id])}"
+                  placeholder="+0"
+                  style="
+                    width:45px;
+                    min-height:30px !important;
+                    height:30px;
+                    padding:3px !important;
+                    box-sizing:border-box;
+                    text-align:center;
+                    font-size:10px;
+                    font-weight:800;
+                  "
+                >
+
+                <button
+                  type="button"
+                  class="rolarPericiaPokemon"
+                  data-pericia="${pericia.id}"
+                  data-nome="${esc(pericia.nome)}"
+                  title="Rolar ${esc(pericia.nome)}"
+                  style="
+                    width:32px;
+                    min-width:32px;
+                    min-height:30px !important;
+                    height:30px;
+                    padding:2px !important;
+                    box-sizing:border-box;
+                    font-size:12px;
+                    font-weight:bold;
+                    cursor:pointer;
+                  "
+                >
+                  🎲
+                </button>
+              </div>
+            `
+        ).join("")}
+      </div>
+    `;
+}
+
 function ativarRolagensPericiasPokemon() {
     document
         .querySelectorAll(
@@ -7870,7 +8101,9 @@ function mostrarFichaPokemonPericias(
 ) {
     const app =
         document.querySelector("#app");
+
     const valoresPericias = {};
+
     PERICIAS.forEach(
         (grupo) => {
             grupo.pericias.forEach(
@@ -7885,28 +8118,127 @@ function mostrarFichaPokemonPericias(
             );
         }
     );
+
+    const auraAtiva =
+        token.metadata[
+            META_AURA_VENENO_TESTE
+        ] === true;
+
     app.innerHTML = `
-    ${ESTILO_FICHA}
-    ${cabecalhoPokemon(token, 3)}
-    <h3>Perícias Pokémon</h3>
-    ${criarPericiasPokemon(
-        valoresPericias
-    )}
-    <br>
-    <button
-      id="salvarPokemonPericias"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Perícias
-    </button>
-  `;
+      ${ESTILO_FICHA}
+      ${cabecalhoPokemon(token, 3)}
+
+      <h3 style="
+        margin-bottom:7px !important;
+      ">
+        Perícias / Debuff
+      </h3>
+
+      <div style="
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:8px;
+        margin-bottom:9px;
+        padding:7px 8px;
+        border:1px solid #e3d7fb;
+        border-radius:9px;
+        background:#faf7ff;
+      ">
+        <div style="
+          min-width:0;
+          font-size:9px;
+          line-height:1.25;
+          color:#73578f;
+          font-weight:800;
+        ">
+          Teste visual de debuff:
+          aura roxa no token.
+        </div>
+
+        <button
+          id="venenoTeste"
+          type="button"
+          style="
+            flex:0 0 auto;
+            min-height:32px !important;
+            padding:5px 9px !important;
+            font-size:9px;
+            font-weight:900;
+            cursor:pointer;
+            white-space:nowrap;
+          "
+        >
+          ☠ VENENO TESTE
+        </button>
+      </div>
+
+      ${criarPericiasPokemon(
+          valoresPericias
+      )}
+
+      <button
+        id="salvarPokemonPericias"
+        style="
+          width:100%;
+          padding:10px;
+          font-weight:bold;
+          cursor:pointer;
+        "
+      >
+        Salvar Perícias
+      </button>
+    `;
+
     ativarCabecalhoPokemon(token);
     ativarRolagensPericiasPokemon();
+
+    atualizarBotaoAuraVenenoTeste(
+        auraAtiva
+    );
+
+    document
+        .querySelector("#venenoTeste")
+        ?.addEventListener(
+            "click",
+            async () => {
+                const botao =
+                    document.querySelector(
+                        "#venenoTeste"
+                    );
+
+                if (botao) {
+                    botao.disabled = true;
+                }
+
+                try {
+                    const ativo =
+                        await alternarAuraVenenoTeste(
+                            token
+                        );
+
+                    atualizarBotaoAuraVenenoTeste(
+                        ativo
+                    );
+                }
+                catch (erro) {
+                    console.error(
+                        "Erro ao alternar aura de veneno:",
+                        erro
+                    );
+
+                    alert(
+                        "Não foi possível aplicar a aura de teste."
+                    );
+                }
+                finally {
+                    if (botao) {
+                        botao.disabled = false;
+                    }
+                }
+            }
+        );
+
     document
         .querySelector(
             "#salvarPokemonPericias"
@@ -7915,6 +8247,7 @@ function mostrarFichaPokemonPericias(
             "click",
             async () => {
                 const novasPericias = {};
+
                 PERICIAS.forEach(
                     (grupo) => {
                         grupo.pericias.forEach(
@@ -7932,6 +8265,7 @@ function mostrarFichaPokemonPericias(
                         );
                     }
                 );
+
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
@@ -7959,6 +8293,7 @@ function mostrarFichaPokemonPericias(
             }
         );
 }
+
 function mostrarFichaPokemonTalentos(
     token
 ) {
