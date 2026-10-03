@@ -1,18 +1,13 @@
 import OBR, { buildShape, buildText } from "@owlbear-rodeo/sdk";
 import "./style.css";
-
 const PREFIX = "pokemon-mundo-perfeito";
-
 const MODO_APRESENTADOR_INICIATIVA =
     new URLSearchParams(window.location.search)
         .get("view") === "initiative";
-
 const ID_POPOVER_INICIATIVA =
     `${PREFIX}/apresentador-iniciativa`;
-
 const META_INICIATIVA_TRACKER =
     `${PREFIX}/initiative-tracker`;
-
 const ESTILO_FICHA = `
 <style>
   :root {
@@ -28,25 +23,21 @@ const ESTILO_FICHA = `
     --pm-red: #e85858;
     --pm-shadow: 0 8px 24px rgba(28, 54, 86, 0.10);
   }
-
   #app {
     padding: 12px !important;
     color: var(--pm-text) !important;
     background:
       linear-gradient(180deg, rgba(255,255,255,.97), rgba(246,249,253,.97)) !important;
   }
-
   #app * {
     box-sizing: border-box;
   }
-
   #app h2 {
     color: #182a43 !important;
     font-size: 26px !important;
     font-weight: 800 !important;
     letter-spacing: -0.4px;
   }
-
   #app h3 {
     color: #2c5f9f !important;
     font-size: 16px !important;
@@ -57,20 +48,17 @@ const ESTILO_FICHA = `
     background: linear-gradient(90deg, #edf5ff 0%, #f8fbff 100%);
     border: 1px solid #d9e8fb;
   }
-
   #app p {
     margin: 8px 0 5px !important;
     color: #53647a !important;
     font-size: 12px !important;
     font-weight: 800 !important;
   }
-
   #app label {
     color: #506177 !important;
     font-size: 12px !important;
     font-weight: 800 !important;
   }
-
   #app input,
   #app textarea,
   #app select {
@@ -83,28 +71,23 @@ const ESTILO_FICHA = `
     box-shadow: inset 0 1px 2px rgba(27, 48, 76, 0.03);
     transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
   }
-
   #app input {
     min-height: 36px !important;
     padding: 7px 9px !important;
   }
-
   #app textarea {
     padding: 10px !important;
     line-height: 1.4 !important;
   }
-
   #app input:hover,
   #app textarea:hover {
     border-color: #9fb9da !important;
   }
-
   #app input:focus,
   #app textarea:focus {
     border-color: var(--pm-blue) !important;
     box-shadow: 0 0 0 3px rgba(63,130,232,.13) !important;
   }
-
   #app button {
     border: 1px solid #c9d5e3 !important;
     border-radius: 9px !important;
@@ -115,19 +98,15 @@ const ESTILO_FICHA = `
     box-shadow: 0 2px 5px rgba(32, 58, 88, 0.06);
     transition: transform .1s ease, border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;
   }
-
   #app button:hover {
     border-color: #82afea !important;
     background: #edf5ff !important;
     color: #235fae !important;
     box-shadow: 0 4px 10px rgba(63,130,232,.12);
   }
-
   #app button:active {
     transform: translateY(1px);
   }
-
-  /* Talentos de combate ativos: destaque forte e persistente em laranja. */
   #app .talentoCombate.ativo,
   #app .talentoCombate.ativo:hover {
     background: linear-gradient(180deg, #f59e0b 0%, #e97808 100%) !important;
@@ -136,14 +115,12 @@ const ESTILO_FICHA = `
     box-shadow:0 3px 9px rgba(217,119,6,.34) !important;
     opacity:1 !important;
   }
-
   #app hr {
     border: 0 !important;
     height: 1px !important;
     background: #dde6f0 !important;
     margin: 14px 0 !important;
   }
-
   .fichaCabecalho {
     display:flex !important;
     justify-content:space-between !important;
@@ -152,7 +129,6 @@ const ESTILO_FICHA = `
     margin-bottom:12px !important;
     padding: 5px 2px 2px;
   }
-
   .fichaIdentidade {
     display:flex !important;
     align-items:center !important;
@@ -160,7 +136,6 @@ const ESTILO_FICHA = `
     min-width:0 !important;
     flex:1 !important;
   }
-
   .fichaAvatar {
     width:72px !important;
     height:72px !important;
@@ -175,14 +150,12 @@ const ESTILO_FICHA = `
     box-shadow: 0 4px 10px rgba(49, 103, 171, 0.10);
     padding:4px !important;
   }
-
   .fichaAvatar img {
     width:100% !important;
     height:100% !important;
     object-fit:contain !important;
     display:block !important;
   }
-
   .fichaSubtitulo {
     margin-top:4px !important;
     font-size:11px !important;
@@ -191,7 +164,6 @@ const ESTILO_FICHA = `
     font-weight:900 !important;
     letter-spacing:.7px !important;
   }
-
   #trocarTipo {
     flex:0 0 auto !important;
     padding:8px 12px !important;
@@ -201,19 +173,16 @@ const ESTILO_FICHA = `
     color:#53647a !important;
     background: #f6f8fb !important;
   }
-
   #trocarTipo:hover {
     background:#eaf3ff !important;
     color:#245fae !important;
   }
-
   .fichaAbas {
     display:flex !important;
     gap:7px !important;
     margin-bottom:16px !important;
     flex-wrap:wrap !important;
   }
-
   #paginaPokemon1,
   #paginaPokemon2,
   #paginaPokemon3,
@@ -231,7 +200,6 @@ const ESTILO_FICHA = `
     color:#35475f !important;
     border:1px solid #d2dce8 !important;
   }
-
   #paginaPokemon1[style*="opacity:1"],
   #paginaPokemon2[style*="opacity:1"],
   #paginaPokemon3[style*="opacity:1"],
@@ -244,7 +212,6 @@ const ESTILO_FICHA = `
     border-color:#2f73dc !important;
     box-shadow:0 4px 10px rgba(47,115,220,.20) !important;
   }
-
   .statusGrid {
     display:grid !important;
     grid-template-columns: minmax(120px, .95fr) minmax(180px, 1.45fr) !important;
@@ -252,7 +219,6 @@ const ESTILO_FICHA = `
     align-items:start !important;
     margin-top: 4px;
   }
-
   .statusCard {
     background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
     border:1px solid var(--pm-line);
@@ -260,62 +226,49 @@ const ESTILO_FICHA = `
     padding:11px;
     box-shadow:0 3px 10px rgba(30, 55, 84, .055);
   }
-
   .statusCard p:first-child {
     margin-top:0 !important;
   }
-
   #hpAtual {
     border-left:4px solid var(--pm-red) !important;
     font-weight:800 !important;
   }
-
   #hpMax {
     font-weight:800 !important;
   }
-
   #ca {
     border-left:4px solid var(--pm-blue) !important;
     font-weight:800 !important;
   }
-
   #habilidadePokemon {
     min-height:72px !important;
     background:#fbfdff !important;
     resize:vertical !important;
   }
-
   .statusGridPokemon {
     grid-template-columns:1fr !important;
   }
-
   .pokemonDetalhesCompactos {
     margin-top:7px !important;
     padding-top:6px !important;
     border-top:1px solid #e1e8f0 !important;
   }
-
   .pokemonDetalhesCompactos p {
     margin:3px 0 3px !important;
   }
-
   #itemPokemon {
     width:100% !important;
     min-height:32px !important;
     box-sizing:border-box !important;
   }
-
-  /* Compacta a passagem Item -> Movimentação. */
   #app .hrMovimento {
     margin:5px 0 4px !important;
   }
-
   #app .tituloMovimento {
     margin:0 0 5px !important;
     padding:7px 9px !important;
     font-size:15px !important;
   }
-
   .proficienciaLinha {
     margin-top:10px !important;
     display:flex !important;
@@ -326,7 +279,6 @@ const ESTILO_FICHA = `
     background:#f5f9ff;
     border:1px solid #dbe8f7;
   }
-
   #proficiencia,
   #treinadorProficiencia {
     width:70px !important;
@@ -334,7 +286,6 @@ const ESTILO_FICHA = `
     text-align:center !important;
     font-weight:800 !important;
   }
-
   .calculadoraHpLinha {
     display:flex !important;
     flex-direction:column !important;
@@ -344,13 +295,11 @@ const ESTILO_FICHA = `
     position:relative;
     width:100% !important;
   }
-
   .calculadoraTitulo {
     width:100% !important;
     text-align:center !important;
     margin:8px 0 4px !important;
   }
-
   .calculadoraControles {
     display:flex !important;
     align-items:flex-end !important;
@@ -359,33 +308,28 @@ const ESTILO_FICHA = `
     flex-wrap:wrap !important;
     width:100% !important;
   }
-
   .calculadoraHpCampo {
     flex:1 1 76px !important;
     min-width:58px !important;
     max-width:100px !important;
   }
-
   .calculadoraAcao {
     display:flex !important;
     justify-content:center !important;
     width:100% !important;
     margin-top:3px !important;
   }
-
   .calculadoraHpCampo #alterarHp {
     width:100% !important;
     min-height:34px !important;
     text-align:center !important;
   }
-
   .superEfetivoWrap,
   .resistenteWrap,
   .moveWrap {
     position:relative;
     flex:0 0 auto;
   }
-
   #botaoSuperEfetivo,
   #botaoResistente,
   #botaoMove,
@@ -396,7 +340,6 @@ const ESTILO_FICHA = `
     white-space:nowrap !important;
     cursor:pointer !important;
   }
-
   #botaoCalcularHp {
     width:58% !important;
     min-width:170px !important;
@@ -408,20 +351,16 @@ const ESTILO_FICHA = `
     border-color:#218447 !important;
     font-weight:900 !important;
   }
-
   #botaoCalcularHp:hover {
     background:linear-gradient(135deg, #36aa5f 0%, #207f47 100%) !important;
     color:#fff !important;
     border-color:#1d743f !important;
   }
-
-  /* Iniciativa: bloco próprio abaixo da Calculadora. */
   .iniciativaBloco {
     width:100% !important;
     margin-top:12px !important;
     padding-top:3px !important;
   }
-
   .iniciativaTitulo {
     width:100% !important;
     text-align:center !important;
@@ -430,7 +369,6 @@ const ESTILO_FICHA = `
     font-size:12px !important;
     font-weight:800 !important;
   }
-
   .iniciativaLinha {
     display:flex !important;
     align-items:center !important;
@@ -439,14 +377,12 @@ const ESTILO_FICHA = `
     flex-wrap:wrap !important;
     width:100% !important;
   }
-
   #iniciativa {
     width:66px !important;
     min-height:36px !important;
     text-align:center !important;
     font-weight:800 !important;
   }
-
   #rolarIniciativa {
     flex:0 0 38px !important;
     width:38px !important;
@@ -454,7 +390,6 @@ const ESTILO_FICHA = `
     padding:5px !important;
     font-size:13px !important;
   }
-
   .iniciativaCheck {
     display:inline-flex !important;
     align-items:center !important;
@@ -467,7 +402,6 @@ const ESTILO_FICHA = `
     white-space:nowrap !important;
     cursor:pointer !important;
   }
-
   .iniciativaCheckBolinha {
     width:17px !important;
     height:17px !important;
@@ -482,40 +416,32 @@ const ESTILO_FICHA = `
     font-weight:900 !important;
     line-height:1 !important;
   }
-
   .iniciativaCheck.ativo {
     background:#eaf3ff !important;
     color:#245fae !important;
     border-color:#7aa8e6 !important;
   }
-
   .iniciativaCheck.ativo .iniciativaCheckBolinha {
     background:#3f82e8 !important;
     border-color:#2868c9 !important;
     color:#fff !important;
   }
-
-  /* Super Efetivo: 2x laranja, 4x vermelho. */
   #botaoSuperEfetivo.super2 {
     background:linear-gradient(135deg, #ffb347 0%, #f28c28 100%) !important;
     color:#fff !important;
     border-color:#dc7a18 !important;
   }
-
   #botaoSuperEfetivo.super4 {
     background:linear-gradient(135deg, #ff6666 0%, #d93636 100%) !important;
     color:#fff !important;
     border-color:#c72d2d !important;
   }
-
-  /* Resistente usa azul para ficar visualmente diferente do Super Efetivo. */
   #botaoResistente.resistente2,
   #botaoResistente.resistente4 {
     background:linear-gradient(135deg, #65a9ff 0%, #367bd4 100%) !important;
     color:#fff !important;
     border-color:#2f6dbd !important;
   }
-
   .opcoesSuperEfetivo,
   .opcoesResistente,
   .opcoesMove {
@@ -531,25 +457,20 @@ const ESTILO_FICHA = `
     background:#fff;
     box-shadow:0 6px 18px rgba(28,54,86,.16);
   }
-
   .opcoesSuperEfetivo.aberto,
   .opcoesResistente.aberto {
     display:flex;
   }
-
-  /* O menu Move abre para baixo com as opções empilhadas. */
   .opcoesMove.aberto {
     display:flex;
     flex-direction:column;
     align-items:stretch;
     min-width:100%;
   }
-
   .opcoesMove .tipoMoveHp {
     width:100% !important;
     min-width:86px !important;
   }
-
   .multiplicadorSuperEfetivo,
   .divisorResistente,
   .tipoMoveHp {
@@ -559,82 +480,67 @@ const ESTILO_FICHA = `
     font-size:11px !important;
     cursor:pointer !important;
   }
-
   .multiplicadorSuperEfetivo[data-fator="1"].ativo,
   .divisorResistente[data-fator="1"].ativo {
     background:#eef2f7 !important;
     color:#31445e !important;
     border-color:#aebdce !important;
   }
-
   .multiplicadorSuperEfetivo[data-fator="2"].ativo {
     background:#f28c28 !important;
     color:#fff !important;
     border-color:#dc7a18 !important;
   }
-
   .multiplicadorSuperEfetivo[data-fator="4"].ativo {
     background:#d93636 !important;
     color:#fff !important;
     border-color:#c72d2d !important;
   }
-
   .divisorResistente[data-fator="0.5"].ativo,
   .divisorResistente[data-fator="0.25"].ativo {
     background:#3f82e8 !important;
     color:#fff !important;
     border-color:#2868c9 !important;
   }
-
-
-  /* Move: Físico usa DEF; Especial usa DEFSP; Neutro ignora defesa de estágio. */
   #botaoMove.moveFisico {
     background:linear-gradient(135deg, #f59a55 0%, #d96e2b 100%) !important;
     color:#fff !important;
     border-color:#c55f22 !important;
   }
-
   #botaoMove.moveEspecial {
     background:linear-gradient(135deg, #9b7cff 0%, #6f52d9 100%) !important;
     color:#fff !important;
     border-color:#6045c6 !important;
   }
-
   .tipoMoveHp[data-tipo="neutro"].ativo {
     background:#eef2f7 !important;
     color:#31445e !important;
     border-color:#aebdce !important;
   }
-
   .tipoMoveHp[data-tipo="fisico"].ativo {
     background:#d96e2b !important;
     color:#fff !important;
     border-color:#c55f22 !important;
   }
-
   .tipoMoveHp[data-tipo="especial"].ativo {
     background:#6f52d9 !important;
     color:#fff !important;
     border-color:#6045c6 !important;
   }
-
   .movimentoLinha {
     display:grid !important;
     grid-template-columns:repeat(3, minmax(70px, 1fr)) !important;
     gap:7px !important;
   }
-
   .movimentoLinha input {
     width:100% !important;
   }
-
   .movimentoGrid {
     display:grid !important;
     grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
     gap:5px 7px !important;
     margin-top:0 !important;
   }
-
   .movimentoTipo {
     display:flex !important;
     align-items:center !important;
@@ -646,7 +552,6 @@ const ESTILO_FICHA = `
     border-radius:10px !important;
     background:#fbfdff !important;
   }
-
   .movimentoNome {
     font-size:11px !important;
     line-height:1.05 !important;
@@ -654,7 +559,6 @@ const ESTILO_FICHA = `
     color:#506177 !important;
     min-width:0 !important;
   }
-
   .movimentoValor {
     width:44px !important;
     height:44px !important;
@@ -667,20 +571,17 @@ const ESTILO_FICHA = `
     font-weight:900 !important;
     appearance:textfield;
   }
-
   .movimentoValor::-webkit-outer-spin-button,
   .movimentoValor::-webkit-inner-spin-button {
     -webkit-appearance:none;
     margin:0;
   }
-
   .movimentoTexto {
     display:flex !important;
     flex-direction:column !important;
     gap:0 !important;
     min-width:0 !important;
   }
-
   .movimentoMeta {
     min-height:10px !important;
     margin-top:1px !important;
@@ -690,20 +591,16 @@ const ESTILO_FICHA = `
     color:#7a8da5 !important;
     white-space:nowrap !important;
   }
-
   .movimentoValor {
     border-color:#a8c7ef !important;
     background:linear-gradient(180deg, #ffffff 0%, #f3f8ff 100%) !important;
   }
-
   .movimentoValor:not(:focus) {
     color:#245fae !important;
   }
-
   .movimentoValor:focus {
     color:#203149 !important;
   }
-
   .rolarSalvaguarda,
   .rolarAtributo,
   .rolarPericiaPokemon,
@@ -722,7 +619,6 @@ const ESTILO_FICHA = `
     color:#2865be !important;
     border-color:#a8c7ef !important;
   }
-
   #salvarPokemonStatus,
   #salvarPokemonMoves,
   #salvarPokemonPericias,
@@ -737,9 +633,6 @@ const ESTILO_FICHA = `
     color:#fff !important;
     box-shadow:0 5px 12px rgba(40,107,215,.22) !important;
   }
-
-  /* Salvamento é automático: os antigos botões continuam apenas como
-     gatilhos internos para reaproveitar a lógica já validada. */
   #salvarPokemonStatus,
   #salvarPokemonMoves,
   #salvarPokemonPericias,
@@ -750,49 +643,39 @@ const ESTILO_FICHA = `
   #salvarTreinadorAnotacoes {
     display:none !important;
   }
-
   details {
     background:#fff !important;
     border:1px solid #d7e1ec !important;
     border-radius:11px !important;
     box-shadow:0 2px 8px rgba(30,50,80,.055) !important;
   }
-
   details:hover {
     border-color:#a9c4e5 !important;
   }
-
   summary {
     color:#2d4462 !important;
     font-weight:800 !important;
   }
-
   ::-webkit-scrollbar {
     width:8px;
   }
-
   ::-webkit-scrollbar-track {
     background:transparent;
   }
-
   ::-webkit-scrollbar-thumb {
     background:#a9b8ca;
     border-radius:20px;
   }
-
   ::-webkit-scrollbar-thumb:hover {
     background:#879bb4;
   }
-
   @media (max-width: 420px) {
     .statusGrid {
       grid-template-columns:1fr !important;
     }
-
     .movimentoLinha {
       grid-template-columns:1fr !important;
     }
-
     .fichaAvatar {
       width:62px !important;
       height:62px !important;
@@ -801,95 +684,65 @@ const ESTILO_FICHA = `
   }
 </style>
 `;
-
-
-
-// =====================================================
-// APRESENTADOR DE INICIATIVA
-// =====================================================
-
 function urlApresentadorIniciativa() {
     const url = new URL(window.location.href);
-
     url.searchParams.set(
         "view",
         "initiative"
     );
-
     return url.toString();
 }
-
 async function abrirApresentadorIniciativa() {
     let larguraViewport = 900;
-
+    let quantidade = 1;
     try {
-        larguraViewport =
-            await OBR.viewport.getWidth();
-    }
-    catch (_) {
-        // Usa o valor-padrão se a viewport ainda não estiver pronta.
-    }
-
-    const largura =
-        Math.max(
-            360,
-            Math.min(
-                920,
-                Number(larguraViewport || 900) - 36
+        const [viewport, participantes] = await Promise.all([
+            OBR.viewport.getWidth(),
+            OBR.scene.items.getItems(
+                (item) => dadosIniciativaDoItem(item) !== null
             )
-        );
-
-    const centroX =
-        Math.max(
-            largura / 2 + 10,
-            Number(larguraViewport || largura) / 2
-        );
-
-    // Fecha uma instância antiga antes de reabrir na posição correta.
-    try {
-        await OBR.popover.close(
-            ID_POPOVER_INICIATIVA
-        );
+        ]);
+        larguraViewport = Number(viewport) || 900;
+        quantidade = Math.max(1, participantes.length);
     }
     catch (_) {}
-
+    const larguraMaxima = Math.max(170, larguraViewport - 30);
+    const largura = Math.min(920, larguraMaxima, Math.max(170, quantidade * 79 + 18));
+    try {
+        await OBR.popover.close(ID_POPOVER_INICIATIVA);
+    }
+    catch (_) {}
     await OBR.popover.open({
         id: ID_POPOVER_INICIATIVA,
         url: urlApresentadorIniciativa(),
         width: largura,
-        height: 126,
-
+        height: 112,
         anchorReference: "POSITION",
         anchorPosition: {
-            left: centroX,
-            top: 10
+            left: larguraViewport / 2,
+            top: 6
         },
-
         anchorOrigin: {
             horizontal: "CENTER",
             vertical: "TOP"
         },
-
         transformOrigin: {
             horizontal: "CENTER",
             vertical: "TOP"
         },
-
         hidePaper: true,
-        disableClickAway: true
+        disableClickAway: true,
+        marginThreshold: 0
     });
 }
-
 async function salvarResultadoIniciativa(
     token,
     total
 ) {
     const numero = Number(total);
-
     if (!Number.isFinite(numero)) {
         return;
     }
-
     await OBR.scene.items.updateItems(
         [token.id],
         (items) => {
@@ -903,8 +756,6 @@ async function salvarResultadoIniciativa(
             }
         }
     );
-
-    // Mantém a cópia local coerente enquanto a ficha continuar aberta.
     token.metadata[
         META_INICIATIVA_TRACKER
     ] = {
@@ -912,28 +763,23 @@ async function salvarResultadoIniciativa(
         atualizadoEm: Date.now()
     };
 }
-
 async function ajustarResultadoIniciativa(
     tokenId,
     delta
 ) {
     const ajuste = Number(delta);
-
     if (!Number.isFinite(ajuste) || ajuste === 0) {
         return;
     }
-
     await OBR.scene.items.updateItems(
         [tokenId],
         (items) => {
             for (const item of items) {
                 const dadosAtuais =
                     dadosIniciativaDoItem(item);
-
                 if (!dadosAtuais) {
                     continue;
                 }
-
                 item.metadata[
                     META_INICIATIVA_TRACKER
                 ] = {
@@ -945,7 +791,6 @@ async function ajustarResultadoIniciativa(
         }
     );
 }
-
 async function removerDaIniciativa(tokenId) {
     await OBR.scene.items.updateItems(
         [tokenId],
@@ -958,28 +803,23 @@ async function removerDaIniciativa(tokenId) {
         }
     );
 }
-
 function dadosIniciativaDoItem(item) {
     const dados =
         item?.metadata?.[
             META_INICIATIVA_TRACKER
         ];
-
     if (!dados) {
         return null;
     }
-
     const total =
         Number(
             typeof dados === "object"
                 ? dados.total
                 : dados
         );
-
     if (!Number.isFinite(total)) {
         return null;
     }
-
     return {
         total,
         atualizadoEm:
@@ -990,7 +830,6 @@ function dadosIniciativaDoItem(item) {
             ) || 0
     };
 }
-
 function criarCardApresentadorIniciativa(
     item,
     dados
@@ -999,10 +838,8 @@ function criarCardApresentadorIniciativa(
         item.type === "IMAGE"
             ? item.image?.url || ""
             : "";
-
     const nome =
         item.name || "Token";
-
     return `
         <div class="initCard" title="${esc(nome)}">
             <div class="initImagemWrap">
@@ -1021,7 +858,6 @@ function criarCardApresentadorIniciativa(
                             </div>
                         `
                 }
-
                 <button
                     class="initRemover"
                     type="button"
@@ -1031,7 +867,6 @@ function criarCardApresentadorIniciativa(
                     ×
                 </button>
             </div>
-
             <div class="initValorLinha">
                 <button
                     class="initAjustar"
@@ -1040,11 +875,9 @@ function criarCardApresentadorIniciativa(
                     data-delta="-1"
                     title="Diminuir iniciativa em 1"
                 >−</button>
-
                 <div class="initValor">
                     ${dados.total}
                 </div>
-
                 <button
                     class="initAjustar"
                     type="button"
@@ -1053,388 +886,132 @@ function criarCardApresentadorIniciativa(
                     title="Aumentar iniciativa em 1"
                 >+</button>
             </div>
-
             <div class="initNome">
                 ${esc(nome)}
             </div>
         </div>
     `;
 }
-
 async function iniciarApresentadorIniciativa() {
-    const app =
-        document.querySelector("#app");
-
-    if (!app) {
-        return;
-    }
-
-    document.documentElement.style.background =
-        "transparent";
-
-    document.body.style.margin = "0";
-    document.body.style.background = "transparent";
-    document.body.style.overflow = "hidden";
-
+    const app = document.querySelector("#app");
+    if (!app) return;
+    document.documentElement.style.cssText += ";background:#161e2c!important;overflow:hidden!important";
+    document.body.style.cssText += ";margin:0!important;background:#161e2c!important;overflow:hidden!important";
     const papel = document.createElement("div");
-
     papel.id = "initiativePresenterRoot";
-
     papel.innerHTML = `
         <style>
-            html,
-            body {
-                width:100%;
-                height:100%;
-                margin:0;
-                padding:0;
-                background:transparent !important;
-                font-family:Inter, Arial, sans-serif;
+            html,body,#app,#initiativePresenterRoot{
+                width:100%;height:100%;margin:0;padding:0;box-sizing:border-box;
+                background:#161e2c!important;overflow:hidden!important;
             }
-
-            #app {
-                width:100%;
-                height:100%;
-                margin:0;
-                padding:0;
-                background:transparent !important;
+            body{font-family:Inter,Arial,sans-serif}
+            #initiativePresenterRoot{
+                display:flex;align-items:center;justify-content:center;
+                padding:5px 6px;border:1px solid rgba(255,255,255,.16);
             }
-
-            #initiativePresenterRoot {
-                width:100%;
-                height:100%;
-                box-sizing:border-box;
-                display:flex;
-                align-items:flex-start;
-                justify-content:center;
-                padding:7px 9px 6px;
-                background:transparent;
-                overflow:hidden;
+            .initBarra{
+                width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;
+                gap:7px;padding:2px 4px;box-sizing:border-box;overflow-x:auto;overflow-y:hidden;
+                scrollbar-width:none;-ms-overflow-style:none;background:#161e2c;
             }
-
-            .initBarra {
-                max-width:100%;
-                min-height:110px;
-                display:flex;
-                align-items:center;
-                justify-content:flex-start;
-                gap:7px;
-                padding:7px 9px;
-                box-sizing:border-box;
-                overflow-x:auto;
-                overflow-y:hidden;
-                scrollbar-width:none;
-                -ms-overflow-style:none;
-                border:1px solid rgba(255,255,255,.18);
-                border-radius:16px;
-                background:rgba(22, 30, 44, .94);
-                box-shadow:
-                    0 8px 28px rgba(0,0,0,.28),
-                    inset 0 1px 0 rgba(255,255,255,.06);
-                backdrop-filter:blur(10px);
+            .initBarra::-webkit-scrollbar{display:none;width:0;height:0}
+            .initCard{width:72px;min-width:72px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+            .initImagemWrap{
+                width:54px;height:54px;position:relative;display:flex;align-items:center;justify-content:center;
+                overflow:visible;border:2px solid #6d7c94;border-radius:12px;background:#f4f7fb;box-sizing:border-box;
             }
-
-            .initBarra::-webkit-scrollbar {
-                display:none;
-                width:0;
-                height:0;
+            .initCard:first-child .initImagemWrap{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.2)}
+            .initImagem{width:100%;height:100%;object-fit:contain;display:block;border-radius:9px}
+            .initImagemFallback{font-size:27px;line-height:1}
+            .initValorLinha{display:flex;align-items:center;justify-content:center;gap:2px}
+            .initValor{
+                min-width:30px;padding:2px 5px;border-radius:999px;background:#2e72d2;color:#fff;
+                font-size:13px;font-weight:900;line-height:1.15;text-align:center
             }
-
-            .initCard {
-                width:72px;
-                min-width:72px;
-                display:flex;
-                flex-direction:column;
-                align-items:center;
-                justify-content:flex-start;
-                gap:2px;
-                position:relative;
+            .initCard:first-child .initValor{background:#e97808}
+            .initAjustar{
+                width:18px;height:18px;min-width:18px;min-height:18px;padding:0;display:flex;align-items:center;justify-content:center;
+                border:1px solid #71829b;border-radius:6px;background:#27364b;color:#fff;font-size:14px;font-weight:900;line-height:1;cursor:pointer
             }
-
-            .initCard:first-child .initImagemWrap {
-                border-color:#f59e0b;
-                box-shadow:
-                    0 0 0 2px rgba(245,158,11,.20),
-                    0 0 15px rgba(245,158,11,.55);
+            .initAjustar:hover{background:#365273;border-color:#a9c7ef}
+            .initNome{width:70px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#eef4ff;font-size:9px;font-weight:800;text-align:center;line-height:1.05}
+            .initRemover{
+                width:18px;height:18px;min-height:18px;padding:0;position:absolute;top:-6px;right:-7px;display:flex;align-items:center;justify-content:center;
+                border:1px solid #ff8585;border-radius:50%;background:#cc3d3d;color:#fff;font-size:13px;font-weight:900;line-height:1;cursor:pointer
             }
-
-            .initImagemWrap {
-                width:58px;
-                height:58px;
-                position:relative;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                overflow:visible;
-                border:2px solid #6d7c94;
-                border-radius:13px;
-                background:#f4f7fb;
-                box-sizing:border-box;
-                box-shadow:0 3px 9px rgba(0,0,0,.18);
-            }
-
-            .initImagem {
-                width:100%;
-                height:100%;
-                object-fit:contain;
-                display:block;
-                border-radius:10px;
-            }
-
-            .initImagemFallback {
-                font-size:29px;
-                line-height:1;
-            }
-
-            .initValorLinha {
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                gap:2px;
-                margin-top:1px;
-            }
-
-            .initValor {
-                min-width:30px;
-                padding:2px 5px;
-                border-radius:999px;
-                background:#2e72d2;
-                color:#fff;
-                font-size:14px;
-                font-weight:1000;
-                line-height:1.2;
-                text-align:center;
-                box-shadow:0 2px 5px rgba(0,0,0,.18);
-            }
-
-            .initAjustar {
-                width:18px;
-                height:18px;
-                min-width:18px;
-                min-height:18px;
-                padding:0;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                border:1px solid #71829b;
-                border-radius:6px;
-                background:#27364b;
-                color:#ffffff;
-                font-size:14px;
-                font-weight:1000;
-                line-height:1;
-                cursor:pointer;
-                box-shadow:0 2px 4px rgba(0,0,0,.16);
-            }
-
-            .initAjustar:hover {
-                border-color:#a9c7ef;
-                background:#365273;
-            }
-
-            .initAjustar:active {
-                transform:translateY(1px);
-            }
-
-            .initCard:first-child .initValor {
-                background:#e97808;
-            }
-
-            .initNome {
-                width:70px;
-                overflow:hidden;
-                white-space:nowrap;
-                text-overflow:ellipsis;
-                color:#eef4ff;
-                font-size:9px;
-                font-weight:800;
-                text-align:center;
-                line-height:1.1;
-            }
-
-            .initRemover {
-                width:18px;
-                height:18px;
-                min-height:18px;
-                padding:0;
-                position:absolute;
-                top:-7px;
-                right:-7px;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                border:1px solid #ff8585;
-                border-radius:50%;
-                background:#cc3d3d;
-                color:white;
-                font-size:13px;
-                font-weight:900;
-                line-height:1;
-                cursor:pointer;
-            }
-
-            .initVazio {
-                min-width:280px;
-                padding:23px 28px;
-                box-sizing:border-box;
-                border:1px solid rgba(255,255,255,.16);
-                border-radius:15px;
-                background:rgba(22, 30, 44, .94);
-                color:#e8eef8;
-                font-size:12px;
-                font-weight:800;
-                text-align:center;
-                box-shadow:0 8px 28px rgba(0,0,0,.24);
-            }
+            .initVazio{width:100%;color:#e8eef8;font-size:11px;font-weight:800;text-align:center}
         </style>
-
-        <div
-            id="initiativePresenterList"
-            class="initBarra"
-        ></div>
+        <div id="initiativePresenterList" class="initBarra"></div>
     `;
-
     app.replaceChildren(papel);
-
-    const lista =
-        document.querySelector(
-            "#initiativePresenterList"
-        );
-
+    const lista = document.querySelector("#initiativePresenterList");
+    let assinaturaAnterior = "";
+    let quantidadeAnterior = -1;
+    let jaTeveParticipantes = false;
+    const ajustarTamanho = async (quantidade) => {
+        if (quantidade === quantidadeAnterior) return;
+        quantidadeAnterior = quantidade;
+        try {
+            const viewport = Number(await OBR.viewport.getWidth()) || 900;
+            const largura = Math.min(920, Math.max(170, viewport - 30), Math.max(170, quantidade * 79 + 18));
+            await OBR.popover.setWidth(ID_POPOVER_INICIATIVA, largura);
+            await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 112);
+        }
+        catch (_) {}
+    };
     const renderizar = (items) => {
         const iniciativas = [];
-
         for (const item of items || []) {
-            const dados =
-                dadosIniciativaDoItem(item);
-
-            if (!dados) {
-                continue;
-            }
-
-            iniciativas.push({
-                item,
-                dados
-            });
+            const dados = dadosIniciativaDoItem(item);
+            if (dados) iniciativas.push({ item, dados });
         }
-
-        iniciativas.sort(
-            (a, b) =>
-                b.dados.total - a.dados.total ||
-                a.dados.atualizadoEm - b.dados.atualizadoEm ||
-                String(a.item.name || "")
-                    .localeCompare(
-                        String(b.item.name || "")
-                    )
+        iniciativas.sort((a,b) =>
+            b.dados.total - a.dados.total ||
+            a.dados.atualizadoEm - b.dados.atualizadoEm ||
+            String(a.item.name || "").localeCompare(String(b.item.name || ""))
         );
-
+        const assinatura = iniciativas.map(({item,dados}) =>
+            `${item.id}|${dados.total}|${dados.atualizadoEm}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}`
+        ).join("§");
+        if (assinatura === assinaturaAnterior) return;
+        assinaturaAnterior = assinatura;
         if (!iniciativas.length) {
-            lista.className = "";
-            lista.innerHTML = `
-                <div class="initVazio">
-                    Aguardando iniciativas...
-                </div>
-            `;
+            if (jaTeveParticipantes) {
+                OBR.popover.close(ID_POPOVER_INICIATIVA).catch(() => {});
+                return;
+            }
+            lista.innerHTML = '<div class="initVazio">Aguardando iniciativas...</div>';
+            ajustarTamanho(1);
             return;
         }
-
-        lista.className = "initBarra";
-        lista.innerHTML =
-            iniciativas
-                .map(
-                    ({ item, dados }) =>
-                        criarCardApresentadorIniciativa(
-                            item,
-                            dados
-                        )
-                )
-                .join("");
+        jaTeveParticipantes = true;
+        lista.innerHTML = iniciativas
+            .map(({item,dados}) => criarCardApresentadorIniciativa(item,dados))
+            .join("");
+        ajustarTamanho(iniciativas.length);
     };
-
-    app.addEventListener(
-        "click",
-        async (evento) => {
-            const botaoAjustar =
-                evento.target.closest?.(
-                    "[data-ajustar-iniciativa]"
-                );
-
-            if (botaoAjustar) {
-                const tokenId =
-                    botaoAjustar.dataset
-                        .ajustarIniciativa;
-
-                const delta =
-                    Number(
-                        botaoAjustar.dataset.delta
-                    );
-
-                if (
-                    tokenId &&
-                    Number.isFinite(delta) &&
-                    delta !== 0
-                ) {
-                    try {
-                        await ajustarResultadoIniciativa(
-                            tokenId,
-                            delta
-                        );
-                    }
-                    catch (erro) {
-                        console.warn(
-                            "Não foi possível ajustar a iniciativa:",
-                            erro
-                        );
-                    }
-                }
-
-                return;
+    app.addEventListener("click", async (evento) => {
+        const ajustar = evento.target.closest?.("[data-ajustar-iniciativa]");
+        if (ajustar) {
+            const id = ajustar.dataset.ajustarIniciativa;
+            const delta = Number(ajustar.dataset.delta);
+            if (id && Number.isFinite(delta) && delta !== 0) {
+                try { await ajustarResultadoIniciativa(id, delta); }
+                catch (erro) { console.warn("Não foi possível ajustar a iniciativa:", erro); }
             }
-
-            const botaoRemover =
-                evento.target.closest?.(
-                    "[data-remover-iniciativa]"
-                );
-
-            if (!botaoRemover) {
-                return;
-            }
-
-            const tokenId =
-                botaoRemover.dataset
-                    .removerIniciativa;
-
-            if (!tokenId) {
-                return;
-            }
-
-            try {
-                await removerDaIniciativa(
-                    tokenId
-                );
-            }
-            catch (erro) {
-                console.warn(
-                    "Não foi possível remover o participante da iniciativa:",
-                    erro
-                );
-            }
+            return;
         }
-    );
-
-    const itensAtuais =
-        await OBR.scene.items.getItems();
-
-    renderizar(itensAtuais);
-
-    OBR.scene.items.onChange(
-        renderizar
-    );
+        const remover = evento.target.closest?.("[data-remover-iniciativa]");
+        const id = remover?.dataset.removerIniciativa;
+        if (!id) return;
+        try { await removerDaIniciativa(id); }
+        catch (erro) { console.warn("Não foi possível remover o participante da iniciativa:", erro); }
+    });
+    renderizar(await OBR.scene.items.getItems());
+    OBR.scene.items.onChange(renderizar);
 }
-
-
 const ATRIBUTOS = ["for", "des", "con", "int", "sab", "car"];
-
 const NOMES_ATRIBUTOS = {
     for: "Força",
     des: "Destreza",
@@ -1443,7 +1020,6 @@ const NOMES_ATRIBUTOS = {
     sab: "Sabedoria",
     car: "Carisma"
 };
-
 const BUFFS = [
     { id: "atq", nome: "ATQ" },
     { id: "atqsp", nome: "ATQSP" },
@@ -1454,7 +1030,6 @@ const BUFFS = [
     { id: "evas", nome: "EVAS" },
     { id: "crit", nome: "CRIT" }
 ];
-
 const PERICIAS = [
     {
         atributo: "FOR",
@@ -1510,11 +1085,6 @@ const PERICIAS = [
         ]
     }
 ];
-
-// =====================================================
-// UTILIDADES
-// =====================================================
-
 function esc(valor) {
     return String(valor ?? "")
         .replaceAll("&", "&amp;")
@@ -1522,109 +1092,76 @@ function esc(valor) {
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;");
 }
-
 function limparRotuloDice(texto) {
     return String(texto || "")
         .replace(/[#+\-*/(),]/g, " ")
         .replace(/\s+/g, " ")
         .trim();
 }
-
 function formatarBonus(valor) {
     const numero = Number(valor) || 0;
     return numero > 0 ? `+${numero}` : `${numero}`;
 }
-
-// =====================================================
-// ESTÁGIOS POSITIVOS E NEGATIVOS
-// =====================================================
-
 function normalizarEstagioBuff(valor, id = "") {
     let estagio = Number(valor);
-
     if (Number.isNaN(estagio)) {
         estagio = 0;
     }
-
     estagio = Math.trunc(estagio);
-
-    // CRIT continua usando a faixa própria de 0 a 6.
-    // Os demais estágios aceitam valores positivos e negativos,
-    // preservando a regra já usada pelo sistema sem impor um novo limite.
     if (id === "crit") {
         return Math.max(0, Math.min(6, estagio));
     }
-
     return estagio;
 }
-
 function bonusPorEstagio(id, estagio, proficiencia) {
     const valorEstagio = normalizarEstagioBuff(estagio, id);
     const prof = Number(proficiencia) || 0;
-
-    // EVAS e PRES (Precisão) são sempre ±1 por estágio.
-    // Precisão não multiplica pela Proficiência.
     if (id === "evas" || id === "pres") {
         return valorEstagio;
     }
-
-    // Os demais buffs/debuffs numéricos usam Proficiência × estágio.
     return valorEstagio * prof;
 }
-
 function numeroDecimal(valor) {
     const texto =
         String(valor ?? "")
             .trim()
             .replace(",", ".");
-
     if (texto === "") {
         return null;
     }
-
     const numero = Number(texto);
-
     return Number.isFinite(numero)
         ? numero
         : null;
 }
-
 function formatarDecimal(valor) {
     const numero = numeroDecimal(valor);
-
     if (numero === null) {
         return "";
     }
-
     const arredondado =
         Math.round(numero * 1000) / 1000;
-
     return String(arredondado)
         .replace(".", ",");
 }
-
 function movimentoComVelocidade(
     valorBase,
     estagioVelocidade
 ) {
     const base = numeroDecimal(valorBase);
-
     if (base === null) {
         return "";
     }
-
     const bonus =
         normalizarEstagioBuff(
             estagioVelocidade,
             "vel"
         ) * 1.5;
-
     return Math.max(
         0,
         base + bonus
     );
 }
-
 function faixaCritico(estagio) {
     const mapa = {
         0: "20",
@@ -1635,11 +1172,9 @@ function faixaCritico(estagio) {
         5: "5–20",
         6: "2–20"
     };
-
     const valor = Math.max(0, Math.min(6, Number(estagio) || 0));
     return mapa[valor];
 }
-
 function duplicarDadosFormula(formula) {
     return String(formula || "").replace(
         /(^|[^A-Za-z0-9_])(\d*)d(\d+)/gi,
@@ -1649,37 +1184,26 @@ function duplicarDadosFormula(formula) {
         }
     );
 }
-
 function adicionarBonusNaFormula(formula, bonus) {
     if (bonus > 0) return `${formula}+${bonus}`;
     if (bonus < 0) return `${formula}${bonus}`;
     return formula;
 }
-
 function formulaSalvaguarda(valor) {
     const numero = Number(
         String(valor ?? "")
             .trim()
             .replace(",", ".")
     );
-
     if (Number.isNaN(numero)) {
         return null;
     }
-
     return `1d20${numero >= 0 ? "+" : ""}${numero}`;
 }
-
-// =====================================================
-// DICE+
-// =====================================================
-
 async function dicePlusPronto() {
     const requestId = crypto.randomUUID();
-
     return new Promise((resolve) => {
         let terminou = false;
-
         const unsubscribe = OBR.broadcast.onMessage(
             "dice-plus/isReady",
             (event) => {
@@ -1694,7 +1218,6 @@ async function dicePlusPronto() {
                 }
             }
         );
-
         OBR.broadcast.sendMessage(
             "dice-plus/isReady",
             {
@@ -1703,7 +1226,6 @@ async function dicePlusPronto() {
             },
             { destination: "ALL" }
         );
-
         setTimeout(() => {
             if (!terminou) {
                 terminou = true;
@@ -1713,37 +1235,28 @@ async function dicePlusPronto() {
         }, 1000);
     });
 }
-
 async function rolarNoDicePlus(formula, nome, tipo = "") {
     formula = String(formula || "").trim();
-
     if (!formula) {
         alert("A fórmula da rolagem está vazia.");
         return;
     }
-
     if (!(await dicePlusPronto())) {
         alert("Dice+ não foi encontrado.");
         return;
     }
-
     const playerId = await OBR.player.getId();
     const playerName = await OBR.player.getName();
-
     const nomeSeguro =
         limparRotuloDice(nome) || "Rolagem";
-
     const tipoSeguro =
         limparRotuloDice(tipo);
-
     const rotulo =
         tipoSeguro
             ? `${nomeSeguro} ${tipoSeguro}`
             : nomeSeguro;
-
     const formulaCompleta =
         `${formula} # ${rotulo}`;
-
     await OBR.broadcast.sendMessage(
         "dice-plus/roll-request",
         {
@@ -1751,7 +1264,6 @@ async function rolarNoDicePlus(formula, nome, tipo = "") {
                 `pokemon_${Date.now()}_${Math.random()
                     .toString(36)
                     .slice(2, 8)}`,
-
             playerId,
             playerName,
             rollTarget: "everyone",
@@ -1763,77 +1275,57 @@ async function rolarNoDicePlus(formula, nome, tipo = "") {
         { destination: "ALL" }
     );
 }
-
-// Mesma integração do Dice+, mas aguardando o total da rolagem.
-// Usada pelos Moves de CURA para aplicar o resultado diretamente no HP.
 async function rolarNoDicePlusComResultado(formula, nome, tipo = "") {
     formula = String(formula || "").trim();
-
     if (!formula) {
         alert("A fórmula da rolagem está vazia.");
         return null;
     }
-
     if (!(await dicePlusPronto())) {
         alert("Dice+ não foi encontrado.");
         return null;
     }
-
     const playerId = await OBR.player.getId();
     const playerName = await OBR.player.getName();
-
     const nomeSeguro =
         limparRotuloDice(nome) || "Rolagem";
-
     const tipoSeguro =
         limparRotuloDice(tipo);
-
     const rotulo =
         tipoSeguro
             ? `${nomeSeguro} ${tipoSeguro}`
             : nomeSeguro;
-
     const formulaCompleta =
         `${formula} # ${rotulo}`;
-
     const rollId =
         `pokemon_${Date.now()}_${Math.random()
             .toString(36)
             .slice(2, 8)}`;
-
     return new Promise(async (resolve) => {
         let terminou = false;
         let temporizador = null;
-
         const finalizar = (valor) => {
             if (terminou) {
                 return;
             }
-
             terminou = true;
-
             if (temporizador) {
                 clearTimeout(temporizador);
             }
-
             unsubscribeResultado();
             unsubscribeErro();
             resolve(valor);
         };
-
         const unsubscribeResultado = OBR.broadcast.onMessage(
             `${PREFIX}/roll-result`,
             (event) => {
                 const dados = event.data;
-
                 if (dados?.rollId !== rollId) {
                     return;
                 }
-
                 const total = Number(
                     dados?.result?.totalValue
                 );
-
                 finalizar(
                     Number.isFinite(total)
                         ? total
@@ -1841,36 +1333,29 @@ async function rolarNoDicePlusComResultado(formula, nome, tipo = "") {
                 );
             }
         );
-
         const unsubscribeErro = OBR.broadcast.onMessage(
             `${PREFIX}/roll-error`,
             (event) => {
                 const dados = event.data;
-
                 if (dados?.rollId !== rollId) {
                     return;
                 }
-
                 alert(
                     dados?.error
                         ? `Erro na rolagem: ${dados.error}`
                         : "Não foi possível concluir a rolagem."
                 );
-
                 finalizar(null);
             }
         );
-
         temporizador = setTimeout(() => {
             if (!terminou) {
                 alert(
                     "A rolagem demorou demais para retornar o resultado."
                 );
-
                 finalizar(null);
             }
         }, 30000);
-
         try {
             await OBR.broadcast.sendMessage(
                 "dice-plus/roll-request",
@@ -1892,16 +1377,10 @@ async function rolarNoDicePlusComResultado(formula, nome, tipo = "") {
                 "Erro ao solicitar rolagem de cura no Dice+:",
                 erro
             );
-
             finalizar(null);
         }
     });
 }
-
-// =====================================================
-// BARRA HP + CA
-// =====================================================
-
 const TIPOS_VISUAIS_HUD = [
   "fundo",
   "vida",
@@ -1909,48 +1388,33 @@ const TIPOS_VISUAIS_HUD = [
   "ca-circulo",
   "ca-texto"
 ];
-
 const filaHudPorToken = new Map();
-
 function prepararVisualHud(item) {
   const comportamentos = new Set(
     item.disableAttachmentBehavior || []
   );
-
-  // O HUD deve acompanhar a POSIÇÃO do token, mas não pode
-  // herdar Flip/escala negativa nem rotação do token.
   comportamentos.add("SCALE");
   comportamentos.add("ROTATION");
-
   item.disableAttachmentBehavior = [
     ...comportamentos
   ];
-
   item.rotation = 0;
   item.scale = { x: 1, y: 1 };
-
   return item;
 }
-
 function ordenarHudMaisNovoPrimeiro(a, b) {
   const dataA = Date.parse(a.lastModified || "") || 0;
   const dataB = Date.parse(b.lastModified || "") || 0;
-
   if (dataA !== dataB) {
     return dataB - dataA;
   }
-
-  // Desempate determinístico para dois jogadores que salvem
-  // praticamente no mesmo instante.
   return String(a.id).localeCompare(String(b.id));
 }
-
 async function desduplicarHudToken(
   tokenId,
   tiposAtivos = TIPOS_VISUAIS_HUD
 ) {
   const ativos = new Set(tiposAtivos);
-
   const visuais =
     await OBR.scene.items.getItems(
       (item) =>
@@ -1958,43 +1422,31 @@ async function desduplicarHudToken(
           `${PREFIX}/statusToken`
         ] === tokenId
     );
-
   const porTipo = new Map();
-
   for (const item of visuais) {
     const tipo =
       item.metadata?.[
         `${PREFIX}/tipoVisual`
       ];
-
     if (!porTipo.has(tipo)) {
       porTipo.set(tipo, []);
     }
-
     porTipo.get(tipo).push(item);
   }
-
   const apagar = [];
-
   for (const [tipo, itens] of porTipo) {
     const ordenados =
       [...itens].sort(
         ordenarHudMaisNovoPrimeiro
       );
-
-    // Se este tipo não deveria existir agora (ex.: barra de
-    // vida quando o HP chegou a 0), apaga todas as cópias.
     if (!ativos.has(tipo)) {
       apagar.push(
         ...ordenados.map(
           (item) => item.id
         )
       );
-
       continue;
     }
-
-    // Mantém exatamente uma cópia de cada parte do HUD.
     if (ordenados.length > 1) {
       apagar.push(
         ...ordenados
@@ -2003,14 +1455,12 @@ async function desduplicarHudToken(
       );
     }
   }
-
   if (apagar.length) {
     await OBR.scene.items.deleteItems(
       [...new Set(apagar)]
     );
   }
 }
-
 async function corrigirHudExistente() {
   const visuais =
     await OBR.scene.items.getItems(
@@ -2019,12 +1469,9 @@ async function corrigirHudExistente() {
           `${PREFIX}/statusToken`
         ] !== undefined
     );
-
   if (!visuais.length) {
     return;
   }
-
-  // Migra barras já existentes para a regra anti-Flip.
   await OBR.scene.items.updateItems(
     visuais,
     (items) => {
@@ -2032,22 +1479,16 @@ async function corrigirHudExistente() {
         const comportamentos = new Set(
           item.disableAttachmentBehavior || []
         );
-
         comportamentos.add("SCALE");
         comportamentos.add("ROTATION");
-
         item.disableAttachmentBehavior = [
           ...comportamentos
         ];
-
         item.rotation = 0;
         item.scale = { x: 1, y: 1 };
       }
     }
   );
-
-  // Também limpa duplicatas que tenham ficado de versões
-  // anteriores do plugin.
   const tokens = [
     ...new Set(
       visuais
@@ -2060,12 +1501,10 @@ async function corrigirHudExistente() {
         .filter(Boolean)
     )
   ];
-
   for (const tokenId of tokens) {
     await desduplicarHudToken(tokenId);
   }
 }
-
 async function executarEmFilaHud(
   tokenId,
   tarefa
@@ -2073,16 +1512,13 @@ async function executarEmFilaHud(
   const anterior =
     filaHudPorToken.get(tokenId) ||
     Promise.resolve();
-
   const atual = anterior
     .catch(() => {})
     .then(tarefa);
-
   filaHudPorToken.set(
     tokenId,
     atual
   );
-
   try {
     return await atual;
   }
@@ -2094,7 +1530,6 @@ async function executarEmFilaHud(
     }
   }
 }
-
 async function criarStatusNoToken(
   token,
   hpAtual,
@@ -2111,7 +1546,6 @@ async function criarStatusNoToken(
               `${PREFIX}/statusToken`
             ] === token.id
         );
-
       if (antigos.length) {
         await OBR.scene.items.deleteItems(
           antigos.map(
@@ -2119,12 +1553,10 @@ async function criarStatusNoToken(
           )
         );
       }
-
       const bounds =
         await OBR.scene.items.getItemBounds(
           [token.id]
         );
-
       const larguraBarra = Math.max(
         100,
         Math.min(
@@ -2132,7 +1564,6 @@ async function criarStatusNoToken(
           bounds.width * 0.85
         )
       );
-
       const alturaBarra = Math.max(
         20,
         Math.min(
@@ -2140,37 +1571,30 @@ async function criarStatusNoToken(
           larguraBarra * 0.16
         )
       );
-
       const tamanhoCA =
         alturaBarra * 1.4;
-
       const espacoCA =
         alturaBarra * 0.35;
-
       const larguraTotal =
         larguraBarra +
         espacoCA +
         tamanhoCA;
-
       const inicioX =
         bounds.min.x +
         (
           (bounds.width - larguraTotal)
           / 2
         );
-
       const barraY =
         bounds.max.y +
         Math.max(
           8,
           bounds.height * 0.03
         );
-
       let porcentagem =
         hpMax > 0
           ? hpAtual / hpMax
           : 0;
-
       porcentagem =
         Math.max(
           0,
@@ -2179,20 +1603,15 @@ async function criarStatusNoToken(
             porcentagem
           )
         );
-
       const larguraVida =
         larguraBarra * porcentagem;
-
       let corVida = "#34C759";
-
       if (porcentagem <= 0.50) {
         corVida = "#FFD60A";
       }
-
       if (porcentagem <= 0.25) {
         corVida = "#FF453A";
       }
-
       const fundoBarra =
         prepararVisualHud(
           buildShape()
@@ -2216,15 +1635,12 @@ async function criarStatusNoToken(
             .metadata({
               [`${PREFIX}/statusToken`]:
                 token.id,
-
               [`${PREFIX}/tipoVisual`]:
                 "fundo"
             })
             .build()
         );
-
       let barraVida = null;
-
       if (larguraVida > 0) {
         barraVida =
           prepararVisualHud(
@@ -2248,20 +1664,17 @@ async function criarStatusNoToken(
               .metadata({
                 [`${PREFIX}/statusToken`]:
                   token.id,
-
                 [`${PREFIX}/tipoVisual`]:
                   "vida"
               })
               .build()
           );
       }
-
       const fonteHP =
         Math.max(
           16,
           alturaBarra * 0.72
         );
-
       const textoHP =
         prepararVisualHud(
           buildText()
@@ -2269,7 +1682,6 @@ async function criarStatusNoToken(
             .plainText(`${hpAtual}`)
             .position({
               x: inicioX,
-
               y:
                 barraY +
                 (
@@ -2297,19 +1709,16 @@ async function criarStatusNoToken(
             .metadata({
               [`${PREFIX}/statusToken`]:
                 token.id,
-
               [`${PREFIX}/tipoVisual`]:
                 "hp-texto"
             })
             .build()
         );
-
       const caX =
         inicioX +
         larguraBarra +
         espacoCA +
         8;
-
       const caY =
         barraY -
         (
@@ -2317,7 +1726,6 @@ async function criarStatusNoToken(
           / 2
         ) +
         3;
-
       const circuloCA =
         prepararVisualHud(
           buildShape()
@@ -2341,16 +1749,13 @@ async function criarStatusNoToken(
             .metadata({
               [`${PREFIX}/statusToken`]:
                 token.id,
-
               [`${PREFIX}/tipoVisual`]:
                 "ca-circulo"
             })
             .build()
         );
-
       const fonteCA =
         tamanhoCA * 0.45;
-
       const textoCA =
         prepararVisualHud(
           buildText()
@@ -2360,7 +1765,6 @@ async function criarStatusNoToken(
               x:
                 caX -
                 (tamanhoCA / 2),
-
               y:
                 caY -
                 (tamanhoCA / 2)
@@ -2386,59 +1790,46 @@ async function criarStatusNoToken(
             .metadata({
               [`${PREFIX}/statusToken`]:
                 token.id,
-
               [`${PREFIX}/tipoVisual`]:
                 "ca-texto"
             })
             .build()
         );
-
       const elementos = [
         fundoBarra
       ];
-
       if (barraVida) {
         elementos.push(
           barraVida
         );
       }
-
       elementos.push(
         circuloCA,
         textoHP,
         textoCA
       );
-
       await OBR.scene.items.addItems(
         elementos
       );
-
       const tiposAtivos = [
         "fundo",
         "hp-texto",
         "ca-circulo",
         "ca-texto"
       ];
-
       if (barraVida) {
         tiposAtivos.push("vida");
       }
-
-      // Duas passagens tornam a rotina convergente mesmo se
-      // dois usuários salvarem a mesma ficha quase juntos.
       await new Promise(
         (resolve) => setTimeout(resolve, 80)
       );
-
       await desduplicarHudToken(
         token.id,
         tiposAtivos
       );
-
       await new Promise(
         (resolve) => setTimeout(resolve, 220)
       );
-
       await desduplicarHudToken(
         token.id,
         tiposAtivos
@@ -2446,11 +1837,6 @@ async function criarStatusNoToken(
     }
   );
 }
-
-// =====================================================
-// HP + CA DA TELA
-// =====================================================
-
 async function pegarHpCaDaTela(aplicarCalculadora = false) {
     let hpAtual =
         Number(
@@ -2458,137 +1844,102 @@ async function pegarHpCaDaTela(aplicarCalculadora = false) {
                 .querySelector("#hpAtual")
                 .value
         );
-
     let hpMax =
         Number(
             document
                 .querySelector("#hpMax")
                 .value
         );
-
     const ca =
         Number(
             document
                 .querySelector("#ca")
                 .value
         );
-
-    // A CA exibida já inclui o bônus de EVAS.
-    // A CA-base é o valor salvo no token para impedir acúmulo do bônus.
     const bonusEvasaoCa =
         Number(
             document
                 .querySelector("#bonusEvasaoCa")
                 ?.value ?? 0
         ) || 0;
-
     const caBase =
         ca - bonusEvasaoCa;
-
     const alterarHp =
         document
             .querySelector("#alterarHp")
             .value
             .trim();
-
     if (Number.isNaN(hpAtual)) {
         alert(
             "HP atual inválido."
         );
-
         return null;
     }
-
     if (Number.isNaN(hpMax)) {
         alert(
             "HP máximo inválido."
         );
-
         return null;
     }
-
     if (Number.isNaN(ca)) {
         alert(
             "CA inválida."
         );
-
         return null;
     }
-
     if (hpMax < 1) {
         hpMax = 1;
     }
-
     if (aplicarCalculadora && alterarHp === "") {
         alert("Digite um valor na Calculadora antes de calcular.");
         return null;
     }
-
     if (aplicarCalculadora && alterarHp !== "") {
         const primeiroCaractere =
             alterarHp.charAt(0);
-
         const temOperadorExplicito =
             primeiroCaractere === "+" ||
             primeiroCaractere === "-" ||
             primeiroCaractere === "=";
-
-        // Sem sinal, o valor é interpretado como CURA.
-        // Ex.: 50 = +50 HP.
         const operador =
             temOperadorExplicito
                 ? primeiroCaractere
                 : "+";
-
         const textoValor =
             temOperadorExplicito
                 ? alterarHp.substring(1)
                 : alterarHp;
-
         const valor =
             Number(textoValor);
-
         if (Number.isNaN(valor)) {
             alert(
                 "Valor da calculadora inválido."
             );
-
             return null;
         }
-
         const fatorDano =
             Number(
                 document
                     .querySelector("#multiplicadorHp")
                     ?.value ?? 1
             ) || 1;
-
         if (operador === "+") {
             hpAtual += valor;
         }
-
         else if (operador === "-") {
-            // Primeiro aplica Super Efetivo / Resistente.
             let danoCalculado =
                 Math.floor(valor * fatorDano);
-
-            // Depois aplica a defesa de estágio conforme o tipo do Move.
-            // DEF e DEFSP usam a mesma regra visual da página de buffs:
-            // bônus = estágio × proficiência.
             const tipoMove =
                 document
                     .querySelector("#tipoMoveHpSelecionado")
                     ?.value || "neutro";
-
             const proficienciaAtual =
                 Number(
                     document.querySelector("#proficiencia")?.value ??
                     document.querySelector("#treinadorProficiencia")?.value ??
                     0
                 ) || 0;
-
             let estagioDefesa = 0;
-
             if (tipoMove === "fisico") {
                 estagioDefesa =
                     Number(
@@ -2601,37 +1952,28 @@ async function pegarHpCaDaTela(aplicarCalculadora = false) {
                         document.querySelector("#estagioDefSpHp")?.value ?? 0
                     ) || 0;
             }
-
             const bonusDefesa =
                 bonusPorEstagio(
                     tipoMove === "fisico" ? "def" : "defsp",
                     estagioDefesa,
                     proficienciaAtual
                 );
-
-            // Defesa positiva reduz o dano; defesa negativa aumenta.
-            // Dano nunca fica abaixo de 0.
             danoCalculado = Math.max(
                 0,
                 Math.floor(danoCalculado - bonusDefesa)
             );
-
             hpAtual -= danoCalculado;
         }
-
         else if (operador === "=") {
             hpAtual = valor;
         }
-
         else {
             alert(
                 "Use -34 para dano, 20 ou +20 para cura, ou =50 para definir o HP."
             );
-
             return null;
         }
     }
-
     hpAtual =
         Math.max(
             0,
@@ -2640,7 +1982,6 @@ async function pegarHpCaDaTela(aplicarCalculadora = false) {
                 hpMax
             )
         );
-
     return {
         hpAtual,
         hpMax,
@@ -2649,11 +1990,6 @@ async function pegarHpCaDaTela(aplicarCalculadora = false) {
         calculadoraAplicada: aplicarCalculadora && alterarHp !== ""
     };
 }
-
-// =====================================================
-// ATRIBUTOS
-// =====================================================
-
 function criarLinhaAtributos(
   titulo,
   tipo,
@@ -2661,22 +1997,17 @@ function criarLinhaAtributos(
 ) {
   const ehSalvaguarda =
     tipo.includes("save");
-
   const ehModificador =
     tipo.includes("mod");
-
   const rolavel =
     ehSalvaguarda || ehModificador;
-
   const caixas =
     ATRIBUTOS.map(
       (atributo) => {
-
         const tipoRolagem =
           ehSalvaguarda
             ? "Salvaguarda"
             : "Modificador";
-
         const botao =
           rolavel
             ? `
@@ -2701,14 +2032,12 @@ function criarLinhaAtributos(
               </button>
             `
             : "";
-
         return `
           <div style="
             flex:1;
             min-width:42px;
             text-align:center;
           ">
-
             <div style="
               font-size:11px;
               font-weight:bold;
@@ -2716,7 +2045,6 @@ function criarLinhaAtributos(
             ">
               ${atributo.toUpperCase()}
             </div>
-
             <input
               id="${tipo}-${atributo}"
               type="text"
@@ -2729,14 +2057,11 @@ function criarLinhaAtributos(
                 padding:5px 2px;
               "
             >
-
             ${botao}
-
           </div>
         `;
       }
     ).join("");
-
   return `
     <div style="
       margin-top:12px;
@@ -2747,7 +2072,6 @@ function criarLinhaAtributos(
       ">
         ${titulo}
       </div>
-
       <div style="
         display:flex;
         gap:4px;
@@ -2758,35 +2082,25 @@ function criarLinhaAtributos(
     </div>
   `;
 }
-
 function ativarRolagensSalvaguarda(token) {
   document
     .querySelectorAll(".rolarAtributo")
     .forEach(
       (botao) => {
-
         botao.addEventListener(
           "click",
           async () => {
-
             const atributo =
               botao.dataset.atributo;
-
             const tipoRolagem =
               botao.dataset.tipoRolagem ||
               "Modificador";
-
             const campo =
               document.querySelector(
                 `#${botao.dataset.campo}`
               );
-
             let valorRolagem =
               campo?.value;
-
-            // EVAS: cada estágio concede +1 em TODAS as salvaguardas.
-            // O valor salvo na ficha continua sendo o valor-base, evitando
-            // somar o bônus novamente a cada autosave.
             if (tipoRolagem === "Salvaguarda") {
               const valorBase =
                 Number(
@@ -2794,15 +2108,12 @@ function ativarRolagensSalvaguarda(token) {
                     .trim()
                     .replace(",", ".")
                 );
-
               if (Number.isNaN(valorBase)) {
                 alert(
                   "Valor de salvaguarda inválido."
                 );
-
                 return;
               }
-
               const estagioEvasao =
                 normalizarEstagioBuff(
                   token?.metadata?.[
@@ -2810,24 +2121,19 @@ function ativarRolagensSalvaguarda(token) {
                   ] ?? 0,
                   "evas"
                 );
-
               valorRolagem =
                 valorBase + estagioEvasao;
             }
-
             const formula =
               formulaSalvaguarda(
                 valorRolagem
               );
-
             if (!formula) {
               alert(
                 `Valor de ${tipoRolagem.toLowerCase()} inválido.`
               );
-
               return;
             }
-
             await rolarNoDicePlus(
               formula,
               `${tipoRolagem} de ${
@@ -2840,40 +2146,29 @@ function ativarRolagensSalvaguarda(token) {
       }
     );
 }
-
 function ativarRolagemIniciativa(token) {
   const botaoRolar =
     document.querySelector("#rolarIniciativa");
-
   const campoIniciativa =
     document.querySelector("#iniciativa");
-
   const campoDestreza =
     document.querySelector("#treinador-mod-des") ||
     document.querySelector("#mod-des");
-
   const campoProficiencia =
     document.querySelector("#treinadorProficiencia") ||
     document.querySelector("#proficiencia");
-
   const campoAlerta =
     document.querySelector("#iniciativaAlerta");
-
   const campoHabilidade =
     document.querySelector("#iniciativaHabilidade");
-
   const botaoAlerta =
     document.querySelector("#botaoIniciativaAlerta");
-
   const botaoHabilidade =
     document.querySelector("#botaoIniciativaHabilidade");
-
   const botaoAbrirPainel =
     document.querySelector("#abrirApresentadorIniciativa");
-
   const botaoRemoverIniciativa =
     document.querySelector("#removerDaIniciativa");
-
   if (
     !botaoRolar ||
     !campoIniciativa ||
@@ -2885,36 +2180,27 @@ function ativarRolagemIniciativa(token) {
   ) {
     return;
   }
-
   const numeroCampo = (valor) => {
     const numero = Number(
       String(valor ?? "")
         .trim()
         .replace(",", ".")
     );
-
     return Number.isNaN(numero) ? 0 : numero;
   };
-
   const iniciativaTotal = () => {
     const destreza =
       numeroCampo(campoDestreza.value);
-
     const proficiencia =
       numeroCampo(campoProficiencia?.value);
-
     const bonusAlerta =
       campoAlerta.value === "1"
         ? 5
         : 0;
-
     const bonusHabilidade =
       campoHabilidade.value === "1"
         ? proficiencia * 2
         : 0;
-
-    // VEL: cada estágio concede +1x Proficiência na iniciativa.
-    // Estágios negativos também reduzem a iniciativa.
     const estagioVelocidade =
       normalizarEstagioBuff(
         token?.metadata?.[
@@ -2922,10 +2208,8 @@ function ativarRolagemIniciativa(token) {
         ] ?? 0,
         "vel"
       );
-
     const bonusVelocidade =
       estagioVelocidade * proficiencia;
-
     return (
       destreza +
       bonusVelocidade +
@@ -2933,76 +2217,61 @@ function ativarRolagemIniciativa(token) {
       bonusHabilidade
     );
   };
-
   const atualizarVisual = () => {
     const total = iniciativaTotal();
-
     campoIniciativa.value = String(total);
-
     botaoAlerta.classList.toggle(
       "ativo",
       campoAlerta.value === "1"
     );
-
     botaoHabilidade.classList.toggle(
       "ativo",
       campoHabilidade.value === "1"
     );
   };
-
   const salvarEstado = () => {
     const botaoSalvarStatus =
       document.querySelector(
         "#salvarPokemonStatus, #salvarTreinadorStatus"
       );
-
     if (botaoSalvarStatus) {
       botaoSalvarStatus.click();
     }
   };
-
   const alternar = (campo) => {
     campo.value =
       campo.value === "1"
         ? "0"
         : "1";
-
     atualizarVisual();
     salvarEstado();
   };
-
   campoDestreza.addEventListener(
     "input",
     atualizarVisual
   );
-
   campoDestreza.addEventListener(
     "change",
     atualizarVisual
   );
-
   if (campoProficiencia) {
     campoProficiencia.addEventListener(
       "input",
       atualizarVisual
     );
-
     campoProficiencia.addEventListener(
       "change",
       atualizarVisual
     );
   }
-
   botaoAlerta.addEventListener(
     "click",
     () => alternar(campoAlerta)
   );
-
   botaoHabilidade.addEventListener(
     "click",
     () => alternar(campoHabilidade)
   );
-
   botaoRolar.addEventListener(
     "click",
     async () => {
@@ -3010,41 +2279,33 @@ function ativarRolagemIniciativa(token) {
         formulaSalvaguarda(
           iniciativaTotal()
         );
-
       if (!formula) {
         alert(
           "Não foi possível calcular a iniciativa."
         );
-
         return;
       }
-
       const resultado =
         await rolarNoDicePlusComResultado(
           formula,
           "Iniciativa"
         );
-
       if (resultado === null) {
         return;
       }
-
       await salvarResultadoIniciativa(
         token,
         resultado
       );
-
       await abrirApresentadorIniciativa();
     }
   );
-
   if (botaoAbrirPainel) {
     botaoAbrirPainel.addEventListener(
       "click",
       () => abrirApresentadorIniciativa()
     );
   }
-
   if (botaoRemoverIniciativa) {
     botaoRemoverIniciativa.addEventListener(
       "click",
@@ -3055,27 +2316,19 @@ function ativarRolagemIniciativa(token) {
       }
     );
   }
-
   atualizarVisual();
 }
-
-// =====================================================
-// BUFFS POKÉMON
-// =====================================================
-
 function criarBuffs(
   valores,
   proficiencia
 ) {
   return BUFFS.map(
     (buff) => {
-
       const estagio =
         normalizarEstagioBuff(
           valores[buff.id],
           buff.id
         );
-
       const bonus =
         buff.id === "crit"
           ? faixaCritico(estagio)
@@ -3084,7 +2337,6 @@ function criarBuffs(
               estagio,
               proficiencia
             );
-
       return `
         <div style="
           width:62px;
@@ -3093,7 +2345,6 @@ function criarBuffs(
           flex-direction:column;
           align-items:center;
         ">
-
           <div style="
             font-size:10px;
             font-weight:bold;
@@ -3102,7 +2353,6 @@ function criarBuffs(
           ">
             ${buff.nome}
           </div>
-
           <input
             id="buff-${buff.id}"
             class="campoBuff"
@@ -3120,7 +2370,6 @@ function criarBuffs(
               font-weight:bold;
             "
           >
-
           <div
             id="bonus-${buff.id}"
             style="
@@ -3132,23 +2381,16 @@ function criarBuffs(
           >
             ${buff.id === "crit" ? bonus : formatarBonus(bonus)}
           </div>
-
         </div>
       `;
     }
   ).join("");
 }
-
-// =====================================================
-// PERÍCIAS DO TREINADOR
-// =====================================================
-
 function criarPericias(
     valores
 ) {
     return PERICIAS.map(
         (grupo) => {
-
             if (!grupo.pericias.length) {
                 return `
           <div style="
@@ -3157,12 +2399,10 @@ function criarPericias(
             border-radius:6px;
             padding:8px;
           ">
-
             <strong>
               ${grupo.atributo} —
               ${grupo.nomeAtributo}
             </strong>
-
             <div style="
               font-size:12px;
               opacity:0.7;
@@ -3170,11 +2410,9 @@ function criarPericias(
             ">
               Nenhuma perícia
             </div>
-
           </div>
         `;
             }
-
             const linhas =
                 grupo.pericias.map(
                     (pericia) => `
@@ -3185,14 +2423,12 @@ function criarPericias(
               gap:8px;
               margin-bottom:6px;
             ">
-
               <span style="
                 flex:1;
                 font-size:13px;
               ">
                 ${pericia.nome}
               </span>
-
               <input
                 id="pericia-${pericia.id}"
                 type="text"
@@ -3205,11 +2441,9 @@ function criarPericias(
                   padding:5px;
                 "
               >
-
             </div>
           `
                 ).join("");
-
             return `
         <div style="
           margin-bottom:12px;
@@ -3217,7 +2451,6 @@ function criarPericias(
           border-radius:6px;
           padding:8px;
         ">
-
           <div style="
             font-weight:bold;
             margin-bottom:8px;
@@ -3225,19 +2458,12 @@ function criarPericias(
             ${grupo.atributo} —
             ${grupo.nomeAtributo}
           </div>
-
           ${linhas}
-
         </div>
       `;
         }
     ).join("");
 }
-
-// =====================================================
-// CAMPOS DA ABA EXTRA
-// =====================================================
-
 function criarSlots(
     quantidade,
     prefixo,
@@ -3245,7 +2471,6 @@ function criarSlots(
     placeholder
 ) {
     let html = "";
-
     for (
         let i = 1;
         i <= quantidade;
@@ -3268,42 +2493,27 @@ function criarSlots(
       >
     `;
     }
-
     return html;
 }
-
-// =====================================================
-// CALCULADORA DE HP
-// =====================================================
-
 function ativarCalculadoraHp() {
     const botaoSuper =
         document.querySelector("#botaoSuperEfetivo");
-
     const opcoesSuper =
         document.querySelector("#opcoesSuperEfetivo");
-
     const botaoResistente =
         document.querySelector("#botaoResistente");
-
     const opcoesResistente =
         document.querySelector("#opcoesResistente");
-
     const multiplicador =
         document.querySelector("#multiplicadorHp");
-
     const botaoMove =
         document.querySelector("#botaoMove");
-
     const opcoesMove =
         document.querySelector("#opcoesMove");
-
     const tipoMoveSelecionado =
         document.querySelector("#tipoMoveHpSelecionado");
-
     const botaoCalcular =
         document.querySelector("#botaoCalcularHp");
-
     if (
         !botaoSuper ||
         !opcoesSuper ||
@@ -3317,21 +2527,17 @@ function ativarCalculadoraHp() {
     ) {
         return;
     }
-
     const atualizarVisual = () => {
         const fator =
             Number(multiplicador.value) || 1;
-
         botaoSuper.classList.remove(
             "super2",
             "super4"
         );
-
         botaoResistente.classList.remove(
             "resistente2",
             "resistente4"
         );
-
         if (fator === 2) {
             botaoSuper.classList.add("super2");
             botaoSuper.textContent = "Super Efetivo 2x";
@@ -3343,7 +2549,6 @@ function ativarCalculadoraHp() {
         else {
             botaoSuper.textContent = "Super Efetivo";
         }
-
         if (fator === 0.5) {
             botaoResistente.classList.add("resistente2");
             botaoResistente.textContent = "Resistente 2x";
@@ -3355,15 +2560,12 @@ function ativarCalculadoraHp() {
         else {
             botaoResistente.textContent = "Resistente";
         }
-
         const tipoMove =
             tipoMoveSelecionado.value || "neutro";
-
         botaoMove.classList.remove(
             "moveFisico",
             "moveEspecial"
         );
-
         if (tipoMove === "fisico") {
             botaoMove.classList.add("moveFisico");
             botaoMove.textContent = "Move Físico";
@@ -3375,7 +2577,6 @@ function ativarCalculadoraHp() {
         else {
             botaoMove.textContent = "Move";
         }
-
         document
             .querySelectorAll(".tipoMoveHp")
             .forEach((opcao) => {
@@ -3384,7 +2585,6 @@ function ativarCalculadoraHp() {
                     opcao.dataset.tipo === tipoMove
                 );
             });
-
         document
             .querySelectorAll(
                 ".multiplicadorSuperEfetivo"
@@ -3395,7 +2595,6 @@ function ativarCalculadoraHp() {
                     Number(opcao.dataset.fator) === fator
                 );
             });
-
         document
             .querySelectorAll(
                 ".divisorResistente"
@@ -3407,25 +2606,21 @@ function ativarCalculadoraHp() {
                 );
             });
     };
-
     botaoSuper.addEventListener("click", () => {
         opcoesResistente.classList.remove("aberto");
         opcoesMove.classList.remove("aberto");
         opcoesSuper.classList.toggle("aberto");
     });
-
     botaoResistente.addEventListener("click", () => {
         opcoesSuper.classList.remove("aberto");
         opcoesMove.classList.remove("aberto");
         opcoesResistente.classList.toggle("aberto");
     });
-
     botaoMove.addEventListener("click", () => {
         opcoesSuper.classList.remove("aberto");
         opcoesResistente.classList.remove("aberto");
         opcoesMove.classList.toggle("aberto");
     });
-
     document
         .querySelectorAll(
             ".multiplicadorSuperEfetivo"
@@ -3434,12 +2629,10 @@ function ativarCalculadoraHp() {
             opcao.addEventListener("click", () => {
                 multiplicador.value =
                     opcao.dataset.fator || "1";
-
                 atualizarVisual();
                 opcoesSuper.classList.remove("aberto");
             });
         });
-
     document
         .querySelectorAll(
             ".divisorResistente"
@@ -3448,61 +2641,41 @@ function ativarCalculadoraHp() {
             opcao.addEventListener("click", () => {
                 multiplicador.value =
                     opcao.dataset.fator || "1";
-
                 atualizarVisual();
                 opcoesResistente.classList.remove("aberto");
             });
         });
-
     document
         .querySelectorAll(".tipoMoveHp")
         .forEach((opcao) => {
             opcao.addEventListener("click", () => {
                 tipoMoveSelecionado.value =
                     opcao.dataset.tipo || "neutro";
-
                 atualizarVisual();
                 opcoesMove.classList.remove("aberto");
             });
         });
-
     botaoCalcular.addEventListener("click", () => {
         const campoCalculadora =
             document.querySelector("#alterarHp");
-
         if (!campoCalculadora?.value.trim()) {
             alert("Digite um valor na Calculadora antes de calcular.");
             return;
         }
-
         const botaoSalvarStatus =
             document.querySelector(
                 "#salvarPokemonStatus, #salvarTreinadorStatus"
             );
-
         if (!botaoSalvarStatus) {
             return;
         }
-
         botaoSalvarStatus.dataset.aplicarCalculadora = "1";
         botaoSalvarStatus.click();
     });
-
     atualizarVisual();
 }
-
-// =====================================================
-// AUTOSAVE
-// =====================================================
-
-// Fila usada para garantir que VEL/EVAS terminem de salvar antes
-// de a aba STATUS reler o token.
 let salvamentoBuffPendente = Promise.resolve();
-
-// Fila separada para os 6 deslocamentos. Assim, ao trocar de aba,
-// o valor-base digitado termina de ser gravado antes de a ficha reler o token.
 let salvamentoMovimentoPendente = Promise.resolve();
-
 const IDS_BOTOES_AUTOSAVE = [
     "salvarPokemonStatus",
     "salvarPokemonMoves",
@@ -3513,69 +2686,46 @@ const IDS_BOTOES_AUTOSAVE = [
     "salvarTreinadorHabilidades",
     "salvarTreinadorAnotacoes"
 ];
-
 function ativarAutosaveDaTela() {
     const app = document.querySelector("#app");
-
     if (!app) {
         return;
     }
-
     const botaoSalvar = IDS_BOTOES_AUTOSAVE
         .map((id) => document.querySelector(`#${id}`))
         .find(Boolean);
-
     if (!botaoSalvar || botaoSalvar.dataset.autosaveAtivo === "1") {
         return;
     }
-
     botaoSalvar.dataset.autosaveAtivo = "1";
     botaoSalvar.style.display = "none";
-
     let temporizador = null;
-
     const programarSalvamento = (atraso = 650) => {
         if (temporizador) {
             clearTimeout(temporizador);
         }
-
         temporizador = setTimeout(() => {
-            // A aba pode ter sido trocada durante o debounce.
             if (!document.body.contains(botaoSalvar)) {
                 return;
             }
-
             botaoSalvar.click();
         }, atraso);
     };
-
     app.querySelectorAll("input, textarea, select")
         .forEach((campo) => {
-            // A Calculadora só pode alterar o HP quando o botão CALCULAR
-            // for pressionado. Digitar, sair do campo ou trocar opções não
-            // executa dano/cura automaticamente.
             if (campo.id === "alterarHp") {
                 return;
             }
-
-            // Os círculos de movimentação têm autosave próprio. O valor exibido
-            // pode ser o TOTAL (base + VEL), então o autosave genérico não deve
-            // tentar interpretar/salvar esse campo diretamente.
             if (campo.classList.contains("movimentoValor")) {
                 return;
             }
-
             campo.addEventListener("input", () => {
                 programarSalvamento(650);
             });
-
             campo.addEventListener("change", () => {
                 programarSalvamento(200);
             });
         });
-
-    // Categoria físico/especial altera um input hidden por código,
-    // portanto também precisa disparar o autosave explicitamente.
     app.querySelectorAll(".categoriaGolpe")
         .forEach((botao) => {
             botao.addEventListener("click", () => {
@@ -3583,12 +2733,6 @@ function ativarAutosaveDaTela() {
             });
         });
 }
-
-
-// =====================================================
-// MOVIMENTAÇÃO + BUFF DE VELOCIDADE
-// =====================================================
-
 const CAMPOS_MOVIMENTACAO = [
     {
         id: "movimentoCaminhada",
@@ -3621,27 +2765,22 @@ const CAMPOS_MOVIMENTACAO = [
         chave: "movimento-flutuacao"
     }
 ];
-
 function normalizarMovimentoBase(valor) {
     const numero = numeroDecimal(valor);
-
     if (numero === null) {
         return null;
     }
-
     return Math.max(
         0,
         Math.round(numero * 1000) / 1000
     );
 }
-
 function bonusMovimentoPorVelocidade(estagioVelocidade) {
     return normalizarEstagioBuff(
         estagioVelocidade,
         "vel"
     ) * 1.5;
 }
-
 function salvarMovimentoBaseNoToken(
     token,
     chave,
@@ -3651,12 +2790,9 @@ function salvarMovimentoBaseNoToken(
         valorBase === null
             ? ""
             : valorBase;
-
-    // Atualiza também a cópia local para qualquer cálculo/reabertura imediata.
     token.metadata[
         `${PREFIX}/${chave}`
     ] = valorSalvar;
-
     salvamentoMovimentoPendente =
         salvamentoMovimentoPendente
             .catch(() => {})
@@ -3672,10 +2808,8 @@ function salvarMovimentoBaseNoToken(
                     }
                 );
             });
-
     return salvamentoMovimentoPendente;
 }
-
 function ativarMovimentacaoComVelocidade(
     token,
     estagioVelocidade
@@ -3684,7 +2818,6 @@ function ativarMovimentacaoComVelocidade(
         bonusMovimentoPorVelocidade(
             estagioVelocidade
         );
-
     const atualizarMeta = (
         campo,
         meta
@@ -3692,38 +2825,31 @@ function ativarMovimentacaoComVelocidade(
         if (!meta) {
             return;
         }
-
         const base =
             normalizarMovimentoBase(
                 campo.dataset.base
             );
-
         if (base === null) {
             meta.textContent = "";
             return;
         }
-
         const total =
             movimentoComVelocidade(
                 base,
                 estagioVelocidade
             );
-
         if (bonusVelocidade === 0) {
             meta.textContent =
                 `Atual ${formatarDecimal(total)}`;
             return;
         }
-
         const sinal =
             bonusVelocidade > 0
                 ? "+"
                 : "";
-
         meta.textContent =
             `Base ${formatarDecimal(base)} · VEL ${sinal}${formatarDecimal(bonusVelocidade)}`;
     };
-
     const mostrarBase = (
         campo,
         meta
@@ -3732,18 +2858,15 @@ function ativarMovimentacaoComVelocidade(
             normalizarMovimentoBase(
                 campo.dataset.base
             );
-
         campo.value =
             base === null
                 ? ""
                 : formatarDecimal(base);
-
         atualizarMeta(
             campo,
             meta
         );
     };
-
     const mostrarTotal = (
         campo,
         meta
@@ -3752,7 +2875,6 @@ function ativarMovimentacaoComVelocidade(
             normalizarMovimentoBase(
                 campo.dataset.base
             );
-
         campo.value =
             base === null
                 ? ""
@@ -3762,82 +2884,64 @@ function ativarMovimentacaoComVelocidade(
                         estagioVelocidade
                     )
                 );
-
         atualizarMeta(
             campo,
             meta
         );
     };
-
     CAMPOS_MOVIMENTACAO.forEach(
         ({ id, metaId, chave }) => {
             const campo =
                 document.querySelector(
                     `#${id}`
                 );
-
             const meta =
                 document.querySelector(
                     `#${metaId}`
                 );
-
             if (!campo) {
                 return;
             }
-
-            // O data-base vem diretamente do metadata, nunca do total exibido.
             const baseInicial =
                 normalizarMovimentoBase(
                     campo.dataset.base
                 );
-
             campo.dataset.base =
                 baseInicial === null
                     ? ""
                     : String(baseInicial);
-
-            // Fora da edição, o círculo mostra o valor FINAL já com VEL.
             mostrarTotal(
                 campo,
                 meta
             );
-
             campo.addEventListener(
                 "focus",
                 () => {
-                    // Durante a edição, mostramos o valor BASE para o jogador
-                    // não salvar acidentalmente o bônus de VEL como parte da base.
                     mostrarBase(
                         campo,
                         meta
                     );
-
                     campo.select?.();
                 }
             );
-
             let temporizadorMovimento = null;
-
             const salvarBaseAtual = () => {
                 const base =
                     normalizarMovimentoBase(
                         campo.dataset.base
                     );
-
                 return salvarMovimentoBaseNoToken(
                     token,
                     chave,
                     base
                 );
             };
-
             const programarSalvamentoMovimento = () => {
                 if (temporizadorMovimento) {
                     clearTimeout(
                         temporizadorMovimento
                     );
                 }
-
                 temporizadorMovimento = setTimeout(
                     () => {
                         temporizadorMovimento = null;
@@ -3846,13 +2950,11 @@ function ativarMovimentacaoComVelocidade(
                     350
                 );
             };
-
             campo.addEventListener(
                 "input",
                 () => {
                     const texto =
                         campo.value.trim();
-
                     if (texto === "") {
                         campo.dataset.base = "";
                         atualizarMeta(
@@ -3862,32 +2964,22 @@ function ativarMovimentacaoComVelocidade(
                         programarSalvamentoMovimento();
                         return;
                     }
-
                     const base =
                         normalizarMovimentoBase(
                             texto
                         );
-
-                    // Enquanto houver um texto realmente inválido, mantemos o
-                    // último valor-base válido e esperamos o usuário terminar.
                     if (base === null) {
                         return;
                     }
-
                     campo.dataset.base =
                         String(base);
-
                     atualizarMeta(
                         campo,
                         meta
                     );
-
-                    // Autosave próprio da movimentação. Salva sempre a BASE,
-                    // nunca o total que aparece quando o campo perde o foco.
                     programarSalvamentoMovimento();
                 }
             );
-
             campo.addEventListener(
                 "blur",
                 () => {
@@ -3897,18 +2989,13 @@ function ativarMovimentacaoComVelocidade(
                         );
                         temporizadorMovimento = null;
                     }
-
-                    // O input já deixou a BASE correta no dataset. Primeiro
-                    // colocamos essa gravação na fila e depois mostramos o total.
                     salvarBaseAtual();
-
                     mostrarTotal(
                         campo,
                         meta
                     );
                 }
             );
-
             campo.addEventListener(
                 "keydown",
                 (evento) => {
@@ -3921,31 +3008,22 @@ function ativarMovimentacaoComVelocidade(
         }
     );
 }
-
 function pegarMovimentoBase(campoId) {
     const campo =
         document.querySelector(
             `#${campoId}`
         );
-
     if (!campo) {
         return "";
     }
-
     const numero =
         normalizarMovimentoBase(
             campo.dataset.base
         );
-
     return numero === null
         ? ""
         : numero;
 }
-
-// =====================================================
-// DEFINE TIPO
-// =====================================================
-
 async function definirTipoFicha(
     token,
     tipo
@@ -3953,7 +3031,6 @@ async function definirTipoFicha(
     await OBR.scene.items.updateItems(
         [token.id],
         (items) => {
-
             for (const item of items) {
                 item.metadata[
                     `${PREFIX}/tipoFicha`
@@ -3962,11 +3039,6 @@ async function definirTipoFicha(
         }
     );
 }
-
-// =====================================================
-// ESCOLHER TIPO
-// =====================================================
-
 function mostrarEscolhaFicha(
     token
 ) {
@@ -3974,25 +3046,21 @@ function mostrarEscolhaFicha(
         document.querySelector(
             "#app"
         );
-
     app.innerHTML = `
     ${ESTILO_FICHA}
     <div style="
       text-align:center;
       padding-top:30px;
     ">
-
       <h2>
         ${esc(
             token.name ||
             "Token"
         )}
       </h2>
-
       <p>
         Escolha o tipo de ficha
       </p>
-
       <button
         id="abrirPokemon"
         style="
@@ -4006,7 +3074,6 @@ function mostrarEscolhaFicha(
       >
         🐾 POKÉMON
       </button>
-
       <button
         id="abrirTreinador"
         style="
@@ -4019,10 +3086,8 @@ function mostrarEscolhaFicha(
       >
         👤 TREINADOR
       </button>
-
     </div>
   `;
-
     document
         .querySelector(
             "#abrirPokemon"
@@ -4030,23 +3095,19 @@ function mostrarEscolhaFicha(
         .addEventListener(
             "click",
             async () => {
-
                 await definirTipoFicha(
                     token,
                     "pokemon"
                 );
-
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
                     );
-
                 mostrarFichaPokemon(
                     tokenAtualizado || token
                 );
             }
         );
-
     document
         .querySelector(
             "#abrirTreinador"
@@ -4054,30 +3115,22 @@ function mostrarEscolhaFicha(
         .addEventListener(
             "click",
             async () => {
-
                 await definirTipoFicha(
                     token,
                     "treinador"
                 );
-
                 mostrarFichaTreinadorPagina1(
                     token
                 );
             }
         );
 }
-
-// =====================================================
-// TROCAR TIPO
-// =====================================================
-
 async function trocarTipoFicha(
     token
 ) {
     await OBR.scene.items.updateItems(
         [token.id],
         (items) => {
-
             for (const item of items) {
                 delete item.metadata[
                     `${PREFIX}/tipoFicha`
@@ -4085,16 +3138,10 @@ async function trocarTipoFicha(
             }
         }
     );
-
     mostrarEscolhaFicha(
         token
     );
 }
-
-// =====================================================
-// MENU TREINADOR
-// =====================================================
-
 function menuTreinador(
     paginaAtual
 ) {
@@ -4105,7 +3152,6 @@ function menuTreinador(
       margin-bottom:15px;
       flex-wrap:wrap;
     ">
-
       <button
         id="paginaTreinador1"
         style="
@@ -4120,7 +3166,6 @@ function menuTreinador(
       >
         STATUS
       </button>
-
       <button
         id="paginaTreinador2"
         style="
@@ -4135,7 +3180,6 @@ function menuTreinador(
       >
         PER / TAL
       </button>
-
       <button
         id="paginaTreinador3"
         style="
@@ -4150,7 +3194,6 @@ function menuTreinador(
       >
         HABILIDADES
       </button>
-
       <button
         id="paginaTreinador4"
         style="
@@ -4165,11 +3208,9 @@ function menuTreinador(
       >
         ANOTAÇÕES
       </button>
-
     </div>
   `;
 }
-
 function cabecalhoTreinador(
     token,
     paginaAtual
@@ -4178,7 +3219,6 @@ function cabecalhoTreinador(
         token.type === "IMAGE"
             ? token.image?.url || ""
             : "";
-
     return `
     <div class="fichaCabecalho" style="
       display:flex;
@@ -4187,7 +3227,6 @@ function cabecalhoTreinador(
       gap:10px;
       margin-bottom:10px;
     ">
-
       <div class="fichaIdentidade" style="
         display:flex;
         align-items:center;
@@ -4195,7 +3234,6 @@ function cabecalhoTreinador(
         min-width:0;
         flex:1;
       ">
-
         ${
             imagemToken
                 ? `
@@ -4243,7 +3281,6 @@ function cabecalhoTreinador(
                     </div>
                 `
         }
-
         <div style="
           min-width:0;
           flex:1;
@@ -4256,7 +3293,6 @@ function cabecalhoTreinador(
           ">
             ${esc(token.name || "Treinador")}
           </div>
-
           <div style="
             font-size:12px;
             opacity:0.75;
@@ -4267,7 +3303,6 @@ function cabecalhoTreinador(
           </div>
         </div>
       </div>
-
       <button
         id="trocarTipo"
         style="
@@ -4278,13 +3313,10 @@ function cabecalhoTreinador(
       >
         Trocar tipo
       </button>
-
     </div>
-
     ${menuTreinador(paginaAtual)}
   `;
 }
-
 function ativarCabecalhoTreinador(
     token
 ) {
@@ -4299,12 +3331,10 @@ function ativarCabecalhoTreinador(
                     token
                 )
         );
-
     ativarMenuTreinador(
         token
     );
 }
-
 function ativarMenuTreinador(
     token
 ) {
@@ -4315,22 +3345,18 @@ function ativarMenuTreinador(
         .addEventListener(
             "click",
             async () => {
-
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
                     );
-
                 if (!tokenAtualizado) {
                     return;
                 }
-
                 mostrarFichaTreinadorPagina1(
                     tokenAtualizado
                 );
             }
         );
-
     document
         .querySelector(
             "#paginaTreinador2"
@@ -4338,22 +3364,18 @@ function ativarMenuTreinador(
         .addEventListener(
             "click",
             async () => {
-
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
                     );
-
                 if (!tokenAtualizado) {
                     return;
                 }
-
                 mostrarFichaTreinadorPerTal(
                     tokenAtualizado
                 );
             }
         );
-
     document
         .querySelector(
             "#paginaTreinador3"
@@ -4361,22 +3383,18 @@ function ativarMenuTreinador(
         .addEventListener(
             "click",
             async () => {
-
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
                     );
-
                 if (!tokenAtualizado) {
                     return;
                 }
-
                 mostrarFichaTreinadorHabilidades(
                     tokenAtualizado
                 );
             }
         );
-
     document
         .querySelector(
             "#paginaTreinador4"
@@ -4384,33 +3402,24 @@ function ativarMenuTreinador(
         .addEventListener(
             "click",
             async () => {
-
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
                     );
-
                 if (!tokenAtualizado) {
                     return;
                 }
-
                 mostrarFichaTreinadorAnotacoes(
                     tokenAtualizado
                 );
             }
         );
 }
-
-// =====================================================
-// PERÍCIAS DO TREINADOR COM ROLAGEM
-// =====================================================
-
 function criarPericiasTreinador(
     valores
 ) {
     return PERICIAS.map(
         (grupo) => {
-
             if (!grupo.pericias.length) {
                 return `
           <div style="
@@ -4419,12 +3428,10 @@ function criarPericiasTreinador(
             border-radius:6px;
             padding:8px;
           ">
-
             <strong>
               ${grupo.atributo} —
               ${grupo.nomeAtributo}
             </strong>
-
             <div style="
               font-size:12px;
               opacity:0.7;
@@ -4432,11 +3439,9 @@ function criarPericiasTreinador(
             ">
               Nenhuma perícia
             </div>
-
           </div>
         `;
             }
-
             const linhas =
                 grupo.pericias.map(
                     (pericia) => `
@@ -4446,14 +3451,12 @@ function criarPericiasTreinador(
               gap:6px;
               margin-bottom:7px;
             ">
-
               <span style="
                 flex:1;
                 font-size:13px;
               ">
                 ${pericia.nome}
               </span>
-
               <input
                 id="pericia-${pericia.id}"
                 type="text"
@@ -4470,7 +3473,6 @@ function criarPericiasTreinador(
                   padding:5px;
                 "
               >
-
               <button
                 type="button"
                 class="rolarPericiaTreinador"
@@ -4489,11 +3491,9 @@ function criarPericiasTreinador(
               >
                 🎲 Rolar
               </button>
-
             </div>
           `
                 ).join("");
-
             return `
         <div style="
           margin-bottom:12px;
@@ -4501,7 +3501,6 @@ function criarPericiasTreinador(
           border-radius:6px;
           padding:8px;
         ">
-
           <div style="
             font-weight:bold;
             margin-bottom:8px;
@@ -4509,15 +3508,12 @@ function criarPericiasTreinador(
             ${grupo.atributo} —
             ${grupo.nomeAtributo}
           </div>
-
           ${linhas}
-
         </div>
       `;
         }
     ).join("");
 }
-
 function ativarRolagensPericiasTreinador() {
     document
         .querySelectorAll(
@@ -4525,36 +3521,28 @@ function ativarRolagensPericiasTreinador() {
         )
         .forEach(
             (botao) => {
-
                 botao.addEventListener(
                     "click",
                     async () => {
-
                         const pericia =
                             botao.dataset.pericia;
-
                         const nome =
                             botao.dataset.nome ||
                             pericia;
-
                         const campo =
                             document.querySelector(
                                 `#pericia-${pericia}`
                             );
-
                         const formula =
                             formulaSalvaguarda(
                                 campo?.value
                             );
-
                         if (!formula) {
                             alert(
                                 "Valor da perícia inválido."
                             );
-
                             return;
                         }
-
                         await rolarNoDicePlus(
                             formula,
                             `Perícia ${nome}`
@@ -4564,11 +3552,6 @@ function ativarRolagensPericiasTreinador() {
             }
         );
 }
-
-// =====================================================
-// TREINADOR — ABA 1: STATUS
-// =====================================================
-
 function mostrarFichaTreinadorPagina1(
     token
 ) {
@@ -4576,24 +3559,20 @@ function mostrarFichaTreinadorPagina1(
         document.querySelector(
             "#app"
         );
-
     const hpAtual =
         token.metadata[
             `${PREFIX}/hpAtual`
         ] ?? 100;
-
     const hpMax =
         token.metadata[
             `${PREFIX}/hpMax`
         ] ?? 100;
-
     const caBase =
         Number(
             token.metadata[
                 `${PREFIX}/ca`
             ] ?? 10
         ) || 0;
-
     const estagioEvasao =
         normalizarEstagioBuff(
             token.metadata[
@@ -4601,33 +3580,26 @@ function mostrarFichaTreinadorPagina1(
             ] ?? 0,
             "evas"
         );
-
     const ca =
         caBase + estagioEvasao;
-
     const proficiencia =
         token.metadata[
             `${PREFIX}/treinador-proficiencia`
         ] ?? 0;
-
     const bonusCaptura =
         token.metadata[
             `${PREFIX}/treinador-captura-bonus`
         ] ?? "";
-
     const modificadores = {};
     const salvaguardas = {};
-
     ATRIBUTOS.forEach(
         (atributo) => {
-
             modificadores[
                 atributo
             ] =
                 token.metadata[
                     `${PREFIX}/treinador-mod-${atributo}`
                 ] ?? "";
-
             salvaguardas[
                 atributo
             ] =
@@ -4636,17 +3608,14 @@ function mostrarFichaTreinadorPagina1(
                 ] ?? "";
         }
     );
-
     const iniciativaAlerta =
         token.metadata[
             `${PREFIX}/treinador-iniciativa-alerta`
         ] === true;
-
     const iniciativaHabilidade =
         token.metadata[
             `${PREFIX}/treinador-iniciativa-habilidade`
         ] === true;
-
     const estagioVelocidade =
         normalizarEstagioBuff(
             token.metadata[
@@ -4654,20 +3623,17 @@ function mostrarFichaTreinadorPagina1(
             ] ?? 0,
             "vel"
         );
-
     const iniciativa =
         (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
         (estagioVelocidade * (Number(proficiencia) || 0)) +
         (iniciativaAlerta ? 5 : 0) +
         (iniciativaHabilidade ? (Number(proficiencia) || 0) * 2 : 0);
-
     app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(
         token,
         1
     )}
-
     <div style="
       display:flex;
       gap:6px;
@@ -4683,7 +3649,6 @@ function mostrarFichaTreinadorPagina1(
           style="width:100%; box-sizing:border-box; text-align:center;"
         >
       </div>
-
       <div style="flex:1; min-width:0;">
         <p>HP Máx.</p>
         <input
@@ -4693,7 +3658,6 @@ function mostrarFichaTreinadorPagina1(
           style="width:100%; box-sizing:border-box; text-align:center;"
         >
       </div>
-
       <div style="flex:1; min-width:0;">
         <p>CA</p>
         <input
@@ -4703,7 +3667,6 @@ function mostrarFichaTreinadorPagina1(
           style="width:100%; box-sizing:border-box; text-align:center;"
         >
       </div>
-
       <div style="flex:1; min-width:0;">
         <p>Prof</p>
         <input
@@ -4715,18 +3678,14 @@ function mostrarFichaTreinadorPagina1(
           style="width:100%; box-sizing:border-box; text-align:center;"
         >
       </div>
-
     </div>
-
     <input
       id="bonusEvasaoCa"
       type="hidden"
       value="${estagioEvasao}"
     >
-
     <div class="calculadoraHpLinha">
       <p class="calculadoraTitulo">Calculadora</p>
-
       <div class="calculadoraControles">
         <div class="calculadoraHpCampo">
           <input
@@ -4735,7 +3694,6 @@ function mostrarFichaTreinadorPagina1(
             placeholder="-34, 20, =50"
           >
         </div>
-
       <div class="superEfetivoWrap">
         <button
           id="botaoSuperEfetivo"
@@ -4743,7 +3701,6 @@ function mostrarFichaTreinadorPagina1(
         >
           Super Efetivo
         </button>
-
         <div
           id="opcoesSuperEfetivo"
           class="opcoesSuperEfetivo"
@@ -4755,7 +3712,6 @@ function mostrarFichaTreinadorPagina1(
           >
             Neutro
           </button>
-
           <button
             type="button"
             class="multiplicadorSuperEfetivo"
@@ -4763,7 +3719,6 @@ function mostrarFichaTreinadorPagina1(
           >
             2x
           </button>
-
           <button
             type="button"
             class="multiplicadorSuperEfetivo"
@@ -4773,7 +3728,6 @@ function mostrarFichaTreinadorPagina1(
           </button>
         </div>
       </div>
-
       <div class="resistenteWrap">
         <button
           id="botaoResistente"
@@ -4781,7 +3735,6 @@ function mostrarFichaTreinadorPagina1(
         >
           Resistente
         </button>
-
         <div
           id="opcoesResistente"
           class="opcoesResistente"
@@ -4793,7 +3746,6 @@ function mostrarFichaTreinadorPagina1(
           >
             Neutro
           </button>
-
           <button
             type="button"
             class="divisorResistente"
@@ -4801,7 +3753,6 @@ function mostrarFichaTreinadorPagina1(
           >
             2x
           </button>
-
           <button
             type="button"
             class="divisorResistente"
@@ -4811,7 +3762,6 @@ function mostrarFichaTreinadorPagina1(
           </button>
         </div>
       </div>
-
       <div class="moveWrap">
         <button id="botaoMove" type="button">Move</button>
         <div id="opcoesMove" class="opcoesMove">
@@ -4820,27 +3770,21 @@ function mostrarFichaTreinadorPagina1(
           <button type="button" class="tipoMoveHp" data-tipo="especial">Especial</button>
         </div>
       </div>
-
       </div>
-
       <div class="calculadoraAcao">
         <button id="botaoCalcularHp" type="button">Calcular</button>
       </div>
-
       <input id="tipoMoveHpSelecionado" type="hidden" value="neutro">
       <input id="estagioDefHp" type="hidden" value="0">
       <input id="estagioDefSpHp" type="hidden" value="0">
-
       <input
         id="multiplicadorHp"
         type="hidden"
         value="1"
       >
     </div>
-
     <div class="iniciativaBloco">
       <p class="iniciativaTitulo">Iniciativa</p>
-
       <div class="iniciativaLinha">
         <input
           id="iniciativa"
@@ -4849,13 +3793,11 @@ function mostrarFichaTreinadorPagina1(
           readonly
           title="Iniciativa = DES + (VEL × Prof) + Alerta + Habilidade"
         >
-
         <button
           id="rolarIniciativa"
           type="button"
           title="Rolar iniciativa e entrar no apresentador"
         >🎲</button>
-
         <button
           id="abrirApresentadorIniciativa"
           type="button"
@@ -4868,7 +3810,6 @@ function mostrarFichaTreinadorPagina1(
             cursor:pointer;
           "
         >📋</button>
-
         <button
           id="removerDaIniciativa"
           type="button"
@@ -4881,7 +3822,6 @@ function mostrarFichaTreinadorPagina1(
             cursor:pointer;
           "
         >✕</button>
-
         <button
           id="botaoIniciativaAlerta"
           class="iniciativaCheck ${iniciativaAlerta ? "ativo" : ""}"
@@ -4891,7 +3831,6 @@ function mostrarFichaTreinadorPagina1(
           <span class="iniciativaCheckBolinha">✓</span>
           <span>Alerta</span>
         </button>
-
         <button
           id="botaoIniciativaHabilidade"
           class="iniciativaCheck ${iniciativaHabilidade ? "ativo" : ""}"
@@ -4902,33 +3841,27 @@ function mostrarFichaTreinadorPagina1(
           <span>Habilidade</span>
         </button>
       </div>
-
       <input
         id="iniciativaAlerta"
         type="hidden"
         value="${iniciativaAlerta ? "1" : "0"}"
       >
-
       <input
         id="iniciativaHabilidade"
         type="hidden"
         value="${iniciativaHabilidade ? "1" : "0"}"
       >
     </div>
-
     <hr>
-
     <h3>
       🎯 Captura
     </h3>
-
     <div style="
       display:flex;
       align-items:center;
       gap:8px;
       margin-bottom:12px;
     ">
-
       <input
         id="treinadorCapturaBonus"
         type="text"
@@ -4943,7 +3876,6 @@ function mostrarFichaTreinadorPagina1(
           padding:7px;
         "
       >
-
       <button
         id="rolarCaptura"
         type="button"
@@ -4956,25 +3888,19 @@ function mostrarFichaTreinadorPagina1(
       >
         🎲 Rolar Captura
       </button>
-
     </div>
-
     <hr>
-
     ${criarLinhaAtributos(
         "Modificadores",
         "treinador-mod",
         modificadores
     )}
-
     ${criarLinhaAtributos(
         "Salva-guardas",
         "treinador-save",
         salvaguardas
     )}
-
     <br>
-
     <button
       id="salvarTreinadorStatus"
       style="
@@ -4987,15 +3913,12 @@ function mostrarFichaTreinadorPagina1(
       Salvar Status
     </button>
   `;
-
     ativarCabecalhoTreinador(
         token
     );
-
     ativarRolagensSalvaguarda(token);
     ativarRolagemIniciativa(token);
     ativarCalculadoraHp();
-
     document
         .querySelector(
             "#rolarCaptura"
@@ -5003,34 +3926,28 @@ function mostrarFichaTreinadorPagina1(
         .addEventListener(
             "click",
             async () => {
-
                 const valor =
                     document
                         .querySelector(
                             "#treinadorCapturaBonus"
                         )
                         .value;
-
                 const formula =
                     formulaSalvaguarda(
                         valor
                     );
-
                 if (!formula) {
                     alert(
                         "Bônus de captura inválido."
                     );
-
                     return;
                 }
-
                 await rolarNoDicePlus(
                     formula,
                     "Captura"
                 );
             }
         );
-
     document
         .querySelector(
             "#salvarTreinadorStatus"
@@ -5038,24 +3955,18 @@ function mostrarFichaTreinadorPagina1(
         .addEventListener(
             "click",
             async () => {
-
                 const botaoSalvarStatus =
                     document.querySelector("#salvarTreinadorStatus");
-
                 const aplicarCalculadora =
                     botaoSalvarStatus?.dataset.aplicarCalculadora === "1";
-
                 if (botaoSalvarStatus) {
                     botaoSalvarStatus.dataset.aplicarCalculadora = "0";
                 }
-
                 const dados =
                     await pegarHpCaDaTela(aplicarCalculadora);
-
                 if (!dados) {
                     return;
                 }
-
                 const novaProficiencia =
                     Number(
                         document
@@ -5064,23 +3975,19 @@ function mostrarFichaTreinadorPagina1(
                             )
                             .value
                     ) || 0;
-
                 const novaIniciativa =
                     document
                         .querySelector("#iniciativa")
                         .value
                         .trim();
-
                 const iniciativaAlertaAtiva =
                     document
                         .querySelector("#iniciativaAlerta")
                         ?.value === "1";
-
                 const iniciativaHabilidadeAtiva =
                     document
                         .querySelector("#iniciativaHabilidade")
                         ?.value === "1";
-
                 const novoBonusCaptura =
                     document
                         .querySelector(
@@ -5088,16 +3995,12 @@ function mostrarFichaTreinadorPagina1(
                         )
                         .value
                         .trim();
-
                 const novosModificadores =
                     {};
-
                 const novasSalvaguardas =
                     {};
-
                 ATRIBUTOS.forEach(
                     (atributo) => {
-
                         novosModificadores[
                             atributo
                         ] =
@@ -5107,7 +4010,6 @@ function mostrarFichaTreinadorPagina1(
                                 )
                                 .value
                                 .trim();
-
                         novasSalvaguardas[
                             atributo
                         ] =
@@ -5119,11 +4021,9 @@ function mostrarFichaTreinadorPagina1(
                                 .trim();
                     }
                 );
-
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
-
                         for (
                             const item
                             of items
@@ -5132,53 +4032,42 @@ function mostrarFichaTreinadorPagina1(
                                 `${PREFIX}/hpAtual`
                             ] =
                                 dados.hpAtual;
-
                             item.metadata[
                                 `${PREFIX}/hpMax`
                             ] =
                                 dados.hpMax;
-
                             item.metadata[
                                 `${PREFIX}/ca`
                             ] =
                                 dados.caBase;
-
                             item.metadata[
                                 `${PREFIX}/treinador-proficiencia`
                             ] =
                                 novaProficiencia;
-
-
                             item.metadata[
                                 `${PREFIX}/treinador-iniciativa`
                             ] =
                                 novaIniciativa;
-
                             item.metadata[
                                 `${PREFIX}/treinador-iniciativa-alerta`
                             ] =
                                 iniciativaAlertaAtiva;
-
                             item.metadata[
                                 `${PREFIX}/treinador-iniciativa-habilidade`
                             ] =
                                 iniciativaHabilidadeAtiva;
-
                             item.metadata[
                                 `${PREFIX}/treinador-captura-bonus`
                             ] =
                                 novoBonusCaptura;
-
                             ATRIBUTOS.forEach(
                                 (atributo) => {
-
                                     item.metadata[
                                         `${PREFIX}/treinador-mod-${atributo}`
                                     ] =
                                         novosModificadores[
                                             atributo
                                         ];
-
                                     item.metadata[
                                         `${PREFIX}/treinador-save-${atributo}`
                                     ] =
@@ -5190,21 +4079,18 @@ function mostrarFichaTreinadorPagina1(
                         }
                     }
                 );
-
                 document
                     .querySelector(
                         "#hpAtual"
                     )
                     .value =
                         dados.hpAtual;
-
                 document
                     .querySelector(
                         "#hpMax"
                     )
                     .value =
                         dados.hpMax;
-
                 if (dados.calculadoraAplicada) {
                     document
                         .querySelector(
@@ -5212,7 +4098,6 @@ function mostrarFichaTreinadorPagina1(
                         )
                         .value = "";
                 }
-
                 await criarStatusNoToken(
                     token,
                     dados.hpAtual,
@@ -5222,11 +4107,6 @@ function mostrarFichaTreinadorPagina1(
             }
         );
 }
-
-// =====================================================
-// TREINADOR — ABA 2: PER / TAL
-// =====================================================
-
 function mostrarFichaTreinadorPerTal(
     token
 ) {
@@ -5234,16 +4114,12 @@ function mostrarFichaTreinadorPerTal(
         document.querySelector(
             "#app"
         );
-
     const valoresPericias = {};
     const talentos = {};
-
     PERICIAS.forEach(
         (grupo) => {
-
             grupo.pericias.forEach(
                 (pericia) => {
-
                     valoresPericias[
                         pericia.id
                     ] =
@@ -5254,7 +4130,6 @@ function mostrarFichaTreinadorPerTal(
             );
         }
     );
-
     for (
         let i = 1;
         i <= 5;
@@ -5265,41 +4140,32 @@ function mostrarFichaTreinadorPerTal(
                 `${PREFIX}/talento-${i}`
             ] ?? "";
     }
-
     app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(
         token,
         2
     )}
-
     <h3>
       Perícias
     </h3>
-
     ${criarPericiasTreinador(
         valoresPericias
     )}
-
     <hr>
-
     <h3>
       🎖️ Talentos
     </h3>
-
     <div style="
       margin-bottom:20px;
     ">
-
       ${criarSlots(
         5,
         "talento",
         talentos,
         "Talento"
       )}
-
     </div>
-
     <button
       id="salvarTreinadorPerTal"
       style="
@@ -5312,13 +4178,10 @@ function mostrarFichaTreinadorPerTal(
       Salvar Perícias / Talentos
     </button>
   `;
-
     ativarCabecalhoTreinador(
         token
     );
-
     ativarRolagensPericiasTreinador();
-
     document
         .querySelector(
             "#salvarTreinadorPerTal"
@@ -5326,19 +4189,14 @@ function mostrarFichaTreinadorPerTal(
         .addEventListener(
             "click",
             async () => {
-
                 const novasPericias =
                     {};
-
                 const novosTalentos =
                     {};
-
                 PERICIAS.forEach(
                     (grupo) => {
-
                         grupo.pericias.forEach(
                             (pericia) => {
-
                                 novasPericias[
                                     pericia.id
                                 ] =
@@ -5352,7 +4210,6 @@ function mostrarFichaTreinadorPerTal(
                         );
                     }
                 );
-
                 for (
                     let i = 1;
                     i <= 5;
@@ -5368,21 +4225,17 @@ function mostrarFichaTreinadorPerTal(
                             .value
                             .trim();
                 }
-
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
-
                         for (
                             const item
                             of items
                         ) {
                             PERICIAS.forEach(
                                 (grupo) => {
-
                                     grupo.pericias.forEach(
                                         (pericia) => {
-
                                             item.metadata[
                                                 `${PREFIX}/pericia-${pericia.id}`
                                             ] =
@@ -5393,7 +4246,6 @@ function mostrarFichaTreinadorPerTal(
                                     );
                                 }
                             );
-
                             for (
                                 let i = 1;
                                 i <= 5;
@@ -5412,11 +4264,6 @@ function mostrarFichaTreinadorPerTal(
             }
         );
 }
-
-// =====================================================
-// TREINADOR — ABA 3: HABILIDADES
-// =====================================================
-
 function mostrarFichaTreinadorHabilidades(
     token
 ) {
@@ -5424,11 +4271,9 @@ function mostrarFichaTreinadorHabilidades(
         document.querySelector(
             "#app"
         );
-
     const especializacoes = {};
     const habilidades = {};
     const rolagens = {};
-
     for (
         let i = 1;
         i <= 4;
@@ -5439,7 +4284,6 @@ function mostrarFichaTreinadorHabilidades(
                 `${PREFIX}/especializacao-${i}`
             ] ?? "";
     }
-
     for (
         let i = 1;
         i <= 8;
@@ -5450,7 +4294,6 @@ function mostrarFichaTreinadorHabilidades(
                 `${PREFIX}/habilidade-treinador-${i}`
             ] ?? "";
     }
-
     for (
         let i = 1;
         i <= 3;
@@ -5461,9 +4304,7 @@ function mostrarFichaTreinadorHabilidades(
                 `${PREFIX}/rolagem-d6-${i}`
             ] ?? "";
     }
-
     let htmlRolagens = "";
-
     for (
         let i = 1;
         i <= 3;
@@ -5475,7 +4316,6 @@ function mostrarFichaTreinadorHabilidades(
         gap:6px;
         margin-bottom:8px;
       ">
-
         <input
           id="rolagemD6-${i}"
           type="text"
@@ -5489,7 +4329,6 @@ function mostrarFichaTreinadorHabilidades(
             padding:7px;
           "
         >
-
         <button
           type="button"
           class="rolarD6"
@@ -5502,62 +4341,47 @@ function mostrarFichaTreinadorHabilidades(
         >
           🎲 ROLAR
         </button>
-
       </div>
     `;
     }
-
     app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(
         token,
         3
     )}
-
     <h3>
       🎯 Especializações
     </h3>
-
     <div style="
       margin-bottom:20px;
     ">
-
       ${criarSlots(
         4,
         "especializacao",
         especializacoes,
         "Especialização"
       )}
-
     </div>
-
     <h3>
       ⭐ Habilidades de Treinador
     </h3>
-
     <div style="
       margin-bottom:20px;
     ">
-
       ${criarSlots(
         8,
         "habilidadeTreinador",
         habilidades,
         "Habilidade"
       )}
-
     </div>
-
     <hr>
-
     <h3>
       🎲 Rolagens 1d6
     </h3>
-
     ${htmlRolagens}
-
     <br>
-
     <button
       id="salvarTreinadorHabilidades"
       style="
@@ -5570,25 +4394,20 @@ function mostrarFichaTreinadorHabilidades(
       Salvar Habilidades
     </button>
   `;
-
     ativarCabecalhoTreinador(
         token
     );
-
     document
         .querySelectorAll(
             ".rolarD6"
         )
         .forEach(
             (botao) => {
-
                 botao.addEventListener(
                     "click",
                     async () => {
-
                         const numero =
                             botao.dataset.rolagem;
-
                         const nome =
                             document
                                 .querySelector(
@@ -5596,15 +4415,12 @@ function mostrarFichaTreinadorHabilidades(
                                 )
                                 .value
                                 .trim();
-
                         if (!nome) {
                             alert(
                                 "Coloque o nome da rolagem primeiro."
                             );
-
                             return;
                         }
-
                         await rolarNoDicePlus(
                             "1d6",
                             nome
@@ -5613,7 +4429,6 @@ function mostrarFichaTreinadorHabilidades(
                 );
             }
         );
-
     document
         .querySelector(
             "#salvarTreinadorHabilidades"
@@ -5621,16 +4436,12 @@ function mostrarFichaTreinadorHabilidades(
         .addEventListener(
             "click",
             async () => {
-
                 const novasEspecializacoes =
                     {};
-
                 const novasHabilidades =
                     {};
-
                 const novasRolagens =
                     {};
-
                 for (
                     let i = 1;
                     i <= 4;
@@ -5646,7 +4457,6 @@ function mostrarFichaTreinadorHabilidades(
                             .value
                             .trim();
                 }
-
                 for (
                     let i = 1;
                     i <= 8;
@@ -5662,7 +4472,6 @@ function mostrarFichaTreinadorHabilidades(
                             .value
                             .trim();
                 }
-
                 for (
                     let i = 1;
                     i <= 3;
@@ -5678,11 +4487,9 @@ function mostrarFichaTreinadorHabilidades(
                             .value
                             .trim();
                 }
-
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
-
                         for (
                             const item
                             of items
@@ -5699,7 +4506,6 @@ function mostrarFichaTreinadorHabilidades(
                                         i
                                     ];
                             }
-
                             for (
                                 let i = 1;
                                 i <= 8;
@@ -5712,7 +4518,6 @@ function mostrarFichaTreinadorHabilidades(
                                         i
                                     ];
                             }
-
                             for (
                                 let i = 1;
                                 i <= 3;
@@ -5731,11 +4536,6 @@ function mostrarFichaTreinadorHabilidades(
             }
         );
 }
-
-// =====================================================
-// TREINADOR — ABA 4: ANOTAÇÕES
-// =====================================================
-
 function mostrarFichaTreinadorAnotacoes(
     token
 ) {
@@ -5743,23 +4543,19 @@ function mostrarFichaTreinadorAnotacoes(
         document.querySelector(
             "#app"
         );
-
     const anotacoes =
         token.metadata[
             `${PREFIX}/treinador-anotacoes`
         ] ?? "";
-
     app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(
         token,
         4
     )}
-
     <h3>
       📝 Anotações
     </h3>
-
     <textarea
       id="treinadorAnotacoes"
       placeholder="Escreva aqui as anotações da sessão..."
@@ -5775,9 +4571,7 @@ function mostrarFichaTreinadorAnotacoes(
     >${esc(
         anotacoes
     )}</textarea>
-
     <br><br>
-
     <button
       id="salvarTreinadorAnotacoes"
       style="
@@ -5790,11 +4584,9 @@ function mostrarFichaTreinadorAnotacoes(
       Salvar Anotações
     </button>
   `;
-
     ativarCabecalhoTreinador(
         token
     );
-
     document
         .querySelector(
             "#salvarTreinadorAnotacoes"
@@ -5802,18 +4594,15 @@ function mostrarFichaTreinadorAnotacoes(
         .addEventListener(
             "click",
             async () => {
-
                 const novasAnotacoes =
                     document
                         .querySelector(
                             "#treinadorAnotacoes"
                         )
                         .value;
-
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
-
                         for (
                             const item
                             of items
@@ -5828,11 +4617,6 @@ function mostrarFichaTreinadorAnotacoes(
             }
         );
 }
-
-// =====================================================
-// FICHA POKÉMON — MENU
-// =====================================================
-
 function menuPokemon(paginaAtual) {
     return `
     <div class="fichaAbas" style="
@@ -5855,7 +4639,6 @@ function menuPokemon(paginaAtual) {
       >
         STATUS
       </button>
-
       <button
         id="paginaPokemon2"
         style="
@@ -5870,7 +4653,6 @@ function menuPokemon(paginaAtual) {
       >
         MOVES / BUFFS
       </button>
-
       <button
         id="paginaPokemon3"
         style="
@@ -5885,110 +4667,79 @@ function menuPokemon(paginaAtual) {
       >
         PERÍCIAS
       </button>
-
     </div>
   `;
 }
-
-// =====================================================
-// BUSCA TOKEN ATUALIZADO
-// =====================================================
-
 async function pegarTokenAtualizado(tokenId) {
     const items =
         await OBR.scene.items.getItems(
             [tokenId]
         );
-
     if (
         !items ||
         items.length === 0
     ) {
         return null;
     }
-
     return items[0];
 }
-
-// =====================================================
-// MENU POKÉMON
-// =====================================================
-
 function ativarMenuPokemon(token) {
     document
         .querySelector("#paginaPokemon1")
         .addEventListener(
             "click",
             async () => {
-
-                // Garante que mudanças recentes de VEL/EVAS já estejam
-                // no metadata antes de calcular CA e Iniciativa.
                 await salvamentoBuffPendente.catch(() => {});
                 await salvamentoMovimentoPendente.catch(() => {});
-
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
                     );
-
                 if (!tokenAtualizado) {
                     return;
                 }
-
                 mostrarFichaPokemon(
                     tokenAtualizado
                 );
             }
         );
-
     document
         .querySelector("#paginaPokemon2")
         .addEventListener(
             "click",
             async () => {
-
                 await salvamentoMovimentoPendente.catch(() => {});
-
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
                     );
-
                 if (!tokenAtualizado) {
                     return;
                 }
-
                 mostrarFichaPokemonMoves(
                     tokenAtualizado
                 );
             }
         );
-
     document
         .querySelector("#paginaPokemon3")
         .addEventListener(
             "click",
             async () => {
-
                 await salvamentoMovimentoPendente.catch(() => {});
-
                 const tokenAtualizado =
                     await pegarTokenAtualizado(
                         token.id
                     );
-
                 if (!tokenAtualizado) {
                     return;
                 }
-
                 mostrarFichaPokemonPericias(
                     tokenAtualizado
                 );
             }
         );
-
 }
-
 function cabecalhoPokemon(
     token,
     paginaAtual
@@ -5997,7 +4748,6 @@ function cabecalhoPokemon(
         token.type === "IMAGE"
             ? token.image?.url || ""
             : "";
-
     return `
     <div class="fichaCabecalho" style="
       display:flex;
@@ -6006,7 +4756,6 @@ function cabecalhoPokemon(
       gap:10px;
       margin-bottom:10px;
     ">
-
       <div class="fichaIdentidade" style="
         display:flex;
         align-items:center;
@@ -6014,7 +4763,6 @@ function cabecalhoPokemon(
         min-width:0;
         flex:1;
       ">
-
         ${
             imagemToken
                 ? `
@@ -6062,7 +4810,6 @@ function cabecalhoPokemon(
                     </div>
                 `
         }
-
         <div style="
           min-width:0;
         ">
@@ -6075,7 +4822,6 @@ function cabecalhoPokemon(
           ">
             ${esc(token.name || "Pokemon")}
           </h2>
-
           <div style="
             margin-top:5px;
             font-size:11px;
@@ -6085,9 +4831,7 @@ function cabecalhoPokemon(
             POKÉMON
           </div>
         </div>
-
       </div>
-
       <button
         id="trocarTipo"
         style="
@@ -6099,14 +4843,10 @@ function cabecalhoPokemon(
       >
         Trocar tipo
       </button>
-
     </div>
-
     ${menuPokemon(paginaAtual)}
   `;
 }
-
-
 function ativarCabecalhoPokemon(token) {
     document
         .querySelector("#trocarTipo")
@@ -6117,18 +4857,11 @@ function ativarCabecalhoPokemon(token) {
                     token
                 )
         );
-
     ativarMenuPokemon(token);
 }
-
-// =====================================================
-// PERÍCIAS DO POKÉMON
-// =====================================================
-
 function criarPericiasPokemon(valores) {
     return PERICIAS.map(
         (grupo) => {
-
             if (!grupo.pericias.length) {
                 return `
           <div style="
@@ -6140,7 +4873,6 @@ function criarPericiasPokemon(valores) {
             <strong>
               ${grupo.atributo} — ${grupo.nomeAtributo}
             </strong>
-
             <div style="
               font-size:12px;
               opacity:0.7;
@@ -6151,7 +4883,6 @@ function criarPericiasPokemon(valores) {
           </div>
         `;
             }
-
             const linhas =
                 grupo.pericias.map(
                     (pericia) => `
@@ -6167,7 +4898,6 @@ function criarPericiasPokemon(valores) {
               ">
                 ${pericia.nome}
               </span>
-
               <input
                 id="pokemon-pericia-${pericia.id}"
                 type="text"
@@ -6180,7 +4910,6 @@ function criarPericiasPokemon(valores) {
                   padding:5px;
                 "
               >
-
               <button
                 type="button"
                 class="rolarPericiaPokemon"
@@ -6200,7 +4929,6 @@ function criarPericiasPokemon(valores) {
             </div>
           `
                 ).join("");
-
             return `
         <div style="
           margin-bottom:12px;
@@ -6214,14 +4942,12 @@ function criarPericiasPokemon(valores) {
           ">
             ${grupo.atributo} — ${grupo.nomeAtributo}
           </div>
-
           ${linhas}
         </div>
       `;
         }
     ).join("");
 }
-
 function ativarRolagensPericiasPokemon() {
     document
         .querySelectorAll(
@@ -6229,36 +4955,28 @@ function ativarRolagensPericiasPokemon() {
         )
         .forEach(
             (botao) => {
-
                 botao.addEventListener(
                     "click",
                     async () => {
-
                         const pericia =
                             botao.dataset.pericia;
-
                         const nome =
                             botao.dataset.nome ||
                             pericia;
-
                         const campo =
                             document.querySelector(
                                 `#pokemon-pericia-${pericia}`
                             );
-
                         const formula =
                             formulaSalvaguarda(
                                 campo?.value
                             );
-
                         if (!formula) {
                             alert(
                                 "Valor da perícia inválido."
                             );
-
                             return;
                         }
-
                         await rolarNoDicePlus(
                             formula,
                             `Perícia ${nome}`
@@ -6268,32 +4986,23 @@ function ativarRolagensPericiasPokemon() {
             }
         );
 }
-
-// =====================================================
-// POKÉMON — ABA 1: STATUS
-// =====================================================
-
 function mostrarFichaPokemon(token) {
     const app =
         document.querySelector("#app");
-
     const hpAtual =
         token.metadata[
             `${PREFIX}/hpAtual`
         ] ?? 100;
-
     const hpMax =
         token.metadata[
             `${PREFIX}/hpMax`
         ] ?? 100;
-
     const caBase =
         Number(
             token.metadata[
                 `${PREFIX}/ca`
             ] ?? 10
         ) || 0;
-
     const estagioEvasao =
         normalizarEstagioBuff(
             token.metadata[
@@ -6301,86 +5010,68 @@ function mostrarFichaPokemon(token) {
             ] ?? 0,
             "evas"
         );
-
     const ca =
         caBase + estagioEvasao;
-
     const habilidade =
         token.metadata[
             `${PREFIX}/pokemon-habilidade`
         ] ?? "";
-
     const itemPokemon =
         token.metadata[
             `${PREFIX}/pokemon-item`
         ] ?? "";
-
     const movimentoCaminhada =
         token.metadata[
             `${PREFIX}/movimento-caminhada`
         ] ?? "";
-
     const movimentoEscalada =
         token.metadata[
             `${PREFIX}/movimento-escalada`
         ] ?? "";
-
     const movimentoVoo =
         token.metadata[
             `${PREFIX}/movimento-voo`
         ] ?? "";
-
     const movimentoNatacao =
         token.metadata[
             `${PREFIX}/movimento-natacao`
         ] ?? "";
-
     const movimentoEscavacao =
         token.metadata[
             `${PREFIX}/movimento-escavacao`
         ] ?? "";
-
     const movimentoFlutuacao =
         token.metadata[
             `${PREFIX}/movimento-flutuacao`
         ] ?? "";
-
     const proficiencia =
         Number(
             token.metadata[
                 `${PREFIX}/proficiencia`
             ] ?? 0
         );
-
-
     const modificadores = {};
     const salvaguardas = {};
-
     ATRIBUTOS.forEach(
         (atributo) => {
-
             modificadores[atributo] =
                 token.metadata[
                     `${PREFIX}/mod-${atributo}`
                 ] ?? "";
-
             salvaguardas[atributo] =
                 token.metadata[
                     `${PREFIX}/save-${atributo}`
                 ] ?? "";
         }
     );
-
     const iniciativaAlerta =
         token.metadata[
             `${PREFIX}/iniciativa-alerta`
         ] === true;
-
     const iniciativaHabilidade =
         token.metadata[
             `${PREFIX}/iniciativa-habilidade`
         ] === true;
-
     const estagioVelocidade =
         normalizarEstagioBuff(
             token.metadata[
@@ -6388,17 +5079,14 @@ function mostrarFichaPokemon(token) {
             ] ?? 0,
             "vel"
         );
-
     const iniciativa =
         (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
         (estagioVelocidade * proficiencia) +
         (iniciativaAlerta ? 5 : 0) +
         (iniciativaHabilidade ? proficiencia * 2 : 0);
-
     app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 1)}
-
     <div class="statusGrid statusGridPokemon" style="
       display:flex;
       gap:12px;
@@ -6424,7 +5112,6 @@ function mostrarFichaPokemon(token) {
               style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
-
           <div style="flex:1; min-width:0;">
             <p>HP Máx.</p>
             <input
@@ -6434,7 +5121,6 @@ function mostrarFichaPokemon(token) {
               style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
-
           <div style="flex:0.8; min-width:0;">
             <p>CA</p>
             <input
@@ -6444,7 +5130,6 @@ function mostrarFichaPokemon(token) {
               style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
-
           <div style="flex:0.8; min-width:0;">
             <p>Prof</p>
             <input
@@ -6456,18 +5141,14 @@ function mostrarFichaPokemon(token) {
               style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
-
         </div>
-
         <input
           id="bonusEvasaoCa"
           type="hidden"
           value="${estagioEvasao}"
         >
-
             <div class="calculadoraHpLinha">
               <p class="calculadoraTitulo">Calculadora</p>
-
               <div class="calculadoraControles">
                 <div class="calculadoraHpCampo">
                   <input
@@ -6476,7 +5157,6 @@ function mostrarFichaPokemon(token) {
                     placeholder="-34, 20, =50"
                   >
                 </div>
-        
               <div class="superEfetivoWrap">
                 <button
                   id="botaoSuperEfetivo"
@@ -6484,7 +5164,6 @@ function mostrarFichaPokemon(token) {
                 >
                   Super Efetivo
                 </button>
-        
                 <div
                   id="opcoesSuperEfetivo"
                   class="opcoesSuperEfetivo"
@@ -6496,7 +5175,6 @@ function mostrarFichaPokemon(token) {
                   >
                     Neutro
                   </button>
-
                   <button
                     type="button"
                     class="multiplicadorSuperEfetivo"
@@ -6504,7 +5182,6 @@ function mostrarFichaPokemon(token) {
                   >
                     2x
                   </button>
-        
                   <button
                     type="button"
                     class="multiplicadorSuperEfetivo"
@@ -6514,7 +5191,6 @@ function mostrarFichaPokemon(token) {
                   </button>
                 </div>
               </div>
-
               <div class="resistenteWrap">
                 <button
                   id="botaoResistente"
@@ -6522,7 +5198,6 @@ function mostrarFichaPokemon(token) {
                 >
                   Resistente
                 </button>
-
                 <div
                   id="opcoesResistente"
                   class="opcoesResistente"
@@ -6534,7 +5209,6 @@ function mostrarFichaPokemon(token) {
                   >
                     Neutro
                   </button>
-
                   <button
                     type="button"
                     class="divisorResistente"
@@ -6542,7 +5216,6 @@ function mostrarFichaPokemon(token) {
                   >
                     2x
                   </button>
-
                   <button
                     type="button"
                     class="divisorResistente"
@@ -6552,7 +5225,6 @@ function mostrarFichaPokemon(token) {
                   </button>
                 </div>
               </div>
-        
               <div class="moveWrap">
                 <button id="botaoMove" type="button">Move</button>
                 <div id="opcoesMove" class="opcoesMove">
@@ -6561,27 +5233,21 @@ function mostrarFichaPokemon(token) {
                   <button type="button" class="tipoMoveHp" data-tipo="especial">Especial</button>
                 </div>
               </div>
-
               </div>
-
               <div class="calculadoraAcao">
                 <button id="botaoCalcularHp" type="button">Calcular</button>
               </div>
-
               <input id="tipoMoveHpSelecionado" type="hidden" value="neutro">
               <input id="estagioDefHp" type="hidden" value="${Number(token.metadata[`${PREFIX}/buff-def`] ?? 0)}">
               <input id="estagioDefSpHp" type="hidden" value="${Number(token.metadata[`${PREFIX}/buff-defsp`] ?? 0)}">
-
               <input
                 id="multiplicadorHp"
                 type="hidden"
                 value="1"
               >
             </div>
-
             <div class="iniciativaBloco">
               <p class="iniciativaTitulo">Iniciativa</p>
-
               <div class="iniciativaLinha">
                 <input
                   id="iniciativa"
@@ -6590,13 +5256,11 @@ function mostrarFichaPokemon(token) {
                   readonly
                   title="Iniciativa = DES + (VEL × Prof) + Alerta + Habilidade"
                 >
-
                 <button
                   id="rolarIniciativa"
                   type="button"
                   title="Rolar iniciativa e entrar no apresentador"
                 >🎲</button>
-
                 <button
                   id="abrirApresentadorIniciativa"
                   type="button"
@@ -6609,7 +5273,6 @@ function mostrarFichaPokemon(token) {
                     cursor:pointer;
                   "
                 >📋</button>
-
                 <button
                   id="removerDaIniciativa"
                   type="button"
@@ -6622,7 +5285,6 @@ function mostrarFichaPokemon(token) {
                     cursor:pointer;
                   "
                 >✕</button>
-
                 <button
                   id="botaoIniciativaAlerta"
                   class="iniciativaCheck ${iniciativaAlerta ? "ativo" : ""}"
@@ -6632,7 +5294,6 @@ function mostrarFichaPokemon(token) {
                   <span class="iniciativaCheckBolinha">✓</span>
                   <span>Alerta</span>
                 </button>
-
                 <button
                   id="botaoIniciativaHabilidade"
                   class="iniciativaCheck ${iniciativaHabilidade ? "ativo" : ""}"
@@ -6643,23 +5304,19 @@ function mostrarFichaPokemon(token) {
                   <span>Habilidade</span>
                 </button>
               </div>
-
               <input
                 id="iniciativaAlerta"
                 type="hidden"
                 value="${iniciativaAlerta ? "1" : "0"}"
               >
-
               <input
                 id="iniciativaHabilidade"
                 type="hidden"
                 value="${iniciativaHabilidade ? "1" : "0"}"
               >
             </div>
-
             <div class="pokemonDetalhesCompactos">
               <p>Habilidades / Talentos</p>
-
               <textarea
                 id="habilidadePokemon"
                 rows="3"
@@ -6670,9 +5327,7 @@ function mostrarFichaPokemon(token) {
                   padding:8px;
                 "
               >${esc(habilidade)}</textarea>
-
               <p>Item</p>
-
               <input
                 id="itemPokemon"
                 type="text"
@@ -6680,14 +5335,10 @@ function mostrarFichaPokemon(token) {
                 placeholder="Item carregado pelo Pokémon"
               >
             </div>
-
       </div>
     </div>
-
     <hr class="hrMovimento">
-
     <h3 class="tituloMovimento">Movimentação</h3>
-
     <div class="movimentoGrid">
       <div class="movimentoTipo">
         <div class="movimentoTexto">
@@ -6697,7 +5348,6 @@ function mostrarFichaPokemon(token) {
             class="movimentoMeta"
           ></span>
         </div>
-
         <input
           id="movimentoCaminhada"
           class="movimentoValor"
@@ -6709,7 +5359,6 @@ function mostrarFichaPokemon(token) {
           title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
-
       <div class="movimentoTipo">
         <div class="movimentoTexto">
           <span class="movimentoNome">Escalada</span>
@@ -6718,7 +5367,6 @@ function mostrarFichaPokemon(token) {
             class="movimentoMeta"
           ></span>
         </div>
-
         <input
           id="movimentoEscalada"
           class="movimentoValor"
@@ -6730,7 +5378,6 @@ function mostrarFichaPokemon(token) {
           title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
-
       <div class="movimentoTipo">
         <div class="movimentoTexto">
           <span class="movimentoNome">Voo</span>
@@ -6739,7 +5386,6 @@ function mostrarFichaPokemon(token) {
             class="movimentoMeta"
           ></span>
         </div>
-
         <input
           id="movimentoVoo"
           class="movimentoValor"
@@ -6751,7 +5397,6 @@ function mostrarFichaPokemon(token) {
           title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
-
       <div class="movimentoTipo">
         <div class="movimentoTexto">
           <span class="movimentoNome">Natação</span>
@@ -6760,7 +5405,6 @@ function mostrarFichaPokemon(token) {
             class="movimentoMeta"
           ></span>
         </div>
-
         <input
           id="movimentoNatacao"
           class="movimentoValor"
@@ -6772,7 +5416,6 @@ function mostrarFichaPokemon(token) {
           title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
-
       <div class="movimentoTipo">
         <div class="movimentoTexto">
           <span class="movimentoNome">Escavação</span>
@@ -6781,7 +5424,6 @@ function mostrarFichaPokemon(token) {
             class="movimentoMeta"
           ></span>
         </div>
-
         <input
           id="movimentoEscavacao"
           class="movimentoValor"
@@ -6793,7 +5435,6 @@ function mostrarFichaPokemon(token) {
           title="Valor total com o buff de VEL. Clique para editar o valor base."
         >
       </div>
-
       <div class="movimentoTipo">
         <div class="movimentoTexto">
           <span class="movimentoNome">Flutuação</span>
@@ -6802,7 +5443,6 @@ function mostrarFichaPokemon(token) {
             class="movimentoMeta"
           ></span>
         </div>
-
         <input
           id="movimentoFlutuacao"
           class="movimentoValor"
@@ -6815,23 +5455,18 @@ function mostrarFichaPokemon(token) {
         >
       </div>
     </div>
-
     <hr>
-
     ${criarLinhaAtributos(
         "Modificadores",
         "mod",
         modificadores
     )}
-
     ${criarLinhaAtributos(
         "Salva-guardas",
         "save",
         salvaguardas
     )}
-
     <br>
-
     <button
       id="salvarPokemonStatus"
       style="
@@ -6844,7 +5479,6 @@ function mostrarFichaPokemon(token) {
       Salvar Status
     </button>
   `;
-
     ativarCabecalhoPokemon(token);
     ativarRolagensSalvaguarda(token);
     ativarRolagemIniciativa(token);
@@ -6853,7 +5487,6 @@ function mostrarFichaPokemon(token) {
         token,
         estagioVelocidade
     );
-
     document
         .querySelector(
             "#salvarPokemonStatus"
@@ -6861,96 +5494,75 @@ function mostrarFichaPokemon(token) {
         .addEventListener(
             "click",
             async () => {
-
                 const botaoSalvarStatus =
                     document.querySelector("#salvarPokemonStatus");
-
                 const aplicarCalculadora =
                     botaoSalvarStatus?.dataset.aplicarCalculadora === "1";
-
                 if (botaoSalvarStatus) {
                     botaoSalvarStatus.dataset.aplicarCalculadora = "0";
                 }
-
                 const dados =
                     await pegarHpCaDaTela(aplicarCalculadora);
-
                 if (!dados) {
                     return;
                 }
-
                 const movimentoCaminhadaNovo =
                     pegarMovimentoBase(
                         "movimentoCaminhada"
                     );
-
                 const movimentoEscaladaNovo =
                     pegarMovimentoBase(
                         "movimentoEscalada"
                     );
-
                 const movimentoVooNovo =
                     pegarMovimentoBase(
                         "movimentoVoo"
                     );
-
                 const movimentoNatacaoNovo =
                     pegarMovimentoBase(
                         "movimentoNatacao"
                     );
-
                 const movimentoEscavacaoNovo =
                     pegarMovimentoBase(
                         "movimentoEscavacao"
                     );
-
                 const movimentoFlutuacaoNovo =
                     pegarMovimentoBase(
                         "movimentoFlutuacao"
                     );
-
                 const novaHabilidade =
                     document
                         .querySelector("#habilidadePokemon")
                         .value
                         .trim();
-
                 const novoItemPokemon =
                     document
                         .querySelector("#itemPokemon")
                         .value
                         .trim();
-
                 const novaProficiencia =
                     Number(
                         document
                             .querySelector("#proficiencia")
                             .value
                     ) || 0;
-
-
                 const novaIniciativa =
                     document
                         .querySelector("#iniciativa")
                         .value
                         .trim();
-
                 const iniciativaAlertaAtiva =
                     document
                         .querySelector("#iniciativaAlerta")
                         ?.value === "1";
-
                 const iniciativaHabilidadeAtiva =
                     document
                         .querySelector("#iniciativaHabilidade")
                         ?.value === "1";
-
                 const novosModificadores = {};
                 const novasSalvaguardas = {};
-
                 ATRIBUTOS.forEach(
                     (atributo) => {
-
                         novosModificadores[atributo] =
                             document
                                 .querySelector(
@@ -6958,7 +5570,6 @@ function mostrarFichaPokemon(token) {
                                 )
                                 .value
                                 .trim();
-
                         novasSalvaguardas[atributo] =
                             document
                                 .querySelector(
@@ -6968,99 +5579,78 @@ function mostrarFichaPokemon(token) {
                                 .trim();
                     }
                 );
-
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
-
                         for (const item of items) {
-
                             item.metadata[
                                 `${PREFIX}/hpAtual`
                             ] =
                                 dados.hpAtual;
-
                             item.metadata[
                                 `${PREFIX}/hpMax`
                             ] =
                                 dados.hpMax;
-
                             item.metadata[
                                 `${PREFIX}/ca`
                             ] =
                                 dados.caBase;
-
                             item.metadata[
                                 `${PREFIX}/pokemon-habilidade`
                             ] =
                                 novaHabilidade;
-
                             item.metadata[
                                 `${PREFIX}/pokemon-item`
                             ] =
                                 novoItemPokemon;
-
                             item.metadata[
                                 `${PREFIX}/movimento-caminhada`
                             ] =
                                 movimentoCaminhadaNovo;
-
                             item.metadata[
                                 `${PREFIX}/movimento-escalada`
                             ] =
                                 movimentoEscaladaNovo;
-
                             item.metadata[
                                 `${PREFIX}/movimento-voo`
                             ] =
                                 movimentoVooNovo;
-
                             item.metadata[
                                 `${PREFIX}/movimento-natacao`
                             ] =
                                 movimentoNatacaoNovo;
-
                             item.metadata[
                                 `${PREFIX}/movimento-escavacao`
                             ] =
                                 movimentoEscavacaoNovo;
-
                             item.metadata[
                                 `${PREFIX}/movimento-flutuacao`
                             ] =
                                 movimentoFlutuacaoNovo;
-
                             item.metadata[
                                 `${PREFIX}/proficiencia`
                             ] =
                                 novaProficiencia;
-
-
                             item.metadata[
                                 `${PREFIX}/iniciativa`
                             ] =
                                 novaIniciativa;
-
                             item.metadata[
                                 `${PREFIX}/iniciativa-alerta`
                             ] =
                                 iniciativaAlertaAtiva;
-
                             item.metadata[
                                 `${PREFIX}/iniciativa-habilidade`
                             ] =
                                 iniciativaHabilidadeAtiva;
-
                             ATRIBUTOS.forEach(
                                 (atributo) => {
-
                                     item.metadata[
                                         `${PREFIX}/mod-${atributo}`
                                     ] =
                                         novosModificadores[
                                             atributo
                                         ];
-
                                     item.metadata[
                                         `${PREFIX}/save-${atributo}`
                                     ] =
@@ -7072,23 +5662,19 @@ function mostrarFichaPokemon(token) {
                         }
                     }
                 );
-
                 document
                     .querySelector("#hpAtual")
                     .value =
                         dados.hpAtual;
-
                 document
                     .querySelector("#hpMax")
                     .value =
                         dados.hpMax;
-
                 if (dados.calculadoraAplicada) {
                     document
                         .querySelector("#alterarHp")
                         .value = "";
                 }
-
                 await criarStatusNoToken(
                     token,
                     dados.hpAtual,
@@ -7098,24 +5684,16 @@ function mostrarFichaPokemon(token) {
             }
         );
 }
-
-// =====================================================
-// POKÉMON — ABA 2: MOVES / BUFFS
-// =====================================================
-
 function mostrarFichaPokemonMoves(token) {
     const app =
         document.querySelector("#app");
-
     const proficiencia =
         Number(
             token.metadata[
                 `${PREFIX}/proficiencia`
             ] ?? 0
         );
-
     const buffs = {};
-
     BUFFS.forEach(
         (buff) => {
             buffs[buff.id] =
@@ -7126,20 +5704,16 @@ function mostrarFichaPokemonMoves(token) {
                 );
         }
     );
-
-    // PRES = Precisão. Cada estágio vale exatamente ±1.
     const precisaoInicial =
         normalizarEstagioBuff(
             buffs.pres ?? 0,
             "pres"
         );
-
     const lerTalentoAtivo = (id) => {
         const valor =
             token.metadata[
                 `${PREFIX}/talento-${id}`
             ];
-
         return (
             valor === true ||
             valor === 1 ||
@@ -7147,7 +5721,6 @@ function mostrarFichaPokemonMoves(token) {
             valor === "true"
         );
     };
-
     const talentosCombate = {
         mestreCorpo: lerTalentoAtivo("mestre-corpo"),
         mestreDistancia: lerTalentoAtivo("mestre-distancia"),
@@ -7155,9 +5728,7 @@ function mostrarFichaPokemonMoves(token) {
         disputador: lerTalentoAtivo("disputador"),
         investidaPoderosa: lerTalentoAtivo("investida-poderosa")
     };
-
     const golpes = [];
-
     for (
         let i = 1;
         i <= 5;
@@ -7168,27 +5739,22 @@ function mostrarFichaPokemonMoves(token) {
                 token.metadata[
                     `${PREFIX}/golpe${i}Tipo`
                 ] ?? "",
-
             nome:
                 token.metadata[
                     `${PREFIX}/golpe${i}Nome`
                 ] ?? "",
-
             categoria:
                 token.metadata[
                     `${PREFIX}/golpe${i}Categoria`
                 ] ?? "",
-
             acerto:
                 token.metadata[
                     `${PREFIX}/golpe${i}Acerto`
                 ] ?? "",
-
             dano:
                 token.metadata[
                     `${PREFIX}/golpe${i}Dano`
                 ] ?? "",
-
             dobrarDadosVezes:
                 Math.max(
                     1,
@@ -7201,59 +5767,48 @@ function mostrarFichaPokemonMoves(token) {
                         ) || 1
                     )
                 ),
-
             cd:
                 token.metadata[
                     `${PREFIX}/golpe${i}CD`
                 ] ?? "",
-
             danoCD:
                 token.metadata[
                     `${PREFIX}/golpe${i}DanoCD`
                 ] ?? "",
-
             cura:
                 token.metadata[
                     `${PREFIX}/golpe${i}Cura`
                 ] ?? "",
-
             buffAcerto:
                 token.metadata[
                     `${PREFIX}/golpe${i}BuffAcerto`
                 ] ?? "",
-
             statusNome:
                 token.metadata[
                     `${PREFIX}/golpe${i}StatusNome`
                 ] ?? ""
         });
     }
-
     let htmlGolpes = "";
-
     golpes.forEach(
         (golpe, index) => {
             const numero = index + 1;
             const titulo = golpe.nome || `Move ${numero}`;
-
             const tipoInicial =
                 ["macerto", "mcd", "cura", "buffdebuff"]
                     .includes(golpe.tipo)
                     ? golpe.tipo
                     : "";
-
             const categoriaInicial =
                 golpe.categoria === "especial"
                     ? "especial"
                     : golpe.categoria === "fisico"
                         ? "fisico"
                         : "";
-
             const mostrarNome = tipoInicial !== "";
             const ehAtaque =
                 tipoInicial === "macerto" ||
                 tipoInicial === "mcd";
-
             htmlGolpes += `
         <details style="
           margin-bottom:8px;
@@ -7270,21 +5825,17 @@ function mostrarFichaPokemonMoves(token) {
           >
             ${esc(titulo)}
           </summary>
-
           <div style="margin-top:10px;">
-
             <input
               id="golpe${numero}Tipo"
               type="hidden"
               value="${tipoInicial}"
             >
-
             <input
               id="golpe${numero}Categoria"
               type="hidden"
               value="${categoriaInicial}"
             >
-
             <div style="
               display:grid;
               grid-template-columns:repeat(4, minmax(0, 1fr));
@@ -7308,7 +5859,6 @@ function mostrarFichaPokemonMoves(token) {
               >
                 M.ACERTO
               </button>
-
               <button
                 type="button"
                 class="tipoMove"
@@ -7326,7 +5876,6 @@ function mostrarFichaPokemonMoves(token) {
               >
                 M.CD
               </button>
-
               <button
                 type="button"
                 class="tipoMove"
@@ -7344,7 +5893,6 @@ function mostrarFichaPokemonMoves(token) {
               >
                 CURAS
               </button>
-
               <button
                 type="button"
                 class="tipoMove"
@@ -7363,7 +5911,6 @@ function mostrarFichaPokemonMoves(token) {
                 BUFFS / DEBUFFS
               </button>
             </div>
-
             <div
               id="golpe${numero}BlocoNome"
               style="display:${mostrarNome ? "block" : "none"};"
@@ -7390,7 +5937,6 @@ function mostrarFichaPokemonMoves(token) {
                     "
                   >
                 </div>
-
                 <div
                   id="golpe${numero}GrupoCategoria"
                   style="
@@ -7422,7 +5968,6 @@ function mostrarFichaPokemonMoves(token) {
                   >
                     ⚔️ FÍSICO
                   </button>
-
                   <button
                     type="button"
                     class="categoriaGolpe"
@@ -7449,7 +5994,6 @@ function mostrarFichaPokemonMoves(token) {
                 </div>
               </div>
             </div>
-
             <div
               id="golpe${numero}PainelMAcerto"
               style="display:${tipoInicial === "macerto" ? "block" : "none"};"
@@ -7476,7 +6020,6 @@ function mostrarFichaPokemonMoves(token) {
                     "
                   >
                 </div>
-
                 <div style="min-width:0;">
                   <label style="display:block; margin-bottom:3px;">Dano</label>
                   <input
@@ -7494,7 +6037,6 @@ function mostrarFichaPokemonMoves(token) {
                   >
                 </div>
               </div>
-
               <div style="
                 display:flex;
                 justify-content:flex-end;
@@ -7518,7 +6060,6 @@ function mostrarFichaPokemonMoves(token) {
                 >
                   🎲 DOBRAR DADOS
                 </button>
-
                 <select
                   id="golpe${numero}DobrarDadosVezes"
                   title="Quantidade de vezes que os dados serão dobrados"
@@ -7542,7 +6083,6 @@ function mostrarFichaPokemonMoves(token) {
                   ).join("")}
                 </select>
               </div>
-
               <div style="display:flex; gap:6px;">
                 <button
                   type="button"
@@ -7552,7 +6092,6 @@ function mostrarFichaPokemonMoves(token) {
                 >
                   🎲 ACERTO
                 </button>
-
                 <button
                   type="button"
                   class="rolarDano"
@@ -7561,7 +6100,6 @@ function mostrarFichaPokemonMoves(token) {
                 >
                   🎲 DANO
                 </button>
-
                 <button
                   type="button"
                   class="rolarCritico"
@@ -7572,7 +6110,6 @@ function mostrarFichaPokemonMoves(token) {
                 </button>
               </div>
             </div>
-
             <div
               id="golpe${numero}PainelMCD"
               style="display:${tipoInicial === "mcd" ? "block" : "none"};"
@@ -7593,7 +6130,7 @@ function mostrarFichaPokemonMoves(token) {
                     type="number"
                     value="${esc(golpe.cd)}"
                     placeholder="Ex: 15"
-                    title="A CD atual é a CD Base menos os estágios de Precisão."
+                    title="A CD atual é a CD Base mais os estágios de Precisão."
                     style="
                       width:100%;
                       min-height:32px !important;
@@ -7604,7 +6141,6 @@ function mostrarFichaPokemonMoves(token) {
                     "
                   >
                 </div>
-
                 <div
                   id="golpe${numero}CDAtual"
                   class="cdAtualPrecisao"
@@ -7628,10 +6164,9 @@ function mostrarFichaPokemonMoves(token) {
                 >
                   ${golpe.cd === ""
                       ? "CD ATUAL —"
-                      : `CD ATUAL ${Number(golpe.cd) - precisaoInicial}`}
+                      : `CD ATUAL ${Number(golpe.cd) + precisaoInicial}`}
                 </div>
               </div>
-
               <div style="margin-bottom:8px;">
                 <label style="display:block; margin-bottom:3px;">Dano</label>
                 <input
@@ -7648,7 +6183,6 @@ function mostrarFichaPokemonMoves(token) {
                   "
                 >
               </div>
-
               <div style="
                 display:grid;
                 grid-template-columns:repeat(3, minmax(0, 1fr));
@@ -7669,7 +6203,6 @@ function mostrarFichaPokemonMoves(token) {
                 >
                   ✅ PASSOU NA CD
                 </button>
-
                 <button
                   type="button"
                   class="rolarReprovouCD"
@@ -7685,7 +6218,6 @@ function mostrarFichaPokemonMoves(token) {
                 >
                   ❌ REPROVOU CD
                 </button>
-
                 <button
                   type="button"
                   class="rolarCriticoCD"
@@ -7703,7 +6235,6 @@ function mostrarFichaPokemonMoves(token) {
                 </button>
               </div>
             </div>
-
             <div
               id="golpe${numero}PainelCura"
               style="display:${tipoInicial === "cura" ? "block" : "none"};"
@@ -7730,7 +6261,6 @@ function mostrarFichaPokemonMoves(token) {
                     "
                   >
                 </div>
-
                 <button
                   type="button"
                   class="rolarCura"
@@ -7749,7 +6279,6 @@ function mostrarFichaPokemonMoves(token) {
                   💚 CURAR
                 </button>
               </div>
-
               <div
                 id="golpe${numero}CuraInfo"
                 style="
@@ -7760,7 +6289,6 @@ function mostrarFichaPokemonMoves(token) {
                 "
               ></div>
             </div>
-
             <div
               id="golpe${numero}PainelBuffDebuff"
               style="display:${tipoInicial === "buffdebuff" ? "block" : "none"};"
@@ -7788,7 +6316,6 @@ function mostrarFichaPokemonMoves(token) {
                     "
                   >
                 </div>
-
                 <button
                   type="button"
                   class="rolarAcertoBuffDebuff"
@@ -7805,7 +6332,6 @@ function mostrarFichaPokemonMoves(token) {
                 >
                   🎲 ACERTO
                 </button>
-
                 <div style="min-width:0;">
                   <label style="display:block; margin-bottom:3px;">Status causado</label>
                   <input
@@ -7823,7 +6349,6 @@ function mostrarFichaPokemonMoves(token) {
                   >
                 </div>
               </div>
-
               <div style="
                 padding:7px;
                 border:1px solid #dbe5f0;
@@ -7837,7 +6362,6 @@ function mostrarFichaPokemonMoves(token) {
                 ">
                   BUFF +1 ESTÁGIO
                 </div>
-
                 <div style="
                   display:grid;
                   grid-template-columns:repeat(4, minmax(0, 1fr));
@@ -7865,7 +6389,6 @@ function mostrarFichaPokemonMoves(token) {
                   ).join("")}
                 </div>
               </div>
-
               <div style="
                 padding:7px;
                 border:1px solid #dbe5f0;
@@ -7878,7 +6401,6 @@ function mostrarFichaPokemonMoves(token) {
                 ">
                   DEBUFF -1 ESTÁGIO
                 </div>
-
                 <div style="
                   display:grid;
                   grid-template-columns:repeat(4, minmax(0, 1fr));
@@ -7907,23 +6429,19 @@ function mostrarFichaPokemonMoves(token) {
                 </div>
               </div>
             </div>
-
           </div>
         </details>
       `;
         }
     );
-
     app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 2)}
-
     <h3 style="
       text-align:center;
       margin:4px 0 5px;
       line-height:1.05;
     ">Buffs / Estágios</h3>
-
     <div style="
       display:flex;
       justify-content:center;
@@ -7939,7 +6457,6 @@ function mostrarFichaPokemonMoves(token) {
           proficiencia
       )}
     </div>
-
     <div style="
       text-align:center;
       font-size:10px;
@@ -7949,7 +6466,6 @@ function mostrarFichaPokemonMoves(token) {
     ">
       TALENTOS DE COMBATE
     </div>
-
     <div style="
       display:grid;
       grid-template-columns:repeat(2, minmax(0, 1fr));
@@ -7961,45 +6477,35 @@ function mostrarFichaPokemonMoves(token) {
       <input id="talento-atacante-bestial" type="hidden" value="${talentosCombate.atacanteBestial ? "1" : "0"}">
       <input id="talento-disputador" type="hidden" value="${talentosCombate.disputador ? "1" : "0"}">
       <input id="talento-investida-poderosa" type="hidden" value="${talentosCombate.investidaPoderosa ? "1" : "0"}">
-
       <button type="button" class="talentoCombate ${talentosCombate.mestreCorpo ? "ativo" : ""}" data-talento="mestre-corpo"
         style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.mestreCorpo ? "1" : "0.55"}; border:${talentosCombate.mestreCorpo ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.mestreCorpo ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.mestreCorpo ? "#fff" : ""}; box-shadow:${talentosCombate.mestreCorpo ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         MESTRE CORPO A CORPO
       </button>
-
       <button type="button" class="talentoCombate ${talentosCombate.mestreDistancia ? "ativo" : ""}" data-talento="mestre-distancia"
         style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.mestreDistancia ? "1" : "0.55"}; border:${talentosCombate.mestreDistancia ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.mestreDistancia ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.mestreDistancia ? "#fff" : ""}; box-shadow:${talentosCombate.mestreDistancia ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         MESTRE À DISTÂNCIA
       </button>
-
       <button type="button" class="talentoCombate ${talentosCombate.atacanteBestial ? "ativo" : ""}" data-talento="atacante-bestial"
         style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.atacanteBestial ? "1" : "0.55"}; border:${talentosCombate.atacanteBestial ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.atacanteBestial ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.atacanteBestial ? "#fff" : ""}; box-shadow:${talentosCombate.atacanteBestial ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         ATACANTE BESTIAL
       </button>
-
       <button type="button" class="talentoCombate ${talentosCombate.disputador ? "ativo" : ""}" data-talento="disputador"
         style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.disputador ? "1" : "0.55"}; border:${talentosCombate.disputador ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.disputador ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.disputador ? "#fff" : ""}; box-shadow:${talentosCombate.disputador ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         DISPUTADOR
       </button>
-
       <button type="button" class="talentoCombate ${talentosCombate.investidaPoderosa ? "ativo" : ""}" data-talento="investida-poderosa"
         style="grid-column:1 / -1; min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.investidaPoderosa ? "1" : "0.55"}; border:${talentosCombate.investidaPoderosa ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.investidaPoderosa ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.investidaPoderosa ? "#fff" : ""}; box-shadow:${talentosCombate.investidaPoderosa ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         INVESTIDA PODEROSA
       </button>
     </div>
-
     <div style="border-top:1px solid #555; margin:2px 0 3px;"></div>
-
     <h3 style="
       text-align:center;
       margin:3px 0 5px;
       line-height:1.05;
     ">Moves</h3>
-
     ${htmlGolpes}
-
     <br>
-
     <button
       id="salvarPokemonMoves"
       style="
@@ -8012,9 +6518,7 @@ function mostrarFichaPokemonMoves(token) {
       Salvar Moves / Buffs
     </button>
   `;
-
     ativarCabecalhoPokemon(token);
-
     function atualizarBuffsPagina() {
         BUFFS.forEach(
             (buff) => {
@@ -8022,22 +6526,18 @@ function mostrarFichaPokemonMoves(token) {
                     document.querySelector(
                         `#buff-${buff.id}`
                     );
-
                 if (!campoBuff) {
                     return;
                 }
-
                 const estagio =
                     normalizarEstagioBuff(
                         campoBuff.value,
                         buff.id
                     );
-
                 const campoBonus =
                     document.querySelector(
                         `#bonus-${buff.id}`
                     );
-
                 if (campoBonus) {
                     campoBonus.textContent =
                         buff.id === "crit"
@@ -8053,7 +6553,6 @@ function mostrarFichaPokemonMoves(token) {
             }
         );
     }
-
     document
         .querySelectorAll(".campoBuff")
         .forEach(
@@ -8062,24 +6561,19 @@ function mostrarFichaPokemonMoves(token) {
                     "input",
                     () => {
                         atualizarBuffsPagina();
-
                         const buffId =
                             campo.id.replace("buff-", "");
-
                         if (buffId === "pres") {
                             atualizarCDsComPrecisao();
                         }
-
                         const valorBuff =
                             normalizarEstagioBuff(
                                 campo.value,
                                 buffId
                             );
-
                         token.metadata[
                             `${PREFIX}/buff-${buffId}`
                         ] = valorBuff;
-
                         salvamentoBuffPendente =
                             salvamentoBuffPendente
                                 .catch(() => {})
@@ -8094,7 +6588,6 @@ function mostrarFichaPokemonMoves(token) {
                                             }
                                         }
                                     );
-
                                     if (buffId === "evas") {
                                         const hpAtualHud =
                                             Number(
@@ -8102,7 +6595,6 @@ function mostrarFichaPokemonMoves(token) {
                                                     `${PREFIX}/hpAtual`
                                                 ] ?? 100
                                             ) || 0;
-
                                         const hpMaxHud =
                                             Math.max(
                                                 1,
@@ -8112,14 +6604,12 @@ function mostrarFichaPokemonMoves(token) {
                                                     ] ?? 100
                                                 ) || 1
                                             );
-
                                         const caBaseHud =
                                             Number(
                                                 token.metadata[
                                                     `${PREFIX}/ca`
                                                 ] ?? 10
                                             ) || 0;
-
                                         await criarStatusNoToken(
                                             token,
                                             hpAtualHud,
@@ -8130,22 +6620,18 @@ function mostrarFichaPokemonMoves(token) {
                                 });
                     }
                 );
-
                 campo.addEventListener(
                     "change",
                     () => {
                         const buffId =
                             campo.id.replace("buff-", "");
-
                         campo.value = String(
                             normalizarEstagioBuff(
                                 campo.value,
                                 buffId
                             )
                         );
-
                         atualizarBuffsPagina();
-
                         if (buffId === "pres") {
                             atualizarCDsComPrecisao();
                         }
@@ -8153,9 +6639,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
-    // A CD salva continua sendo a CD BASE. O indicador mostra a CD efetiva
-    // e reage imediatamente a mudanças de Precisão ou da própria CD Base.
     document
         .querySelectorAll(".cdBaseMove")
         .forEach((campo) => {
@@ -8163,33 +6646,26 @@ function mostrarFichaPokemonMoves(token) {
                 "input",
                 atualizarCDsComPrecisao
             );
-
             campo.addEventListener(
                 "change",
                 atualizarCDsComPrecisao
             );
         });
-
     atualizarCDsComPrecisao();
-
     function atualizarTipoMoveVisual(numero, tipo) {
         const tiposValidos =
             ["macerto", "mcd", "cura", "buffdebuff"];
-
         const tipoSeguro =
             tiposValidos.includes(tipo)
                 ? tipo
                 : "";
-
         const campoTipo =
             document.querySelector(
                 `#golpe${numero}Tipo`
             );
-
         if (campoTipo) {
             campoTipo.value = tipoSeguro;
         }
-
         document
             .querySelectorAll(
                 `.tipoMove[data-golpe="${numero}"]`
@@ -8198,87 +6674,71 @@ function mostrarFichaPokemonMoves(token) {
                 (opcao) => {
                     const ativo =
                         opcao.dataset.tipo === tipoSeguro;
-
                     opcao.style.opacity =
                         ativo ? "1" : "0.62";
-
                     opcao.style.border =
                         ativo
                             ? "2px solid #4C8DFF"
                             : "1px solid #c9d5e3";
-
                     opcao.style.background =
                         ativo
                             ? "#eaf3ff"
                             : "";
                 }
             );
-
         const blocoNome =
             document.querySelector(
                 `#golpe${numero}BlocoNome`
             );
-
         const grupoCategoria =
             document.querySelector(
                 `#golpe${numero}GrupoCategoria`
             );
-
         const painelMAcerto =
             document.querySelector(
                 `#golpe${numero}PainelMAcerto`
             );
-
         const painelMCD =
             document.querySelector(
                 `#golpe${numero}PainelMCD`
             );
-
         const painelCura =
             document.querySelector(
                 `#golpe${numero}PainelCura`
             );
-
         const painelBuffDebuff =
             document.querySelector(
                 `#golpe${numero}PainelBuffDebuff`
             );
-
         const ehAtaque =
             tipoSeguro === "macerto" ||
             tipoSeguro === "mcd";
-
         if (blocoNome) {
             blocoNome.style.display =
                 tipoSeguro ? "block" : "none";
         }
-
         if (grupoCategoria) {
             grupoCategoria.style.display =
                 ehAtaque ? "flex" : "none";
         }
-
         if (painelMAcerto) {
             painelMAcerto.style.display =
                 tipoSeguro === "macerto"
                     ? "block"
                     : "none";
         }
-
         if (painelMCD) {
             painelMCD.style.display =
                 tipoSeguro === "mcd"
                     ? "block"
                     : "none";
         }
-
         if (painelCura) {
             painelCura.style.display =
                 tipoSeguro === "cura"
                     ? "block"
                     : "none";
         }
-
         if (painelBuffDebuff) {
             painelBuffDebuff.style.display =
                 tipoSeguro === "buffdebuff"
@@ -8286,7 +6746,6 @@ function mostrarFichaPokemonMoves(token) {
                     : "none";
         }
     }
-
     document
         .querySelectorAll(".tipoMove")
         .forEach(
@@ -8296,17 +6755,12 @@ function mostrarFichaPokemonMoves(token) {
                     () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const tipo =
                             botao.dataset.tipo;
-
                         atualizarTipoMoveVisual(
                             numero,
                             tipo
                         );
-
-                        // O tipo do move é uma escolha estrutural. Salva
-                        // imediatamente para não depender do debounce geral.
                         document
                             .querySelector("#salvarPokemonMoves")
                             ?.click();
@@ -8314,48 +6768,32 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
-    // =================================================
-    // NOME DINÂMICO NO CABEÇALHO DO MOVE
-    // =================================================
-
     for (let numero = 1; numero <= 5; numero++) {
         const campoNome =
             document.querySelector(
                 `#golpe${numero}Nome`
             );
-
         const resumo =
             document.querySelector(
                 `#golpe${numero}Resumo`
             );
-
         if (!campoNome || !resumo) {
             continue;
         }
-
         const atualizarResumo = () => {
             const nome = campoNome.value.trim();
-
             resumo.textContent =
                 nome || `Move ${numero}`;
         };
-
         campoNome.addEventListener(
             "input",
             atualizarResumo
         );
-
         campoNome.addEventListener(
             "change",
             atualizarResumo
         );
     }
-
-    // =================================================
-    // TALENTOS DE COMBATE — BOTÕES GLOBAIS
-    // =================================================
-
     function talentoCombateAtivo(id) {
         return (
             document
@@ -8363,12 +6801,10 @@ function mostrarFichaPokemonMoves(token) {
                 ?.value === "1"
         );
     }
-
     function atualizarVisualTalento(botao, ativo) {
         botao.classList.toggle("ativo", ativo);
         botao.style.opacity = ativo ? "1" : "0.55";
     }
-
     document
         .querySelectorAll(".talentoCombate")
         .forEach(
@@ -8378,29 +6814,21 @@ function mostrarFichaPokemonMoves(token) {
                     () => {
                         const id =
                             botao.dataset.talento;
-
                         const campo =
                             document.querySelector(
                                 `#talento-${id}`
                             );
-
                         if (!campo) {
                             return;
                         }
-
                         const ativo =
                             campo.value !== "1";
-
                         campo.value =
                             ativo ? "1" : "0";
-
                         atualizarVisualTalento(
                             botao,
                             ativo
                         );
-
-                        // Talentos mudam fórmulas de rolagem; salva
-                        // imediatamente para persistir a seleção.
                         document
                             .querySelector("#salvarPokemonMoves")
                             ?.click();
@@ -8408,11 +6836,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
-    // =================================================
-    // FÍSICO / ESPECIAL
-    // =================================================
-
     document
         .querySelectorAll(".categoriaGolpe")
         .forEach(
@@ -8422,18 +6845,14 @@ function mostrarFichaPokemonMoves(token) {
                     () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const categoria =
                             botao.dataset.categoria;
-
                         const campoCategoria =
                             document.querySelector(
                                 `#golpe${numero}Categoria`
                             );
-
                         campoCategoria.value =
                             categoria;
-
                         document
                             .querySelectorAll(
                                 `.categoriaGolpe[data-golpe="${numero}"]`
@@ -8443,10 +6862,8 @@ function mostrarFichaPokemonMoves(token) {
                                     const ativo =
                                         opcao.dataset.categoria ===
                                         categoria;
-
                                     opcao.style.opacity =
                                         ativo ? "1" : "0.55";
-
                                     opcao.style.border =
                                         ativo
                                             ? "2px solid #FFFFFF"
@@ -8457,7 +6874,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
     function nomeGolpe(numero) {
         return (
             document
@@ -8469,7 +6885,6 @@ function mostrarFichaPokemonMoves(token) {
             `Move ${numero}`
         );
     }
-
     function categoriaGolpeAtual(numero) {
         return (
             document
@@ -8479,7 +6894,6 @@ function mostrarFichaPokemonMoves(token) {
                 ?.value || ""
         );
     }
-
     function estagioPrecisaoAtual() {
         return normalizarEstagioBuff(
             document
@@ -8488,36 +6902,29 @@ function mostrarFichaPokemonMoves(token) {
             "pres"
         );
     }
-
     function adicionarPrecisaoAoAcerto(formula) {
         return adicionarBonusNaFormula(
             formula,
             estagioPrecisaoAtual()
         );
     }
-
     function atualizarCDsComPrecisao() {
         const precisao =
             estagioPrecisaoAtual();
-
         for (let numero = 1; numero <= 5; numero++) {
             const campoCD =
                 document.querySelector(
                     `#golpe${numero}CD`
                 );
-
             const indicador =
                 document.querySelector(
                     `#golpe${numero}CDAtual`
                 );
-
             if (!campoCD || !indicador) {
                 continue;
             }
-
             const textoBase =
                 String(campoCD.value ?? "").trim();
-
             if (textoBase === "") {
                 indicador.textContent =
                     "CD ATUAL —";
@@ -8525,23 +6932,18 @@ function mostrarFichaPokemonMoves(token) {
                     "Defina a CD Base do move.";
                 continue;
             }
-
             const cdBase = Number(
                 textoBase.replace(",", ".")
             );
-
             if (!Number.isFinite(cdBase)) {
                 indicador.textContent =
                     "CD ATUAL —";
                 continue;
             }
-
             const cdAtual =
-                cdBase - precisao;
-
+                cdBase + precisao;
             indicador.textContent =
                 `CD ATUAL ${formatarDecimal(cdAtual)}`;
-
             if (precisao === 0) {
                 indicador.title =
                     `CD Base ${formatarDecimal(cdBase)} · Precisão 0`;
@@ -8549,68 +6951,52 @@ function mostrarFichaPokemonMoves(token) {
             else {
                 const sinalPrecisao =
                     precisao > 0 ? "+" : "";
-
                 indicador.title =
                     `CD Base ${formatarDecimal(cdBase)} · Precisão ${sinalPrecisao}${precisao} · CD Atual ${formatarDecimal(cdAtual)}`;
             }
         }
     }
-
     function formulaComVantagem(formula) {
         const base =
             String(formula || "").trim();
-
         if (!base) {
             return base;
         }
-
-        // Dice+: rola a expressão completa duas vezes e mantém
-        // o maior total. Assim a vantagem funciona inclusive
-        // em fórmulas como 2d10+15 ou 3d8+1d6+7.
         return `(${base},${base})kh1`;
     }
-
     function formulaAcertoComTalentos(
         numero,
         formulaOriginal
     ) {
         const categoria =
             categoriaGolpeAtual(numero);
-
-        // Precisão concede +1/-1 no acerto por estágio.
         let bonusTalento =
             estagioPrecisaoAtual();
-
         if (
             categoria === "fisico" &&
             talentoCombateAtivo("mestre-corpo")
         ) {
             bonusTalento -= 5;
         }
-
         if (
             categoria === "especial" &&
             talentoCombateAtivo("mestre-distancia")
         ) {
             bonusTalento -= 5;
         }
-
         let formulaFinal =
             adicionarBonusNaFormula(
                 formulaOriginal,
                 bonusTalento
             );
-
         if (talentoCombateAtivo("disputador")) {
             formulaFinal =
                 formulaComVantagem(
                     formulaFinal
                 );
         }
-
         return formulaFinal;
     }
-
     function formulaDanoComBuff(
         numero,
         formulaOriginal,
@@ -8620,20 +7006,16 @@ function mostrarFichaPokemonMoves(token) {
             opcoes.incluirBonusMestres !== false;
         const categoria =
             categoriaGolpeAtual(numero);
-
         if (!categoria) {
             alert(
                 "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o dano."
             );
-
             return null;
         }
-
         const buffId =
             categoria === "fisico"
                 ? "atq"
                 : "atqsp";
-
         const estagioBuff =
             normalizarEstagioBuff(
                 document
@@ -8643,16 +7025,13 @@ function mostrarFichaPokemonMoves(token) {
                     ?.value,
                 buffId
             );
-
         const bonusBuff =
             bonusPorEstagio(
                 buffId,
                 estagioBuff,
                 proficiencia
             );
-
         let bonusTalentos = 0;
-
         if (categoria === "fisico") {
             if (
                 incluirBonusMestres &&
@@ -8660,12 +7039,10 @@ function mostrarFichaPokemonMoves(token) {
             ) {
                 bonusTalentos += 10;
             }
-
             if (talentoCombateAtivo("investida-poderosa")) {
                 bonusTalentos += 5;
             }
         }
-
         if (
             incluirBonusMestres &&
             categoria === "especial" &&
@@ -8673,13 +7050,11 @@ function mostrarFichaPokemonMoves(token) {
         ) {
             bonusTalentos += 10;
         }
-
         let formulaFinal =
             adicionarBonusNaFormula(
                 formulaOriginal,
                 bonusBuff + bonusTalentos
             );
-
         if (
             categoria === "fisico" &&
             talentoCombateAtivo("atacante-bestial")
@@ -8689,10 +7064,8 @@ function mostrarFichaPokemonMoves(token) {
                     formulaFinal
                 );
         }
-
         return formulaFinal;
     }
-
     function dobrarDadosPorVezes(
         formula,
         vezes
@@ -8705,10 +7078,8 @@ function mostrarFichaPokemonMoves(token) {
                     Number(vezes) || 1
                 )
             );
-
         const multiplicador =
             Math.pow(2, quantidadeDobras);
-
         return String(formula || "").replace(
             /(^|[^A-Za-z0-9_])(\d*)d(\d+)/gi,
             (match, prefixo, quantidade, faces) => {
@@ -8716,16 +7087,10 @@ function mostrarFichaPokemonMoves(token) {
                     quantidade === ""
                         ? 1
                         : Number(quantidade);
-
                 return `${prefixo}${qtdOriginal * multiplicador}d${faces}`;
             }
         );
     }
-
-    // =================================================
-    // M.ACERTO
-    // =================================================
-
     document
         .querySelectorAll(".rolarAcerto")
         .forEach(
@@ -8735,7 +7100,6 @@ function mostrarFichaPokemonMoves(token) {
                     async () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const formula =
                             document
                                 .querySelector(
@@ -8743,21 +7107,17 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim();
-
                         if (!formula) {
                             alert(
                                 "A fórmula de acerto está vazia."
                             );
-
                             return;
                         }
-
                         const formulaFinal =
                             formulaAcertoComTalentos(
                                 numero,
                                 formula
                             );
-
                         await rolarNoDicePlus(
                             formulaFinal,
                             nomeGolpe(numero),
@@ -8767,7 +7127,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
     document
         .querySelectorAll(".rolarDano")
         .forEach(
@@ -8777,7 +7136,6 @@ function mostrarFichaPokemonMoves(token) {
                     async () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const formulaOriginal =
                             document
                                 .querySelector(
@@ -8785,25 +7143,20 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim();
-
                         if (!formulaOriginal) {
                             alert(
                                 "A fórmula de dano está vazia."
                             );
-
                             return;
                         }
-
                         const formulaFinal =
                             formulaDanoComBuff(
                                 numero,
                                 formulaOriginal
                             );
-
                         if (!formulaFinal) {
                             return;
                         }
-
                         await rolarNoDicePlus(
                             formulaFinal,
                             nomeGolpe(numero),
@@ -8813,7 +7166,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
     document
         .querySelectorAll(".rolarDobrarDados")
         .forEach(
@@ -8823,7 +7175,6 @@ function mostrarFichaPokemonMoves(token) {
                     async () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const formulaOriginal =
                             document
                                 .querySelector(
@@ -8831,20 +7182,16 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim();
-
                         if (!formulaOriginal) {
                             alert(
                                 "A fórmula de dano está vazia."
                             );
-
                             return;
                         }
-
                         const campoDobras =
                             document.querySelector(
                                 `#golpe${numero}DobrarDadosVezes`
                             );
-
                         const vezes =
                             Math.max(
                                 1,
@@ -8853,23 +7200,19 @@ function mostrarFichaPokemonMoves(token) {
                                     Number(campoDobras?.value) || 1
                                 )
                             );
-
                         const formulaDadosDobrados =
                             dobrarDadosPorVezes(
                                 formulaOriginal,
                                 vezes
                             );
-
                         const formulaFinal =
                             formulaDanoComBuff(
                                 numero,
                                 formulaDadosDobrados
                             );
-
                         if (!formulaFinal) {
                             return;
                         }
-
                         await rolarNoDicePlus(
                             formulaFinal,
                             nomeGolpe(numero),
@@ -8879,7 +7222,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
     document
         .querySelectorAll(".rolarCritico")
         .forEach(
@@ -8889,7 +7231,6 @@ function mostrarFichaPokemonMoves(token) {
                     async () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const formulaOriginal =
                             document
                                 .querySelector(
@@ -8897,45 +7238,36 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim();
-
                         if (!formulaOriginal) {
                             alert(
                                 "A fórmula de dano está vazia."
                             );
-
                             return;
                         }
-
                         const categoria =
                             document
                                 .querySelector(
                                     `#golpe${numero}Categoria`
                                 )
                                 ?.value || "";
-
                         if (!categoria) {
                             alert(
                                 "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico."
                             );
-
                             return;
                         }
-
                         const formulaCritica =
                             duplicarDadosFormula(
                                 formulaOriginal
                             );
-
                         const formulaFinal =
                             formulaDanoComBuff(
                                 numero,
                                 formulaCritica
                             );
-
                         if (!formulaFinal) {
                             return;
                         }
-
                         await rolarNoDicePlus(
                             formulaFinal,
                             nomeGolpe(numero),
@@ -8945,11 +7277,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
-    // =================================================
-    // M.CD
-    // =================================================
-
     document
         .querySelectorAll(".rolarPassouCD")
         .forEach(
@@ -8959,7 +7286,6 @@ function mostrarFichaPokemonMoves(token) {
                     async () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const formulaOriginal =
                             document
                                 .querySelector(
@@ -8967,31 +7293,23 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim();
-
                         if (!formulaOriginal) {
                             alert(
                                 "A fórmula de dano está vazia."
                             );
-
                             return;
                         }
-
                         const formulaComBuff =
                             formulaDanoComBuff(
                                 numero,
                                 formulaOriginal,
                                 { incluirBonusMestres: false }
                             );
-
                         if (!formulaComBuff) {
                             return;
                         }
-
-                        // Divide o TOTAL final por 2. Os parênteses garantem
-                        // que modificadores fixos também sejam reduzidos.
                         const formulaFinal =
                             `(${formulaComBuff})/2`;
-
                         await rolarNoDicePlus(
                             formulaFinal,
                             nomeGolpe(numero),
@@ -9001,7 +7319,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
     document
         .querySelectorAll(".rolarReprovouCD")
         .forEach(
@@ -9011,7 +7328,6 @@ function mostrarFichaPokemonMoves(token) {
                     async () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const formulaOriginal =
                             document
                                 .querySelector(
@@ -9019,25 +7335,20 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim();
-
                         if (!formulaOriginal) {
                             alert(
                                 "A fórmula de dano está vazia."
                             );
-
                             return;
                         }
-
                         const formulaFinal =
                             formulaDanoComBuff(
                                 numero,
                                 formulaOriginal
                             );
-
                         if (!formulaFinal) {
                             return;
                         }
-
                         await rolarNoDicePlus(
                             formulaFinal,
                             nomeGolpe(numero),
@@ -9047,7 +7358,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
     document
         .querySelectorAll(".rolarCriticoCD")
         .forEach(
@@ -9057,7 +7367,6 @@ function mostrarFichaPokemonMoves(token) {
                     async () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const formulaOriginal =
                             document
                                 .querySelector(
@@ -9065,45 +7374,36 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim();
-
                         if (!formulaOriginal) {
                             alert(
                                 "A fórmula de dano está vazia."
                             );
-
                             return;
                         }
-
                         const categoria =
                             document
                                 .querySelector(
                                     `#golpe${numero}Categoria`
                                 )
                                 ?.value || "";
-
                         if (!categoria) {
                             alert(
                                 "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico."
                             );
-
                             return;
                         }
-
                         const formulaCritica =
                             duplicarDadosFormula(
                                 formulaOriginal
                             );
-
                         const formulaFinal =
                             formulaDanoComBuff(
                                 numero,
                                 formulaCritica
                             );
-
                         if (!formulaFinal) {
                             return;
                         }
-
                         await rolarNoDicePlus(
                             formulaFinal,
                             nomeGolpe(numero),
@@ -9113,22 +7413,15 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
-    // =================================================
-    // CURAS
-    // =================================================
-
     async function aplicarCuraNoHp(valorCura) {
         const cura =
             Math.max(0, Number(valorCura) || 0);
-
         const hpAtualAnterior =
             Number(
                 token.metadata[
                     `${PREFIX}/hpAtual`
                 ] ?? 0
             ) || 0;
-
         const hpMax =
             Math.max(
                 1,
@@ -9138,7 +7431,6 @@ function mostrarFichaPokemonMoves(token) {
                     ] ?? 100
                 ) || 1
             );
-
         const hpAtualNovo =
             Math.max(
                 0,
@@ -9147,11 +7439,9 @@ function mostrarFichaPokemonMoves(token) {
                     hpAtualAnterior + cura
                 )
             );
-
         token.metadata[
             `${PREFIX}/hpAtual`
         ] = hpAtualNovo;
-
         await OBR.scene.items.updateItems(
             [token.id],
             (items) => {
@@ -9162,14 +7452,12 @@ function mostrarFichaPokemonMoves(token) {
                 }
             }
         );
-
         const caBase =
             Number(
                 token.metadata[
                     `${PREFIX}/ca`
                 ] ?? 10
             ) || 0;
-
         const evasao =
             normalizarEstagioBuff(
                 token.metadata[
@@ -9177,14 +7465,12 @@ function mostrarFichaPokemonMoves(token) {
                 ] ?? 0,
                 "evas"
             );
-
         await criarStatusNoToken(
             token,
             hpAtualNovo,
             hpMax,
             caBase + evasao
         );
-
         return {
             curaRolada: cura,
             curaAplicada:
@@ -9197,7 +7483,6 @@ function mostrarFichaPokemonMoves(token) {
             hpMax
         };
     }
-
     document
         .querySelectorAll(".rolarCura")
         .forEach(
@@ -9207,7 +7492,6 @@ function mostrarFichaPokemonMoves(token) {
                     async () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const formula =
                             document
                                 .querySelector(
@@ -9215,17 +7499,13 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 ?.value
                                 .trim();
-
                         if (!formula) {
                             alert(
                                 "A fórmula de cura está vazia."
                             );
-
                             return;
                         }
-
                         botao.disabled = true;
-
                         try {
                             const resultado =
                                 await rolarNoDicePlusComResultado(
@@ -9233,21 +7513,17 @@ function mostrarFichaPokemonMoves(token) {
                                     nomeGolpe(numero),
                                     "Cura"
                                 );
-
                             if (resultado === null) {
                                 return;
                             }
-
                             const dadosCura =
                                 await aplicarCuraNoHp(
                                     resultado
                                 );
-
                             const info =
                                 document.querySelector(
                                     `#golpe${numero}CuraInfo`
                                 );
-
                             if (info) {
                                 info.textContent =
                                     `Rolou ${dadosCura.curaRolada} · ` +
@@ -9262,11 +7538,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
-    // =================================================
-    // BUFFS / DEBUFFS DOS MOVES
-    // =================================================
-
     document
         .querySelectorAll(".rolarAcertoBuffDebuff")
         .forEach(
@@ -9276,7 +7547,6 @@ function mostrarFichaPokemonMoves(token) {
                     async () => {
                         const numero =
                             botao.dataset.golpe;
-
                         const formula =
                             document
                                 .querySelector(
@@ -9284,15 +7554,12 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 ?.value
                                 .trim();
-
                         if (!formula) {
                             alert(
                                 "A fórmula de acerto está vazia."
                             );
-
                             return;
                         }
-
                         const statusNome =
                             document
                                 .querySelector(
@@ -9300,14 +7567,10 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 ?.value
                                 .trim();
-
-                        // Moves de Buff/Debuff também recebem ±1 no
-                        // acerto para cada estágio de Precisão.
                         const formulaFinal =
                             adicionarPrecisaoAoAcerto(
                                 formula
                             );
-
                         await rolarNoDicePlus(
                             formulaFinal,
                             nomeGolpe(numero),
@@ -9319,7 +7582,6 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
     document
         .querySelectorAll(".alterarBuffMove")
         .forEach(
@@ -9329,45 +7591,35 @@ function mostrarFichaPokemonMoves(token) {
                     () => {
                         const buffId =
                             botao.dataset.buff;
-
                         const delta =
                             Number(
                                 botao.dataset.delta
                             ) || 0;
-
                         const campoBuff =
                             document.querySelector(
                                 `#buff-${buffId}`
                             );
-
                         if (!campoBuff || !delta) {
                             return;
                         }
-
                         const atual =
                             normalizarEstagioBuff(
                                 campoBuff.value,
                                 buffId
                             );
-
                         const novo =
                             normalizarEstagioBuff(
                                 atual + delta,
                                 buffId
                             );
-
                         campoBuff.value =
                             String(novo);
-
-                        // Usa o mesmo fluxo da tabela principal: atualiza
-                        // bônus visual, metadata e efeitos ligados ao buff.
                         campoBuff.dispatchEvent(
                             new Event(
                                 "input",
                                 { bubbles: true }
                             )
                         );
-
                         campoBuff.dispatchEvent(
                             new Event(
                                 "change",
@@ -9378,18 +7630,12 @@ function mostrarFichaPokemonMoves(token) {
                 );
             }
         );
-
-    // =================================================
-    // SALVAR MOVES / BUFFS
-    // =================================================
-
     document
         .querySelector("#salvarPokemonMoves")
         .addEventListener(
             "click",
             async () => {
                 const novosBuffs = {};
-
                 BUFFS.forEach(
                     (buff) => {
                         novosBuffs[buff.id] =
@@ -9403,7 +7649,6 @@ function mostrarFichaPokemonMoves(token) {
                             );
                     }
                 );
-
                 const novosTalentos = {
                     mestreCorpo:
                         talentoCombateAtivo("mestre-corpo"),
@@ -9416,9 +7661,7 @@ function mostrarFichaPokemonMoves(token) {
                     investidaPoderosa:
                         talentoCombateAtivo("investida-poderosa")
                 };
-
                 const novosGolpes = [];
-
                 for (
                     let i = 1;
                     i <= 5;
@@ -9430,21 +7673,18 @@ function mostrarFichaPokemonMoves(token) {
                                 `#golpe${i}Tipo`
                             )
                             .value;
-
                     const categoriaCampo =
                         document
                             .querySelector(
                                 `#golpe${i}Categoria`
                             )
                             .value;
-
                     novosGolpes.push({
                         tipo:
                             ["macerto", "mcd", "cura", "buffdebuff"]
                                 .includes(tipoCampo)
                                 ? tipoCampo
                                 : "",
-
                         nome:
                             document
                                 .querySelector(
@@ -9452,14 +7692,12 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim(),
-
                         categoria:
                             categoriaCampo === "especial"
                                 ? "especial"
                                 : categoriaCampo === "fisico"
                                     ? "fisico"
                                     : "",
-
                         acerto:
                             document
                                 .querySelector(
@@ -9467,7 +7705,6 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim(),
-
                         dano:
                             document
                                 .querySelector(
@@ -9475,7 +7712,6 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim(),
-
                         dobrarDadosVezes:
                             Math.max(
                                 1,
@@ -9490,7 +7726,6 @@ function mostrarFichaPokemonMoves(token) {
                                     ) || 1
                                 )
                             ),
-
                         cd:
                             document
                                 .querySelector(
@@ -9498,7 +7733,6 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim(),
-
                         danoCD:
                             document
                                 .querySelector(
@@ -9506,7 +7740,6 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 .value
                                 .trim(),
-
                         cura:
                             document
                                 .querySelector(
@@ -9514,7 +7747,6 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 ?.value
                                 .trim() || "",
-
                         buffAcerto:
                             document
                                 .querySelector(
@@ -9522,7 +7754,6 @@ function mostrarFichaPokemonMoves(token) {
                                 )
                                 ?.value
                                 .trim() || "",
-
                         statusNome:
                             document
                                 .querySelector(
@@ -9532,7 +7763,6 @@ function mostrarFichaPokemonMoves(token) {
                                 .trim() || ""
                     });
                 }
-
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
@@ -9545,72 +7775,55 @@ function mostrarFichaPokemonMoves(token) {
                                         novosBuffs[buff.id];
                                 }
                             );
-
                             item.metadata[
                                 `${PREFIX}/talento-mestre-corpo`
                             ] = novosTalentos.mestreCorpo;
-
                             item.metadata[
                                 `${PREFIX}/talento-mestre-distancia`
                             ] = novosTalentos.mestreDistancia;
-
                             item.metadata[
                                 `${PREFIX}/talento-atacante-bestial`
                             ] = novosTalentos.atacanteBestial;
-
                             item.metadata[
                                 `${PREFIX}/talento-disputador`
                             ] = novosTalentos.disputador;
-
                             item.metadata[
                                 `${PREFIX}/talento-investida-poderosa`
                             ] = novosTalentos.investidaPoderosa;
-
                             novosGolpes.forEach(
                                 (golpe, index) => {
                                     const numero =
                                         index + 1;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Tipo`
                                     ] = golpe.tipo;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Nome`
                                     ] = golpe.nome;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Categoria`
                                     ] = golpe.categoria;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Acerto`
                                     ] = golpe.acerto;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Dano`
                                     ] = golpe.dano;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}DobrarDadosVezes`
                                     ] = golpe.dobrarDadosVezes;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}CD`
                                     ] = golpe.cd;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}DanoCD`
                                     ] = golpe.danoCD;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}Cura`
                                     ] = golpe.cura;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}BuffAcerto`
                                     ] = golpe.buffAcerto;
-
                                     item.metadata[
                                         `${PREFIX}/golpe${numero}StatusNome`
                                     ] = golpe.statusNome;
@@ -9619,14 +7832,12 @@ function mostrarFichaPokemonMoves(token) {
                         }
                     }
                 );
-
                 const hpAtualHud =
                     Number(
                         token.metadata[
                             `${PREFIX}/hpAtual`
                         ] ?? 100
                     ) || 0;
-
                 const hpMaxHud =
                     Math.max(
                         1,
@@ -9636,18 +7847,15 @@ function mostrarFichaPokemonMoves(token) {
                             ] ?? 100
                         ) || 1
                     );
-
                 const caBaseHud =
                     Number(
                         token.metadata[
                             `${PREFIX}/ca`
                         ] ?? 10
                     ) || 0;
-
                 const caEfetivaHud =
                     caBaseHud +
                     (Number(novosBuffs.evas) || 0);
-
                 await criarStatusNoToken(
                     token,
                     hpAtualHud,
@@ -9657,25 +7865,16 @@ function mostrarFichaPokemonMoves(token) {
             }
         );
 }
-
-// =====================================================
-// POKÉMON — ABA 3: PERÍCIAS
-// =====================================================
-
 function mostrarFichaPokemonPericias(
     token
 ) {
     const app =
         document.querySelector("#app");
-
     const valoresPericias = {};
-
     PERICIAS.forEach(
         (grupo) => {
-
             grupo.pericias.forEach(
                 (pericia) => {
-
                     valoresPericias[
                         pericia.id
                     ] =
@@ -9686,19 +7885,14 @@ function mostrarFichaPokemonPericias(
             );
         }
     );
-
     app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 3)}
-
     <h3>Perícias Pokémon</h3>
-
     ${criarPericiasPokemon(
         valoresPericias
     )}
-
     <br>
-
     <button
       id="salvarPokemonPericias"
       style="
@@ -9711,11 +7905,8 @@ function mostrarFichaPokemonPericias(
       Salvar Perícias
     </button>
   `;
-
     ativarCabecalhoPokemon(token);
-
     ativarRolagensPericiasPokemon();
-
     document
         .querySelector(
             "#salvarPokemonPericias"
@@ -9723,15 +7914,11 @@ function mostrarFichaPokemonPericias(
         .addEventListener(
             "click",
             async () => {
-
                 const novasPericias = {};
-
                 PERICIAS.forEach(
                     (grupo) => {
-
                         grupo.pericias.forEach(
                             (pericia) => {
-
                                 novasPericias[
                                     pericia.id
                                 ] =
@@ -9745,22 +7932,17 @@ function mostrarFichaPokemonPericias(
                         );
                     }
                 );
-
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
-
                         for (
                             const item
                             of items
                         ) {
-
                             PERICIAS.forEach(
                                 (grupo) => {
-
                                     grupo.pericias.forEach(
                                         (pericia) => {
-
                                             item.metadata[
                                                 `${PREFIX}/pokemon-pericia-${pericia.id}`
                                             ] =
@@ -9777,19 +7959,12 @@ function mostrarFichaPokemonPericias(
             }
         );
 }
-
-// =====================================================
-// POKÉMON — ABA 4: TALENTOS
-// =====================================================
-
 function mostrarFichaPokemonTalentos(
     token
 ) {
     const app =
         document.querySelector("#app");
-
     const talentos = [];
-
     for (
         let i = 1;
         i <= 5;
@@ -9800,22 +7975,17 @@ function mostrarFichaPokemonTalentos(
                 token.metadata[
                     `${PREFIX}/pokemon-talento-${i}-titulo`
                 ] ?? "",
-
             descricao:
                 token.metadata[
                     `${PREFIX}/pokemon-talento-${i}-descricao`
                 ] ?? ""
         });
     }
-
     let htmlTalentos = "";
-
     talentos.forEach(
         (talento, index) => {
-
             const numero =
                 index + 1;
-
             htmlTalentos += `
         <div style="
           margin-bottom:14px;
@@ -9823,18 +7993,15 @@ function mostrarFichaPokemonTalentos(
           border-radius:8px;
           padding:10px;
         ">
-
           <div style="
             font-weight:bold;
             margin-bottom:8px;
           ">
             Talento ${numero}
           </div>
-
           <label>
             Título
           </label>
-
           <input
             id="pokemonTalento${numero}Titulo"
             type="text"
@@ -9850,11 +8017,9 @@ function mostrarFichaPokemonTalentos(
               margin-bottom:8px;
             "
           >
-
           <label>
             Descrição
           </label>
-
           <textarea
             id="pokemonTalento${numero}Descricao"
             rows="6"
@@ -9870,24 +8035,18 @@ function mostrarFichaPokemonTalentos(
           >${esc(
               talento.descricao
           )}</textarea>
-
         </div>
       `;
         }
     );
-
     app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 4)}
-
     <h3>
       Talentos Pokémon
     </h3>
-
     ${htmlTalentos}
-
     <br>
-
     <button
       id="salvarPokemonTalentos"
       style="
@@ -9900,9 +8059,7 @@ function mostrarFichaPokemonTalentos(
       Salvar Talentos
     </button>
   `;
-
     ativarCabecalhoPokemon(token);
-
     document
         .querySelector(
             "#salvarPokemonTalentos"
@@ -9910,9 +8067,7 @@ function mostrarFichaPokemonTalentos(
         .addEventListener(
             "click",
             async () => {
-
                 const novosTalentos = [];
-
                 for (
                     let i = 1;
                     i <= 5;
@@ -9926,7 +8081,6 @@ function mostrarFichaPokemonTalentos(
                                 )
                                 .value
                                 .trim(),
-
                         descricao:
                             document
                                 .querySelector(
@@ -9936,30 +8090,24 @@ function mostrarFichaPokemonTalentos(
                                 .trim()
                     });
                 }
-
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
-
                         for (
                             const item
                             of items
                         ) {
-
                             novosTalentos.forEach(
                                 (
                                     talento,
                                     index
                                 ) => {
-
                                     const numero =
                                         index + 1;
-
                                     item.metadata[
                                         `${PREFIX}/pokemon-talento-${numero}-titulo`
                                     ] =
                                         talento.titulo;
-
                                     item.metadata[
                                         `${PREFIX}/pokemon-talento-${numero}-descricao`
                                     ] =
@@ -9972,79 +8120,57 @@ function mostrarFichaPokemonTalentos(
             }
         );
 }
-
-// =====================================================
-// ABRE TOKEN
-// =====================================================
-
 async function mostrarTokenSelecionado() {
     const selection =
         await OBR.player.getSelection();
-
     if (
         !selection ||
         selection.length === 0
     ) {
         return;
     }
-
     const items =
         await OBR.scene.items.getItems(
             selection
         );
-
     if (
         !items ||
         items.length === 0
     ) {
         return;
     }
-
     const token =
         items[0];
-
     const tipoFicha =
         token.metadata[
             `${PREFIX}/tipoFicha`
         ];
-
     if (
         tipoFicha === "pokemon"
     ) {
         mostrarFichaPokemon(
             token
         );
-
         return;
     }
-
     if (
         tipoFicha === "treinador"
     ) {
         mostrarFichaTreinadorPagina1(
             token
         );
-
         return;
     }
-
     mostrarEscolhaFicha(
         token
     );
 }
-
-// =====================================================
-// INICIA
-// =====================================================
-
 OBR.onReady(
     async () => {
-
         if (MODO_APRESENTADOR_INICIATIVA) {
             await iniciarApresentadorIniciativa();
             return;
         }
-
         try {
             await corrigirHudExistente();
         }
@@ -10054,28 +8180,21 @@ OBR.onReady(
                 erro
             );
         }
-
         const app = document.querySelector("#app");
-
         if (app) {
             const observerAutosave = new MutationObserver(
                 () => ativarAutosaveDaTela()
             );
-
             observerAutosave.observe(
                 app,
                 { childList: true, subtree: true }
             );
         }
-
         await mostrarTokenSelecionado();
         ativarAutosaveDaTela();
-
         OBR.player.onChange(
             async () => {
-
                 await mostrarTokenSelecionado();
-
             }
         );
     }
