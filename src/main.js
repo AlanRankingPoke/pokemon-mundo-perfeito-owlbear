@@ -38,7 +38,7 @@ const STATUS_DEBUFFS = [
     },
     {
         id: "paralisado",
-        nome: "Paralisado",
+        nome: "Paralizado",
         sigla: "PAR",
         arquivo: "Paralisado.png",
         cor: "#e4b900",
@@ -2156,29 +2156,31 @@ async function criarStatusNoToken(
             ) || 150
           );
 
-        // No máximo 4 ícones por linha.
-        // Com uma barra de 100 unidades, cada badge
-        // fica por volta de 22px/unidades de largura.
-        const maxPorLinha = 4;
-        const gapX = 3;
-        const gapY = 2;
+        // Badges maiores: aproximadamente o dobro
+        // da versão anterior. Para não embolar,
+        // usamos no máximo 2 por linha.
+        const maxPorLinha = 2;
+        const gapX = 5;
+        const gapY = 4;
 
         const larguraBadge =
           Math.max(
-            18,
+            36,
             Math.min(
-              26,
+              48,
               (
                 larguraBarra -
-                (gapX * (maxPorLinha - 1))
-              ) / maxPorLinha
+                gapX
+              ) / 2
             )
           );
 
+        // Alguns pixels abaixo da barra de HP,
+        // sem encostar nela.
         const topoDebuffs =
           barraY +
           alturaBarra +
-          3;
+          8;
 
         for (
           let indice = 0;
@@ -2243,11 +2245,10 @@ async function criarStatusNoToken(
               (larguraBadge + gapX)
             );
 
-          // A altura dos badges é parecida.
-          // Usamos um passo fixo pequeno para
-          // manter as linhas compactas.
+          // Espaçamento vertical proporcional
+          // ao novo tamanho maior dos badges.
           const passoLinha =
-            (larguraBadge * 0.46) +
+            (larguraBadge * 0.48) +
             gapY;
 
           const y =
