@@ -1060,6 +1060,86 @@ async function avancarTurnoIniciativa(tokenId) {
     );
 }
 
+function statusAtivosDoOrganizador(item) {
+    return STATUS_DEBUFFS.filter(
+        (status) =>
+            debuffAtivoNoToken(
+                item,
+                status
+            )
+    );
+}
+
+function assinaturaStatusOrganizador(item) {
+    return statusAtivosDoOrganizador(item)
+        .map((status) => status.id)
+        .join(",");
+}
+
+function criarStatusOrganizador(item) {
+    const ativos =
+        statusAtivosDoOrganizador(item);
+
+    if (!ativos.length) {
+        return "";
+    }
+
+    const larguraVisivel = 20;
+
+    return ativos
+        .map((status) => {
+            const bbox =
+                status.imagem.bbox;
+
+            const escala =
+                larguraVisivel /
+                bbox.width;
+
+            const alturaVisivel =
+                bbox.height *
+                escala;
+
+            const larguraImagem =
+                status.imagem.width *
+                escala;
+
+            const alturaImagem =
+                status.imagem.height *
+                escala;
+
+            const esquerda =
+                -(bbox.x * escala);
+
+            const topo =
+                -(bbox.y * escala);
+
+            return `
+                <span
+                    class="initStatusBadge"
+                    title="${esc(status.nome)}"
+                    style="
+                        width:${larguraVisivel}px;
+                        height:${alturaVisivel}px;
+                    "
+                >
+                    <img
+                        src="${esc(urlDebuff(status))}"
+                        alt="${esc(status.nome)}"
+                        draggable="false"
+                        onerror="this.style.display='none'"
+                        style="
+                            width:${larguraImagem}px;
+                            height:${alturaImagem}px;
+                            left:${esquerda}px;
+                            top:${topo}px;
+                        "
+                    >
+                </span>
+            `;
+        })
+        .join("");
+}
+
 function criarCardApresentadorIniciativa(
     item,
     dados,
@@ -1101,6 +1181,14 @@ function criarCardApresentadorIniciativa(
                     ×
                 </button>
             </div>
+
+            <div
+                class="initStatusArea"
+                title="Status ativos"
+            >
+                ${criarStatusOrganizador(item)}
+            </div>
+
             <div class="initTurnoLinha">
                 ${
                     turnoAtual
@@ -1175,6 +1263,41 @@ async function iniciarApresentadorIniciativa() {
             .initCard.turnoAtual .initImagemWrap{border-color:#35c978;box-shadow:0 0 0 2px rgba(53,201,120,.22),0 0 12px rgba(53,201,120,.20)}
             .initImagem{width:100%;height:100%;object-fit:contain;display:block;border-radius:9px}
             .initImagemFallback{font-size:27px;line-height:1}
+
+            /* Status ficam FORA do retrato.
+               Grade de até 3 badges por linha e 3 linhas. */
+            .initStatusArea{
+                width:66px;
+                min-width:66px;
+                height:31px;
+                min-height:31px;
+                display:flex;
+                flex-wrap:wrap;
+                align-content:flex-start;
+                justify-content:center;
+                align-items:flex-start;
+                gap:2px;
+                padding:1px 0 0;
+                box-sizing:border-box;
+                overflow:hidden;
+            }
+            .initStatusBadge{
+                position:relative;
+                display:block;
+                flex:0 0 auto;
+                overflow:hidden;
+                border-radius:2px;
+                filter:drop-shadow(0 1px 1px rgba(0,0,0,.45));
+            }
+            .initStatusBadge img{
+                position:absolute;
+                display:block;
+                max-width:none!important;
+                max-height:none!important;
+                pointer-events:none;
+                user-select:none;
+            }
+
             .initTurnoLinha{height:18px;display:flex;align-items:center;justify-content:center}
             .initTurnoEspaco{display:block;width:31px;height:18px}
             .initTurno{
@@ -1215,7 +1338,7 @@ async function iniciarApresentadorIniciativa() {
             const viewport = Number(await OBR.viewport.getWidth()) || 900;
             const largura = Math.min(920, Math.max(170, viewport - 30), Math.max(170, quantidade * 79 + 18));
             await OBR.popover.setWidth(ID_POPOVER_INICIATIVA, largura);
-            await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 132);
+            await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 166);
         }
         catch (_) {}
     };
@@ -1237,7 +1360,7 @@ async function iniciarApresentadorIniciativa() {
             "";
 
         const assinatura = iniciativas.map(({item,dados}) =>
-            `${item.id}|${dados.total}|${dados.atualizadoEm}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}|${item.id === turnoId ? 1 : 0}`
+            `${item.id}|${dados.total}|${dados.atualizadoEm}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}|${item.id === turnoId ? 1 : 0}|${assinaturaStatusOrganizador(item)}`
         ).join("§");
         if (assinatura === assinaturaAnterior) return;
         assinaturaAnterior = assinatura;
@@ -4126,6 +4249,10 @@ function mostrarFichaTreinadorPagina1(
         token.metadata[
             `${PREFIX}/hpMax`
         ] ?? 100;
+    const nivelPokemon =
+        token.metadata[
+            `${PREFIX}/pokemon-level`
+        ] ?? "";
     const caBase =
         Number(
             token.metadata[
@@ -5709,7 +5836,7 @@ function mostrarFichaPokemon(token) {
               style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
-          <div style="flex:0.8; min-width:0;">
+          <div style="flex:0.75; min-width:0;">
             <p>Prof</p>
             <input
               id="proficiencia"
@@ -5717,6 +5844,19 @@ function mostrarFichaPokemon(token) {
               min="0"
               step="1"
               value="${proficiencia}"
+              style="width:100%; box-sizing:border-box; text-align:center;"
+            >
+          </div>
+          <div style="flex:0.65; min-width:42px;">
+            <p>Lv.</p>
+            <input
+              id="nivelPokemon"
+              type="number"
+              min="1"
+              step="1"
+              value="${esc(nivelPokemon)}"
+              placeholder="-"
+              title="Level do Pokémon"
               style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
@@ -6125,6 +6265,20 @@ function mostrarFichaPokemon(token) {
                             .querySelector("#proficiencia")
                             .value
                     ) || 0;
+                const nivelPokemonBruto =
+                    document
+                        .querySelector("#nivelPokemon")
+                        ?.value
+                        .trim() ?? "";
+                const novoNivelPokemon =
+                    nivelPokemonBruto === ""
+                        ? ""
+                        : Math.max(
+                            1,
+                            Math.trunc(
+                                Number(nivelPokemonBruto) || 1
+                            )
+                        );
                 const novaIniciativa =
                     document
                         .querySelector("#iniciativa")
@@ -6210,6 +6364,10 @@ function mostrarFichaPokemon(token) {
                                 `${PREFIX}/proficiencia`
                             ] =
                                 novaProficiencia;
+                            item.metadata[
+                                `${PREFIX}/pokemon-level`
+                            ] =
+                                novoNivelPokemon;
                             item.metadata[
                                 `${PREFIX}/iniciativa`
                             ] =
