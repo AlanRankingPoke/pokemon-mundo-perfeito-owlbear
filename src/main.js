@@ -1,4 +1,4 @@
-import OBR, { buildShape, buildText } from "@owlbear-rodeo/sdk";
+import OBR, { buildImage, buildShape, buildText } from "@owlbear-rodeo/sdk";
 import "./style.css";
 const PREFIX = "pokemon-mundo-perfeito";
 const MODO_APRESENTADOR_INICIATIVA =
@@ -10,6 +10,15 @@ const META_INICIATIVA_TRACKER =
     `${PREFIX}/initiative-tracker`;
 const META_TURNO_INICIATIVA =
     `${PREFIX}/initiative-turn`;
+
+const META_DEBUFF_ENVENENADO =
+    `${PREFIX}/debuff-envenenado`;
+
+const URL_DEBUFF_ENVENENADO = () =>
+    new URL(
+        "status/Envenenado.png",
+        window.location.href
+    ).toString();
 const ESTILO_FICHA = `
 <style>
   :root {
@@ -1550,7 +1559,8 @@ const TIPOS_VISUAIS_HUD = [
   "vida",
   "hp-texto",
   "ca-circulo",
-  "ca-texto"
+  "ca-texto",
+  "debuff-envenenado"
 ];
 const filaHudPorToken = new Map();
 function prepararVisualHud(item) {
@@ -1959,6 +1969,73 @@ async function criarStatusNoToken(
             })
             .build()
         );
+      let debuffEnvenenado = null;
+
+      if (
+        token.metadata?.[
+          META_DEBUFF_ENVENENADO
+        ] === true
+      ) {
+        const gridDpi =
+          await OBR.scene.grid.getDpi();
+
+        const larguraDebuff = Math.min(
+          80,
+          larguraBarra * 0.72
+        );
+
+        const alturaDebuff =
+          larguraDebuff * 0.4;
+
+        const escalaDebuff =
+          larguraDebuff / 80;
+
+        debuffEnvenenado =
+          prepararVisualHud(
+            buildImage(
+              {
+                width: 80,
+                height: 32,
+                url: URL_DEBUFF_ENVENENADO(),
+                mime: "image/png"
+              },
+              {
+                dpi: gridDpi,
+                offset: {
+                  x: 40,
+                  y: 16
+                }
+              }
+            )
+              .position({
+                x:
+                  inicioX +
+                  ((larguraBarra - larguraDebuff) / 2),
+                y:
+                  barraY +
+                  alturaBarra +
+                  Math.max(6, alturaBarra * 0.18)
+              })
+              .scale({
+                x: escalaDebuff,
+                y: escalaDebuff
+              })
+              .layer("ATTACHMENT")
+              .zIndex(30)
+              .disableAutoZIndex(true)
+              .attachedTo(token.id)
+              .locked(true)
+              .disableHit(true)
+              .metadata({
+                [`${PREFIX}/statusToken`]:
+                  token.id,
+                [`${PREFIX}/tipoVisual`]:
+                  "debuff-envenenado"
+              })
+              .build()
+          );
+      }
+
       const elementos = [
         fundoBarra
       ];
@@ -1972,17 +2049,32 @@ async function criarStatusNoToken(
         textoHP,
         textoCA
       );
+
+      if (debuffEnvenenado) {
+        elementos.push(
+          debuffEnvenenado
+        );
+      }
+
       await OBR.scene.items.addItems(
         elementos
       );
+
       const tiposAtivos = [
         "fundo",
         "hp-texto",
         "ca-circulo",
         "ca-texto"
       ];
+
       if (barraVida) {
         tiposAtivos.push("vida");
+      }
+
+      if (debuffEnvenenado) {
+        tiposAtivos.push(
+          "debuff-envenenado"
+        );
       }
       await new Promise(
         (resolve) => setTimeout(resolve, 80)
@@ -4821,15 +4913,15 @@ function menuPokemon(paginaAtual) {
         id="paginaPokemon3"
         style="
           flex:1;
-          min-width:75px;
+          min-width:110px;
           padding:8px 4px;
-          font-size:11px;
+          font-size:10px;
           font-weight:bold;
           cursor:pointer;
           opacity:${paginaAtual === 3 ? "1" : "0.65"};
         "
       >
-        PERÍCIAS
+        PERÍCIAS / DEBUFF
       </button>
     </div>
   `;
@@ -5024,94 +5116,114 @@ function ativarCabecalhoPokemon(token) {
     ativarMenuPokemon(token);
 }
 function criarPericiasPokemon(valores) {
-    return PERICIAS.map(
-        (grupo) => {
-            if (!grupo.pericias.length) {
-                return `
-          <div style="
-            margin-bottom:12px;
-            border:1px solid #555;
-            border-radius:6px;
-            padding:8px;
-          ">
-            <strong>
-              ${grupo.atributo} — ${grupo.nomeAtributo}
-            </strong>
-            <div style="
-              font-size:12px;
-              opacity:0.7;
-              margin-top:5px;
-            ">
-              Nenhuma perícia
-            </div>
-          </div>
-        `;
-            }
-            const linhas =
+    const pericias =
+        PERICIAS.flatMap(
+            (grupo) =>
                 grupo.pericias.map(
-                    (pericia) => `
-            <div style="
-              display:flex;
-              align-items:center;
-              gap:6px;
-              margin-bottom:7px;
-            ">
-              <span style="
-                flex:1;
-                font-size:13px;
-              ">
-                ${pericia.nome}
-              </span>
-              <input
-                id="pokemon-pericia-${pericia.id}"
-                type="text"
-                value="${esc(valores[pericia.id])}"
-                placeholder="+0"
+                    (pericia) => ({
+                        ...pericia,
+                        atributo:
+                            grupo.atributo
+                    })
+                )
+        );
+
+    return `
+      <div
+        class="pokemonPericiasCompactas"
+        style="
+          display:grid;
+          grid-template-columns:repeat(2,minmax(0,1fr));
+          gap:6px;
+          width:100%;
+        "
+      >
+        ${pericias.map(
+            (pericia) => `
+              <div
+                title="${esc(pericia.nome)}"
                 style="
-                  width:60px;
-                  box-sizing:border-box;
-                  text-align:center;
-                  padding:5px;
+                  min-width:0;
+                  display:grid;
+                  grid-template-columns:minmax(0,1fr) 42px 30px;
+                  align-items:center;
+                  gap:4px;
+                  padding:5px 6px;
+                  border:1px solid #dbe5f0;
+                  border-radius:8px;
+                  background:#fbfdff;
                 "
               >
-              <button
-                type="button"
-                class="rolarPericiaPokemon"
-                data-pericia="${pericia.id}"
-                data-nome="${esc(pericia.nome)}"
-                style="
-                  width:72px;
-                  padding:5px 3px;
-                  box-sizing:border-box;
-                  font-size:10px;
-                  font-weight:bold;
-                  cursor:pointer;
-                "
-              >
-                🎲 Rolar
-              </button>
-            </div>
-          `
-                ).join("");
-            return `
-        <div style="
-          margin-bottom:12px;
-          border:1px solid #555;
-          border-radius:6px;
-          padding:8px;
-        ">
-          <div style="
-            font-weight:bold;
-            margin-bottom:8px;
-          ">
-            ${grupo.atributo} — ${grupo.nomeAtributo}
-          </div>
-          ${linhas}
-        </div>
-      `;
-        }
-    ).join("");
+                <div style="
+                  min-width:0;
+                  overflow:hidden;
+                ">
+                  <div style="
+                    min-width:0;
+                    overflow:hidden;
+                    white-space:nowrap;
+                    text-overflow:ellipsis;
+                    font-size:10px;
+                    line-height:1.05;
+                    font-weight:900;
+                    color:#33475f;
+                  ">
+                    ${pericia.nome}
+                  </div>
+                  <div style="
+                    margin-top:2px;
+                    font-size:7px;
+                    line-height:1;
+                    font-weight:900;
+                    color:#8798ad;
+                  ">
+                    ${pericia.atributo}
+                  </div>
+                </div>
+
+                <input
+                  id="pokemon-pericia-${pericia.id}"
+                  type="text"
+                  value="${esc(valores[pericia.id])}"
+                  placeholder="+0"
+                  style="
+                    width:42px;
+                    height:29px;
+                    min-height:29px !important;
+                    box-sizing:border-box;
+                    padding:2px 3px !important;
+                    text-align:center;
+                    font-size:10px;
+                    font-weight:900;
+                  "
+                >
+
+                <button
+                  type="button"
+                  class="rolarPericiaPokemon"
+                  data-pericia="${pericia.id}"
+                  data-nome="${esc(pericia.nome)}"
+                  title="Rolar ${esc(pericia.nome)}"
+                  style="
+                    width:30px;
+                    min-width:30px;
+                    height:29px;
+                    min-height:29px !important;
+                    padding:1px !important;
+                    box-sizing:border-box;
+                    font-size:12px;
+                    cursor:pointer;
+                  "
+                >
+                  🎲
+                </button>
+              </div>
+            `
+        ).join("")}
+      </div>
+    `;
 }
+
 function ativarRolagensPericiasPokemon() {
     document
         .querySelectorAll(
@@ -8034,7 +8146,9 @@ function mostrarFichaPokemonPericias(
 ) {
     const app =
         document.querySelector("#app");
+
     const valoresPericias = {};
+
     PERICIAS.forEach(
         (grupo) => {
             grupo.pericias.forEach(
@@ -8049,28 +8163,210 @@ function mostrarFichaPokemonPericias(
             );
         }
     );
+
+    const envenenadoAtivo =
+        token.metadata[
+            META_DEBUFF_ENVENENADO
+        ] === true;
+
     app.innerHTML = `
-    ${ESTILO_FICHA}
-    ${cabecalhoPokemon(token, 3)}
-    <h3>Perícias Pokémon</h3>
-    ${criarPericiasPokemon(
-        valoresPericias
-    )}
-    <br>
-    <button
-      id="salvarPokemonPericias"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Perícias
-    </button>
-  `;
+      ${ESTILO_FICHA}
+      ${cabecalhoPokemon(token, 3)}
+
+      <h3 style="
+        margin-bottom:6px !important;
+      ">
+        Perícias
+      </h3>
+
+      ${criarPericiasPokemon(
+          valoresPericias
+      )}
+
+      <h3 style="
+        margin-top:10px !important;
+        margin-bottom:6px !important;
+      ">
+        Debuffs
+      </h3>
+
+      <div style="
+        display:flex;
+        align-items:center;
+        gap:7px;
+        padding:7px;
+        border:1px solid #e4d8f5;
+        border-radius:9px;
+        background:#fbf8ff;
+      ">
+        <button
+          id="debuffEnvenenado"
+          type="button"
+          class="${envenenadoAtivo ? "ativo" : ""}"
+          title="Liga ou desliga o status Envenenado no token"
+          style="
+            flex:0 0 auto;
+            min-height:32px !important;
+            padding:5px 10px !important;
+            font-size:10px;
+            font-weight:900;
+            cursor:pointer;
+            ${envenenadoAtivo
+                ? "background:#8b42c9 !important;color:#fff !important;border-color:#7232aa !important;"
+                : ""}
+          "
+        >
+          ${envenenadoAtivo
+              ? "☠ ENVENENADO ✓"
+              : "☠ ENVENENADO"}
+        </button>
+
+        <div style="
+          min-width:0;
+          font-size:9px;
+          line-height:1.25;
+          color:#73578f;
+          font-weight:800;
+        ">
+          Mostra o ícone ENV abaixo da barra de HP do Pokémon.
+        </div>
+      </div>
+
+      <button
+        id="salvarPokemonPericias"
+        style="
+          width:100%;
+          padding:10px;
+          font-weight:bold;
+          cursor:pointer;
+        "
+      >
+        Salvar Perícias
+      </button>
+    `;
+
     ativarCabecalhoPokemon(token);
     ativarRolagensPericiasPokemon();
+
+    const atualizarVisualBotao =
+        (ativo) => {
+            const botao =
+                document.querySelector(
+                    "#debuffEnvenenado"
+                );
+
+            if (!botao) {
+                return;
+            }
+
+            botao.textContent =
+                ativo
+                    ? "☠ ENVENENADO ✓"
+                    : "☠ ENVENENADO";
+
+            if (ativo) {
+                botao.style.setProperty(
+                    "background",
+                    "#8b42c9",
+                    "important"
+                );
+                botao.style.setProperty(
+                    "color",
+                    "#ffffff",
+                    "important"
+                );
+                botao.style.setProperty(
+                    "border-color",
+                    "#7232aa",
+                    "important"
+                );
+            }
+            else {
+                botao.style.removeProperty(
+                    "background"
+                );
+                botao.style.removeProperty(
+                    "color"
+                );
+                botao.style.removeProperty(
+                    "border-color"
+                );
+            }
+        };
+
+    document
+        .querySelector(
+            "#debuffEnvenenado"
+        )
+        ?.addEventListener(
+            "click",
+            async () => {
+                const novoEstado =
+                    !(
+                        token.metadata[
+                            META_DEBUFF_ENVENENADO
+                        ] === true
+                    );
+
+                token.metadata[
+                    META_DEBUFF_ENVENENADO
+                ] = novoEstado;
+
+                await OBR.scene.items.updateItems(
+                    [token.id],
+                    (items) => {
+                        for (const item of items) {
+                            item.metadata[
+                                META_DEBUFF_ENVENENADO
+                            ] = novoEstado;
+                        }
+                    }
+                );
+
+                atualizarVisualBotao(
+                    novoEstado
+                );
+
+                const hpAtual =
+                    Number(
+                        token.metadata[
+                            `${PREFIX}/hpAtual`
+                        ] ?? 100
+                    ) || 0;
+
+                const hpMax =
+                    Math.max(
+                        1,
+                        Number(
+                            token.metadata[
+                                `${PREFIX}/hpMax`
+                            ] ?? 100
+                        ) || 1
+                    );
+
+                const caBase =
+                    Number(
+                        token.metadata[
+                            `${PREFIX}/ca`
+                        ] ?? 10
+                    ) || 0;
+
+                const evasao =
+                    Number(
+                        token.metadata[
+                            `${PREFIX}/buff-evas`
+                        ] ?? 0
+                    ) || 0;
+
+                await criarStatusNoToken(
+                    token,
+                    hpAtual,
+                    hpMax,
+                    caBase + evasao
+                );
+            }
+        );
+
     document
         .querySelector(
             "#salvarPokemonPericias"
@@ -8079,6 +8375,7 @@ function mostrarFichaPokemonPericias(
             "click",
             async () => {
                 const novasPericias = {};
+
                 PERICIAS.forEach(
                     (grupo) => {
                         grupo.pericias.forEach(
@@ -8096,6 +8393,7 @@ function mostrarFichaPokemonPericias(
                         );
                     }
                 );
+
                 await OBR.scene.items.updateItems(
                     [token.id],
                     (items) => {
@@ -8123,6 +8421,7 @@ function mostrarFichaPokemonPericias(
             }
         );
 }
+
 function mostrarFichaPokemonTalentos(
     token
 ) {
