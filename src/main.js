@@ -385,6 +385,124 @@ const ESTILO_FICHA = `
   .statusGridPokemon {
     grid-template-columns:1fr !important;
   }
+
+  /* STATUS DO POKÉMON — mais nítido e compacto */
+  .pokemonStatusPrincipal {
+    background:linear-gradient(180deg,#f8fbff 0%,#eef5ff 100%) !important;
+    border:1px solid #c9d9ee !important;
+    border-radius:14px !important;
+    padding:10px !important;
+    box-shadow:0 4px 14px rgba(44,86,140,.10) !important;
+  }
+
+  .pokemonStatusTopo {
+    display:grid !important;
+    grid-template-columns:1.15fr 1.15fr .9fr .9fr .8fr !important;
+    gap:7px !important;
+    align-items:end !important;
+    width:100% !important;
+  }
+
+  .pokemonStatusCampo {
+    min-width:0 !important;
+    padding:6px !important;
+    border:1px solid #d6e3f2 !important;
+    border-radius:10px !important;
+    background:#ffffff !important;
+  }
+
+  .pokemonStatusCampo p {
+    margin:0 0 4px !important;
+    text-align:center !important;
+    font-size:10px !important;
+    font-weight:900 !important;
+    color:#526a88 !important;
+    line-height:1 !important;
+  }
+
+  .pokemonStatusCampo input {
+    width:100% !important;
+    min-height:34px !important;
+    height:34px !important;
+    padding:4px 5px !important;
+    text-align:center !important;
+    font-size:15px !important;
+    font-weight:900 !important;
+    color:#18385f !important;
+    background:#f7fbff !important;
+    border:1px solid #a9c4e7 !important;
+    border-radius:8px !important;
+    box-shadow:inset 0 1px 2px rgba(33,68,110,.05) !important;
+  }
+
+  .pokemonStatusCampo input:focus {
+    background:#ffffff !important;
+    border-color:#4c8dff !important;
+    box-shadow:0 0 0 3px rgba(76,141,255,.12) !important;
+  }
+
+  .pokemonCalculadoraCard {
+    margin-top:9px !important;
+    padding:8px !important;
+    border:1px solid #d7e3f2 !important;
+    border-radius:11px !important;
+    background:#ffffff !important;
+  }
+
+  .pokemonCalculadoraCard .calculadoraTitulo {
+    margin:0 0 6px !important;
+    color:#365a86 !important;
+    font-size:11px !important;
+    font-weight:900 !important;
+  }
+
+  .pokemonCalculadoraCard .calculadoraControles {
+    gap:5px !important;
+  }
+
+  .pokemonCalculadoraCard #alterarHp {
+    background:#f8fbff !important;
+    border:1px solid #abc3e2 !important;
+    color:#203149 !important;
+    font-weight:800 !important;
+  }
+
+  .pokemonCalculadoraCard #botaoSuperEfetivo,
+  .pokemonCalculadoraCard #botaoResistente,
+  .pokemonCalculadoraCard #botaoMove {
+    background:linear-gradient(180deg,#f4f8fd 0%,#e8f0f9 100%) !important;
+    border:1px solid #b9cce3 !important;
+    color:#36516f !important;
+    box-shadow:none !important;
+  }
+
+  .pokemonCalculadoraCard #botaoCalcularHp {
+    background:linear-gradient(135deg,#42b96b 0%,#269653 100%) !important;
+    color:#ffffff !important;
+    border-color:#218447 !important;
+    box-shadow:0 3px 8px rgba(38,150,83,.20) !important;
+  }
+
+  @media (max-width: 430px) {
+    .pokemonStatusTopo {
+      grid-template-columns:repeat(5,minmax(52px,1fr)) !important;
+      gap:4px !important;
+    }
+
+    .pokemonStatusCampo {
+      padding:4px !important;
+    }
+
+    .pokemonStatusCampo p {
+      font-size:9px !important;
+    }
+
+    .pokemonStatusCampo input {
+      font-size:13px !important;
+      min-height:32px !important;
+      height:32px !important;
+    }
+  }
   .pokemonDetalhesCompactos {
     margin-top:7px !important;
     padding-top:6px !important;
@@ -5880,44 +5998,36 @@ function mostrarFichaPokemon(token) {
       align-items:flex-start;
       flex-wrap:wrap;
     ">
-      <div class="statusCard" style="
+      <div class="statusCard pokemonStatusPrincipal" style="
         flex:1;
         min-width:120px;
       ">
-        <div style="
-          display:flex;
-          gap:5px;
-          align-items:flex-end;
-          width:100%;
-        ">
-          <div style="flex:1; min-width:0;">
+        <div class="pokemonStatusTopo">
+          <div class="pokemonStatusCampo">
             <p>HP Atual</p>
             <input
               id="hpAtual"
               type="number"
               value="${hpAtual}"
-              style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
-          <div style="flex:1; min-width:0;">
+          <div class="pokemonStatusCampo">
             <p>HP Máx.</p>
             <input
               id="hpMax"
               type="number"
               value="${hpMax}"
-              style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
-          <div style="flex:0.8; min-width:0;">
+          <div class="pokemonStatusCampo">
             <p>CA</p>
             <input
               id="ca"
               type="number"
               value="${ca}"
-              style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
-          <div style="flex:0.75; min-width:0;">
+          <div class="pokemonStatusCampo">
             <p>Prof</p>
             <input
               id="proficiencia"
@@ -5925,10 +6035,9 @@ function mostrarFichaPokemon(token) {
               min="0"
               step="1"
               value="${proficiencia}"
-              style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
-          <div style="flex:0.65; min-width:42px;">
+          <div class="pokemonStatusCampo">
             <p>Lv.</p>
             <input
               id="nivelPokemon"
@@ -5938,7 +6047,6 @@ function mostrarFichaPokemon(token) {
               value="${esc(nivelPokemon)}"
               placeholder="-"
               title="Level do Pokémon"
-              style="width:100%; box-sizing:border-box; text-align:center;"
             >
           </div>
         </div>
@@ -5947,7 +6055,7 @@ function mostrarFichaPokemon(token) {
           type="hidden"
           value="${estagioEvasao}"
         >
-            <div class="calculadoraHpLinha">
+            <div class="calculadoraHpLinha pokemonCalculadoraCard">
               <p class="calculadoraTitulo">Calculadora</p>
               <div class="calculadoraControles">
                 <div class="calculadoraHpCampo">
