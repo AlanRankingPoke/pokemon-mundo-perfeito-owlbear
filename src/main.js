@@ -1151,6 +1151,36 @@ function criarCardApresentadorIniciativa(
             : "";
     const nome =
         item.name || "Token";
+
+    const quantidadeStatus =
+        statusAtivosDoOrganizador(
+            item
+        ).length;
+
+    const linhasStatus =
+        Math.ceil(
+            quantidadeStatus / 3
+        );
+
+    const alturaStatus =
+        quantidadeStatus === 0
+            ? 0
+            : (
+                linhasStatus * 9 +
+                Math.max(
+                    0,
+                    linhasStatus - 1
+                ) * 2
+            );
+
+    // A faixa de status fica absoluta logo abaixo
+    // do retrato. Esta margem reserva SOMENTE o
+    // espaço realmente usado pelos badges.
+    const margemTurno =
+        quantidadeStatus === 0
+            ? 1
+            : alturaStatus + 2;
+
     return `
         <div
             class="initCard${turnoAtual ? " turnoAtual" : ""}"
@@ -1185,11 +1215,20 @@ function criarCardApresentadorIniciativa(
             <div
                 class="initStatusArea"
                 title="Status ativos"
+                style="
+                    height:${alturaStatus}px;
+                    min-height:${alturaStatus}px;
+                "
             >
                 ${criarStatusOrganizador(item)}
             </div>
 
-            <div class="initTurnoLinha">
+            <div
+                class="initTurnoLinha"
+                style="
+                    margin-top:${margemTurno}px !important;
+                "
+            >
                 ${
                     turnoAtual
                         ? `
@@ -1245,16 +1284,40 @@ async function iniciarApresentadorIniciativa() {
             }
             body{font-family:Inter,Arial,sans-serif}
             #initiativePresenterRoot{
-                display:flex;align-items:center;justify-content:center;
-                padding:5px 6px;border:1px solid rgba(255,255,255,.16);
+                display:flex;
+                align-items:flex-start!important;
+                justify-content:center;
+                padding:3px 6px;
+                border:1px solid rgba(255,255,255,.16);
             }
             .initBarra{
-                width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;
-                gap:7px;padding:2px 4px;box-sizing:border-box;overflow-x:auto;overflow-y:hidden;
-                scrollbar-width:none;-ms-overflow-style:none;background:#161e2c;
+                width:100%;
+                height:100%;
+                display:flex;
+                align-items:flex-start!important;
+                justify-content:flex-start;
+                gap:7px;
+                padding:5px 4px 2px;
+                box-sizing:border-box;
+                overflow-x:auto;
+                overflow-y:hidden;
+                scrollbar-width:none;
+                -ms-overflow-style:none;
+                background:#161e2c;
             }
             .initBarra::-webkit-scrollbar{display:none;width:0;height:0}
-            .initCard{width:72px;min-width:72px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+            .initCard{
+                width:72px;
+                min-width:72px;
+                height:auto!important;
+                min-height:0!important;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                justify-content:flex-start!important;
+                gap:1px;
+                position:relative;
+            }
             .initImagemWrap{
                 width:54px;height:54px;position:relative;display:flex;align-items:center;justify-content:center;
                 overflow:visible;border:2px solid #6d7c94;border-radius:12px;background:#f4f7fb;box-sizing:border-box;
@@ -1267,19 +1330,24 @@ async function iniciarApresentadorIniciativa() {
             /* Status ficam FORA do retrato.
                Grade de até 3 badges por linha e 3 linhas. */
             .initStatusArea{
+                position:absolute!important;
+                top:55px!important;
+                left:3px!important;
                 width:66px;
                 min-width:66px;
-                height:31px;
-                min-height:31px;
                 display:flex;
                 flex-wrap:wrap;
                 align-content:flex-start;
                 justify-content:center;
                 align-items:flex-start;
-                gap:2px;
-                padding:1px 0 0;
+                column-gap:2px;
+                row-gap:2px;
+                padding:0!important;
+                margin:0!important;
                 box-sizing:border-box;
                 overflow:hidden;
+                transition:height .12s ease;
+                z-index:5;
             }
             .initStatusBadge{
                 position:relative;
@@ -1298,7 +1366,15 @@ async function iniciarApresentadorIniciativa() {
                 user-select:none;
             }
 
-            .initTurnoLinha{height:18px;display:flex;align-items:center;justify-content:center}
+            .initTurnoLinha{
+                height:18px!important;
+                min-height:18px!important;
+                flex:0 0 18px!important;
+                display:flex!important;
+                align-items:center!important;
+                justify-content:center!important;
+                padding:0!important;
+            }
             .initTurnoEspaco{display:block;width:31px;height:18px}
             .initTurno{
                 width:31px;height:18px;min-width:31px;min-height:18px;padding:0;display:flex;align-items:center;justify-content:center;
@@ -1338,7 +1414,7 @@ async function iniciarApresentadorIniciativa() {
             const viewport = Number(await OBR.viewport.getWidth()) || 900;
             const largura = Math.min(920, Math.max(170, viewport - 30), Math.max(170, quantidade * 79 + 18));
             await OBR.popover.setWidth(ID_POPOVER_INICIATIVA, largura);
-            await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 166);
+            await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 150);
         }
         catch (_) {}
     };
