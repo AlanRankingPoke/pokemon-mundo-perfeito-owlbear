@@ -16,7 +16,7 @@ const META_DEBUFF_ENVENENADO =
 
 const URL_DEBUFF_ENVENENADO = () =>
     new URL(
-        "status/Envenenado.png",
+        "status/Envenenado.png?v=4",
         window.location.href
     ).toString();
 const ESTILO_FICHA = `
@@ -1984,25 +1984,23 @@ async function criarStatusNoToken(
             ) || 150
           );
 
-        // A imagem original tem 80x32 px.
-        // Calculamos o DPI dela para que seu tamanho
-        // real no mapa seja relativo à barra de HP,
-        // e não ao tamanho/escala do token.
+        // O arquivo ENV agora é realmente 80x32 px.
+        // Ele é exibido pequeno: aproximadamente 1/3
+        // da largura da barra de HP.
         const larguraDebuff =
           Math.max(
             28,
             Math.min(
-              42,
-              larguraBarra * 0.34
+              36,
+              larguraBarra * 0.30
             )
           );
 
-        const alturaDebuff =
-          larguraDebuff * (32 / 80);
+        const escalaDebuff =
+          larguraDebuff / 80;
 
-        const dpiImagemDebuff =
-          (80 * gridDpi) /
-          larguraDebuff;
+        const alturaDebuff =
+          32 * escalaDebuff;
 
         debuffEnvenenado =
           buildImage(
@@ -2013,7 +2011,7 @@ async function criarStatusNoToken(
               mime: "image/png"
             },
             {
-              dpi: dpiImagemDebuff,
+              dpi: gridDpi,
               offset: {
                 x: 40,
                 y: 16
@@ -2027,15 +2025,12 @@ async function criarStatusNoToken(
               y:
                 barraY +
                 alturaBarra +
-                Math.max(
-                  5,
-                  alturaBarra * 0.14
-                )
+                5
             })
             .rotation(0)
             .scale({
-              x: 1,
-              y: 1
+              x: escalaDebuff,
+              y: escalaDebuff
             })
             .layer("ATTACHMENT")
             .zIndex(30)
