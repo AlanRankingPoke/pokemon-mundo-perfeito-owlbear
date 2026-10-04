@@ -8,6 +8,8 @@ const ID_POPOVER_INICIATIVA =
     `${PREFIX}/apresentador-iniciativa`;
 const META_INICIATIVA_TRACKER =
     `${PREFIX}/initiative-tracker`;
+const META_TURNO_INICIATIVA =
+    `${PREFIX}/initiative-turn`;
 const ESTILO_FICHA = `
 <style>
   :root {
@@ -716,7 +718,7 @@ async function abrirApresentadorIniciativa() {
         id: ID_POPOVER_INICIATIVA,
         url: urlApresentadorIniciativa(),
         width: largura,
-        height: 112,
+        height: 132,
         anchorReference: "POSITION",
         anchorPosition: {
             left: larguraViewport / 2,
@@ -799,6 +801,9 @@ async function removerDaIniciativa(tokenId) {
                 delete item.metadata[
                     META_INICIATIVA_TRACKER
                 ];
+                delete item.metadata[
+                    META_TURNO_INICIATIVA
+                ];
             }
         }
     );
@@ -830,9 +835,100 @@ function dadosIniciativaDoItem(item) {
             ) || 0
     };
 }
+function iniciativasOrdenadas(items) {
+    const iniciativas = [];
+    for (const item of items || []) {
+        const dados = dadosIniciativaDoItem(item);
+        if (dados) {
+            iniciativas.push({ item, dados });
+        }
+    }
+    iniciativas.sort((a, b) =>
+        b.dados.total - a.dados.total ||
+        a.dados.atualizadoEm - b.dados.atualizadoEm ||
+        String(a.item.name || "").localeCompare(
+            String(b.item.name || "")
+        )
+    );
+    return iniciativas;
+}
+
+async function definirTurnoIniciativa(
+    tokenId,
+    participantes = null
+) {
+    const itens =
+        participantes ||
+        await OBR.scene.items.getItems(
+            (item) =>
+                dadosIniciativaDoItem(item) !== null
+        );
+
+    if (!itens.length) {
+        return;
+    }
+
+    await OBR.scene.items.updateItems(
+        itens.map((item) => item.id),
+        (items) => {
+            for (const item of items) {
+                if (item.id === tokenId) {
+                    item.metadata[
+                        META_TURNO_INICIATIVA
+                    ] = true;
+                }
+                else {
+                    delete item.metadata[
+                        META_TURNO_INICIATIVA
+                    ];
+                }
+            }
+        }
+    );
+}
+
+async function avancarTurnoIniciativa(tokenId) {
+    const iniciativas =
+        iniciativasOrdenadas(
+            await OBR.scene.items.getItems()
+        );
+
+    if (!iniciativas.length) {
+        return;
+    }
+
+    let indice = iniciativas.findIndex(
+        ({ item }) => item.id === tokenId
+    );
+
+    if (indice < 0) {
+        indice = iniciativas.findIndex(
+            ({ item }) =>
+                item.metadata?.[
+                    META_TURNO_INICIATIVA
+                ] === true
+        );
+    }
+
+    if (indice < 0) {
+        indice = 0;
+    }
+
+    const proximo =
+        iniciativas[
+            (indice + 1) % iniciativas.length
+        ].item;
+
+    await definirTurnoIniciativa(
+        proximo.id,
+        iniciativas.map(({ item }) => item)
+    );
+}
+
 function criarCardApresentadorIniciativa(
     item,
-    dados
+    dados,
+    turnoAtual = false
 ) {
     const imagem =
         item.type === "IMAGE"
@@ -841,7 +937,10 @@ function criarCardApresentadorIniciativa(
     const nome =
         item.name || "Token";
     return `
-        <div class="initCard" title="${esc(nome)}">
+        <div
+            class="initCard${turnoAtual ? " turnoAtual" : ""}"
+            title="${esc(nome)}"
+        >
             <div class="initImagemWrap">
                 ${
                     imagem
@@ -866,6 +965,22 @@ function criarCardApresentadorIniciativa(
                 >
                     ×
                 </button>
+            </div>
+            <div class="initTurnoLinha">
+                ${
+                    turnoAtual
+                        ? `
+                            <button
+                                class="initTurno"
+                                type="button"
+                                data-avancar-turno="${esc(item.id)}"
+                                title="Finalizar este turno e passar para o próximo"
+                            >➜</button>
+                        `
+                        : `
+                            <span class="initTurnoEspaco"></span>
+                        `
+                }
             </div>
             <div class="initValorLinha">
                 <button
@@ -922,8 +1037,17 @@ async function iniciarApresentadorIniciativa() {
                 overflow:visible;border:2px solid #6d7c94;border-radius:12px;background:#f4f7fb;box-sizing:border-box;
             }
             .initCard:first-child .initImagemWrap{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.2)}
+            .initCard.turnoAtual .initImagemWrap{border-color:#35c978;box-shadow:0 0 0 2px rgba(53,201,120,.22),0 0 12px rgba(53,201,120,.20)}
             .initImagem{width:100%;height:100%;object-fit:contain;display:block;border-radius:9px}
             .initImagemFallback{font-size:27px;line-height:1}
+            .initTurnoLinha{height:18px;display:flex;align-items:center;justify-content:center}
+            .initTurnoEspaco{display:block;width:31px;height:18px}
+            .initTurno{
+                width:31px;height:18px;min-width:31px;min-height:18px;padding:0;display:flex;align-items:center;justify-content:center;
+                border:1px solid #6cf0a5;border-radius:999px;background:#209b59;color:#fff;font-size:14px;font-weight:900;line-height:1;cursor:pointer;
+                box-shadow:0 0 8px rgba(53,201,120,.28)
+            }
+            .initTurno:hover{background:#2fbb6e;border-color:#a2ffc8}
             .initValorLinha{display:flex;align-items:center;justify-content:center;gap:2px}
             .initValor{
                 min-width:30px;padding:2px 5px;border-radius:999px;background:#2e72d2;color:#fff;
@@ -956,23 +1080,29 @@ async function iniciarApresentadorIniciativa() {
             const viewport = Number(await OBR.viewport.getWidth()) || 900;
             const largura = Math.min(920, Math.max(170, viewport - 30), Math.max(170, quantidade * 79 + 18));
             await OBR.popover.setWidth(ID_POPOVER_INICIATIVA, largura);
-            await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 112);
+            await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 132);
         }
         catch (_) {}
     };
     const renderizar = (items) => {
-        const iniciativas = [];
-        for (const item of items || []) {
-            const dados = dadosIniciativaDoItem(item);
-            if (dados) iniciativas.push({ item, dados });
-        }
-        iniciativas.sort((a,b) =>
-            b.dados.total - a.dados.total ||
-            a.dados.atualizadoEm - b.dados.atualizadoEm ||
-            String(a.item.name || "").localeCompare(String(b.item.name || ""))
-        );
+        const iniciativas =
+            iniciativasOrdenadas(items);
+
+        const turnoMarcado =
+            iniciativas.find(
+                ({ item }) =>
+                    item.metadata?.[
+                        META_TURNO_INICIATIVA
+                    ] === true
+            );
+
+        const turnoId =
+            turnoMarcado?.item.id ||
+            iniciativas[0]?.item.id ||
+            "";
+
         const assinatura = iniciativas.map(({item,dados}) =>
-            `${item.id}|${dados.total}|${dados.atualizadoEm}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}`
+            `${item.id}|${dados.total}|${dados.atualizadoEm}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}|${item.id === turnoId ? 1 : 0}`
         ).join("§");
         if (assinatura === assinaturaAnterior) return;
         assinaturaAnterior = assinatura;
@@ -987,11 +1117,45 @@ async function iniciarApresentadorIniciativa() {
         }
         jaTeveParticipantes = true;
         lista.innerHTML = iniciativas
-            .map(({item,dados}) => criarCardApresentadorIniciativa(item,dados))
+            .map(
+                ({ item, dados }) =>
+                    criarCardApresentadorIniciativa(
+                        item,
+                        dados,
+                        item.id === turnoId
+                    )
+            )
             .join("");
         ajustarTamanho(iniciativas.length);
     };
     app.addEventListener("click", async (evento) => {
+        const avancarTurno =
+            evento.target.closest?.(
+                "[data-avancar-turno]"
+            );
+
+        if (avancarTurno) {
+            const id =
+                avancarTurno.dataset.avancarTurno;
+
+            if (id) {
+                avancarTurno.disabled = true;
+                try {
+                    await avancarTurnoIniciativa(id);
+                }
+                catch (erro) {
+                    console.warn(
+                        "Não foi possível avançar o turno:",
+                        erro
+                    );
+                }
+                finally {
+                    avancarTurno.disabled = false;
+                }
+            }
+            return;
+        }
+
         const ajustar = evento.target.closest?.("[data-ajustar-iniciativa]");
         if (ajustar) {
             const id = ajustar.dataset.ajustarIniciativa;
@@ -3796,12 +3960,12 @@ function mostrarFichaTreinadorPagina1(
         <button
           id="rolarIniciativa"
           type="button"
-          title="Rolar iniciativa e entrar no apresentador"
+          title="Rolar iniciativa e entrar no organizador"
         >🎲</button>
         <button
           id="abrirApresentadorIniciativa"
           type="button"
-          title="Abrir apresentador de iniciativa"
+          title="Abrir organizador de iniciativa"
           style="
             min-width:38px;
             min-height:36px;
@@ -5259,12 +5423,12 @@ function mostrarFichaPokemon(token) {
                 <button
                   id="rolarIniciativa"
                   type="button"
-                  title="Rolar iniciativa e entrar no apresentador"
+                  title="Rolar iniciativa e entrar no organizador"
                 >🎲</button>
                 <button
                   id="abrirApresentadorIniciativa"
                   type="button"
-                  title="Abrir apresentador de iniciativa"
+                  title="Abrir organizador de iniciativa"
                   style="
                     min-width:38px;
                     min-height:36px;
