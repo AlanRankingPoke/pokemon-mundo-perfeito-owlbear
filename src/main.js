@@ -227,8 +227,9 @@ async function executarAnimacaoMegaEvolucao(token) {
       y: (Number(bounds.min?.y) + Number(bounds.max?.y)) / 2
     };
 
-    // 4x o tamanho visual do Pokémon.
-    const tamanho = Math.max(larguraToken, alturaToken) * 4;
+    // A versão anterior já era 4x. Agora quadruplicamos NOVAMENTE:
+    // 16x o maior lado visual do Pokémon.
+    const tamanho = Math.max(larguraToken, alturaToken) * 16;
     const pxAnimacao = 512;
     const escalaMundo = tamanho / dpiCena;
 
@@ -247,7 +248,6 @@ async function executarAnimacaoMegaEvolucao(token) {
       .name("Animação Mega Evolução")
       .position(centro)
       .scale({ x: escalaMundo, y: escalaMundo })
-      // ATTACHMENT é exatamente a camada da versão que já funcionou.
       .layer("ATTACHMENT")
       .zIndex(999)
       .disableAutoZIndex(true)
@@ -259,6 +259,31 @@ async function executarAnimacaoMegaEvolucao(token) {
       .build();
 
     await OBR.scene.items.addItems([efeito]);
+
+    // NÃO confiamos na posição teórica do buildImage.
+    // Depois que o Owlbear cria o GIF, medimos os bounds REAIS dele
+    // e movemos o item até seu centro coincidir exatamente com o
+    // centro do Pokémon. Como a Mega também é centralizada nesse mesmo
+    // ponto, GIF e Mega ficam um em cima do outro.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const boundsEfeito = await OBR.scene.items.getItemBounds([efeito.id]);
+    const centroEfeito = centroDoBounds(boundsEfeito);
+    const correcao = {
+      x: centro.x - centroEfeito.x,
+      y: centro.y - centroEfeito.y
+    };
+
+    if (Math.abs(correcao.x) > 0.01 || Math.abs(correcao.y) > 0.01) {
+      await OBR.scene.items.updateItems([efeito.id], (items) => {
+        for (const item of items) {
+          item.position = {
+            x: Number(item.position?.x || 0) + correcao.x,
+            y: Number(item.position?.y || 0) + correcao.y
+          };
+        }
+      });
+    }
+
     await new Promise((resolve) => setTimeout(resolve, MEGA_ANIMACAO_MS));
     return true;
   } catch (erro) {
