@@ -11,12 +11,123 @@ const META_INICIATIVA_TRACKER =
 const META_TURNO_INICIATIVA =
     `${PREFIX}/initiative-turn`;
 
-const META_DEBUFF_ENVENENADO =
-    `${PREFIX}/debuff-envenenado`;
+const STATUS_DEBUFFS = [
+    {
+        id: "envenenado",
+        nome: "Envenenado",
+        sigla: "ENV",
+        arquivo: "Envenenado.png",
+        cor: "#8f39c7",
+        imagem: {
+            width: 1254,
+            height: 1254,
+            bbox: { x: 94, y: 416, width: 1066, height: 448 }
+        }
+    },
+    {
+        id: "queimado",
+        nome: "Queimado",
+        sigla: "QMD",
+        arquivo: "Queimado.png",
+        cor: "#ef4b18",
+        imagem: {
+            width: 1254,
+            height: 1254,
+            bbox: { x: 88, y: 393, width: 1078, height: 465 }
+        }
+    },
+    {
+        id: "paralisado",
+        nome: "Paralisado",
+        sigla: "PAR",
+        arquivo: "Paralisado.png",
+        cor: "#e4b900",
+        imagem: {
+            width: 1254,
+            height: 1254,
+            bbox: { x: 48, y: 373, width: 1158, height: 498 }
+        }
+    },
+    {
+        id: "congelado",
+        nome: "Congelado",
+        sigla: "GEL",
+        arquivo: "Congelado.png",
+        cor: "#40aee0",
+        imagem: {
+            width: 1254,
+            height: 1254,
+            bbox: { x: 78, y: 403, width: 1099, height: 472 }
+        }
+    },
+    {
+        id: "dormindo",
+        nome: "Dormindo",
+        sigla: "DRM",
+        arquivo: "Dormindo.png",
+        cor: "#404bc9",
+        imagem: {
+            width: 1254,
+            height: 1254,
+            bbox: { x: 31, y: 374, width: 1192, height: 514 }
+        }
+    },
+    {
+        id: "sonolento",
+        nome: "Sonolento",
+        sigla: "SON",
+        arquivo: "Sonolento.png",
+        cor: "#8580df",
+        imagem: {
+            width: 1254,
+            height: 1254,
+            bbox: { x: 78, y: 392, width: 1099, height: 471 }
+        }
+    },
+    {
+        id: "atordoado",
+        nome: "Atordoado",
+        sigla: "ATO",
+        arquivo: "Atordoado.png",
+        cor: "#e2a900",
+        imagem: {
+            width: 1254,
+            height: 1254,
+            bbox: { x: 180, y: 438, width: 894, height: 378 }
+        }
+    },
+    {
+        id: "encantado",
+        nome: "Encantado",
+        sigla: "ENC",
+        arquivo: "Encantado.png",
+        cor: "#df3889",
+        imagem: {
+            width: 1254,
+            height: 1254,
+            bbox: { x: 164, y: 429, width: 927, height: 397 }
+        }
+    },
+    {
+        id: "confuso",
+        nome: "Confuso",
+        sigla: "CNF",
+        arquivo: "Confuso.png",
+        cor: "#16aaa5",
+        imagem: {
+            width: 1254,
+            height: 1254,
+            bbox: { x: 150, y: 431, width: 954, height: 392 }
+        }
+    }
+];
 
-const URL_DEBUFF_ENVENENADO = () =>
+const chaveDebuff = (id) =>
+    `${PREFIX}/debuff-${id}`;
+
+const urlDebuff = (status) =>
     new URL(
-        "status/Envenenado.png?v=4",
+        `status/${status.arquivo}?v=8`,
         window.location.href
     ).toString();
 const ESTILO_FICHA = `
@@ -1560,7 +1671,9 @@ const TIPOS_VISUAIS_HUD = [
   "hp-texto",
   "ca-circulo",
   "ca-texto",
-  "debuff-envenenado"
+  ...STATUS_DEBUFFS.map(
+    (status) => `debuff-${status.id}`
+  )
 ];
 const filaHudPorToken = new Map();
 function prepararVisualHud(item) {
@@ -1643,27 +1756,12 @@ async function corrigirHudExistente() {
           `${PREFIX}/statusToken`
         ] !== undefined
     );
+
   if (!visuais.length) {
     return;
   }
-  await OBR.scene.items.updateItems(
-    visuais,
-    (items) => {
-      for (const item of items) {
-        const comportamentos = new Set(
-          item.disableAttachmentBehavior || []
-        );
-        comportamentos.add("SCALE");
-        comportamentos.add("ROTATION");
-        item.disableAttachmentBehavior = [
-          ...comportamentos
-        ];
-        item.rotation = 0;
-        item.scale = { x: 1, y: 1 };
-      }
-    }
-  );
-  const tokens = [
+
+  const tokenIds = [
     ...new Set(
       visuais
         .map(
@@ -1675,10 +1773,80 @@ async function corrigirHudExistente() {
         .filter(Boolean)
     )
   ];
-  for (const tokenId of tokens) {
-    await desduplicarHudToken(tokenId);
+
+  const tokens =
+    await OBR.scene.items.getItems(
+      (item) =>
+        tokenIds.includes(item.id)
+    );
+
+  const tokensEncontrados =
+    new Set(
+      tokens.map((item) => item.id)
+    );
+
+  const orfaos =
+    visuais
+      .filter(
+        (item) =>
+          !tokensEncontrados.has(
+            item.metadata?.[
+              `${PREFIX}/statusToken`
+            ]
+          )
+      )
+      .map((item) => item.id);
+
+  if (orfaos.length) {
+    await OBR.scene.items.deleteItems(
+      orfaos
+    );
+  }
+
+  // Recria o HUD inteiro de cada token.
+  // Isso também APAGA automaticamente qualquer
+  // ENV gigante criado por versões anteriores.
+  for (const token of tokens) {
+    const hpAtual =
+      Number(
+        token.metadata[
+          `${PREFIX}/hpAtual`
+        ] ?? 100
+      ) || 0;
+
+    const hpMax =
+      Math.max(
+        1,
+        Number(
+          token.metadata[
+            `${PREFIX}/hpMax`
+          ] ?? 100
+        ) || 1
+      );
+
+    const caBase =
+      Number(
+        token.metadata[
+          `${PREFIX}/ca`
+        ] ?? 10
+      ) || 0;
+
+    const evasao =
+      Number(
+        token.metadata[
+          `${PREFIX}/buff-evas`
+        ] ?? 0
+      ) || 0;
+
+    await criarStatusNoToken(
+      token,
+      hpAtual,
+      hpMax,
+      caBase + evasao
+    );
   }
 }
+
 async function executarEmFilaHud(
   tokenId,
   tarefa
@@ -1969,13 +2137,17 @@ async function criarStatusNoToken(
             })
             .build()
         );
-      let debuffEnvenenado = null;
+      const debuffsAtivos =
+        STATUS_DEBUFFS.filter(
+          (status) =>
+            token.metadata?.[
+              chaveDebuff(status.id)
+            ] === true
+        );
 
-      if (
-        token.metadata?.[
-          META_DEBUFF_ENVENENADO
-        ] === true
-      ) {
+      const visuaisDebuff = [];
+
+      if (debuffsAtivos.length) {
         const gridDpi =
           Math.max(
             1,
@@ -1984,85 +2156,175 @@ async function criarStatusNoToken(
             ) || 150
           );
 
-        // O arquivo ENV agora é realmente 80x32 px.
-        // Ele é exibido pequeno: aproximadamente 1/3
-        // da largura da barra de HP.
-        const larguraDebuff =
+        // No máximo 4 ícones por linha.
+        // Com uma barra de 100 unidades, cada badge
+        // fica por volta de 22px/unidades de largura.
+        const maxPorLinha = 4;
+        const gapX = 3;
+        const gapY = 2;
+
+        const larguraBadge =
           Math.max(
-            28,
+            18,
             Math.min(
-              36,
-              larguraBarra * 0.30
+              26,
+              (
+                larguraBarra -
+                (gapX * (maxPorLinha - 1))
+              ) / maxPorLinha
             )
           );
 
-        const escalaDebuff =
-          larguraDebuff / 80;
+        const topoDebuffs =
+          barraY +
+          alturaBarra +
+          3;
 
-        const alturaDebuff =
-          32 * escalaDebuff;
+        for (
+          let indice = 0;
+          indice < debuffsAtivos.length;
+          indice++
+        ) {
+          const status =
+            debuffsAtivos[indice];
 
-        debuffEnvenenado =
-          buildImage(
-            {
-              width: 80,
-              height: 32,
-              url: URL_DEBUFF_ENVENENADO(),
-              mime: "image/png"
-            },
-            {
-              dpi: gridDpi,
-              offset: {
-                x: 40,
-                y: 16
+          const bbox =
+            status.imagem.bbox;
+
+          const escala =
+            larguraBadge /
+            bbox.width;
+
+          const alturaBadge =
+            bbox.height *
+            escala;
+
+          const linha =
+            Math.floor(
+              indice / maxPorLinha
+            );
+
+          const indiceLinha =
+            indice % maxPorLinha;
+
+          const inicioLinha =
+            linha * maxPorLinha;
+
+          const quantidadeLinha =
+            Math.min(
+              maxPorLinha,
+              debuffsAtivos.length -
+              inicioLinha
+            );
+
+          const larguraLinha =
+            (
+              quantidadeLinha *
+              larguraBadge
+            ) +
+            (
+              Math.max(
+                0,
+                quantidadeLinha - 1
+              ) *
+              gapX
+            );
+
+          const centroX =
+            inicioX +
+            (larguraBarra / 2);
+
+          const x =
+            centroX -
+            (larguraLinha / 2) +
+            (larguraBadge / 2) +
+            (
+              indiceLinha *
+              (larguraBadge + gapX)
+            );
+
+          // A altura dos badges é parecida.
+          // Usamos um passo fixo pequeno para
+          // manter as linhas compactas.
+          const passoLinha =
+            (larguraBadge * 0.46) +
+            gapY;
+
+          const y =
+            topoDebuffs +
+            (alturaBadge / 2) +
+            (linha * passoLinha);
+
+          // O ponto de ancoragem é o CENTRO DO
+          // DESENHO VISÍVEL, não o centro do PNG
+          // transparente de 1254x1254.
+          const offsetX =
+            bbox.x +
+            (bbox.width / 2);
+
+          const offsetY =
+            bbox.y +
+            (bbox.height / 2);
+
+          const visual =
+            buildImage(
+              {
+                width:
+                  status.imagem.width,
+                height:
+                  status.imagem.height,
+                url:
+                  urlDebuff(status),
+                mime: "image/png"
+              },
+              {
+                dpi: gridDpi,
+                offset: {
+                  x: offsetX,
+                  y: offsetY
+                }
               }
-            }
-          )
-            .position({
-              x:
-                inicioX +
-                ((larguraBarra - larguraDebuff) / 2),
-              y:
-                barraY +
-                alturaBarra +
-                5
-            })
-            .rotation(0)
-            .scale({
-              x: escalaDebuff,
-              y: escalaDebuff
-            })
-            .layer("ATTACHMENT")
-            .zIndex(30)
-            .disableAutoZIndex(true)
-            .attachedTo(token.id)
-            .locked(true)
-            .disableHit(true)
-            .metadata({
-              [`${PREFIX}/statusToken`]:
-                token.id,
-              [`${PREFIX}/tipoVisual`]:
-                "debuff-envenenado"
-            })
-            .build();
+            )
+              .position({ x, y })
+              .rotation(0)
+              .scale({
+                x: escala,
+                y: escala
+              })
+              .layer("ATTACHMENT")
+              .zIndex(30 + indice)
+              .disableAutoZIndex(true)
+              .attachedTo(token.id)
+              .locked(true)
+              .disableHit(true)
+              .metadata({
+                [`${PREFIX}/statusToken`]:
+                  token.id,
+                [`${PREFIX}/tipoVisual`]:
+                  `debuff-${status.id}`,
+                [`${PREFIX}/debuffId`]:
+                  status.id
+              })
+              .build();
 
-        // Não deixa a escala/rotação do Pokémon
-        // aumentar o ícone do status.
-        const comportamentosDebuff =
-          new Set(
-            debuffEnvenenado
-              .disableAttachmentBehavior ||
-            []
-          );
+          // IMPORTANTE:
+          // herdamos movimento do token,
+          // mas NÃO herdamos escala nem rotação.
+          const comportamentos =
+            new Set(
+              visual
+                .disableAttachmentBehavior ||
+              []
+            );
 
-        comportamentosDebuff.add("SCALE");
-        comportamentosDebuff.add("ROTATION");
+          comportamentos.add("SCALE");
+          comportamentos.add("ROTATION");
 
-        debuffEnvenenado
-          .disableAttachmentBehavior =
-            [
-              ...comportamentosDebuff
-            ];
+          visual.disableAttachmentBehavior =
+            [...comportamentos];
+
+          visuaisDebuff.push(visual);
+        }
       }
 
       const elementos = [
@@ -2076,14 +2338,9 @@ async function criarStatusNoToken(
       elementos.push(
         circuloCA,
         textoHP,
-        textoCA
+        textoCA,
+        ...visuaisDebuff
       );
-
-      if (debuffEnvenenado) {
-        elementos.push(
-          debuffEnvenenado
-        );
-      }
 
       await OBR.scene.items.addItems(
         elementos
@@ -2100,9 +2357,12 @@ async function criarStatusNoToken(
         tiposAtivos.push("vida");
       }
 
-      if (debuffEnvenenado) {
+      for (
+        const status
+        of debuffsAtivos
+      ) {
         tiposAtivos.push(
-          "debuff-envenenado"
+          `debuff-${status.id}`
         );
       }
       await new Promise(
@@ -8193,72 +8453,125 @@ function mostrarFichaPokemonPericias(
         }
     );
 
-    const envenenadoAtivo =
-        token.metadata[
-            META_DEBUFF_ENVENENADO
-        ] === true;
+    const debuffsAtivos =
+        new Set(
+            STATUS_DEBUFFS
+                .filter(
+                    (status) =>
+                        token.metadata[
+                            chaveDebuff(
+                                status.id
+                            )
+                        ] === true
+                )
+                .map(
+                    (status) =>
+                        status.id
+                )
+        );
+
+    const htmlDebuffs =
+        STATUS_DEBUFFS
+            .map(
+                (status) => {
+                    const ativo =
+                        debuffsAtivos.has(
+                            status.id
+                        );
+
+                    return `
+                      <button
+                        type="button"
+                        class="botaoDebuffPokemon"
+                        data-debuff="${esc(status.id)}"
+                        title="Liga/desliga ${esc(status.nome)}"
+                        style="
+                          width:100%;
+                          min-width:0;
+                          min-height:31px !important;
+                          padding:4px 5px !important;
+                          border-radius:8px;
+                          font-size:8px;
+                          line-height:1.05;
+                          font-weight:900;
+                          cursor:pointer;
+                          white-space:nowrap;
+                          overflow:hidden;
+                          text-overflow:ellipsis;
+                          ${
+                              ativo
+                                  ? `background:${status.cor} !important;color:#fff !important;border-color:${status.cor} !important;`
+                                  : ""
+                          }
+                        "
+                      >
+                        ${esc(status.sigla)}
+                        ${esc(status.nome)}
+                        ${ativo ? " ✓" : ""}
+                      </button>
+                    `;
+                }
+            )
+            .join("");
 
     app.innerHTML = `
       ${ESTILO_FICHA}
       ${cabecalhoPokemon(token, 3)}
 
-      <h3 style="
-        margin-bottom:6px !important;
+      <div style="
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:7px;
+        margin-bottom:5px;
       ">
-        Perícias
-      </h3>
+        <h3 style="
+          margin:0 !important;
+        ">
+          Perícias
+        </h3>
+
+        <span style="
+          font-size:8px;
+          font-weight:800;
+          color:#8292a6;
+        ">
+          compacto
+        </span>
+      </div>
 
       ${criarPericiasPokemon(
           valoresPericias
       )}
 
       <h3 style="
-        margin-top:10px !important;
-        margin-bottom:6px !important;
+        margin-top:9px !important;
+        margin-bottom:5px !important;
       ">
         Debuffs
       </h3>
 
       <div style="
-        display:flex;
-        align-items:center;
-        gap:7px;
-        padding:7px;
+        display:grid;
+        grid-template-columns:repeat(3,minmax(0,1fr));
+        gap:5px;
+        padding:6px;
         border:1px solid #e4d8f5;
         border-radius:9px;
         background:#fbf8ff;
       ">
-        <button
-          id="debuffEnvenenado"
-          type="button"
-          class="${envenenadoAtivo ? "ativo" : ""}"
-          title="Liga ou desliga o status Envenenado no token"
-          style="
-            flex:0 0 auto;
-            min-height:32px !important;
-            padding:5px 10px !important;
-            font-size:10px;
-            font-weight:900;
-            cursor:pointer;
-            ${envenenadoAtivo
-                ? "background:#8b42c9 !important;color:#fff !important;border-color:#7232aa !important;"
-                : ""}
-          "
-        >
-          ${envenenadoAtivo
-              ? "☠ ENVENENADO ✓"
-              : "☠ ENVENENADO"}
-        </button>
+        ${htmlDebuffs}
+      </div>
 
-        <div style="
-          min-width:0;
-          font-size:9px;
-          line-height:1.25;
-          color:#73578f;
-          font-weight:800;
-        ">
-          Mostra o ícone ENV abaixo da barra de HP do Pokémon.
-        </div>
+      <div style="
+        margin-top:5px;
+        font-size:8px;
+        line-height:1.2;
+        color:#7b698f;
+        font-weight:700;
+        text-align:center;
+      ">
+        Os ícones ativos aparecem logo abaixo da barra de HP.
       </div>
 
       <button
@@ -8277,121 +8590,151 @@ function mostrarFichaPokemonPericias(
     ativarCabecalhoPokemon(token);
     ativarRolagensPericiasPokemon();
 
-    const atualizarVisualBotao =
-        (ativo) => {
-            const botao =
-                document.querySelector(
-                    "#debuffEnvenenado"
+    const atualizarHudDebuffs =
+        async () => {
+            const hpAtual =
+                Number(
+                    token.metadata[
+                        `${PREFIX}/hpAtual`
+                    ] ?? 100
+                ) || 0;
+
+            const hpMax =
+                Math.max(
+                    1,
+                    Number(
+                        token.metadata[
+                            `${PREFIX}/hpMax`
+                        ] ?? 100
+                    ) || 1
                 );
 
-            if (!botao) {
-                return;
-            }
+            const caBase =
+                Number(
+                    token.metadata[
+                        `${PREFIX}/ca`
+                    ] ?? 10
+                ) || 0;
 
-            botao.textContent =
-                ativo
-                    ? "☠ ENVENENADO ✓"
-                    : "☠ ENVENENADO";
+            const evasao =
+                Number(
+                    token.metadata[
+                        `${PREFIX}/buff-evas`
+                    ] ?? 0
+                ) || 0;
 
-            if (ativo) {
-                botao.style.setProperty(
-                    "background",
-                    "#8b42c9",
-                    "important"
-                );
-                botao.style.setProperty(
-                    "color",
-                    "#ffffff",
-                    "important"
-                );
-                botao.style.setProperty(
-                    "border-color",
-                    "#7232aa",
-                    "important"
-                );
-            }
-            else {
-                botao.style.removeProperty(
-                    "background"
-                );
-                botao.style.removeProperty(
-                    "color"
-                );
-                botao.style.removeProperty(
-                    "border-color"
-                );
-            }
+            await criarStatusNoToken(
+                token,
+                hpAtual,
+                hpMax,
+                caBase + evasao
+            );
         };
 
     document
-        .querySelector(
-            "#debuffEnvenenado"
+        .querySelectorAll(
+            ".botaoDebuffPokemon"
         )
-        ?.addEventListener(
-            "click",
-            async () => {
-                const novoEstado =
-                    !(
+        .forEach(
+            (botao) => {
+                botao.addEventListener(
+                    "click",
+                    async () => {
+                        const id =
+                            botao.dataset.debuff;
+
+                        const status =
+                            STATUS_DEBUFFS.find(
+                                (item) =>
+                                    item.id === id
+                            );
+
+                        if (!status) {
+                            return;
+                        }
+
+                        const chave =
+                            chaveDebuff(id);
+
+                        const novoEstado =
+                            !(
+                                token.metadata[
+                                    chave
+                                ] === true
+                            );
+
                         token.metadata[
-                            META_DEBUFF_ENVENENADO
-                        ] === true
-                    );
+                            chave
+                        ] = novoEstado;
 
-                token.metadata[
-                    META_DEBUFF_ENVENENADO
-                ] = novoEstado;
+                        botao.disabled = true;
 
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (const item of items) {
-                            item.metadata[
-                                META_DEBUFF_ENVENENADO
-                            ] = novoEstado;
+                        try {
+                            await OBR.scene.items.updateItems(
+                                [token.id],
+                                (items) => {
+                                    for (
+                                        const item
+                                        of items
+                                    ) {
+                                        item.metadata[
+                                            chave
+                                        ] = novoEstado;
+                                    }
+                                }
+                            );
+
+                            if (novoEstado) {
+                                botao.textContent =
+                                    `${status.sigla} ${status.nome} ✓`;
+
+                                botao.style.setProperty(
+                                    "background",
+                                    status.cor,
+                                    "important"
+                                );
+
+                                botao.style.setProperty(
+                                    "color",
+                                    "#ffffff",
+                                    "important"
+                                );
+
+                                botao.style.setProperty(
+                                    "border-color",
+                                    status.cor,
+                                    "important"
+                                );
+                            }
+                            else {
+                                botao.textContent =
+                                    `${status.sigla} ${status.nome}`;
+
+                                botao.style.removeProperty(
+                                    "background"
+                                );
+
+                                botao.style.removeProperty(
+                                    "color"
+                                );
+
+                                botao.style.removeProperty(
+                                    "border-color"
+                                );
+                            }
+
+                            await atualizarHudDebuffs();
+                        }
+                        catch (erro) {
+                            console.error(
+                                `Erro ao alternar ${status.nome}:`,
+                                erro
+                            );
+                        }
+                        finally {
+                            botao.disabled = false;
                         }
                     }
-                );
-
-                atualizarVisualBotao(
-                    novoEstado
-                );
-
-                const hpAtual =
-                    Number(
-                        token.metadata[
-                            `${PREFIX}/hpAtual`
-                        ] ?? 100
-                    ) || 0;
-
-                const hpMax =
-                    Math.max(
-                        1,
-                        Number(
-                            token.metadata[
-                                `${PREFIX}/hpMax`
-                            ] ?? 100
-                        ) || 1
-                    );
-
-                const caBase =
-                    Number(
-                        token.metadata[
-                            `${PREFIX}/ca`
-                        ] ?? 10
-                    ) || 0;
-
-                const evasao =
-                    Number(
-                        token.metadata[
-                            `${PREFIX}/buff-evas`
-                        ] ?? 0
-                    ) || 0;
-
-                await criarStatusNoToken(
-                    token,
-                    hpAtual,
-                    hpMax,
-                    caBase + evasao
                 );
             }
         );
