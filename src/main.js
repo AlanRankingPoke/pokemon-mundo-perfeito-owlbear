@@ -13,7 +13,7 @@ const META_MEGA_CONFIG =
 const META_MEGA_ATIVA =
 `${PREFIX}/mega-ativa`;
 function urlImagemMegaEvolucao() { return new URL("status/Mega.webp?v=2", window.location.href).toString(); }
-function urlAnimacaoMegaEvolucao() { return new URL("status/MegaEvolucao.gif?v=1", window.location.href).toString(); }
+function urlAnimacaoMegaEvolucao() { return new URL("status/MegaEvolucao.gif?v=3", window.location.href).toString(); }
 const MEGA_ANIMACAO_MS = 1800;
 const MEGA_GIF_MULTIPLICADOR = 5.4; // 3x maior que o tamanho anterior (1.8)
 
@@ -171,18 +171,6 @@ async function definirReferenciaMega(tokenAtual, referenciaMega) {
   return config;
 }
 
-async function animacaoMegaDisponivel() {
-  try {
-    const resposta = await fetch(urlAnimacaoMegaEvolucao(), {
-      method: "HEAD",
-      cache: "no-store"
-    });
-    return resposta.ok;
-  } catch (_) {
-    return false;
-  }
-}
-
 async function pegarBarraHpDoToken(tokenId) {
   const barras = await OBR.scene.items.getItems(
     (item) =>
@@ -199,33 +187,39 @@ async function pegarBarraHpDoToken(tokenId) {
   return barras[0];
 }
 
-async function executarAnimacaoMegaEvolucao(token) {
-  if (!(await animacaoMegaDisponivel())) return false;
+async function boundsBarraHpDoToken(tokenId) {
+  const barra = await pegarBarraHpDoToken(tokenId);
+  if (!barra) return null;
+  try {
+    return await OBR.scene.items.getItemBounds([barra.id]);
+  } catch (_) {
+    return null;
+  }
+}
 
+async function executarAnimacaoMegaEvolucao(token) {
   let efeito = null;
   try {
-    const bounds = await OBR.scene.items.getItemBounds([token.id]);
+    const boundsToken = await OBR.scene.items.getItemBounds([token.id]);
+    const boundsBarra = await boundsBarraHpDoToken(token.id);
     const dpiCena = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
-    const larguraToken = Math.max(1, Number(bounds.width) || dpiCena);
-    const alturaToken = Math.max(1, Number(bounds.height) || dpiCena);
+    const larguraToken = Math.max(1, Number(boundsToken.width) || dpiCena);
+    const alturaToken = Math.max(1, Number(boundsToken.height) || dpiCena);
 
-    // O GIF agora é TRÊS VEZES maior que antes: 1.8 -> 5.4.
+    // Mantém o GIF três vezes maior que a primeira versão que funcionou.
     const tamanho = Math.max(larguraToken, alturaToken) * MEGA_GIF_MULTIPLICADOR;
     const pxAnimacao = 512;
     const escalaMundo = tamanho / dpiCena;
-    const barraHp = await pegarBarraHpDoToken(token.id);
 
-    // O GIF nasce centralizado horizontalmente NA BARRA DE HP.
-    // A borda de baixo do GIF fica logo acima da barra.
-    let centroX = (Number(bounds.min?.x) + Number(bounds.max?.x)) / 2;
-    let topoBarra = Number(bounds.max?.y) + 8;
+    // Usa os BOUNDS REAIS da barra. Assim não dependemos de como o Owlbear
+    // interpreta position/width do SHAPE e o efeito não some para o lado.
+    const centroX = boundsBarra?.center?.x ??
+      ((Number(boundsToken.min?.x) + Number(boundsToken.max?.x)) / 2);
+    const topoBarra = Number(boundsBarra?.min?.y ?? boundsToken.max?.y ?? 0);
+    const folga = Math.max(2, dpiCena * 0.01);
 
-    if (barraHp) {
-      centroX = Number(barraHp.position?.x || 0) + (Number(barraHp.width) || 0) / 2;
-      topoBarra = Number(barraHp.position?.y || topoBarra);
-    }
-
-    const folga = Math.max(6, dpiCena * 0.03);
+    // A borda inferior do GIF encosta na região logo acima da barra de HP.
+    // Como o GIF é grande, ele cobre o Pokémon inteiro durante a evolução.
     const centro = {
       x: centroX,
       y: topoBarra - (tamanho / 2) - folga
@@ -247,7 +241,7 @@ async function executarAnimacaoMegaEvolucao(token) {
       .position(centro)
       .scale({ x: escalaMundo, y: escalaMundo })
       .layer("ATTACHMENT")
-      .zIndex(999)
+      .zIndex(999999)
       .disableAutoZIndex(true)
       .locked(true)
       .disableHit(true)
@@ -256,6 +250,8 @@ async function executarAnimacaoMegaEvolucao(token) {
       })
       .build();
 
+    // Não fazemos HEAD/fetch antes. Se o GIF existe, o Owlbear carrega direto.
+    // Isso evita a animação ser pulada por uma checagem HTTP que falhou.
     await OBR.scene.items.addItems([efeito]);
     await new Promise((resolve) => setTimeout(resolve, MEGA_ANIMACAO_MS));
     return true;
@@ -4623,14 +4619,18 @@ const atualizarListaTokensMega = async () => {
   if (botaoAtualizarMega) botaoAtualizarMega.disabled = true;
   try {
     const itens = await OBR.scene.items.getItems(
-      (item) => item.type === "IMAGE" && item.layer === "CHARACTER" && item.id !== token.id
+      (item) =>
+        item.type === "IMAGE" &&
+        item.layer === "CHARACTER" &&
+        item.id !== token.id &&
+        String(item.name || "").trim().toLocaleLowerCase("pt-BR").startsWith("mega")
     );
     tokensMegaDisponiveis = [...itens].sort((a, b) =>
       String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
     );
     if (!tokensMegaDisponiveis.length) {
-      seletorMega.innerHTML = '<option value="">Nenhum outro personagem na mesa</option>';
-      if (mensagemMega) mensagemMega.textContent = "Coloque o token da Mega na mesa e atualize a lista.";
+      seletorMega.innerHTML = '<option value="">Nenhum token Mega encontrado na mesa</option>';
+      if (mensagemMega) mensagemMega.textContent = "Coloque na mesa um token cujo nome comece com Mega e atualize a lista.";
       return;
     }
     seletorMega.innerHTML = [
@@ -4644,7 +4644,7 @@ const atualizarListaTokensMega = async () => {
     if (candidato && tokensMegaDisponiveis.some((item) => item.id === candidato)) {
       seletorMega.value = candidato;
     }
-    if (mensagemMega) mensagemMega.textContent = `${tokensMegaDisponiveis.length} personagem(ns) disponível(is) na mesa.`;
+    if (mensagemMega) mensagemMega.textContent = `${tokensMegaDisponiveis.length} token(s) Mega disponível(is) na mesa.`;
   } catch (erro) {
     console.error("Erro ao listar personagens da mesa para Mega:", erro);
     seletorMega.innerHTML = '<option value="">Erro ao carregar personagens</option>';
@@ -4668,8 +4668,12 @@ if (botaoDefinirMega && seletorMega) {
     }
     let referencia = tokensMegaDisponiveis.find((item) => item.id === idReferencia);
     if (!referencia) referencia = (await OBR.scene.items.getItems([idReferencia]))[0];
-    if (!referencia || referencia.type !== "IMAGE" || referencia.layer !== "CHARACTER") {
-      if (mensagemMega) mensagemMega.textContent = "Esse personagem não está mais disponível na mesa.";
+    const nomeReferenciaEhMega = String(referencia?.name || "")
+      .trim()
+      .toLocaleLowerCase("pt-BR")
+      .startsWith("mega");
+    if (!referencia || referencia.type !== "IMAGE" || referencia.layer !== "CHARACTER" || !nomeReferenciaEhMega) {
+      if (mensagemMega) mensagemMega.textContent = "Esse token não está disponível ou o nome não começa com Mega.";
       await atualizarListaTokensMega();
       return;
     }
