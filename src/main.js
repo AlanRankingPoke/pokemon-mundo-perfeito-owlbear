@@ -5699,10 +5699,15 @@ function mostrarFichaPokemon(token) {
         token.metadata[
             `${PREFIX}/hpMax`
         ] ?? 100;
-    const nivelPokemon =
+    const nivelPokemonSalvo =
         token.metadata[
             `${PREFIX}/pokemon-level`
-        ] ?? "";
+        ];
+    const nivelPokemon =
+        nivelPokemonSalvo === undefined ||
+        nivelPokemonSalvo === null
+            ? ""
+            : String(nivelPokemonSalvo);
     const caBase =
         Number(
             token.metadata[
@@ -6424,6 +6429,12 @@ function mostrarFichaPokemon(token) {
 function mostrarFichaPokemonMoves(token) {
     const app =
         document.querySelector("#app");
+
+    const urlMega =
+        new URL(
+            "Mega.webp?v=2",
+            window.location.href
+        ).toString();
     const proficiencia =
         Number(
             token.metadata[
@@ -7242,6 +7253,86 @@ function mostrarFichaPokemonMoves(token) {
       line-height:1.05;
     ">Moves</h3>
     ${htmlGolpes}
+
+    <div style="
+      border-top:1px solid #555;
+      margin:8px 0 7px;
+    "></div>
+
+    <div style="
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-height:54px;
+      margin-bottom:6px;
+    ">
+      <button
+        id="botaoMegaEvolucao"
+        type="button"
+        title="Mega Evolução"
+        style="
+          width:52px !important;
+          height:52px !important;
+          min-width:52px !important;
+          min-height:52px !important;
+          padding:3px !important;
+          margin:0 !important;
+          border:1px solid #8b5cf6;
+          border-radius:12px;
+          background:linear-gradient(180deg,#24163d 0%,#15111f 100%);
+          box-shadow:0 2px 8px rgba(124,58,237,.24);
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          cursor:pointer;
+          overflow:hidden;
+        "
+      >
+        <img
+          src="${esc(urlMega)}"
+          alt="Mega Evolução"
+          draggable="false"
+          style="
+            display:block;
+            width:100%;
+            height:100%;
+            object-fit:contain;
+            pointer-events:none;
+            user-select:none;
+          "
+        >
+      </button>
+
+      <div style="
+        min-width:0;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        gap:2px;
+      ">
+        <div style="
+          font-size:10px;
+          font-weight:900;
+          line-height:1;
+        ">
+          MEGA EVOLUÇÃO
+        </div>
+
+        <span
+          id="textoTesteMega"
+          style="
+            display:none;
+            font-size:10px;
+            font-weight:800;
+            color:#8b5cf6;
+            line-height:1.1;
+          "
+        >
+          teste feito
+        </span>
+      </div>
+    </div>
+
     <br>
     <button
       id="salvarPokemonMoves"
@@ -7256,6 +7347,36 @@ function mostrarFichaPokemonMoves(token) {
     </button>
   `;
     ativarCabecalhoPokemon(token);
+
+    const botaoMegaEvolucao =
+        document.querySelector(
+            "#botaoMegaEvolucao"
+        );
+
+    const textoTesteMega =
+        document.querySelector(
+            "#textoTesteMega"
+        );
+
+    if (
+        botaoMegaEvolucao &&
+        textoTesteMega
+    ) {
+        botaoMegaEvolucao.addEventListener(
+            "click",
+            () => {
+                textoTesteMega.style.display =
+                    "inline";
+
+                botaoMegaEvolucao.style.border =
+                    "2px solid #a855f7";
+
+                botaoMegaEvolucao.style.boxShadow =
+                    "0 0 12px rgba(168,85,247,.48)";
+            }
+        );
+    }
+
     function atualizarBuffsPagina() {
         BUFFS.forEach(
             (buff) => {
@@ -9171,25 +9292,67 @@ async function mostrarTokenSelecionado() {
         token.metadata[
             `${PREFIX}/tipoFicha`
         ];
-    if (
-        tipoFicha === "pokemon"
-    ) {
-        mostrarFichaPokemon(
+    try {
+        if (
+            tipoFicha === "pokemon"
+        ) {
+            mostrarFichaPokemon(
+                token
+            );
+            return;
+        }
+
+        if (
+            tipoFicha === "treinador"
+        ) {
+            mostrarFichaTreinadorPagina1(
+                token
+            );
+            return;
+        }
+
+        mostrarEscolhaFicha(
             token
         );
-        return;
     }
-    if (
-        tipoFicha === "treinador"
-    ) {
-        mostrarFichaTreinadorPagina1(
-            token
+    catch (erro) {
+        console.error(
+            "Erro ao abrir a ficha:",
+            erro
         );
-        return;
+
+        const app =
+            document.querySelector("#app");
+
+        if (app) {
+            app.innerHTML = `
+              ${ESTILO_FICHA}
+              <div style="
+                padding:14px;
+                border:1px solid #e7b1b1;
+                border-radius:10px;
+                background:#fff5f5;
+                color:#8a2929;
+                font-size:12px;
+                line-height:1.35;
+              ">
+                <strong>
+                  A ficha encontrou um erro.
+                </strong>
+                <div style="
+                  margin-top:6px;
+                  color:#555;
+                  word-break:break-word;
+                ">
+                  ${esc(
+                      erro?.message ||
+                      String(erro)
+                  )}
+                </div>
+              </div>
+            `;
+        }
     }
-    mostrarEscolhaFicha(
-        token
-    );
 }
 OBR.onReady(
     async () => {
