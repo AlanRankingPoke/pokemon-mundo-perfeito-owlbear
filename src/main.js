@@ -6431,10 +6431,9 @@ function mostrarFichaPokemonMoves(token) {
         document.querySelector("#app");
 
     const urlMega =
-        new URL(
-            "status/Mega.webp?v=3",
-            window.location.href
-        ).toString();
+        urlDebuff({
+            arquivo: "Mega.webp"
+        });
     const proficiencia =
         Number(
             token.metadata[
@@ -7286,9 +7285,25 @@ function mostrarFichaPokemonMoves(token) {
           justify-content:center;
           cursor:pointer;
           overflow:hidden;
+          position:relative;
         "
       >
+        <span
+          id="fallbackMega"
+          style="
+            position:absolute;
+            display:none;
+            font-size:9px;
+            font-weight:900;
+            color:#ffffff;
+            pointer-events:none;
+          "
+        >
+          MEGA
+        </span>
+
         <img
+          id="imagemMegaEvolucao"
           src="${esc(urlMega)}"
           alt="Mega Evolução"
           draggable="false"
@@ -7358,6 +7373,55 @@ function mostrarFichaPokemonMoves(token) {
             "#textoTesteMega"
         );
 
+    const imagemMegaEvolucao =
+        document.querySelector(
+            "#imagemMegaEvolucao"
+        );
+
+    const fallbackMega =
+        document.querySelector(
+            "#fallbackMega"
+        );
+
+    if (
+        imagemMegaEvolucao &&
+        fallbackMega &&
+        textoTesteMega
+    ) {
+        imagemMegaEvolucao.addEventListener(
+            "load",
+            () => {
+                fallbackMega.style.display =
+                    "none";
+            }
+        );
+
+        imagemMegaEvolucao.addEventListener(
+            "error",
+            () => {
+                imagemMegaEvolucao.style.display =
+                    "none";
+
+                fallbackMega.style.display =
+                    "block";
+
+                textoTesteMega.style.display =
+                    "inline";
+
+                textoTesteMega.textContent =
+                    "Mega.webp não carregou";
+
+                textoTesteMega.style.color =
+                    "#dc2626";
+
+                console.error(
+                    "Falha ao carregar Mega.webp:",
+                    urlMega
+                );
+            }
+        );
+    }
+
     if (
         botaoMegaEvolucao &&
         textoTesteMega
@@ -7365,8 +7429,19 @@ function mostrarFichaPokemonMoves(token) {
         botaoMegaEvolucao.addEventListener(
             "click",
             () => {
-                textoTesteMega.style.display =
-                    "inline";
+                if (
+                    textoTesteMega.textContent !==
+                    "Mega.webp não carregou"
+                ) {
+                    textoTesteMega.style.display =
+                        "inline";
+
+                    textoTesteMega.textContent =
+                        "teste feito";
+
+                    textoTesteMega.style.color =
+                        "#8b5cf6";
+                }
 
                 botaoMegaEvolucao.style.border =
                     "2px solid #a855f7";
