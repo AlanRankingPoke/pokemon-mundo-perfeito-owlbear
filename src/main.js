@@ -1977,63 +1977,97 @@ async function criarStatusNoToken(
         ] === true
       ) {
         const gridDpi =
-          await OBR.scene.grid.getDpi();
+          Math.max(
+            1,
+            Number(
+              await OBR.scene.grid.getDpi()
+            ) || 150
+          );
 
-        const larguraDebuff = Math.min(
-          80,
-          larguraBarra * 0.72
-        );
+        // A imagem original tem 80x32 px.
+        // Calculamos o DPI dela para que seu tamanho
+        // real no mapa seja relativo à barra de HP,
+        // e não ao tamanho/escala do token.
+        const larguraDebuff =
+          Math.max(
+            28,
+            Math.min(
+              42,
+              larguraBarra * 0.34
+            )
+          );
 
         const alturaDebuff =
-          larguraDebuff * 0.4;
+          larguraDebuff * (32 / 80);
 
-        const escalaDebuff =
-          larguraDebuff / 80;
+        const dpiImagemDebuff =
+          (80 * gridDpi) /
+          larguraDebuff;
 
         debuffEnvenenado =
-          prepararVisualHud(
-            buildImage(
-              {
-                width: 80,
-                height: 32,
-                url: URL_DEBUFF_ENVENENADO(),
-                mime: "image/png"
-              },
-              {
-                dpi: gridDpi,
-                offset: {
-                  x: 40,
-                  y: 16
-                }
+          buildImage(
+            {
+              width: 80,
+              height: 32,
+              url: URL_DEBUFF_ENVENENADO(),
+              mime: "image/png"
+            },
+            {
+              dpi: dpiImagemDebuff,
+              offset: {
+                x: 40,
+                y: 16
               }
-            )
-              .position({
-                x:
-                  inicioX +
-                  ((larguraBarra - larguraDebuff) / 2),
-                y:
-                  barraY +
-                  alturaBarra +
-                  Math.max(6, alturaBarra * 0.18)
-              })
-              .scale({
-                x: escalaDebuff,
-                y: escalaDebuff
-              })
-              .layer("ATTACHMENT")
-              .zIndex(30)
-              .disableAutoZIndex(true)
-              .attachedTo(token.id)
-              .locked(true)
-              .disableHit(true)
-              .metadata({
-                [`${PREFIX}/statusToken`]:
-                  token.id,
-                [`${PREFIX}/tipoVisual`]:
-                  "debuff-envenenado"
-              })
-              .build()
+            }
+          )
+            .position({
+              x:
+                inicioX +
+                ((larguraBarra - larguraDebuff) / 2),
+              y:
+                barraY +
+                alturaBarra +
+                Math.max(
+                  5,
+                  alturaBarra * 0.14
+                )
+            })
+            .rotation(0)
+            .scale({
+              x: 1,
+              y: 1
+            })
+            .layer("ATTACHMENT")
+            .zIndex(30)
+            .disableAutoZIndex(true)
+            .attachedTo(token.id)
+            .locked(true)
+            .disableHit(true)
+            .metadata({
+              [`${PREFIX}/statusToken`]:
+                token.id,
+              [`${PREFIX}/tipoVisual`]:
+                "debuff-envenenado"
+            })
+            .build();
+
+        // Não deixa a escala/rotação do Pokémon
+        // aumentar o ícone do status.
+        const comportamentosDebuff =
+          new Set(
+            debuffEnvenenado
+              .disableAttachmentBehavior ||
+            []
           );
+
+        comportamentosDebuff.add("SCALE");
+        comportamentosDebuff.add("ROTATION");
+
+        debuffEnvenenado
+          .disableAttachmentBehavior =
+            [
+              ...comportamentosDebuff
+            ];
       }
 
       const elementos = [
