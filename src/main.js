@@ -6432,7 +6432,7 @@ function mostrarFichaPokemonMoves(token) {
 
     const urlMega =
         new URL(
-            "Mega.webp?v=2",
+            "status/Mega.webp?v=3",
             window.location.href
         ).toString();
     const proficiencia =
