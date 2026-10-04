@@ -1,374 +1,72 @@
 import OBR, { buildImage, buildShape, buildText } from "@owlbear-rodeo/sdk";
 import "./style.css";
 const PREFIX = "pokemon-mundo-perfeito";
-const MODO_APRESENTADOR_INICIATIVA =
-    new URLSearchParams(window.location.search)
-        .get("view") === "initiative";
+const MODO_APRESENTADOR_INICIATIVA = new URLSearchParams(window.location.search) .get("view") === "initiative";
 const ID_POPOVER_INICIATIVA =
-    `${PREFIX}/apresentador-iniciativa`;
+`${PREFIX}/apresentador-iniciativa`;
 const META_INICIATIVA_TRACKER =
-    `${PREFIX}/initiative-tracker`;
+`${PREFIX}/initiative-tracker`;
 const META_TURNO_INICIATIVA =
-    `${PREFIX}/initiative-turn`;
-
+`${PREFIX}/initiative-turn`;
 const META_MEGA_CONFIG =
-    `${PREFIX}/mega-config`;
-
+`${PREFIX}/mega-config`;
 const META_MEGA_ATIVA =
-    `${PREFIX}/mega-ativa`;
-
-function dadosImagemDoToken(item) {
-    if (
-        !item ||
-        item.type !== "IMAGE" ||
-        !item.image?.url
-    ) {
-        return null;
-    }
-
-    return {
-        url: item.image.url,
-        mime:
-            item.image.mime ||
-            "image/webp",
-        width:
-            Number(item.image.width) || 1,
-        height:
-            Number(item.image.height) || 1
-    };
-}
-
-function megaConfigDoToken(token) {
-    const config =
-        token?.metadata?.[
-            META_MEGA_CONFIG
-        ];
-
-    if (
-        !config ||
-        typeof config !== "object"
-    ) {
-        return null;
-    }
-
-    if (
-        !config.normal?.url ||
-        !config.mega?.url
-    ) {
-        return null;
-    }
-
-    return config;
-}
-
-function megaAtivaNoToken(token) {
-    return (
-        token?.metadata?.[
-            META_MEGA_ATIVA
-        ] === true
-    );
-}
-
-async function definirReferenciaMega(
-    tokenAtual,
-    tokenReferencia
-) {
-    const imagemNormal =
-        dadosImagemDoToken(
-            tokenAtual
-        );
-
-    const imagemMega =
-        dadosImagemDoToken(
-            tokenReferencia
-        );
-
-    if (
-        !imagemNormal ||
-        !imagemMega
-    ) {
-        throw new Error(
-            "Os dois tokens precisam ser imagens."
-        );
-    }
-
-    const configAnterior =
-        megaConfigDoToken(
-            tokenAtual
-        );
-
-    const normalSalvar =
-        configAnterior?.normal?.url
-            ? configAnterior.normal
-            : imagemNormal;
-
-    const config = {
-        normal: normalSalvar,
-        mega: imagemMega,
-        referenciaId:
-            tokenReferencia.id,
-        referenciaNome:
-            tokenReferencia.name ||
-            "Mega"
-    };
-
-    await OBR.scene.items.updateItems(
-        [tokenAtual.id],
-        (items) => {
-            for (
-                const item
-                of items
-            ) {
-                item.metadata[
-                    META_MEGA_CONFIG
-                ] = config;
-
-                item.metadata[
-                    META_MEGA_ATIVA
-                ] = false;
-
-                // Ao redefinir a Mega,
-                // garante que o token volte
-                // para a forma normal.
-                item.image.url =
-                    normalSalvar.url;
-
-                item.image.mime =
-                    normalSalvar.mime;
-
-                item.image.width =
-                    normalSalvar.width;
-
-                item.image.height =
-                    normalSalvar.height;
-            }
-        }
-    );
-
-    tokenAtual.metadata[
-        META_MEGA_CONFIG
-    ] = config;
-
-    tokenAtual.metadata[
-        META_MEGA_ATIVA
-    ] = false;
-
-    tokenAtual.image.url =
-        normalSalvar.url;
-
-    tokenAtual.image.mime =
-        normalSalvar.mime;
-
-    tokenAtual.image.width =
-        normalSalvar.width;
-
-    tokenAtual.image.height =
-        normalSalvar.height;
-
-    return config;
-}
-
-async function alternarMegaEvolucao(
-    token
-) {
-    const config =
-        megaConfigDoToken(token);
-
-    if (!config) {
-        throw new Error(
-            "Defina primeiro qual token será a Mega Evolução."
-        );
-    }
-
-    const ativar =
-        !megaAtivaNoToken(token);
-
-    const destino =
-        ativar
-            ? config.mega
-            : config.normal;
-
-    await OBR.scene.items.updateItems(
-        [token.id],
-        (items) => {
-            for (
-                const item
-                of items
-            ) {
-                // Mantém o MESMO item/id.
-                // Só troca a imagem.
-                item.image.url =
-                    destino.url;
-
-                item.image.mime =
-                    destino.mime;
-
-                item.image.width =
-                    destino.width;
-
-                item.image.height =
-                    destino.height;
-
-                item.metadata[
-                    META_MEGA_ATIVA
-                ] = ativar;
-            }
-        }
-    );
-
-    token.metadata[
-        META_MEGA_ATIVA
-    ] = ativar;
-
-    token.image.url =
-        destino.url;
-
-    token.image.mime =
-        destino.mime;
-
-    token.image.width =
-        destino.width;
-
-    token.image.height =
-        destino.height;
-
-    return ativar;
-}
-
-const STATUS_DEBUFFS = [
-    {
-        id: "envenenado",
-        nome: "Envenenado",
-        sigla: "ENV",
-        arquivo: "Envenenado.png",
-        cor: "#8f39c7",
-        imagem: {
-            width: 1254,
-            height: 1254,
-            bbox: { x: 94, y: 416, width: 1066, height: 448 }
-        }
-    },
-    {
-        id: "queimado",
-        nome: "Queimado",
-        sigla: "QMD",
-        arquivo: "Queimado.png",
-        cor: "#ef4b18",
-        imagem: {
-            width: 1254,
-            height: 1254,
-            bbox: { x: 88, y: 393, width: 1078, height: 465 }
-        }
-    },
-    {
-        id: "paralizado",
-        legacyId: "paralisado",
-        nome: "Paralizado",
-        sigla: "PAR",
-        arquivo: "Paralizado.png",
-        cor: "#e4b900",
-        imagem: {
-            width: 1254,
-            height: 1254,
-            bbox: { x: 48, y: 373, width: 1158, height: 498 }
-        }
-    },
-    {
-        id: "congelado",
-        nome: "Congelado",
-        sigla: "GEL",
-        arquivo: "Congelado.png",
-        cor: "#40aee0",
-        imagem: {
-            width: 1254,
-            height: 1254,
-            bbox: { x: 78, y: 403, width: 1099, height: 472 }
-        }
-    },
-    {
-        id: "dormindo",
-        nome: "Dormindo",
-        sigla: "DRM",
-        arquivo: "Dormindo.png",
-        cor: "#404bc9",
-        imagem: {
-            width: 1254,
-            height: 1254,
-            bbox: { x: 31, y: 374, width: 1192, height: 514 }
-        }
-    },
-    {
-        id: "sonolento",
-        nome: "Sonolento",
-        sigla: "SON",
-        arquivo: "Sonolento.png",
-        cor: "#8580df",
-        imagem: {
-            width: 1254,
-            height: 1254,
-            bbox: { x: 78, y: 392, width: 1099, height: 471 }
-        }
-    },
-    {
-        id: "atordoado",
-        nome: "Atordoado",
-        sigla: "ATO",
-        arquivo: "Atordoado.png",
-        cor: "#e2a900",
-        imagem: {
-            width: 1254,
-            height: 1254,
-            bbox: { x: 180, y: 438, width: 894, height: 378 }
-        }
-    },
-    {
-        id: "encantado",
-        nome: "Encantado",
-        sigla: "ENC",
-        arquivo: "Encantado.png",
-        cor: "#df3889",
-        imagem: {
-            width: 1254,
-            height: 1254,
-            bbox: { x: 164, y: 429, width: 927, height: 397 }
-        }
-    },
-    {
-        id: "confuso",
-        nome: "Confuso",
-        sigla: "CNF",
-        arquivo: "Confuso.png",
-        cor: "#16aaa5",
-        imagem: {
-            width: 1254,
-            height: 1254,
-            bbox: { x: 150, y: 431, width: 954, height: 392 }
-        }
-    }
-];
-
+`${PREFIX}/mega-ativa`;
+function urlImagemMegaEvolucao() { return new URL( "status/Mega.webp?v=1", window.location.href ).toString(); }
+function dadosImagemDaReferenciaMega(referencia) { const imagem = referencia?.image;
+if (!imagem?.url) { return null; }
+return { url: imagem.url, mime: imagem.mime || "image/webp", width: Number(imagem.width) || 1, height: Number(imagem.height) || 1 }; }
+function dadosImagemDoToken(item) { if ( !item || item.type !== "IMAGE" ) { return null; }
+return dadosImagemDaReferenciaMega(item); }
+function megaConfigDoToken(token) { const config = token?.metadata?.[ META_MEGA_CONFIG ];
+if ( !config || typeof config !== "object" ) { return null; }
+if ( !config.normal?.url || !config.mega?.url ) { return null; }
+return config; }
+function megaAtivaNoToken(token) { return ( token?.metadata?.[ META_MEGA_ATIVA ] === true ); }
+async function aplicarImagemMegaAoToken( token, destino, ativa ) { if (!destino?.url) { throw new Error( "A imagem da evolução não está disponível." ); }
+await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { item.image.url = destino.url; item.image.mime = destino.mime || "image/webp"; item.image.width = Number(destino.width) || 1; item.image.height = Number(destino.height) || 1; item.metadata[ META_MEGA_ATIVA ] = ativa; } } );
+token.metadata[ META_MEGA_ATIVA ] = ativa;
+token.image.url = destino.url;
+token.image.mime = destino.mime || "image/webp";
+token.image.width = Number(destino.width) || 1;
+token.image.height = Number(destino.height) || 1; }
+async function definirReferenciaMega( tokenAtual, referenciaMega ) { const imagemNormal = dadosImagemDoToken( tokenAtual );
+const imagemMega = dadosImagemDaReferenciaMega( referenciaMega );
+if ( !imagemNormal || !imagemMega ) { throw new Error( "Não foi possível ler a imagem normal ou a imagem da Mega Evolução." ); }
+const configAnterior = megaConfigDoToken( tokenAtual );
+// Se já havia uma Mega configurada, preserva SEMPRE
+// a imagem normal original do Pokémon.
+const normalSalvar = configAnterior?.normal?.url ? configAnterior.normal : imagemNormal;
+const config = { normal: normalSalvar, mega: imagemMega, referenciaId: referenciaMega?.id || "", referenciaNome: referenciaMega?.name || "Mega", referenciaOrigem: referenciaMega?.type === "IMAGE" ? "CENA" : "PERSONAGENS" };
+await OBR.scene.items.updateItems( [tokenAtual.id], (items) => { for ( const item of items ) { item.metadata[ META_MEGA_CONFIG ] = config; item.metadata[ META_MEGA_ATIVA ] = false;
+// Ao trocar a referência da Mega,
+// o Pokémon volta imediatamente para
+// a forma normal original.
+item.image.url = normalSalvar.url; item.image.mime = normalSalvar.mime || "image/webp"; item.image.width = Number(normalSalvar.width) || 1; item.image.height = Number(normalSalvar.height) || 1; } } );
+tokenAtual.metadata[ META_MEGA_CONFIG ] = config;
+tokenAtual.metadata[ META_MEGA_ATIVA ] = false;
+tokenAtual.image.url = normalSalvar.url;
+tokenAtual.image.mime = normalSalvar.mime || "image/webp";
+tokenAtual.image.width = Number(normalSalvar.width) || 1;
+tokenAtual.image.height = Number(normalSalvar.height) || 1;
+return config; }
+async function ativarMegaEvolucao( token ) { const config = megaConfigDoToken(token);
+if (!config) { throw new Error( "Escolha primeiro a forma Mega na biblioteca de Personagens." ); }
+await aplicarImagemMegaAoToken( token, config.mega, true );
+return true; }
+async function retirarMegaEvolucao( token ) { const config = megaConfigDoToken(token);
+if (!config) { throw new Error( "Nenhuma forma Mega foi configurada para este Pokémon." ); }
+await aplicarImagemMegaAoToken( token, config.normal, false );
+return false; }
+// Mantém compatibilidade com qualquer chamada antiga.
+async function alternarMegaEvolucao( token ) { return megaAtivaNoToken(token) ? retirarMegaEvolucao(token) : ativarMegaEvolucao(token); }
+const STATUS_DEBUFFS = [ { id: "envenenado", nome: "Envenenado", sigla: "ENV", arquivo: "Envenenado.png", cor: "#8f39c7", imagem: { width: 1254, height: 1254, bbox: { x: 94, y: 416, width: 1066, height: 448 } } }, { id: "queimado", nome: "Queimado", sigla: "QMD", arquivo: "Queimado.png", cor: "#ef4b18", imagem: { width: 1254, height: 1254, bbox: { x: 88, y: 393, width: 1078, height: 465 } } }, { id: "paralizado", legacyId: "paralisado", nome: "Paralizado", sigla: "PAR", arquivo: "Paralizado.png", cor: "#e4b900", imagem: { width: 1254, height: 1254, bbox: { x: 48, y: 373, width: 1158, height: 498 } } }, { id: "congelado", nome: "Congelado", sigla: "GEL", arquivo: "Congelado.png", cor: "#40aee0", imagem: { width: 1254, height: 1254, bbox: { x: 78, y: 403, width: 1099, height: 472 } } }, { id: "dormindo", nome: "Dormindo", sigla: "DRM", arquivo: "Dormindo.png", cor: "#404bc9", imagem: { width: 1254, height: 1254, bbox: { x: 31, y: 374, width: 1192, height: 514 } } }, { id: "sonolento", nome: "Sonolento", sigla: "SON", arquivo: "Sonolento.png", cor: "#8580df", imagem: { width: 1254, height: 1254, bbox: { x: 78, y: 392, width: 1099, height: 471 } } }, { id: "atordoado", nome: "Atordoado", sigla: "ATO", arquivo: "Atordoado.png", cor: "#e2a900", imagem: { width: 1254, height: 1254, bbox: { x: 180, y: 438, width: 894, height: 378 } } }, { id: "encantado", nome: "Encantado", sigla: "ENC", arquivo: "Encantado.png", cor: "#df3889", imagem: { width: 1254, height: 1254, bbox: { x: 164, y: 429, width: 927, height: 397 } } }, { id: "confuso", nome: "Confuso", sigla: "CNF", arquivo: "Confuso.png", cor: "#16aaa5", imagem: { width: 1254, height: 1254, bbox: { x: 150, y: 431, width: 954, height: 392 } } } ];
 const chaveDebuff = (id) =>
-    `${PREFIX}/debuff-${id}`;
-
-const debuffAtivoNoToken = (
-    token,
-    status
-) =>
-    token?.metadata?.[
-        chaveDebuff(status.id)
-    ] === true ||
-    (
-        status.legacyId &&
-        token?.metadata?.[
-            chaveDebuff(status.legacyId)
-        ] === true
-    );
-
-const urlDebuff = (status) =>
-    new URL(
-        `status/${status.arquivo}?v=9`,
-        window.location.href
-    ).toString();
+`${PREFIX}/debuff-${id}`;
+const debuffAtivoNoToken = ( token, status ) => token?.metadata?.[ chaveDebuff(status.id) ] === true || ( status.legacyId && token?.metadata?.[ chaveDebuff(status.legacyId) ] === true );
+const urlDebuff = (status) => new URL(
+`status/${status.arquivo}?v=9`,
+window.location.href ).toString();
 const ESTILO_FICHA = `
 <style>
   :root {
@@ -1163,299 +861,53 @@ const ESTILO_FICHA = `
   }
 </style>
 `;
-function urlApresentadorIniciativa() {
-    const url = new URL(window.location.href);
-    url.searchParams.set(
-        "view",
-        "initiative"
-    );
-    return url.toString();
-}
-async function abrirApresentadorIniciativa() {
-    let larguraViewport = 900;
-    let quantidade = 1;
-    try {
-        const [viewport, participantes] = await Promise.all([
-            OBR.viewport.getWidth(),
-            OBR.scene.items.getItems(
-                (item) => dadosIniciativaDoItem(item) !== null
-            )
-        ]);
-        larguraViewport = Number(viewport) || 900;
-        quantidade = Math.max(1, participantes.length);
-    }
-    catch (_) {}
-    const larguraMaxima = Math.max(170, larguraViewport - 30);
-    const largura = Math.min(920, larguraMaxima, Math.max(170, quantidade * 79 + 18));
-    try {
-        await OBR.popover.close(ID_POPOVER_INICIATIVA);
-    }
-    catch (_) {}
-    await OBR.popover.open({
-        id: ID_POPOVER_INICIATIVA,
-        url: urlApresentadorIniciativa(),
-        width: largura,
-        height: 132,
-        anchorReference: "POSITION",
-        anchorPosition: {
-            left: larguraViewport / 2,
-            top: 6
-        },
-        anchorOrigin: {
-            horizontal: "CENTER",
-            vertical: "TOP"
-        },
-        transformOrigin: {
-            horizontal: "CENTER",
-            vertical: "TOP"
-        },
-        hidePaper: true,
-        disableClickAway: true,
-        marginThreshold: 0
-    });
-}
-async function salvarResultadoIniciativa(
-    token,
-    total
-) {
-    const numero = Number(total);
-    if (!Number.isFinite(numero)) {
-        return;
-    }
-    await OBR.scene.items.updateItems(
-        [token.id],
-        (items) => {
-            for (const item of items) {
-                item.metadata[
-                    META_INICIATIVA_TRACKER
-                ] = {
-                    total: numero,
-                    atualizadoEm: Date.now()
-                };
-            }
-        }
-    );
-    token.metadata[
-        META_INICIATIVA_TRACKER
-    ] = {
-        total: numero,
-        atualizadoEm: Date.now()
-    };
-}
-async function ajustarResultadoIniciativa(
-    tokenId,
-    delta
-) {
-    const ajuste = Number(delta);
-    if (!Number.isFinite(ajuste) || ajuste === 0) {
-        return;
-    }
-    await OBR.scene.items.updateItems(
-        [tokenId],
-        (items) => {
-            for (const item of items) {
-                const dadosAtuais =
-                    dadosIniciativaDoItem(item);
-                if (!dadosAtuais) {
-                    continue;
-                }
-                item.metadata[
-                    META_INICIATIVA_TRACKER
-                ] = {
-                    total:
-                        dadosAtuais.total + ajuste,
-                    atualizadoEm: Date.now()
-                };
-            }
-        }
-    );
-}
-async function removerDaIniciativa(tokenId) {
-    await OBR.scene.items.updateItems(
-        [tokenId],
-        (items) => {
-            for (const item of items) {
-                delete item.metadata[
-                    META_INICIATIVA_TRACKER
-                ];
-                delete item.metadata[
-                    META_TURNO_INICIATIVA
-                ];
-            }
-        }
-    );
-}
-function dadosIniciativaDoItem(item) {
-    const dados =
-        item?.metadata?.[
-            META_INICIATIVA_TRACKER
-        ];
-    if (!dados) {
-        return null;
-    }
-    const total =
-        Number(
-            typeof dados === "object"
-                ? dados.total
-                : dados
-        );
-    if (!Number.isFinite(total)) {
-        return null;
-    }
-    return {
-        total,
-        atualizadoEm:
-            Number(
-                typeof dados === "object"
-                    ? dados.atualizadoEm
-                    : 0
-            ) || 0
-    };
-}
-function iniciativasOrdenadas(items) {
-    const iniciativas = [];
-    for (const item of items || []) {
-        const dados = dadosIniciativaDoItem(item);
-        if (dados) {
-            iniciativas.push({ item, dados });
-        }
-    }
-    iniciativas.sort((a, b) =>
-        b.dados.total - a.dados.total ||
-        a.dados.atualizadoEm - b.dados.atualizadoEm ||
-        String(a.item.name || "").localeCompare(
-            String(b.item.name || "")
-        )
-    );
-    return iniciativas;
-}
-
-async function definirTurnoIniciativa(
-    tokenId,
-    participantes = null
-) {
-    const itens =
-        participantes ||
-        await OBR.scene.items.getItems(
-            (item) =>
-                dadosIniciativaDoItem(item) !== null
-        );
-
-    if (!itens.length) {
-        return;
-    }
-
-    await OBR.scene.items.updateItems(
-        itens.map((item) => item.id),
-        (items) => {
-            for (const item of items) {
-                if (item.id === tokenId) {
-                    item.metadata[
-                        META_TURNO_INICIATIVA
-                    ] = true;
-                }
-                else {
-                    delete item.metadata[
-                        META_TURNO_INICIATIVA
-                    ];
-                }
-            }
-        }
-    );
-}
-
-async function avancarTurnoIniciativa(tokenId) {
-    const iniciativas =
-        iniciativasOrdenadas(
-            await OBR.scene.items.getItems()
-        );
-
-    if (!iniciativas.length) {
-        return;
-    }
-
-    let indice = iniciativas.findIndex(
-        ({ item }) => item.id === tokenId
-    );
-
-    if (indice < 0) {
-        indice = iniciativas.findIndex(
-            ({ item }) =>
-                item.metadata?.[
-                    META_TURNO_INICIATIVA
-                ] === true
-        );
-    }
-
-    if (indice < 0) {
-        indice = 0;
-    }
-
-    const proximo =
-        iniciativas[
-            (indice + 1) % iniciativas.length
-        ].item;
-
-    await definirTurnoIniciativa(
-        proximo.id,
-        iniciativas.map(({ item }) => item)
-    );
-}
-
-function statusAtivosDoOrganizador(item) {
-    return STATUS_DEBUFFS.filter(
-        (status) =>
-            debuffAtivoNoToken(
-                item,
-                status
-            )
-    );
-}
-
-function assinaturaStatusOrganizador(item) {
-    return statusAtivosDoOrganizador(item)
-        .map((status) => status.id)
-        .join(",");
-}
-
-function criarStatusOrganizador(item) {
-    const ativos =
-        statusAtivosDoOrganizador(item);
-
-    if (!ativos.length) {
-        return "";
-    }
-
-    const larguraVisivel = 20;
-
-    return ativos
-        .map((status) => {
-            const bbox =
-                status.imagem.bbox;
-
-            const escala =
-                larguraVisivel /
-                bbox.width;
-
-            const alturaVisivel =
-                bbox.height *
-                escala;
-
-            const larguraImagem =
-                status.imagem.width *
-                escala;
-
-            const alturaImagem =
-                status.imagem.height *
-                escala;
-
-            const esquerda =
-                -(bbox.x * escala);
-
-            const topo =
-                -(bbox.y * escala);
-
-            return `
+function urlApresentadorIniciativa() { const url = new URL(window.location.href);
+url.searchParams.set( "view", "initiative" );
+return url.toString(); }
+async function abrirApresentadorIniciativa() { let larguraViewport = 900;
+let quantidade = 1;
+try { const [viewport, participantes] = await Promise.all([ OBR.viewport.getWidth(), OBR.scene.items.getItems( (item) => dadosIniciativaDoItem(item) !== null ) ]);
+larguraViewport = Number(viewport) || 900;
+quantidade = Math.max(1, participantes.length); } catch (_) {}
+const larguraMaxima = Math.max(170, larguraViewport - 30);
+const largura = Math.min(920, larguraMaxima, Math.max(170, quantidade * 79 + 18));
+try { await OBR.popover.close(ID_POPOVER_INICIATIVA); } catch (_) {}
+await OBR.popover.open({ id: ID_POPOVER_INICIATIVA, url: urlApresentadorIniciativa(), width: largura, height: 132, anchorReference: "POSITION", anchorPosition: { left: larguraViewport / 2, top: 6 }, anchorOrigin: { horizontal: "CENTER", vertical: "TOP" }, transformOrigin: { horizontal: "CENTER", vertical: "TOP" }, hidePaper: true, disableClickAway: true, marginThreshold: 0 }); }
+async function salvarResultadoIniciativa( token, total ) { const numero = Number(total);
+if (!Number.isFinite(numero)) { return; }
+await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[ META_INICIATIVA_TRACKER ] = { total: numero, atualizadoEm: Date.now() }; } } );
+token.metadata[ META_INICIATIVA_TRACKER ] = { total: numero, atualizadoEm: Date.now() }; }
+async function ajustarResultadoIniciativa( tokenId, delta ) { const ajuste = Number(delta);
+if (!Number.isFinite(ajuste) || ajuste === 0) { return; }
+await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { const dadosAtuais = dadosIniciativaDoItem(item); if (!dadosAtuais) { continue; } item.metadata[ META_INICIATIVA_TRACKER ] = { total: dadosAtuais.total + ajuste, atualizadoEm: Date.now() }; } } ); }
+async function removerDaIniciativa(tokenId) { await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { delete item.metadata[ META_INICIATIVA_TRACKER ]; delete item.metadata[ META_TURNO_INICIATIVA ]; } } ); }
+function dadosIniciativaDoItem(item) { const dados = item?.metadata?.[ META_INICIATIVA_TRACKER ];
+if (!dados) { return null; }
+const total = Number( typeof dados === "object" ? dados.total : dados );
+if (!Number.isFinite(total)) { return null; }
+return { total, atualizadoEm: Number( typeof dados === "object" ? dados.atualizadoEm : 0 ) || 0 }; }
+function iniciativasOrdenadas(items) { const iniciativas = [];
+for (const item of items || []) { const dados = dadosIniciativaDoItem(item);
+if (dados) { iniciativas.push({ item, dados }); } }
+iniciativas.sort((a, b) => b.dados.total - a.dados.total || a.dados.atualizadoEm - b.dados.atualizadoEm || String(a.item.name || "").localeCompare( String(b.item.name || "") ) );
+return iniciativas; }
+async function definirTurnoIniciativa( tokenId, participantes = null ) { const itens = participantes || await OBR.scene.items.getItems( (item) => dadosIniciativaDoItem(item) !== null );
+if (!itens.length) { return; }
+await OBR.scene.items.updateItems( itens.map((item) => item.id), (items) => { for (const item of items) { if (item.id === tokenId) { item.metadata[ META_TURNO_INICIATIVA ] = true; } else { delete item.metadata[ META_TURNO_INICIATIVA ]; } } } ); }
+async function avancarTurnoIniciativa(tokenId) { const iniciativas = iniciativasOrdenadas( await OBR.scene.items.getItems() );
+if (!iniciativas.length) { return; }
+let indice = iniciativas.findIndex( ({ item }) => item.id === tokenId );
+if (indice < 0) { indice = iniciativas.findIndex( ({ item }) => item.metadata?.[ META_TURNO_INICIATIVA ] === true ); }
+if (indice < 0) { indice = 0; }
+const proximo = iniciativas[ (indice + 1) % iniciativas.length ].item;
+await definirTurnoIniciativa( proximo.id, iniciativas.map(({ item }) => item) ); }
+function statusAtivosDoOrganizador(item) { return STATUS_DEBUFFS.filter( (status) => debuffAtivoNoToken( item, status ) ); }
+function assinaturaStatusOrganizador(item) { return statusAtivosDoOrganizador(item) .map((status) => status.id) .join(","); }
+function criarStatusOrganizador(item) { const ativos = statusAtivosDoOrganizador(item);
+if (!ativos.length) { return ""; }
+const larguraVisivel = 20;
+return ativos .map((status) => { const bbox = status.imagem.bbox; const escala = larguraVisivel / bbox.width; const alturaVisivel = bbox.height * escala; const larguraImagem = status.imagem.width * escala; const alturaImagem = status.imagem.height * escala; const esquerda = -(bbox.x * escala); const topo = -(bbox.y * escala);
+return `
                 <span
                     class="initStatusBadge"
                     title="${esc(status.nome)}"
@@ -1478,52 +930,17 @@ function criarStatusOrganizador(item) {
                     >
                 </span>
             `;
-        })
-        .join("");
-}
-
-function criarCardApresentadorIniciativa(
-    item,
-    dados,
-    turnoAtual = false
-) {
-    const imagem =
-        item.type === "IMAGE"
-            ? item.image?.url || ""
-            : "";
-    const nome =
-        item.name || "Token";
-
-    const quantidadeStatus =
-        statusAtivosDoOrganizador(
-            item
-        ).length;
-
-    const linhasStatus =
-        Math.ceil(
-            quantidadeStatus / 3
-        );
-
-    const alturaStatus =
-        quantidadeStatus === 0
-            ? 0
-            : (
-                linhasStatus * 9 +
-                Math.max(
-                    0,
-                    linhasStatus - 1
-                ) * 2
-            );
-
-    // A faixa de status fica absoluta logo abaixo
-    // do retrato. Esta margem reserva SOMENTE o
-    // espaço realmente usado pelos badges.
-    const margemTurno =
-        quantidadeStatus === 0
-            ? 1
-            : alturaStatus + 2;
-
-    return `
+}) .join(""); }
+function criarCardApresentadorIniciativa( item, dados, turnoAtual = false ) { const imagem = item.type === "IMAGE" ? item.image?.url || "" : "";
+const nome = item.name || "Token";
+const quantidadeStatus = statusAtivosDoOrganizador( item ).length;
+const linhasStatus = Math.ceil( quantidadeStatus / 3 );
+const alturaStatus = quantidadeStatus === 0 ? 0 : ( linhasStatus * 9 + Math.max( 0, linhasStatus - 1 ) * 2 );
+// A faixa de status fica absoluta logo abaixo
+// do retrato. Esta margem reserva SOMENTE o
+// espaço realmente usado pelos badges.
+const margemTurno = quantidadeStatus === 0 ? 1 : alturaStatus + 2;
+return `
         <div
             class="initCard${turnoAtual ? " turnoAtual" : ""}"
             title="${esc(nome)}"
@@ -1532,17 +949,14 @@ function criarCardApresentadorIniciativa(
                 ${
                     imagem
                         ? `
-                            <img
-                                class="initImagem"
-                                src="${esc(imagem)}"
-                                alt="${esc(nome)}"
-                            >
-                        `
+<img
+class="initImagem"
+src="${esc(imagem)}"
+alt="${esc(nome)}" >
+`
                         : `
-                            <div class="initImagemFallback">
-                                🐾
-                            </div>
-                        `
+<div class="initImagemFallback"> 🐾 </div>
+`
                 }
                 <button
                     class="initRemover"
@@ -1574,16 +988,15 @@ function criarCardApresentadorIniciativa(
                 ${
                     turnoAtual
                         ? `
-                            <button
-                                class="initTurno"
-                                type="button"
-                                data-avancar-turno="${esc(item.id)}"
-                                title="Finalizar este turno e passar para o próximo"
-                            >➜</button>
-                        `
+<button
+class="initTurno"
+type="button"
+data-avancar-turno="${esc(item.id)}"
+title="Finalizar este turno e passar para o próximo" >➜</button>
+`
                         : `
-                            <span class="initTurnoEspaco"></span>
-                        `
+<span class="initTurnoEspaco"></span>
+`
                 }
             </div>
             <div class="initValorLinha">
@@ -1611,14 +1024,13 @@ function criarCardApresentadorIniciativa(
         </div>
     `;
 }
-async function iniciarApresentadorIniciativa() {
-    const app = document.querySelector("#app");
-    if (!app) return;
-    document.documentElement.style.cssText += ";background:#161e2c!important;overflow:hidden!important";
-    document.body.style.cssText += ";margin:0!important;background:#161e2c!important;overflow:hidden!important";
-    const papel = document.createElement("div");
-    papel.id = "initiativePresenterRoot";
-    papel.innerHTML = `
+async function iniciarApresentadorIniciativa() { const app = document.querySelector("#app");
+if (!app) return;
+document.documentElement.style.cssText += ";background:#161e2c!important;overflow:hidden!important";
+document.body.style.cssText += ";margin:0!important;background:#161e2c!important;overflow:hidden!important";
+const papel = document.createElement("div");
+papel.id = "initiativePresenterRoot";
+papel.innerHTML = `
         <style>
             html,body,#app,#initiativePresenterRoot{
                 width:100%;height:100%;margin:0;padding:0;box-sizing:border-box;
@@ -1744,1373 +1156,282 @@ async function iniciarApresentadorIniciativa() {
         </style>
         <div id="initiativePresenterList" class="initBarra"></div>
     `;
-    app.replaceChildren(papel);
-    const lista = document.querySelector("#initiativePresenterList");
-    let assinaturaAnterior = "";
-    let quantidadeAnterior = -1;
-    let jaTeveParticipantes = false;
-    const ajustarTamanho = async (quantidade) => {
-        if (quantidade === quantidadeAnterior) return;
-        quantidadeAnterior = quantidade;
-        try {
-            const viewport = Number(await OBR.viewport.getWidth()) || 900;
-            const largura = Math.min(920, Math.max(170, viewport - 30), Math.max(170, quantidade * 79 + 18));
-            await OBR.popover.setWidth(ID_POPOVER_INICIATIVA, largura);
-            await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 150);
-        }
-        catch (_) {}
-    };
-    const renderizar = (items) => {
-        const iniciativas =
-            iniciativasOrdenadas(items);
-
-        const turnoMarcado =
-            iniciativas.find(
-                ({ item }) =>
-                    item.metadata?.[
-                        META_TURNO_INICIATIVA
-                    ] === true
-            );
-
-        const turnoId =
-            turnoMarcado?.item.id ||
-            iniciativas[0]?.item.id ||
-            "";
-
-        const assinatura = iniciativas.map(({item,dados}) =>
-            `${item.id}|${dados.total}|${dados.atualizadoEm}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}|${item.id === turnoId ? 1 : 0}|${assinaturaStatusOrganizador(item)}`
-        ).join("§");
-        if (assinatura === assinaturaAnterior) return;
-        assinaturaAnterior = assinatura;
-        if (!iniciativas.length) {
-            if (jaTeveParticipantes) {
-                OBR.popover.close(ID_POPOVER_INICIATIVA).catch(() => {});
-                return;
-            }
-            lista.innerHTML = '<div class="initVazio">Aguardando iniciativas...</div>';
-            ajustarTamanho(1);
-            return;
-        }
-        jaTeveParticipantes = true;
-        lista.innerHTML = iniciativas
-            .map(
-                ({ item, dados }) =>
-                    criarCardApresentadorIniciativa(
-                        item,
-                        dados,
-                        item.id === turnoId
-                    )
-            )
-            .join("");
-        ajustarTamanho(iniciativas.length);
-    };
-    app.addEventListener("click", async (evento) => {
-        const avancarTurno =
-            evento.target.closest?.(
-                "[data-avancar-turno]"
-            );
-
-        if (avancarTurno) {
-            const id =
-                avancarTurno.dataset.avancarTurno;
-
-            if (id) {
-                avancarTurno.disabled = true;
-                try {
-                    await avancarTurnoIniciativa(id);
-                }
-                catch (erro) {
-                    console.warn(
-                        "Não foi possível avançar o turno:",
-                        erro
-                    );
-                }
-                finally {
-                    avancarTurno.disabled = false;
-                }
-            }
-            return;
-        }
-
-        const ajustar = evento.target.closest?.("[data-ajustar-iniciativa]");
-        if (ajustar) {
-            const id = ajustar.dataset.ajustarIniciativa;
-            const delta = Number(ajustar.dataset.delta);
-            if (id && Number.isFinite(delta) && delta !== 0) {
-                try { await ajustarResultadoIniciativa(id, delta); }
-                catch (erro) { console.warn("Não foi possível ajustar a iniciativa:", erro); }
-            }
-            return;
-        }
-        const remover = evento.target.closest?.("[data-remover-iniciativa]");
-        const id = remover?.dataset.removerIniciativa;
-        if (!id) return;
-        try { await removerDaIniciativa(id); }
-        catch (erro) { console.warn("Não foi possível remover o participante da iniciativa:", erro); }
-    });
-    renderizar(await OBR.scene.items.getItems());
-    OBR.scene.items.onChange(renderizar);
-}
+app.replaceChildren(papel);
+const lista = document.querySelector("#initiativePresenterList");
+let assinaturaAnterior = "";
+let quantidadeAnterior = -1;
+let jaTeveParticipantes = false;
+const ajustarTamanho = async (quantidade) => { if (quantidade === quantidadeAnterior) return;
+quantidadeAnterior = quantidade;
+try { const viewport = Number(await OBR.viewport.getWidth()) || 900;
+const largura = Math.min(920, Math.max(170, viewport - 30), Math.max(170, quantidade * 79 + 18));
+await OBR.popover.setWidth(ID_POPOVER_INICIATIVA, largura);
+await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 150); } catch (_) {} };
+const renderizar = (items) => { const iniciativas = iniciativasOrdenadas(items);
+const turnoMarcado = iniciativas.find( ({ item }) => item.metadata?.[ META_TURNO_INICIATIVA ] === true );
+const turnoId = turnoMarcado?.item.id || iniciativas[0]?.item.id || "";
+const assinatura = iniciativas.map(({item,dados}) =>
+`${item.id}|${dados.total}|${dados.atualizadoEm}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}|${item.id === turnoId ? 1 : 0}|${assinaturaStatusOrganizador(item)}`
+).join("§");
+if (assinatura === assinaturaAnterior) return;
+assinaturaAnterior = assinatura;
+if (!iniciativas.length) { if (jaTeveParticipantes) { OBR.popover.close(ID_POPOVER_INICIATIVA).catch(() => {});
+return; }
+lista.innerHTML = '<div class="initVazio">Aguardando iniciativas...</div>';
+ajustarTamanho(1);
+return; }
+jaTeveParticipantes = true;
+lista.innerHTML = iniciativas .map( ({ item, dados }) => criarCardApresentadorIniciativa( item, dados, item.id === turnoId ) ) .join("");
+ajustarTamanho(iniciativas.length); };
+app.addEventListener("click", async (evento) => { const avancarTurno = evento.target.closest?.( "[data-avancar-turno]" ); if (avancarTurno) { const id = avancarTurno.dataset.avancarTurno; if (id) { avancarTurno.disabled = true; try { await avancarTurnoIniciativa(id); } catch (erro) { console.warn( "Não foi possível avançar o turno:", erro ); } finally { avancarTurno.disabled = false; } } return; } const ajustar = evento.target.closest?.("[data-ajustar-iniciativa]"); if (ajustar) { const id = ajustar.dataset.ajustarIniciativa; const delta = Number(ajustar.dataset.delta); if (id && Number.isFinite(delta) && delta !== 0) { try { await ajustarResultadoIniciativa(id, delta); } catch (erro) { console.warn("Não foi possível ajustar a iniciativa:", erro); } } return; } const remover = evento.target.closest?.("[data-remover-iniciativa]"); const id = remover?.dataset.removerIniciativa; if (!id) return; try { await removerDaIniciativa(id); } catch (erro) { console.warn("Não foi possível remover o participante da iniciativa:", erro); } });
+renderizar(await OBR.scene.items.getItems());
+OBR.scene.items.onChange(renderizar); }
 const ATRIBUTOS = ["for", "des", "con", "int", "sab", "car"];
-const NOMES_ATRIBUTOS = {
-    for: "Força",
-    des: "Destreza",
-    con: "Constituição",
-    int: "Inteligência",
-    sab: "Sabedoria",
-    car: "Carisma"
-};
-const BUFFS = [
-    { id: "atq", nome: "ATQ" },
-    { id: "atqsp", nome: "ATQSP" },
-    { id: "def", nome: "DEF" },
-    { id: "defsp", nome: "DEFSP" },
-    { id: "vel", nome: "VEL" },
-    { id: "pres", nome: "PRES" },
-    { id: "evas", nome: "EVAS" },
-    { id: "crit", nome: "CRIT" }
-];
-const PERICIAS = [
-    {
-        atributo: "FOR",
-        nomeAtributo: "Força",
-        pericias: [
-            { id: "atletismo", nome: "Atletismo" }
-        ]
-    },
-    {
-        atributo: "DES",
-        nomeAtributo: "Destreza",
-        pericias: [
-            { id: "acrobacia", nome: "Acrobacia" },
-            { id: "furtividade", nome: "Furtividade" },
-            { id: "prestidigitacao", nome: "Prestidigitação" }
-        ]
-    },
-    {
-        atributo: "CON",
-        nomeAtributo: "Constituição",
-        pericias: []
-    },
-    {
-        atributo: "INT",
-        nomeAtributo: "Inteligência",
-        pericias: [
-            { id: "arcanismo", nome: "Arcanismo" },
-            { id: "historia", nome: "História" },
-            { id: "investigacao", nome: "Investigação" },
-            { id: "natureza", nome: "Natureza" },
-            { id: "religiao", nome: "Religião" }
-        ]
-    },
-    {
-        atributo: "SAB",
-        nomeAtributo: "Sabedoria",
-        pericias: [
-            { id: "adestrar-animais", nome: "Adestrar Animais" },
-            { id: "intuicao", nome: "Intuição" },
-            { id: "medicina", nome: "Medicina" },
-            { id: "percepcao", nome: "Percepção" },
-            { id: "sobrevivencia", nome: "Sobrevivência" }
-        ]
-    },
-    {
-        atributo: "CAR",
-        nomeAtributo: "Carisma",
-        pericias: [
-            { id: "atuacao", nome: "Atuação" },
-            { id: "enganacao", nome: "Enganação" },
-            { id: "intimidacao", nome: "Intimidação" },
-            { id: "persuasao", nome: "Persuasão" }
-        ]
-    }
-];
-function esc(valor) {
-    return String(valor ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
+const NOMES_ATRIBUTOS = { for: "Força", des: "Destreza", con: "Constituição", int: "Inteligência", sab: "Sabedoria", car: "Carisma" };
+const BUFFS = [ { id: "atq", nome: "ATQ" }, { id: "atqsp", nome: "ATQSP" }, { id: "def", nome: "DEF" }, { id: "defsp", nome: "DEFSP" }, { id: "vel", nome: "VEL" }, { id: "pres", nome: "PRES" }, { id: "evas", nome: "EVAS" }, { id: "crit", nome: "CRIT" } ];
+const PERICIAS = [ { atributo: "FOR", nomeAtributo: "Força", pericias: [ { id: "atletismo", nome: "Atletismo" } ] }, { atributo: "DES", nomeAtributo: "Destreza", pericias: [ { id: "acrobacia", nome: "Acrobacia" }, { id: "furtividade", nome: "Furtividade" }, { id: "prestidigitacao", nome: "Prestidigitação" } ] }, { atributo: "CON", nomeAtributo: "Constituição", pericias: [] }, { atributo: "INT", nomeAtributo: "Inteligência", pericias: [ { id: "arcanismo", nome: "Arcanismo" }, { id: "historia", nome: "História" }, { id: "investigacao", nome: "Investigação" }, { id: "natureza", nome: "Natureza" }, { id: "religiao", nome: "Religião" } ] }, { atributo: "SAB", nomeAtributo: "Sabedoria", pericias: [ { id: "adestrar-animais", nome: "Adestrar Animais" }, { id: "intuicao", nome: "Intuição" }, { id: "medicina", nome: "Medicina" }, { id: "percepcao", nome: "Percepção" }, { id: "sobrevivencia", nome: "Sobrevivência" } ] }, { atributo: "CAR", nomeAtributo: "Carisma", pericias: [ { id: "atuacao", nome: "Atuação" }, { id: "enganacao", nome: "Enganação" }, { id: "intimidacao", nome: "Intimidação" }, { id: "persuasao", nome: "Persuasão" } ] } ];
+function esc(valor) { return String(valor ?? "") .replaceAll("&", "&amp;") .replaceAll('"', "&quot;") .replaceAll("<", "&lt;") .replaceAll(">", "&gt;"); }
+function limparRotuloDice(texto) { return String(texto || "") .replace(/[#+\-*/(),]/g, " ") .replace(/\s+/g, " ") .trim(); }
+function formatarBonus(valor) { const numero = Number(valor) || 0;
+return numero > 0 ? `+${numero}` : `${numero}`;
 }
-function limparRotuloDice(texto) {
-    return String(texto || "")
-        .replace(/[#+\-*/(),]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-function formatarBonus(valor) {
-    const numero = Number(valor) || 0;
-    return numero > 0 ? `+${numero}` : `${numero}`;
-}
-function normalizarEstagioBuff(valor, id = "") {
-    let estagio = Number(valor);
-    if (Number.isNaN(estagio)) {
-        estagio = 0;
-    }
-    estagio = Math.trunc(estagio);
-    if (id === "crit") {
-        return Math.max(0, Math.min(6, estagio));
-    }
-    return estagio;
-}
-function bonusPorEstagio(id, estagio, proficiencia) {
-    const valorEstagio = normalizarEstagioBuff(estagio, id);
-    const prof = Number(proficiencia) || 0;
-    if (id === "evas" || id === "pres") {
-        return valorEstagio;
-    }
-    return valorEstagio * prof;
-}
-function numeroDecimal(valor) {
-    const texto =
-        String(valor ?? "")
-            .trim()
-            .replace(",", ".");
-    if (texto === "") {
-        return null;
-    }
-    const numero = Number(texto);
-    return Number.isFinite(numero)
-        ? numero
-        : null;
-}
-function formatarDecimal(valor) {
-    const numero = numeroDecimal(valor);
-    if (numero === null) {
-        return "";
-    }
-    const arredondado =
-        Math.round(numero * 1000) / 1000;
-    return String(arredondado)
-        .replace(".", ",");
-}
-function movimentoComVelocidade(
-    valorBase,
-    estagioVelocidade
-) {
-    const base = numeroDecimal(valorBase);
-    if (base === null) {
-        return "";
-    }
-    const bonus =
-        normalizarEstagioBuff(
-            estagioVelocidade,
-            "vel"
-        ) * 1.5;
-    return Math.max(
-        0,
-        base + bonus
-    );
-}
-function faixaCritico(estagio) {
-    const mapa = {
-        0: "20",
-        1: "17–20",
-        2: "14–20",
-        3: "11–20",
-        4: "8–20",
-        5: "5–20",
-        6: "2–20"
-    };
-    const valor = Math.max(0, Math.min(6, Number(estagio) || 0));
-    return mapa[valor];
-}
-function duplicarDadosFormula(formula) {
-    return String(formula || "").replace(
-        /(^|[^A-Za-z0-9_])(\d*)d(\d+)/gi,
-        (match, prefixo, quantidade, faces) => {
-            const qtd = quantidade === "" ? 1 : Number(quantidade);
-            return `${prefixo}${qtd * 2}d${faces}`;
-        }
-    );
-}
+function normalizarEstagioBuff(valor, id = "") { let estagio = Number(valor);
+if (Number.isNaN(estagio)) { estagio = 0; }
+estagio = Math.trunc(estagio);
+if (id === "crit") { return Math.max(0, Math.min(6, estagio)); }
+return estagio; }
+function bonusPorEstagio(id, estagio, proficiencia) { const valorEstagio = normalizarEstagioBuff(estagio, id);
+const prof = Number(proficiencia) || 0;
+if (id === "evas" || id === "pres") { return valorEstagio; }
+return valorEstagio * prof; }
+function numeroDecimal(valor) { const texto = String(valor ?? "") .trim() .replace(",", ".");
+if (texto === "") { return null; }
+const numero = Number(texto);
+return Number.isFinite(numero) ? numero : null; }
+function formatarDecimal(valor) { const numero = numeroDecimal(valor);
+if (numero === null) { return ""; }
+const arredondado = Math.round(numero * 1000) / 1000;
+return String(arredondado) .replace(".", ","); }
+function movimentoComVelocidade( valorBase, estagioVelocidade ) { const base = numeroDecimal(valorBase);
+if (base === null) { return ""; }
+const bonus = normalizarEstagioBuff( estagioVelocidade, "vel" ) * 1.5;
+return Math.max( 0, base + bonus ); }
+function faixaCritico(estagio) { const mapa = { 0: "20", 1: "17–20", 2: "14–20", 3: "11–20", 4: "8–20", 5: "5–20", 6: "2–20" };
+const valor = Math.max(0, Math.min(6, Number(estagio) || 0));
+return mapa[valor]; }
+function duplicarDadosFormula(formula) { return String(formula || "").replace( /(^|[^A-Za-z0-9_])(\d*)d(\d+)/gi, (match, prefixo, quantidade, faces) => { const qtd = quantidade === "" ? 1 : Number(quantidade);
+return `${prefixo}${qtd * 2}d${faces}`;
+} ); }
 function adicionarBonusNaFormula(formula, bonus) {
-    if (bonus > 0) return `${formula}+${bonus}`;
-    if (bonus < 0) return `${formula}${bonus}`;
-    return formula;
+if (bonus > 0) return `${formula}+${bonus}`;
+if (bonus < 0) return `${formula}${bonus}`;
+return formula; }
+function formulaSalvaguarda(valor) { const numero = Number( String(valor ?? "") .trim() .replace(",", ".") );
+if (Number.isNaN(numero)) { return null; }
+return `1d20${numero >= 0 ? "+" : ""}${numero}`;
 }
-function formulaSalvaguarda(valor) {
-    const numero = Number(
-        String(valor ?? "")
-            .trim()
-            .replace(",", ".")
-    );
-    if (Number.isNaN(numero)) {
-        return null;
-    }
-    return `1d20${numero >= 0 ? "+" : ""}${numero}`;
-}
-async function dicePlusPronto() {
-    const requestId = crypto.randomUUID();
-    return new Promise((resolve) => {
-        let terminou = false;
-        const unsubscribe = OBR.broadcast.onMessage(
-            "dice-plus/isReady",
-            (event) => {
-                if (
-                    event.data?.ready === true &&
-                    event.data?.requestId === requestId &&
-                    !terminou
-                ) {
-                    terminou = true;
-                    unsubscribe();
-                    resolve(true);
-                }
-            }
-        );
-        OBR.broadcast.sendMessage(
-            "dice-plus/isReady",
-            {
-                requestId,
-                timestamp: Date.now()
-            },
-            { destination: "ALL" }
-        );
-        setTimeout(() => {
-            if (!terminou) {
-                terminou = true;
-                unsubscribe();
-                resolve(false);
-            }
-        }, 1000);
-    });
-}
-async function rolarNoDicePlus(formula, nome, tipo = "") {
-    formula = String(formula || "").trim();
-    if (!formula) {
-        alert("A fórmula da rolagem está vazia.");
-        return;
-    }
-    if (!(await dicePlusPronto())) {
-        alert("Dice+ não foi encontrado.");
-        return;
-    }
-    const playerId = await OBR.player.getId();
-    const playerName = await OBR.player.getName();
-    const nomeSeguro =
-        limparRotuloDice(nome) || "Rolagem";
-    const tipoSeguro =
-        limparRotuloDice(tipo);
-    const rotulo =
-        tipoSeguro
-            ? `${nomeSeguro} ${tipoSeguro}`
-            : nomeSeguro;
-    const formulaCompleta =
-        `${formula} # ${rotulo}`;
-    await OBR.broadcast.sendMessage(
-        "dice-plus/roll-request",
-        {
-            rollId:
-                `pokemon_${Date.now()}_${Math.random()
+async function dicePlusPronto() { const requestId = crypto.randomUUID();
+return new Promise((resolve) => { let terminou = false; const unsubscribe = OBR.broadcast.onMessage( "dice-plus/isReady", (event) => { if ( event.data?.ready === true && event.data?.requestId === requestId && !terminou ) { terminou = true; unsubscribe(); resolve(true); } } ); OBR.broadcast.sendMessage( "dice-plus/isReady", { requestId, timestamp: Date.now() }, { destination: "ALL" } ); setTimeout(() => { if (!terminou) { terminou = true; unsubscribe(); resolve(false); } }, 1000); }); }
+async function rolarNoDicePlus(formula, nome, tipo = "") { formula = String(formula || "").trim();
+if (!formula) { alert("A fórmula da rolagem está vazia.");
+return; }
+if (!(await dicePlusPronto())) { alert("Dice+ não foi encontrado.");
+return; }
+const playerId = await OBR.player.getId();
+const playerName = await OBR.player.getName();
+const nomeSeguro = limparRotuloDice(nome) || "Rolagem";
+const tipoSeguro = limparRotuloDice(tipo);
+const rotulo = tipoSeguro
+? `${nomeSeguro} ${tipoSeguro}`
+: nomeSeguro;
+const formulaCompleta =
+`${formula} # ${rotulo}`;
+await OBR.broadcast.sendMessage( "dice-plus/roll-request", { rollId:
+`pokemon_${Date.now()}_${Math.random()
                     .toString(36)
                     .slice(2, 8)}`,
-            playerId,
-            playerName,
-            rollTarget: "everyone",
-            diceNotation: formulaCompleta,
-            showResults: true,
-            timestamp: Date.now(),
-            source: PREFIX
-        },
-        { destination: "ALL" }
-    );
-}
-async function rolarNoDicePlusComResultado(formula, nome, tipo = "") {
-    formula = String(formula || "").trim();
-    if (!formula) {
-        alert("A fórmula da rolagem está vazia.");
-        return null;
-    }
-    if (!(await dicePlusPronto())) {
-        alert("Dice+ não foi encontrado.");
-        return null;
-    }
-    const playerId = await OBR.player.getId();
-    const playerName = await OBR.player.getName();
-    const nomeSeguro =
-        limparRotuloDice(nome) || "Rolagem";
-    const tipoSeguro =
-        limparRotuloDice(tipo);
-    const rotulo =
-        tipoSeguro
-            ? `${nomeSeguro} ${tipoSeguro}`
-            : nomeSeguro;
-    const formulaCompleta =
-        `${formula} # ${rotulo}`;
-    const rollId =
-        `pokemon_${Date.now()}_${Math.random()
+playerId, playerName, rollTarget: "everyone", diceNotation: formulaCompleta, showResults: true, timestamp: Date.now(), source: PREFIX }, { destination: "ALL" } ); }
+async function rolarNoDicePlusComResultado(formula, nome, tipo = "") { formula = String(formula || "").trim();
+if (!formula) { alert("A fórmula da rolagem está vazia.");
+return null; }
+if (!(await dicePlusPronto())) { alert("Dice+ não foi encontrado.");
+return null; }
+const playerId = await OBR.player.getId();
+const playerName = await OBR.player.getName();
+const nomeSeguro = limparRotuloDice(nome) || "Rolagem";
+const tipoSeguro = limparRotuloDice(tipo);
+const rotulo = tipoSeguro
+? `${nomeSeguro} ${tipoSeguro}`
+: nomeSeguro;
+const formulaCompleta =
+`${formula} # ${rotulo}`;
+const rollId =
+`pokemon_${Date.now()}_${Math.random()
             .toString(36)
             .slice(2, 8)}`;
-    return new Promise(async (resolve) => {
-        let terminou = false;
-        let temporizador = null;
-        const finalizar = (valor) => {
-            if (terminou) {
-                return;
-            }
-            terminou = true;
-            if (temporizador) {
-                clearTimeout(temporizador);
-            }
-            unsubscribeResultado();
-            unsubscribeErro();
-            resolve(valor);
-        };
-        const unsubscribeResultado = OBR.broadcast.onMessage(
-            `${PREFIX}/roll-result`,
-            (event) => {
-                const dados = event.data;
-                if (dados?.rollId !== rollId) {
-                    return;
-                }
-                const total = Number(
-                    dados?.result?.totalValue
-                );
-                finalizar(
-                    Number.isFinite(total)
-                        ? total
-                        : null
-                );
-            }
-        );
-        const unsubscribeErro = OBR.broadcast.onMessage(
-            `${PREFIX}/roll-error`,
-            (event) => {
-                const dados = event.data;
-                if (dados?.rollId !== rollId) {
-                    return;
-                }
-                alert(
-                    dados?.error
-                        ? `Erro na rolagem: ${dados.error}`
-                        : "Não foi possível concluir a rolagem."
-                );
-                finalizar(null);
-            }
-        );
-        temporizador = setTimeout(() => {
-            if (!terminou) {
-                alert(
-                    "A rolagem demorou demais para retornar o resultado."
-                );
-                finalizar(null);
-            }
-        }, 30000);
-        try {
-            await OBR.broadcast.sendMessage(
-                "dice-plus/roll-request",
-                {
-                    rollId,
-                    playerId,
-                    playerName,
-                    rollTarget: "everyone",
-                    diceNotation: formulaCompleta,
-                    showResults: true,
-                    timestamp: Date.now(),
-                    source: PREFIX
-                },
-                { destination: "ALL" }
-            );
-        }
-        catch (erro) {
-            console.error(
-                "Erro ao solicitar rolagem de cura no Dice+:",
-                erro
-            );
-            finalizar(null);
-        }
-    });
-}
-const TIPOS_VISUAIS_HUD = [
-  "fundo",
-  "vida",
-  "hp-texto",
-  "ca-circulo",
-  "ca-texto",
-  ...STATUS_DEBUFFS.map(
-    (status) => `debuff-${status.id}`
-  )
-];
+return new Promise(async (resolve) => { let terminou = false; let temporizador = null; const finalizar = (valor) => { if (terminou) { return; } terminou = true; if (temporizador) { clearTimeout(temporizador); } unsubscribeResultado(); unsubscribeErro(); resolve(valor); }; const unsubscribeResultado = OBR.broadcast.onMessage(
+`${PREFIX}/roll-result`,
+(event) => { const dados = event.data; if (dados?.rollId !== rollId) { return; } const total = Number( dados?.result?.totalValue ); finalizar( Number.isFinite(total) ? total : null ); } ); const unsubscribeErro = OBR.broadcast.onMessage(
+`${PREFIX}/roll-error`,
+(event) => { const dados = event.data; if (dados?.rollId !== rollId) { return; } alert( dados?.error
+? `Erro na rolagem: ${dados.error}`
+: "Não foi possível concluir a rolagem." ); finalizar(null); } ); temporizador = setTimeout(() => { if (!terminou) { alert( "A rolagem demorou demais para retornar o resultado." ); finalizar(null); } }, 30000); try { await OBR.broadcast.sendMessage( "dice-plus/roll-request", { rollId, playerId, playerName, rollTarget: "everyone", diceNotation: formulaCompleta, showResults: true, timestamp: Date.now(), source: PREFIX }, { destination: "ALL" } ); } catch (erro) { console.error( "Erro ao solicitar rolagem de cura no Dice+:", erro ); finalizar(null); } }); }
+const TIPOS_VISUAIS_HUD = [ "fundo", "vida", "hp-texto", "ca-circulo", "ca-texto", ...STATUS_DEBUFFS.map(
+(status) => `debuff-${status.id}`
+) ];
 const filaHudPorToken = new Map();
-function prepararVisualHud(item) {
-  const comportamentos = new Set(
-    item.disableAttachmentBehavior || []
-  );
-  comportamentos.add("SCALE");
-  comportamentos.add("ROTATION");
-  item.disableAttachmentBehavior = [
-    ...comportamentos
-  ];
-  item.rotation = 0;
-  item.scale = { x: 1, y: 1 };
-  return item;
-}
-function ordenarHudMaisNovoPrimeiro(a, b) {
-  const dataA = Date.parse(a.lastModified || "") || 0;
-  const dataB = Date.parse(b.lastModified || "") || 0;
-  if (dataA !== dataB) {
-    return dataB - dataA;
-  }
-  return String(a.id).localeCompare(String(b.id));
-}
-async function desduplicarHudToken(
-  tokenId,
-  tiposAtivos = TIPOS_VISUAIS_HUD
-) {
-  const ativos = new Set(tiposAtivos);
-  const visuais =
-    await OBR.scene.items.getItems(
-      (item) =>
-        item.metadata?.[
-          `${PREFIX}/statusToken`
-        ] === tokenId
-    );
-  const porTipo = new Map();
-  for (const item of visuais) {
-    const tipo =
-      item.metadata?.[
-        `${PREFIX}/tipoVisual`
-      ];
-    if (!porTipo.has(tipo)) {
-      porTipo.set(tipo, []);
-    }
-    porTipo.get(tipo).push(item);
-  }
-  const apagar = [];
-  for (const [tipo, itens] of porTipo) {
-    const ordenados =
-      [...itens].sort(
-        ordenarHudMaisNovoPrimeiro
-      );
-    if (!ativos.has(tipo)) {
-      apagar.push(
-        ...ordenados.map(
-          (item) => item.id
-        )
-      );
-      continue;
-    }
-    if (ordenados.length > 1) {
-      apagar.push(
-        ...ordenados
-          .slice(1)
-          .map((item) => item.id)
-      );
-    }
-  }
-  if (apagar.length) {
-    await OBR.scene.items.deleteItems(
-      [...new Set(apagar)]
-    );
-  }
-}
-async function corrigirHudExistente() {
-  const visuais =
-    await OBR.scene.items.getItems(
-      (item) =>
-        item.metadata?.[
-          `${PREFIX}/statusToken`
-        ] !== undefined
-    );
-
-  if (!visuais.length) {
-    return;
-  }
-
-  const tokenIds = [
-    ...new Set(
-      visuais
-        .map(
-          (item) =>
-            item.metadata?.[
-              `${PREFIX}/statusToken`
-            ]
-        )
-        .filter(Boolean)
-    )
-  ];
-
-  const tokens =
-    await OBR.scene.items.getItems(
-      (item) =>
-        tokenIds.includes(item.id)
-    );
-
-  const tokensEncontrados =
-    new Set(
-      tokens.map((item) => item.id)
-    );
-
-  const orfaos =
-    visuais
-      .filter(
-        (item) =>
-          !tokensEncontrados.has(
-            item.metadata?.[
-              `${PREFIX}/statusToken`
-            ]
-          )
-      )
-      .map((item) => item.id);
-
-  if (orfaos.length) {
-    await OBR.scene.items.deleteItems(
-      orfaos
-    );
-  }
-
-  // Recria o HUD inteiro de cada token.
-  // Isso também APAGA automaticamente qualquer
-  // ENV gigante criado por versões anteriores.
-  for (const token of tokens) {
-    const hpAtual =
-      Number(
-        token.metadata[
-          `${PREFIX}/hpAtual`
-        ] ?? 100
-      ) || 0;
-
-    const hpMax =
-      Math.max(
-        1,
-        Number(
-          token.metadata[
-            `${PREFIX}/hpMax`
-          ] ?? 100
-        ) || 1
-      );
-
-    const caBase =
-      Number(
-        token.metadata[
-          `${PREFIX}/ca`
-        ] ?? 10
-      ) || 0;
-
-    const evasao =
-      Number(
-        token.metadata[
-          `${PREFIX}/buff-evas`
-        ] ?? 0
-      ) || 0;
-
-    await criarStatusNoToken(
-      token,
-      hpAtual,
-      hpMax,
-      caBase + evasao
-    );
-  }
-}
-
-async function executarEmFilaHud(
-  tokenId,
-  tarefa
-) {
-  const anterior =
-    filaHudPorToken.get(tokenId) ||
-    Promise.resolve();
-  const atual = anterior
-    .catch(() => {})
-    .then(tarefa);
-  filaHudPorToken.set(
-    tokenId,
-    atual
-  );
-  try {
-    return await atual;
-  }
-  finally {
-    if (
-      filaHudPorToken.get(tokenId) === atual
-    ) {
-      filaHudPorToken.delete(tokenId);
-    }
-  }
-}
-async function criarStatusNoToken(
-  token,
-  hpAtual,
-  hpMax,
-  ca
-) {
-  return executarEmFilaHud(
-    token.id,
-    async () => {
-      const antigos =
-        await OBR.scene.items.getItems(
-          (item) =>
-            item.metadata?.[
-              `${PREFIX}/statusToken`
-            ] === token.id
-        );
-      if (antigos.length) {
-        await OBR.scene.items.deleteItems(
-          antigos.map(
-            (item) => item.id
-          )
-        );
-      }
-      const bounds =
-        await OBR.scene.items.getItemBounds(
-          [token.id]
-        );
-      const larguraBarra = Math.max(
-        100,
-        Math.min(
-          180,
-          bounds.width * 0.85
-        )
-      );
-      const alturaBarra = Math.max(
-        20,
-        Math.min(
-          30,
-          larguraBarra * 0.16
-        )
-      );
-      const tamanhoCA =
-        alturaBarra * 1.4;
-      const espacoCA =
-        alturaBarra * 0.35;
-      const larguraTotal =
-        larguraBarra +
-        espacoCA +
-        tamanhoCA;
-      const inicioX =
-        bounds.min.x +
-        (
-          (bounds.width - larguraTotal)
-          / 2
-        );
-      const barraY =
-        bounds.max.y +
-        Math.max(
-          8,
-          bounds.height * 0.03
-        );
-      let porcentagem =
-        hpMax > 0
-          ? hpAtual / hpMax
-          : 0;
-      porcentagem =
-        Math.max(
-          0,
-          Math.min(
-            1,
-            porcentagem
-          )
-        );
-      const larguraVida =
-        larguraBarra * porcentagem;
-      let corVida = "#34C759";
-      if (porcentagem <= 0.50) {
-        corVida = "#FFD60A";
-      }
-      if (porcentagem <= 0.25) {
-        corVida = "#FF453A";
-      }
-      const fundoBarra =
-        prepararVisualHud(
-          buildShape()
-            .shapeType("RECTANGLE")
-            .width(larguraBarra)
-            .height(alturaBarra)
-            .position({
-              x: inicioX,
-              y: barraY
-            })
-            .fillColor("#202020")
-            .fillOpacity(1)
-            .strokeColor("#000000")
-            .strokeWidth(2)
-            .layer("ATTACHMENT")
-            .zIndex(0)
-            .disableAutoZIndex(true)
-            .attachedTo(token.id)
-            .locked(true)
-            .disableHit(true)
-            .metadata({
-              [`${PREFIX}/statusToken`]:
-                token.id,
-              [`${PREFIX}/tipoVisual`]:
-                "fundo"
-            })
-            .build()
-        );
-      let barraVida = null;
-      if (larguraVida > 0) {
-        barraVida =
-          prepararVisualHud(
-            buildShape()
-              .shapeType("RECTANGLE")
-              .width(larguraVida)
-              .height(alturaBarra)
-              .position({
-                x: inicioX,
-                y: barraY
-              })
-              .fillColor(corVida)
-              .fillOpacity(1)
-              .strokeWidth(0)
-              .layer("ATTACHMENT")
-              .zIndex(1)
-              .disableAutoZIndex(true)
-              .attachedTo(token.id)
-              .locked(true)
-              .disableHit(true)
-              .metadata({
-                [`${PREFIX}/statusToken`]:
-                  token.id,
-                [`${PREFIX}/tipoVisual`]:
-                  "vida"
-              })
-              .build()
-          );
-      }
-      const fonteHP =
-        Math.max(
-          16,
-          alturaBarra * 0.72
-        );
-      const textoHP =
-        prepararVisualHud(
-          buildText()
-            .textType("PLAIN")
-            .plainText(`${hpAtual}`)
-            .position({
-              x: inicioX,
-              y:
-                barraY +
-                (
-                  (alturaBarra - fonteHP)
-                  / 2
-                )
-            })
-            .width(larguraBarra)
-            .height("AUTO")
-            .fontFamily("Arial")
-            .fontSize(fonteHP)
-            .fontWeight(700)
-            .lineHeight(1)
-            .fillColor("#FFFFFF")
-            .fillOpacity(1)
-            .strokeWidth(0)
-            .textAlign("CENTER")
-            .padding(0)
-            .layer("ATTACHMENT")
-            .zIndex(10)
-            .disableAutoZIndex(true)
-            .attachedTo(token.id)
-            .locked(true)
-            .disableHit(true)
-            .metadata({
-              [`${PREFIX}/statusToken`]:
-                token.id,
-              [`${PREFIX}/tipoVisual`]:
-                "hp-texto"
-            })
-            .build()
-        );
-      const caX =
-        inicioX +
-        larguraBarra +
-        espacoCA +
-        8;
-      const caY =
-        barraY -
-        (
-          (tamanhoCA - alturaBarra)
-          / 2
-        ) +
-        3;
-      const circuloCA =
-        prepararVisualHud(
-          buildShape()
-            .shapeType("CIRCLE")
-            .width(tamanhoCA)
-            .height(tamanhoCA)
-            .position({
-              x: caX,
-              y: caY
-            })
-            .fillColor("#2481CC")
-            .fillOpacity(1)
-            .strokeColor("#FFFFFF")
-            .strokeWidth(2)
-            .layer("ATTACHMENT")
-            .zIndex(1)
-            .disableAutoZIndex(true)
-            .attachedTo(token.id)
-            .locked(true)
-            .disableHit(true)
-            .metadata({
-              [`${PREFIX}/statusToken`]:
-                token.id,
-              [`${PREFIX}/tipoVisual`]:
-                "ca-circulo"
-            })
-            .build()
-        );
-      const fonteCA =
-        tamanhoCA * 0.45;
-      const textoCA =
-        prepararVisualHud(
-          buildText()
-            .textType("PLAIN")
-            .plainText(`${ca}`)
-            .position({
-              x:
-                caX -
-                (tamanhoCA / 2),
-              y:
-                caY -
-                (tamanhoCA / 2)
-            })
-            .width(tamanhoCA)
-            .height(tamanhoCA)
-            .fontFamily("Arial")
-            .fontSize(fonteCA)
-            .fontWeight(700)
-            .lineHeight(1)
-            .fillColor("#FFFFFF")
-            .fillOpacity(1)
-            .strokeWidth(0)
-            .textAlign("CENTER")
-            .textAlignVertical("MIDDLE")
-            .padding(0)
-            .layer("ATTACHMENT")
-            .zIndex(20)
-            .disableAutoZIndex(true)
-            .attachedTo(token.id)
-            .locked(true)
-            .disableHit(true)
-            .metadata({
-              [`${PREFIX}/statusToken`]:
-                token.id,
-              [`${PREFIX}/tipoVisual`]:
-                "ca-texto"
-            })
-            .build()
-        );
-      const debuffsAtivos =
-        STATUS_DEBUFFS.filter(
-          (status) =>
-            debuffAtivoNoToken(
-              token,
-              status
-            )
-        );
-
-      const visuaisDebuff = [];
-
-      if (debuffsAtivos.length) {
-        const gridDpi =
-          Math.max(
-            1,
-            Number(
-              await OBR.scene.grid.getDpi()
-            ) || 150
-          );
-
-        // Badges novamente maiores, aproximadamente
-        // o dobro da versão anterior.
-        // Para manter tudo legível, usamos 1 por linha.
-        const maxPorLinha = 1;
-        const gapX = 0;
-        const gapY = 5;
-
-        const larguraBadge =
-          Math.max(
-            68,
-            Math.min(
-              88,
-              larguraBarra * 0.72
-            )
-          );
-
-        // Fica claramente abaixo da barra de HP,
-        // sem encostar nela.
-        const topoDebuffs =
-          barraY +
-          alturaBarra +
-          12;
-
-        for (
-          let indice = 0;
-          indice < debuffsAtivos.length;
-          indice++
-        ) {
-          const status =
-            debuffsAtivos[indice];
-
-          const bbox =
-            status.imagem.bbox;
-
-          const escala =
-            larguraBadge /
-            bbox.width;
-
-          const alturaBadge =
-            bbox.height *
-            escala;
-
-          const linha =
-            Math.floor(
-              indice / maxPorLinha
-            );
-
-          const indiceLinha =
-            indice % maxPorLinha;
-
-          const inicioLinha =
-            linha * maxPorLinha;
-
-          const quantidadeLinha =
-            Math.min(
-              maxPorLinha,
-              debuffsAtivos.length -
-              inicioLinha
-            );
-
-          const larguraLinha =
-            (
-              quantidadeLinha *
-              larguraBadge
-            ) +
-            (
-              Math.max(
-                0,
-                quantidadeLinha - 1
-              ) *
-              gapX
-            );
-
-          const centroX =
-            inicioX +
-            (larguraBarra / 2);
-
-          const x =
-            centroX -
-            (larguraLinha / 2) +
-            (larguraBadge / 2) +
-            (
-              indiceLinha *
-              (larguraBadge + gapX)
-            );
-
-          // Espaçamento vertical proporcional
-          // ao novo tamanho maior dos badges.
-          const passoLinha =
-            (larguraBadge * 0.46) +
-            gapY;
-
-          const y =
-            topoDebuffs +
-            (alturaBadge / 2) +
-            (linha * passoLinha);
-
-          // O ponto de ancoragem é o CENTRO DO
-          // DESENHO VISÍVEL, não o centro do PNG
-          // transparente de 1254x1254.
-          const offsetX =
-            bbox.x +
-            (bbox.width / 2);
-
-          const offsetY =
-            bbox.y +
-            (bbox.height / 2);
-
-          const visual =
-            buildImage(
-              {
-                width:
-                  status.imagem.width,
-                height:
-                  status.imagem.height,
-                url:
-                  urlDebuff(status),
-                mime: "image/png"
-              },
-              {
-                dpi: gridDpi,
-                offset: {
-                  x: offsetX,
-                  y: offsetY
-                }
-              }
-            )
-              .position({ x, y })
-              .rotation(0)
-              .scale({
-                x: escala,
-                y: escala
-              })
-              .layer("ATTACHMENT")
-              .zIndex(30 + indice)
-              .disableAutoZIndex(true)
-              .attachedTo(token.id)
-              .locked(true)
-              .disableHit(true)
-              .metadata({
-                [`${PREFIX}/statusToken`]:
-                  token.id,
-                [`${PREFIX}/tipoVisual`]:
-                  `debuff-${status.id}`,
-                [`${PREFIX}/debuffId`]:
-                  status.id
-              })
-              .build();
-
-          // IMPORTANTE:
-          // herdamos movimento do token,
-          // mas NÃO herdamos escala nem rotação.
-          const comportamentos =
-            new Set(
-              visual
-                .disableAttachmentBehavior ||
-              []
-            );
-
-          comportamentos.add("SCALE");
-          comportamentos.add("ROTATION");
-
-          visual.disableAttachmentBehavior =
-            [...comportamentos];
-
-          visuaisDebuff.push(visual);
-        }
-      }
-
-      const elementos = [
-        fundoBarra
-      ];
-      if (barraVida) {
-        elementos.push(
-          barraVida
-        );
-      }
-      elementos.push(
-        circuloCA,
-        textoHP,
-        textoCA,
-        ...visuaisDebuff
-      );
-
-      await OBR.scene.items.addItems(
-        elementos
-      );
-
-      const tiposAtivos = [
-        "fundo",
-        "hp-texto",
-        "ca-circulo",
-        "ca-texto"
-      ];
-
-      if (barraVida) {
-        tiposAtivos.push("vida");
-      }
-
-      for (
-        const status
-        of debuffsAtivos
-      ) {
-        tiposAtivos.push(
-          `debuff-${status.id}`
-        );
-      }
-      await new Promise(
-        (resolve) => setTimeout(resolve, 80)
-      );
-      await desduplicarHudToken(
-        token.id,
-        tiposAtivos
-      );
-      await new Promise(
-        (resolve) => setTimeout(resolve, 220)
-      );
-      await desduplicarHudToken(
-        token.id,
-        tiposAtivos
-      );
-    }
-  );
-}
-async function pegarHpCaDaTela(aplicarCalculadora = false) {
-    let hpAtual =
-        Number(
-            document
-                .querySelector("#hpAtual")
-                .value
-        );
-    let hpMax =
-        Number(
-            document
-                .querySelector("#hpMax")
-                .value
-        );
-    const ca =
-        Number(
-            document
-                .querySelector("#ca")
-                .value
-        );
-    const bonusEvasaoCa =
-        Number(
-            document
-                .querySelector("#bonusEvasaoCa")
-                ?.value ?? 0
-        ) || 0;
-    const caBase =
-        ca - bonusEvasaoCa;
-    const alterarHp =
-        document
-            .querySelector("#alterarHp")
-            .value
-            .trim();
-    if (Number.isNaN(hpAtual)) {
-        alert(
-            "HP atual inválido."
-        );
-        return null;
-    }
-    if (Number.isNaN(hpMax)) {
-        alert(
-            "HP máximo inválido."
-        );
-        return null;
-    }
-    if (Number.isNaN(ca)) {
-        alert(
-            "CA inválida."
-        );
-        return null;
-    }
-    if (hpMax < 1) {
-        hpMax = 1;
-    }
-    if (aplicarCalculadora && alterarHp === "") {
-        alert("Digite um valor na Calculadora antes de calcular.");
-        return null;
-    }
-    if (aplicarCalculadora && alterarHp !== "") {
-        const primeiroCaractere =
-            alterarHp.charAt(0);
-        const temOperadorExplicito =
-            primeiroCaractere === "+" ||
-            primeiroCaractere === "-" ||
-            primeiroCaractere === "=";
-        const operador =
-            temOperadorExplicito
-                ? primeiroCaractere
-                : "+";
-        const textoValor =
-            temOperadorExplicito
-                ? alterarHp.substring(1)
-                : alterarHp;
-        const valor =
-            Number(textoValor);
-        if (Number.isNaN(valor)) {
-            alert(
-                "Valor da calculadora inválido."
-            );
-            return null;
-        }
-        const fatorDano =
-            Number(
-                document
-                    .querySelector("#multiplicadorHp")
-                    ?.value ?? 1
-            ) || 1;
-        if (operador === "+") {
-            hpAtual += valor;
-        }
-        else if (operador === "-") {
-            let danoCalculado =
-                Math.floor(valor * fatorDano);
-            const tipoMove =
-                document
-                    .querySelector("#tipoMoveHpSelecionado")
-                    ?.value || "neutro";
-            const proficienciaAtual =
-                Number(
-                    document.querySelector("#proficiencia")?.value ??
-                    document.querySelector("#treinadorProficiencia")?.value ??
-                    0
-                ) || 0;
-            let estagioDefesa = 0;
-            if (tipoMove === "fisico") {
-                estagioDefesa =
-                    Number(
-                        document.querySelector("#estagioDefHp")?.value ?? 0
-                    ) || 0;
-            }
-            else if (tipoMove === "especial") {
-                estagioDefesa =
-                    Number(
-                        document.querySelector("#estagioDefSpHp")?.value ?? 0
-                    ) || 0;
-            }
-            const bonusDefesa =
-                bonusPorEstagio(
-                    tipoMove === "fisico" ? "def" : "defsp",
-                    estagioDefesa,
-                    proficienciaAtual
-                );
-            danoCalculado = Math.max(
-                0,
-                Math.floor(danoCalculado - bonusDefesa)
-            );
-            hpAtual -= danoCalculado;
-        }
-        else if (operador === "=") {
-            hpAtual = valor;
-        }
-        else {
-            alert(
-                "Use -34 para dano, 20 ou +20 para cura, ou =50 para definir o HP."
-            );
-            return null;
-        }
-    }
-    hpAtual =
-        Math.max(
-            0,
-            Math.min(
-                hpAtual,
-                hpMax
-            )
-        );
-    return {
-        hpAtual,
-        hpMax,
-        ca,
-        caBase,
-        calculadoraAplicada: aplicarCalculadora && alterarHp !== ""
-    };
-}
-function criarLinhaAtributos(
-  titulo,
-  tipo,
-  valores
-) {
-  const ehSalvaguarda =
-    tipo.includes("save");
-  const ehModificador =
-    tipo.includes("mod");
-  const rolavel =
-    ehSalvaguarda || ehModificador;
-  const caixas =
-    ATRIBUTOS.map(
-      (atributo) => {
-        const tipoRolagem =
-          ehSalvaguarda
-            ? "Salvaguarda"
-            : "Modificador";
-        const botao =
-          rolavel
-            ? `
+function prepararVisualHud(item) { const comportamentos = new Set( item.disableAttachmentBehavior || [] );
+comportamentos.add("SCALE");
+comportamentos.add("ROTATION");
+item.disableAttachmentBehavior = [ ...comportamentos ];
+item.rotation = 0;
+item.scale = { x: 1, y: 1 };
+return item; }
+function ordenarHudMaisNovoPrimeiro(a, b) { const dataA = Date.parse(a.lastModified || "") || 0;
+const dataB = Date.parse(b.lastModified || "") || 0;
+if (dataA !== dataB) { return dataB - dataA; }
+return String(a.id).localeCompare(String(b.id)); }
+async function desduplicarHudToken( tokenId, tiposAtivos = TIPOS_VISUAIS_HUD ) { const ativos = new Set(tiposAtivos);
+const visuais = await OBR.scene.items.getItems( (item) => item.metadata?.[
+`${PREFIX}/statusToken`
+] === tokenId );
+const porTipo = new Map();
+for (const item of visuais) { const tipo = item.metadata?.[
+`${PREFIX}/tipoVisual`
+];
+if (!porTipo.has(tipo)) { porTipo.set(tipo, []); }
+porTipo.get(tipo).push(item); }
+const apagar = [];
+for (const [tipo, itens] of porTipo) { const ordenados = [...itens].sort( ordenarHudMaisNovoPrimeiro );
+if (!ativos.has(tipo)) { apagar.push( ...ordenados.map( (item) => item.id ) );
+continue; }
+if (ordenados.length > 1) { apagar.push( ...ordenados .slice(1) .map((item) => item.id) ); } }
+if (apagar.length) { await OBR.scene.items.deleteItems( [...new Set(apagar)] ); } }
+async function corrigirHudExistente() { const visuais = await OBR.scene.items.getItems( (item) => item.metadata?.[
+`${PREFIX}/statusToken`
+] !== undefined );
+if (!visuais.length) { return; }
+const tokenIds = [ ...new Set( visuais .map( (item) => item.metadata?.[
+`${PREFIX}/statusToken`
+] ) .filter(Boolean) ) ];
+const tokens = await OBR.scene.items.getItems( (item) => tokenIds.includes(item.id) );
+const tokensEncontrados = new Set( tokens.map((item) => item.id) );
+const orfaos = visuais .filter( (item) => !tokensEncontrados.has( item.metadata?.[
+`${PREFIX}/statusToken`
+] ) ) .map((item) => item.id);
+if (orfaos.length) { await OBR.scene.items.deleteItems( orfaos ); }
+// Recria o HUD inteiro de cada token.
+// Isso também APAGA automaticamente qualquer
+// ENV gigante criado por versões anteriores.
+for (const token of tokens) { const hpAtual = Number( token.metadata[
+`${PREFIX}/hpAtual`
+] ?? 100 ) || 0;
+const hpMax = Math.max( 1, Number( token.metadata[
+`${PREFIX}/hpMax`
+] ?? 100 ) || 1 );
+const caBase = Number( token.metadata[
+`${PREFIX}/ca`
+] ?? 10 ) || 0;
+const evasao = Number( token.metadata[
+`${PREFIX}/buff-evas`
+] ?? 0 ) || 0;
+await criarStatusNoToken( token, hpAtual, hpMax, caBase + evasao ); } }
+async function executarEmFilaHud( tokenId, tarefa ) { const anterior = filaHudPorToken.get(tokenId) || Promise.resolve();
+const atual = anterior .catch(() => {}) .then(tarefa);
+filaHudPorToken.set( tokenId, atual );
+try { return await atual; } finally { if ( filaHudPorToken.get(tokenId) === atual ) { filaHudPorToken.delete(tokenId); } } }
+async function criarStatusNoToken( token, hpAtual, hpMax, ca ) { return executarEmFilaHud( token.id, async () => { const antigos = await OBR.scene.items.getItems( (item) => item.metadata?.[
+`${PREFIX}/statusToken`
+] === token.id ); if (antigos.length) { await OBR.scene.items.deleteItems( antigos.map( (item) => item.id ) ); } const bounds = await OBR.scene.items.getItemBounds( [token.id] ); const larguraBarra = Math.max( 100, Math.min( 180, bounds.width * 0.85 ) ); const alturaBarra = Math.max( 20, Math.min( 30, larguraBarra * 0.16 ) ); const tamanhoCA = alturaBarra * 1.4; const espacoCA = alturaBarra * 0.35; const larguraTotal = larguraBarra + espacoCA + tamanhoCA; const inicioX = bounds.min.x + ( (bounds.width - larguraTotal) / 2 ); const barraY = bounds.max.y + Math.max( 8, bounds.height * 0.03 ); let porcentagem = hpMax > 0 ? hpAtual / hpMax : 0; porcentagem = Math.max( 0, Math.min( 1, porcentagem ) ); const larguraVida = larguraBarra * porcentagem; let corVida = "#34C759"; if (porcentagem <= 0.50) { corVida = "#FFD60A"; } if (porcentagem <= 0.25) { corVida = "#FF453A"; } const fundoBarra = prepararVisualHud( buildShape() .shapeType("RECTANGLE") .width(larguraBarra) .height(alturaBarra) .position({ x: inicioX, y: barraY }) .fillColor("#202020") .fillOpacity(1) .strokeColor("#000000") .strokeWidth(2) .layer("ATTACHMENT") .zIndex(0) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
+[`${PREFIX}/statusToken`]:
+token.id,
+[`${PREFIX}/tipoVisual`]:
+"fundo" }) .build() ); let barraVida = null; if (larguraVida > 0) { barraVida = prepararVisualHud( buildShape() .shapeType("RECTANGLE") .width(larguraVida) .height(alturaBarra) .position({ x: inicioX, y: barraY }) .fillColor(corVida) .fillOpacity(1) .strokeWidth(0) .layer("ATTACHMENT") .zIndex(1) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
+[`${PREFIX}/statusToken`]:
+token.id,
+[`${PREFIX}/tipoVisual`]:
+"vida" }) .build() ); } const fonteHP = Math.max( 16, alturaBarra * 0.72 ); const textoHP = prepararVisualHud( buildText() .textType("PLAIN")
+.plainText(`${hpAtual}`)
+.position({ x: inicioX, y: barraY + ( (alturaBarra - fonteHP) / 2 ) }) .width(larguraBarra) .height("AUTO") .fontFamily("Arial") .fontSize(fonteHP) .fontWeight(700) .lineHeight(1) .fillColor("#FFFFFF") .fillOpacity(1) .strokeWidth(0) .textAlign("CENTER") .padding(0) .layer("ATTACHMENT") .zIndex(10) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
+[`${PREFIX}/statusToken`]:
+token.id,
+[`${PREFIX}/tipoVisual`]:
+"hp-texto" }) .build() ); const caX = inicioX + larguraBarra + espacoCA + 8; const caY = barraY - ( (tamanhoCA - alturaBarra) / 2 ) + 3; const circuloCA = prepararVisualHud( buildShape() .shapeType("CIRCLE") .width(tamanhoCA) .height(tamanhoCA) .position({ x: caX, y: caY }) .fillColor("#2481CC") .fillOpacity(1) .strokeColor("#FFFFFF") .strokeWidth(2) .layer("ATTACHMENT") .zIndex(1) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
+[`${PREFIX}/statusToken`]:
+token.id,
+[`${PREFIX}/tipoVisual`]:
+"ca-circulo" }) .build() ); const fonteCA = tamanhoCA * 0.45; const textoCA = prepararVisualHud( buildText() .textType("PLAIN")
+.plainText(`${ca}`)
+.position({ x: caX - (tamanhoCA / 2), y: caY - (tamanhoCA / 2) }) .width(tamanhoCA) .height(tamanhoCA) .fontFamily("Arial") .fontSize(fonteCA) .fontWeight(700) .lineHeight(1) .fillColor("#FFFFFF") .fillOpacity(1) .strokeWidth(0) .textAlign("CENTER") .textAlignVertical("MIDDLE") .padding(0) .layer("ATTACHMENT") .zIndex(20) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
+[`${PREFIX}/statusToken`]:
+token.id,
+[`${PREFIX}/tipoVisual`]:
+"ca-texto" }) .build() ); const debuffsAtivos = STATUS_DEBUFFS.filter( (status) => debuffAtivoNoToken( token, status ) ); const visuaisDebuff = []; if (debuffsAtivos.length) { const gridDpi = Math.max( 1, Number( await OBR.scene.grid.getDpi() ) || 150 );
+// Badges novamente maiores, aproximadamente
+// o dobro da versão anterior.
+// Para manter tudo legível, usamos 1 por linha.
+const maxPorLinha = 1; const gapX = 0; const gapY = 5; const larguraBadge = Math.max( 68, Math.min( 88, larguraBarra * 0.72 ) );
+// Fica claramente abaixo da barra de HP,
+// sem encostar nela.
+const topoDebuffs = barraY + alturaBarra + 12; for ( let indice = 0; indice < debuffsAtivos.length; indice++ ) { const status = debuffsAtivos[indice]; const bbox = status.imagem.bbox; const escala = larguraBadge / bbox.width; const alturaBadge = bbox.height * escala; const linha = Math.floor( indice / maxPorLinha ); const indiceLinha = indice % maxPorLinha; const inicioLinha = linha * maxPorLinha; const quantidadeLinha = Math.min( maxPorLinha, debuffsAtivos.length - inicioLinha ); const larguraLinha = ( quantidadeLinha * larguraBadge ) + ( Math.max( 0, quantidadeLinha - 1 ) * gapX ); const centroX = inicioX + (larguraBarra / 2); const x = centroX - (larguraLinha / 2) + (larguraBadge / 2) + ( indiceLinha * (larguraBadge + gapX) );
+// Espaçamento vertical proporcional
+// ao novo tamanho maior dos badges.
+const passoLinha = (larguraBadge * 0.46) + gapY; const y = topoDebuffs + (alturaBadge / 2) + (linha * passoLinha);
+// O ponto de ancoragem é o CENTRO DO
+// DESENHO VISÍVEL, não o centro do PNG
+// transparente de 1254x1254.
+const offsetX = bbox.x + (bbox.width / 2); const offsetY = bbox.y + (bbox.height / 2); const visual = buildImage( { width: status.imagem.width, height: status.imagem.height, url: urlDebuff(status), mime: "image/png" }, { dpi: gridDpi, offset: { x: offsetX, y: offsetY } } ) .position({ x, y }) .rotation(0) .scale({ x: escala, y: escala }) .layer("ATTACHMENT") .zIndex(30 + indice) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
+[`${PREFIX}/statusToken`]:
+token.id,
+[`${PREFIX}/tipoVisual`]:
+`debuff-${status.id}`,
+[`${PREFIX}/debuffId`]:
+status.id }) .build();
+// IMPORTANTE:
+// herdamos movimento do token,
+// mas NÃO herdamos escala nem rotação.
+const comportamentos = new Set( visual .disableAttachmentBehavior || [] ); comportamentos.add("SCALE"); comportamentos.add("ROTATION"); visual.disableAttachmentBehavior = [...comportamentos]; visuaisDebuff.push(visual); } } const elementos = [ fundoBarra ]; if (barraVida) { elementos.push( barraVida ); } elementos.push( circuloCA, textoHP, textoCA, ...visuaisDebuff ); await OBR.scene.items.addItems( elementos ); const tiposAtivos = [ "fundo", "hp-texto", "ca-circulo", "ca-texto" ]; if (barraVida) { tiposAtivos.push("vida"); } for ( const status of debuffsAtivos ) { tiposAtivos.push(
+`debuff-${status.id}`
+); } await new Promise( (resolve) => setTimeout(resolve, 80) ); await desduplicarHudToken( token.id, tiposAtivos ); await new Promise( (resolve) => setTimeout(resolve, 220) ); await desduplicarHudToken( token.id, tiposAtivos ); } ); }
+async function pegarHpCaDaTela(aplicarCalculadora = false) { let hpAtual = Number( document .querySelector("#hpAtual") .value );
+let hpMax = Number( document .querySelector("#hpMax") .value );
+const ca = Number( document .querySelector("#ca") .value );
+const bonusEvasaoCa = Number( document .querySelector("#bonusEvasaoCa") ?.value ?? 0 ) || 0;
+const caBase = ca - bonusEvasaoCa;
+const alterarHp = document .querySelector("#alterarHp") .value .trim();
+if (Number.isNaN(hpAtual)) { alert( "HP atual inválido." );
+return null; }
+if (Number.isNaN(hpMax)) { alert( "HP máximo inválido." );
+return null; }
+if (Number.isNaN(ca)) { alert( "CA inválida." );
+return null; }
+if (hpMax < 1) { hpMax = 1; }
+if (aplicarCalculadora && alterarHp === "") { alert("Digite um valor na Calculadora antes de calcular.");
+return null; }
+if (aplicarCalculadora && alterarHp !== "") { const primeiroCaractere = alterarHp.charAt(0);
+const temOperadorExplicito = primeiroCaractere === "+" || primeiroCaractere === "-" || primeiroCaractere === "=";
+const operador = temOperadorExplicito ? primeiroCaractere : "+";
+const textoValor = temOperadorExplicito ? alterarHp.substring(1) : alterarHp;
+const valor = Number(textoValor);
+if (Number.isNaN(valor)) { alert( "Valor da calculadora inválido." );
+return null; }
+const fatorDano = Number( document .querySelector("#multiplicadorHp") ?.value ?? 1 ) || 1;
+if (operador === "+") { hpAtual += valor; } else if (operador === "-") { let danoCalculado = Math.floor(valor * fatorDano);
+const tipoMove = document .querySelector("#tipoMoveHpSelecionado") ?.value || "neutro";
+const proficienciaAtual = Number( document.querySelector("#proficiencia")?.value ?? document.querySelector("#treinadorProficiencia")?.value ?? 0 ) || 0;
+let estagioDefesa = 0;
+if (tipoMove === "fisico") { estagioDefesa = Number( document.querySelector("#estagioDefHp")?.value ?? 0 ) || 0; } else if (tipoMove === "especial") { estagioDefesa = Number( document.querySelector("#estagioDefSpHp")?.value ?? 0 ) || 0; }
+const bonusDefesa = bonusPorEstagio( tipoMove === "fisico" ? "def" : "defsp", estagioDefesa, proficienciaAtual );
+danoCalculado = Math.max( 0, Math.floor(danoCalculado - bonusDefesa) );
+hpAtual -= danoCalculado; } else if (operador === "=") { hpAtual = valor; } else { alert( "Use -34 para dano, 20 ou +20 para cura, ou =50 para definir o HP." );
+return null; } }
+hpAtual = Math.max( 0, Math.min( hpAtual, hpMax ) );
+return { hpAtual, hpMax, ca, caBase, calculadoraAplicada: aplicarCalculadora && alterarHp !== "" }; }
+function criarLinhaAtributos( titulo, tipo, valores ) { const ehSalvaguarda = tipo.includes("save");
+const ehModificador = tipo.includes("mod");
+const rolavel = ehSalvaguarda || ehModificador;
+const caixas = ATRIBUTOS.map( (atributo) => { const tipoRolagem = ehSalvaguarda ? "Salvaguarda" : "Modificador"; const botao = rolavel
+? `
               <button
                 type="button"
                 class="rolarAtributo"
@@ -3131,8 +1452,8 @@ function criarLinhaAtributos(
                 🎲 Rolar
               </button>
             `
-            : "";
-        return `
+: "";
+return `
           <div style="
             flex:1;
             min-width:42px;
@@ -3160,9 +1481,8 @@ function criarLinhaAtributos(
             ${botao}
           </div>
         `;
-      }
-    ).join("");
-  return `
+} ).join("");
+return `
     <div style="
       margin-top:12px;
     ">
@@ -3182,262 +1502,61 @@ function criarLinhaAtributos(
     </div>
   `;
 }
-function ativarRolagensSalvaguarda(token) {
-  document
-    .querySelectorAll(".rolarAtributo")
-    .forEach(
-      (botao) => {
-        botao.addEventListener(
-          "click",
-          async () => {
-            const atributo =
-              botao.dataset.atributo;
-            const tipoRolagem =
-              botao.dataset.tipoRolagem ||
-              "Modificador";
-            const campo =
-              document.querySelector(
-                `#${botao.dataset.campo}`
-              );
-            let valorRolagem =
-              campo?.value;
-            if (tipoRolagem === "Salvaguarda") {
-              const valorBase =
-                Number(
-                  String(campo?.value ?? "")
-                    .trim()
-                    .replace(",", ".")
-                );
-              if (Number.isNaN(valorBase)) {
-                alert(
-                  "Valor de salvaguarda inválido."
-                );
-                return;
-              }
-              const estagioEvasao =
-                normalizarEstagioBuff(
-                  token?.metadata?.[
-                    `${PREFIX}/buff-evas`
-                  ] ?? 0,
-                  "evas"
-                );
-              valorRolagem =
-                valorBase + estagioEvasao;
-            }
-            const formula =
-              formulaSalvaguarda(
-                valorRolagem
-              );
-            if (!formula) {
-              alert(
-                `Valor de ${tipoRolagem.toLowerCase()} inválido.`
-              );
-              return;
-            }
-            await rolarNoDicePlus(
-              formula,
-              `${tipoRolagem} de ${
+function ativarRolagensSalvaguarda(token) { document .querySelectorAll(".rolarAtributo") .forEach( (botao) => { botao.addEventListener( "click", async () => { const atributo = botao.dataset.atributo; const tipoRolagem = botao.dataset.tipoRolagem || "Modificador"; const campo = document.querySelector(
+`#${botao.dataset.campo}`
+); let valorRolagem = campo?.value; if (tipoRolagem === "Salvaguarda") { const valorBase = Number( String(campo?.value ?? "") .trim() .replace(",", ".") ); if (Number.isNaN(valorBase)) { alert( "Valor de salvaguarda inválido." ); return; } const estagioEvasao = normalizarEstagioBuff( token?.metadata?.[
+`${PREFIX}/buff-evas`
+] ?? 0, "evas" ); valorRolagem = valorBase + estagioEvasao; } const formula = formulaSalvaguarda( valorRolagem ); if (!formula) { alert(
+`Valor de ${tipoRolagem.toLowerCase()} inválido.`
+); return; } await rolarNoDicePlus( formula,
+`${tipoRolagem} de ${
                 NOMES_ATRIBUTOS[atributo] ||
                 atributo.toUpperCase()
               }`
-            );
-          }
-        );
-      }
-    );
-}
-function ativarRolagemIniciativa(token) {
-  const botaoRolar =
-    document.querySelector("#rolarIniciativa");
-  const campoIniciativa =
-    document.querySelector("#iniciativa");
-  const campoDestreza =
-    document.querySelector("#treinador-mod-des") ||
-    document.querySelector("#mod-des");
-  const campoProficiencia =
-    document.querySelector("#treinadorProficiencia") ||
-    document.querySelector("#proficiencia");
-  const campoAlerta =
-    document.querySelector("#iniciativaAlerta");
-  const campoHabilidade =
-    document.querySelector("#iniciativaHabilidade");
-  const botaoAlerta =
-    document.querySelector("#botaoIniciativaAlerta");
-  const botaoHabilidade =
-    document.querySelector("#botaoIniciativaHabilidade");
-  const botaoAbrirPainel =
-    document.querySelector("#abrirApresentadorIniciativa");
-  const botaoRemoverIniciativa =
-    document.querySelector("#removerDaIniciativa");
-  if (
-    !botaoRolar ||
-    !campoIniciativa ||
-    !campoDestreza ||
-    !campoAlerta ||
-    !campoHabilidade ||
-    !botaoAlerta ||
-    !botaoHabilidade
-  ) {
-    return;
-  }
-  const numeroCampo = (valor) => {
-    const numero = Number(
-      String(valor ?? "")
-        .trim()
-        .replace(",", ".")
-    );
-    return Number.isNaN(numero) ? 0 : numero;
-  };
-  const iniciativaTotal = () => {
-    const destreza =
-      numeroCampo(campoDestreza.value);
-    const proficiencia =
-      numeroCampo(campoProficiencia?.value);
-    const bonusAlerta =
-      campoAlerta.value === "1"
-        ? 5
-        : 0;
-    const bonusHabilidade =
-      campoHabilidade.value === "1"
-        ? proficiencia * 2
-        : 0;
-    const estagioVelocidade =
-      normalizarEstagioBuff(
-        token?.metadata?.[
-          `${PREFIX}/buff-vel`
-        ] ?? 0,
-        "vel"
-      );
-    const bonusVelocidade =
-      estagioVelocidade * proficiencia;
-    return (
-      destreza +
-      bonusVelocidade +
-      bonusAlerta +
-      bonusHabilidade
-    );
-  };
-  const atualizarVisual = () => {
-    const total = iniciativaTotal();
-    campoIniciativa.value = String(total);
-    botaoAlerta.classList.toggle(
-      "ativo",
-      campoAlerta.value === "1"
-    );
-    botaoHabilidade.classList.toggle(
-      "ativo",
-      campoHabilidade.value === "1"
-    );
-  };
-  const salvarEstado = () => {
-    const botaoSalvarStatus =
-      document.querySelector(
-        "#salvarPokemonStatus, #salvarTreinadorStatus"
-      );
-    if (botaoSalvarStatus) {
-      botaoSalvarStatus.click();
-    }
-  };
-  const alternar = (campo) => {
-    campo.value =
-      campo.value === "1"
-        ? "0"
-        : "1";
-    atualizarVisual();
-    salvarEstado();
-  };
-  campoDestreza.addEventListener(
-    "input",
-    atualizarVisual
-  );
-  campoDestreza.addEventListener(
-    "change",
-    atualizarVisual
-  );
-  if (campoProficiencia) {
-    campoProficiencia.addEventListener(
-      "input",
-      atualizarVisual
-    );
-    campoProficiencia.addEventListener(
-      "change",
-      atualizarVisual
-    );
-  }
-  botaoAlerta.addEventListener(
-    "click",
-    () => alternar(campoAlerta)
-  );
-  botaoHabilidade.addEventListener(
-    "click",
-    () => alternar(campoHabilidade)
-  );
-  botaoRolar.addEventListener(
-    "click",
-    async () => {
-      const formula =
-        formulaSalvaguarda(
-          iniciativaTotal()
-        );
-      if (!formula) {
-        alert(
-          "Não foi possível calcular a iniciativa."
-        );
-        return;
-      }
-      const resultado =
-        await rolarNoDicePlusComResultado(
-          formula,
-          "Iniciativa"
-        );
-      if (resultado === null) {
-        return;
-      }
-      await salvarResultadoIniciativa(
-        token,
-        resultado
-      );
-      await abrirApresentadorIniciativa();
-    }
-  );
-  if (botaoAbrirPainel) {
-    botaoAbrirPainel.addEventListener(
-      "click",
-      () => abrirApresentadorIniciativa()
-    );
-  }
-  if (botaoRemoverIniciativa) {
-    botaoRemoverIniciativa.addEventListener(
-      "click",
-      async () => {
-        await removerDaIniciativa(
-          token.id
-        );
-      }
-    );
-  }
-  atualizarVisual();
-}
-function criarBuffs(
-  valores,
-  proficiencia
-) {
-  return BUFFS.map(
-    (buff) => {
-      const estagio =
-        normalizarEstagioBuff(
-          valores[buff.id],
-          buff.id
-        );
-      const bonus =
-        buff.id === "crit"
-          ? faixaCritico(estagio)
-          : bonusPorEstagio(
-              buff.id,
-              estagio,
-              proficiencia
-            );
-      return `
+); } ); } ); }
+function ativarRolagemIniciativa(token) { const botaoRolar = document.querySelector("#rolarIniciativa");
+const campoIniciativa = document.querySelector("#iniciativa");
+const campoDestreza = document.querySelector("#treinador-mod-des") || document.querySelector("#mod-des");
+const campoProficiencia = document.querySelector("#treinadorProficiencia") || document.querySelector("#proficiencia");
+const campoAlerta = document.querySelector("#iniciativaAlerta");
+const campoHabilidade = document.querySelector("#iniciativaHabilidade");
+const botaoAlerta = document.querySelector("#botaoIniciativaAlerta");
+const botaoHabilidade = document.querySelector("#botaoIniciativaHabilidade");
+const botaoAbrirPainel = document.querySelector("#abrirApresentadorIniciativa");
+const botaoRemoverIniciativa = document.querySelector("#removerDaIniciativa");
+if ( !botaoRolar || !campoIniciativa || !campoDestreza || !campoAlerta || !campoHabilidade || !botaoAlerta || !botaoHabilidade ) { return; }
+const numeroCampo = (valor) => { const numero = Number( String(valor ?? "") .trim() .replace(",", ".") );
+return Number.isNaN(numero) ? 0 : numero; };
+const iniciativaTotal = () => { const destreza = numeroCampo(campoDestreza.value);
+const proficiencia = numeroCampo(campoProficiencia?.value);
+const bonusAlerta = campoAlerta.value === "1" ? 5 : 0;
+const bonusHabilidade = campoHabilidade.value === "1" ? proficiencia * 2 : 0;
+const estagioVelocidade = normalizarEstagioBuff( token?.metadata?.[
+`${PREFIX}/buff-vel`
+] ?? 0, "vel" );
+const bonusVelocidade = estagioVelocidade * proficiencia;
+return ( destreza + bonusVelocidade + bonusAlerta + bonusHabilidade ); };
+const atualizarVisual = () => { const total = iniciativaTotal();
+campoIniciativa.value = String(total);
+botaoAlerta.classList.toggle( "ativo", campoAlerta.value === "1" );
+botaoHabilidade.classList.toggle( "ativo", campoHabilidade.value === "1" ); };
+const salvarEstado = () => { const botaoSalvarStatus = document.querySelector( "#salvarPokemonStatus, #salvarTreinadorStatus" );
+if (botaoSalvarStatus) { botaoSalvarStatus.click(); } };
+const alternar = (campo) => { campo.value = campo.value === "1" ? "0" : "1";
+atualizarVisual();
+salvarEstado(); };
+campoDestreza.addEventListener( "input", atualizarVisual );
+campoDestreza.addEventListener( "change", atualizarVisual );
+if (campoProficiencia) { campoProficiencia.addEventListener( "input", atualizarVisual );
+campoProficiencia.addEventListener( "change", atualizarVisual ); }
+botaoAlerta.addEventListener( "click", () => alternar(campoAlerta) );
+botaoHabilidade.addEventListener( "click", () => alternar(campoHabilidade) );
+botaoRolar.addEventListener( "click", async () => { const formula = formulaSalvaguarda( iniciativaTotal() ); if (!formula) { alert( "Não foi possível calcular a iniciativa." ); return; } const resultado = await rolarNoDicePlusComResultado( formula, "Iniciativa" ); if (resultado === null) { return; } await salvarResultadoIniciativa( token, resultado ); await abrirApresentadorIniciativa(); } );
+if (botaoAbrirPainel) { botaoAbrirPainel.addEventListener( "click", () => abrirApresentadorIniciativa() ); }
+if (botaoRemoverIniciativa) { botaoRemoverIniciativa.addEventListener( "click", async () => { await removerDaIniciativa( token.id ); } ); }
+atualizarVisual(); }
+function criarBuffs( valores, proficiencia ) { return BUFFS.map( (buff) => { const estagio = normalizarEstagioBuff( valores[buff.id], buff.id ); const bonus = buff.id === "crit" ? faixaCritico(estagio) : bonusPorEstagio( buff.id, estagio, proficiencia );
+return `
         <div style="
           width:62px;
           text-align:center;
@@ -3483,16 +1602,9 @@ function criarBuffs(
           </div>
         </div>
       `;
-    }
-  ).join("");
-}
-function criarPericias(
-    valores
-) {
-    return PERICIAS.map(
-        (grupo) => {
-            if (!grupo.pericias.length) {
-                return `
+} ).join(""); }
+function criarPericias( valores ) { return PERICIAS.map( (grupo) => { if (!grupo.pericias.length) {
+return `
           <div style="
             margin-bottom:12px;
             border:1px solid #555;
@@ -3512,10 +1624,8 @@ function criarPericias(
             </div>
           </div>
         `;
-            }
-            const linhas =
-                grupo.pericias.map(
-                    (pericia) => `
+} const linhas = grupo.pericias.map(
+(pericia) => `
             <div style="
               display:flex;
               align-items:center;
@@ -3543,8 +1653,8 @@ function criarPericias(
               >
             </div>
           `
-                ).join("");
-            return `
+).join("");
+return `
         <div style="
           margin-bottom:12px;
           border:1px solid #555;
@@ -3561,22 +1671,10 @@ function criarPericias(
           ${linhas}
         </div>
       `;
-        }
-    ).join("");
-}
-function criarSlots(
-    quantidade,
-    prefixo,
-    valores,
-    placeholder
-) {
-    let html = "";
-    for (
-        let i = 1;
-        i <= quantidade;
-        i++
-    ) {
-        html += `
+} ).join(""); }
+function criarSlots( quantidade, prefixo, valores, placeholder ) { let html = "";
+for ( let i = 1; i <= quantidade; i++ ) {
+html += `
       <input
         id="${prefixo}${i}"
         type="text"
@@ -3592,561 +1690,107 @@ function criarSlots(
         "
       >
     `;
-    }
-    return html;
 }
-function ativarCalculadoraHp() {
-    const botaoSuper =
-        document.querySelector("#botaoSuperEfetivo");
-    const opcoesSuper =
-        document.querySelector("#opcoesSuperEfetivo");
-    const botaoResistente =
-        document.querySelector("#botaoResistente");
-    const opcoesResistente =
-        document.querySelector("#opcoesResistente");
-    const multiplicador =
-        document.querySelector("#multiplicadorHp");
-    const botaoMove =
-        document.querySelector("#botaoMove");
-    const opcoesMove =
-        document.querySelector("#opcoesMove");
-    const tipoMoveSelecionado =
-        document.querySelector("#tipoMoveHpSelecionado");
-    const botaoCalcular =
-        document.querySelector("#botaoCalcularHp");
-    if (
-        !botaoSuper ||
-        !opcoesSuper ||
-        !botaoResistente ||
-        !opcoesResistente ||
-        !multiplicador ||
-        !botaoMove ||
-        !opcoesMove ||
-        !tipoMoveSelecionado ||
-        !botaoCalcular
-    ) {
-        return;
-    }
-    const atualizarVisual = () => {
-        const fator =
-            Number(multiplicador.value) || 1;
-        botaoSuper.classList.remove(
-            "super2",
-            "super4"
-        );
-        botaoResistente.classList.remove(
-            "resistente2",
-            "resistente4"
-        );
-        if (fator === 2) {
-            botaoSuper.classList.add("super2");
-            botaoSuper.textContent = "Super Efetivo 2x";
-        }
-        else if (fator === 4) {
-            botaoSuper.classList.add("super4");
-            botaoSuper.textContent = "Super Efetivo 4x";
-        }
-        else {
-            botaoSuper.textContent = "Super Efetivo";
-        }
-        if (fator === 0.5) {
-            botaoResistente.classList.add("resistente2");
-            botaoResistente.textContent = "Resistente 2x";
-        }
-        else if (fator === 0.25) {
-            botaoResistente.classList.add("resistente4");
-            botaoResistente.textContent = "Resistente 4x";
-        }
-        else {
-            botaoResistente.textContent = "Resistente";
-        }
-        const tipoMove =
-            tipoMoveSelecionado.value || "neutro";
-        botaoMove.classList.remove(
-            "moveFisico",
-            "moveEspecial"
-        );
-        if (tipoMove === "fisico") {
-            botaoMove.classList.add("moveFisico");
-            botaoMove.textContent = "Move Físico";
-        }
-        else if (tipoMove === "especial") {
-            botaoMove.classList.add("moveEspecial");
-            botaoMove.textContent = "Move Especial";
-        }
-        else {
-            botaoMove.textContent = "Move";
-        }
-        document
-            .querySelectorAll(".tipoMoveHp")
-            .forEach((opcao) => {
-                opcao.classList.toggle(
-                    "ativo",
-                    opcao.dataset.tipo === tipoMove
-                );
-            });
-        document
-            .querySelectorAll(
-                ".multiplicadorSuperEfetivo"
-            )
-            .forEach((opcao) => {
-                opcao.classList.toggle(
-                    "ativo",
-                    Number(opcao.dataset.fator) === fator
-                );
-            });
-        document
-            .querySelectorAll(
-                ".divisorResistente"
-            )
-            .forEach((opcao) => {
-                opcao.classList.toggle(
-                    "ativo",
-                    Number(opcao.dataset.fator) === fator
-                );
-            });
-    };
-    botaoSuper.addEventListener("click", () => {
-        opcoesResistente.classList.remove("aberto");
-        opcoesMove.classList.remove("aberto");
-        opcoesSuper.classList.toggle("aberto");
-    });
-    botaoResistente.addEventListener("click", () => {
-        opcoesSuper.classList.remove("aberto");
-        opcoesMove.classList.remove("aberto");
-        opcoesResistente.classList.toggle("aberto");
-    });
-    botaoMove.addEventListener("click", () => {
-        opcoesSuper.classList.remove("aberto");
-        opcoesResistente.classList.remove("aberto");
-        opcoesMove.classList.toggle("aberto");
-    });
-    document
-        .querySelectorAll(
-            ".multiplicadorSuperEfetivo"
-        )
-        .forEach((opcao) => {
-            opcao.addEventListener("click", () => {
-                multiplicador.value =
-                    opcao.dataset.fator || "1";
-                atualizarVisual();
-                opcoesSuper.classList.remove("aberto");
-            });
-        });
-    document
-        .querySelectorAll(
-            ".divisorResistente"
-        )
-        .forEach((opcao) => {
-            opcao.addEventListener("click", () => {
-                multiplicador.value =
-                    opcao.dataset.fator || "1";
-                atualizarVisual();
-                opcoesResistente.classList.remove("aberto");
-            });
-        });
-    document
-        .querySelectorAll(".tipoMoveHp")
-        .forEach((opcao) => {
-            opcao.addEventListener("click", () => {
-                tipoMoveSelecionado.value =
-                    opcao.dataset.tipo || "neutro";
-                atualizarVisual();
-                opcoesMove.classList.remove("aberto");
-            });
-        });
-    botaoCalcular.addEventListener("click", () => {
-        const campoCalculadora =
-            document.querySelector("#alterarHp");
-        if (!campoCalculadora?.value.trim()) {
-            alert("Digite um valor na Calculadora antes de calcular.");
-            return;
-        }
-        const botaoSalvarStatus =
-            document.querySelector(
-                "#salvarPokemonStatus, #salvarTreinadorStatus"
-            );
-        if (!botaoSalvarStatus) {
-            return;
-        }
-        botaoSalvarStatus.dataset.aplicarCalculadora = "1";
-        botaoSalvarStatus.click();
-    });
-    atualizarVisual();
-}
+return html; }
+function ativarCalculadoraHp() { const botaoSuper = document.querySelector("#botaoSuperEfetivo");
+const opcoesSuper = document.querySelector("#opcoesSuperEfetivo");
+const botaoResistente = document.querySelector("#botaoResistente");
+const opcoesResistente = document.querySelector("#opcoesResistente");
+const multiplicador = document.querySelector("#multiplicadorHp");
+const botaoMove = document.querySelector("#botaoMove");
+const opcoesMove = document.querySelector("#opcoesMove");
+const tipoMoveSelecionado = document.querySelector("#tipoMoveHpSelecionado");
+const botaoCalcular = document.querySelector("#botaoCalcularHp");
+if ( !botaoSuper || !opcoesSuper || !botaoResistente || !opcoesResistente || !multiplicador || !botaoMove || !opcoesMove || !tipoMoveSelecionado || !botaoCalcular ) { return; }
+const atualizarVisual = () => { const fator = Number(multiplicador.value) || 1;
+botaoSuper.classList.remove( "super2", "super4" );
+botaoResistente.classList.remove( "resistente2", "resistente4" );
+if (fator === 2) { botaoSuper.classList.add("super2");
+botaoSuper.textContent = "Super Efetivo 2x"; } else if (fator === 4) { botaoSuper.classList.add("super4");
+botaoSuper.textContent = "Super Efetivo 4x"; } else { botaoSuper.textContent = "Super Efetivo"; }
+if (fator === 0.5) { botaoResistente.classList.add("resistente2");
+botaoResistente.textContent = "Resistente 2x"; } else if (fator === 0.25) { botaoResistente.classList.add("resistente4");
+botaoResistente.textContent = "Resistente 4x"; } else { botaoResistente.textContent = "Resistente"; }
+const tipoMove = tipoMoveSelecionado.value || "neutro";
+botaoMove.classList.remove( "moveFisico", "moveEspecial" );
+if (tipoMove === "fisico") { botaoMove.classList.add("moveFisico");
+botaoMove.textContent = "Move Físico"; } else if (tipoMove === "especial") { botaoMove.classList.add("moveEspecial");
+botaoMove.textContent = "Move Especial"; } else { botaoMove.textContent = "Move"; }
+document .querySelectorAll(".tipoMoveHp") .forEach((opcao) => { opcao.classList.toggle( "ativo", opcao.dataset.tipo === tipoMove ); });
+document .querySelectorAll( ".multiplicadorSuperEfetivo" ) .forEach((opcao) => { opcao.classList.toggle( "ativo", Number(opcao.dataset.fator) === fator ); });
+document .querySelectorAll( ".divisorResistente" ) .forEach((opcao) => { opcao.classList.toggle( "ativo", Number(opcao.dataset.fator) === fator ); }); };
+botaoSuper.addEventListener("click", () => { opcoesResistente.classList.remove("aberto"); opcoesMove.classList.remove("aberto"); opcoesSuper.classList.toggle("aberto"); });
+botaoResistente.addEventListener("click", () => { opcoesSuper.classList.remove("aberto"); opcoesMove.classList.remove("aberto"); opcoesResistente.classList.toggle("aberto"); });
+botaoMove.addEventListener("click", () => { opcoesSuper.classList.remove("aberto"); opcoesResistente.classList.remove("aberto"); opcoesMove.classList.toggle("aberto"); });
+document .querySelectorAll( ".multiplicadorSuperEfetivo" ) .forEach((opcao) => { opcao.addEventListener("click", () => { multiplicador.value = opcao.dataset.fator || "1"; atualizarVisual(); opcoesSuper.classList.remove("aberto"); }); });
+document .querySelectorAll( ".divisorResistente" ) .forEach((opcao) => { opcao.addEventListener("click", () => { multiplicador.value = opcao.dataset.fator || "1"; atualizarVisual(); opcoesResistente.classList.remove("aberto"); }); });
+document .querySelectorAll(".tipoMoveHp") .forEach((opcao) => { opcao.addEventListener("click", () => { tipoMoveSelecionado.value = opcao.dataset.tipo || "neutro"; atualizarVisual(); opcoesMove.classList.remove("aberto"); }); });
+botaoCalcular.addEventListener("click", () => { const campoCalculadora = document.querySelector("#alterarHp"); if (!campoCalculadora?.value.trim()) { alert("Digite um valor na Calculadora antes de calcular."); return; } const botaoSalvarStatus = document.querySelector( "#salvarPokemonStatus, #salvarTreinadorStatus" ); if (!botaoSalvarStatus) { return; } botaoSalvarStatus.dataset.aplicarCalculadora = "1"; botaoSalvarStatus.click(); });
+atualizarVisual(); }
 let salvamentoBuffPendente = Promise.resolve();
 let salvamentoMovimentoPendente = Promise.resolve();
-const IDS_BOTOES_AUTOSAVE = [
-    "salvarPokemonStatus",
-    "salvarPokemonMoves",
-    "salvarPokemonPericias",
-    "salvarPokemonTalentos",
-    "salvarTreinadorStatus",
-    "salvarTreinadorPerTal",
-    "salvarTreinadorHabilidades",
-    "salvarTreinadorAnotacoes"
-];
-function ativarAutosaveDaTela() {
-    const app = document.querySelector("#app");
-    if (!app) {
-        return;
-    }
-    const botaoSalvar = IDS_BOTOES_AUTOSAVE
-        .map((id) => document.querySelector(`#${id}`))
-        .find(Boolean);
-    if (!botaoSalvar || botaoSalvar.dataset.autosaveAtivo === "1") {
-        return;
-    }
-    botaoSalvar.dataset.autosaveAtivo = "1";
-    botaoSalvar.style.display = "none";
-    let temporizador = null;
-    const programarSalvamento = (atraso = 650) => {
-        if (temporizador) {
-            clearTimeout(temporizador);
-        }
-        temporizador = setTimeout(() => {
-            if (!document.body.contains(botaoSalvar)) {
-                return;
-            }
-            botaoSalvar.click();
-        }, atraso);
-    };
-    app.querySelectorAll("input, textarea, select")
-        .forEach((campo) => {
-            if (campo.id === "alterarHp") {
-                return;
-            }
-            if (campo.classList.contains("movimentoValor")) {
-                return;
-            }
-            campo.addEventListener("input", () => {
-                programarSalvamento(650);
-            });
-            campo.addEventListener("change", () => {
-                programarSalvamento(200);
-            });
-        });
-    app.querySelectorAll(".categoriaGolpe")
-        .forEach((botao) => {
-            botao.addEventListener("click", () => {
-                programarSalvamento(120);
-            });
-        });
-}
-const CAMPOS_MOVIMENTACAO = [
-    {
-        id: "movimentoCaminhada",
-        metaId: "metaMovimentoCaminhada",
-        chave: "movimento-caminhada"
-    },
-    {
-        id: "movimentoEscalada",
-        metaId: "metaMovimentoEscalada",
-        chave: "movimento-escalada"
-    },
-    {
-        id: "movimentoVoo",
-        metaId: "metaMovimentoVoo",
-        chave: "movimento-voo"
-    },
-    {
-        id: "movimentoNatacao",
-        metaId: "metaMovimentoNatacao",
-        chave: "movimento-natacao"
-    },
-    {
-        id: "movimentoEscavacao",
-        metaId: "metaMovimentoEscavacao",
-        chave: "movimento-escavacao"
-    },
-    {
-        id: "movimentoFlutuacao",
-        metaId: "metaMovimentoFlutuacao",
-        chave: "movimento-flutuacao"
-    }
-];
-function normalizarMovimentoBase(valor) {
-    const numero = numeroDecimal(valor);
-    if (numero === null) {
-        return null;
-    }
-    return Math.max(
-        0,
-        Math.round(numero * 1000) / 1000
-    );
-}
-function bonusMovimentoPorVelocidade(estagioVelocidade) {
-    return normalizarEstagioBuff(
-        estagioVelocidade,
-        "vel"
-    ) * 1.5;
-}
-function salvarMovimentoBaseNoToken(
-    token,
-    chave,
-    valorBase
-) {
-    const valorSalvar =
-        valorBase === null
-            ? ""
-            : valorBase;
-    token.metadata[
-        `${PREFIX}/${chave}`
-    ] = valorSalvar;
-    salvamentoMovimentoPendente =
-        salvamentoMovimentoPendente
-            .catch(() => {})
-            .then(async () => {
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (const item of items) {
-                            item.metadata[
-                                `${PREFIX}/${chave}`
-                            ] = valorSalvar;
-                        }
-                    }
-                );
-            });
-    return salvamentoMovimentoPendente;
-}
-function ativarMovimentacaoComVelocidade(
-    token,
-    estagioVelocidade
-) {
-    const bonusVelocidade =
-        bonusMovimentoPorVelocidade(
-            estagioVelocidade
-        );
-    const atualizarMeta = (
-        campo,
-        meta
-    ) => {
-        if (!meta) {
-            return;
-        }
-        const base =
-            normalizarMovimentoBase(
-                campo.dataset.base
-            );
-        if (base === null) {
-            meta.textContent = "";
-            return;
-        }
-        const total =
-            movimentoComVelocidade(
-                base,
-                estagioVelocidade
-            );
-        if (bonusVelocidade === 0) {
-            meta.textContent =
-                `Atual ${formatarDecimal(total)}`;
-            return;
-        }
-        const sinal =
-            bonusVelocidade > 0
-                ? "+"
-                : "";
-        meta.textContent =
-            `Base ${formatarDecimal(base)} · VEL ${sinal}${formatarDecimal(bonusVelocidade)}`;
-    };
-    const mostrarBase = (
-        campo,
-        meta
-    ) => {
-        const base =
-            normalizarMovimentoBase(
-                campo.dataset.base
-            );
-        campo.value =
-            base === null
-                ? ""
-                : formatarDecimal(base);
-        atualizarMeta(
-            campo,
-            meta
-        );
-    };
-    const mostrarTotal = (
-        campo,
-        meta
-    ) => {
-        const base =
-            normalizarMovimentoBase(
-                campo.dataset.base
-            );
-        campo.value =
-            base === null
-                ? ""
-                : formatarDecimal(
-                    movimentoComVelocidade(
-                        base,
-                        estagioVelocidade
-                    )
-                );
-        atualizarMeta(
-            campo,
-            meta
-        );
-    };
-    CAMPOS_MOVIMENTACAO.forEach(
-        ({ id, metaId, chave }) => {
-            const campo =
-                document.querySelector(
-                    `#${id}`
-                );
-            const meta =
-                document.querySelector(
-                    `#${metaId}`
-                );
-            if (!campo) {
-                return;
-            }
-            const baseInicial =
-                normalizarMovimentoBase(
-                    campo.dataset.base
-                );
-            campo.dataset.base =
-                baseInicial === null
-                    ? ""
-                    : String(baseInicial);
-            mostrarTotal(
-                campo,
-                meta
-            );
-            campo.addEventListener(
-                "focus",
-                () => {
-                    mostrarBase(
-                        campo,
-                        meta
-                    );
-                    campo.select?.();
-                }
-            );
-            let temporizadorMovimento = null;
-            const salvarBaseAtual = () => {
-                const base =
-                    normalizarMovimentoBase(
-                        campo.dataset.base
-                    );
-                return salvarMovimentoBaseNoToken(
-                    token,
-                    chave,
-                    base
-                );
-            };
-            const programarSalvamentoMovimento = () => {
-                if (temporizadorMovimento) {
-                    clearTimeout(
-                        temporizadorMovimento
-                    );
-                }
-                temporizadorMovimento = setTimeout(
-                    () => {
-                        temporizadorMovimento = null;
-                        salvarBaseAtual();
-                    },
-                    350
-                );
-            };
-            campo.addEventListener(
-                "input",
-                () => {
-                    const texto =
-                        campo.value.trim();
-                    if (texto === "") {
-                        campo.dataset.base = "";
-                        atualizarMeta(
-                            campo,
-                            meta
-                        );
-                        programarSalvamentoMovimento();
-                        return;
-                    }
-                    const base =
-                        normalizarMovimentoBase(
-                            texto
-                        );
-                    if (base === null) {
-                        return;
-                    }
-                    campo.dataset.base =
-                        String(base);
-                    atualizarMeta(
-                        campo,
-                        meta
-                    );
-                    programarSalvamentoMovimento();
-                }
-            );
-            campo.addEventListener(
-                "blur",
-                () => {
-                    if (temporizadorMovimento) {
-                        clearTimeout(
-                            temporizadorMovimento
-                        );
-                        temporizadorMovimento = null;
-                    }
-                    salvarBaseAtual();
-                    mostrarTotal(
-                        campo,
-                        meta
-                    );
-                }
-            );
-            campo.addEventListener(
-                "keydown",
-                (evento) => {
-                    if (evento.key === "Enter") {
-                        evento.preventDefault();
-                        campo.blur();
-                    }
-                }
-            );
-        }
-    );
-}
-function pegarMovimentoBase(campoId) {
-    const campo =
-        document.querySelector(
-            `#${campoId}`
-        );
-    if (!campo) {
-        return "";
-    }
-    const numero =
-        normalizarMovimentoBase(
-            campo.dataset.base
-        );
-    return numero === null
-        ? ""
-        : numero;
-}
-async function definirTipoFicha(
-    token,
-    tipo
-) {
-    await OBR.scene.items.updateItems(
-        [token.id],
-        (items) => {
-            for (const item of items) {
-                item.metadata[
-                    `${PREFIX}/tipoFicha`
-                ] = tipo;
-            }
-        }
-    );
-}
-function mostrarEscolhaFicha(
-    token
-) {
-    const app =
-        document.querySelector(
-            "#app"
-        );
-    app.innerHTML = `
+const IDS_BOTOES_AUTOSAVE = [ "salvarPokemonStatus", "salvarPokemonMoves", "salvarPokemonPericias", "salvarPokemonTalentos", "salvarTreinadorStatus", "salvarTreinadorPerTal", "salvarTreinadorHabilidades", "salvarTreinadorAnotacoes" ];
+function ativarAutosaveDaTela() { const app = document.querySelector("#app");
+if (!app) { return; }
+const botaoSalvar = IDS_BOTOES_AUTOSAVE
+.map((id) => document.querySelector(`#${id}`))
+.find(Boolean);
+if (!botaoSalvar || botaoSalvar.dataset.autosaveAtivo === "1") { return; }
+botaoSalvar.dataset.autosaveAtivo = "1";
+botaoSalvar.style.display = "none";
+let temporizador = null;
+const programarSalvamento = (atraso = 650) => { if (temporizador) { clearTimeout(temporizador); }
+temporizador = setTimeout(() => { if (!document.body.contains(botaoSalvar)) { return; } botaoSalvar.click(); }, atraso); };
+app.querySelectorAll("input, textarea, select") .forEach((campo) => { if (campo.id === "alterarHp") { return; } if (campo.classList.contains("movimentoValor")) { return; } campo.addEventListener("input", () => { programarSalvamento(650); }); campo.addEventListener("change", () => { programarSalvamento(200); }); });
+app.querySelectorAll(".categoriaGolpe") .forEach((botao) => { botao.addEventListener("click", () => { programarSalvamento(120); }); }); }
+const CAMPOS_MOVIMENTACAO = [ { id: "movimentoCaminhada", metaId: "metaMovimentoCaminhada", chave: "movimento-caminhada" }, { id: "movimentoEscalada", metaId: "metaMovimentoEscalada", chave: "movimento-escalada" }, { id: "movimentoVoo", metaId: "metaMovimentoVoo", chave: "movimento-voo" }, { id: "movimentoNatacao", metaId: "metaMovimentoNatacao", chave: "movimento-natacao" }, { id: "movimentoEscavacao", metaId: "metaMovimentoEscavacao", chave: "movimento-escavacao" }, { id: "movimentoFlutuacao", metaId: "metaMovimentoFlutuacao", chave: "movimento-flutuacao" } ];
+function normalizarMovimentoBase(valor) { const numero = numeroDecimal(valor);
+if (numero === null) { return null; }
+return Math.max( 0, Math.round(numero * 1000) / 1000 ); }
+function bonusMovimentoPorVelocidade(estagioVelocidade) { return normalizarEstagioBuff( estagioVelocidade, "vel" ) * 1.5; }
+function salvarMovimentoBaseNoToken( token, chave, valorBase ) { const valorSalvar = valorBase === null ? "" : valorBase;
+token.metadata[
+`${PREFIX}/${chave}`
+] = valorSalvar;
+salvamentoMovimentoPendente = salvamentoMovimentoPendente .catch(() => {}) .then(async () => { await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[
+`${PREFIX}/${chave}`
+] = valorSalvar; } } ); });
+return salvamentoMovimentoPendente; }
+function ativarMovimentacaoComVelocidade( token, estagioVelocidade ) { const bonusVelocidade = bonusMovimentoPorVelocidade( estagioVelocidade );
+const atualizarMeta = ( campo, meta ) => { if (!meta) { return; }
+const base = normalizarMovimentoBase( campo.dataset.base );
+if (base === null) { meta.textContent = "";
+return; }
+const total = movimentoComVelocidade( base, estagioVelocidade );
+if (bonusVelocidade === 0) { meta.textContent =
+`Atual ${formatarDecimal(total)}`;
+return; }
+const sinal = bonusVelocidade > 0 ? "+" : "";
+meta.textContent =
+`Base ${formatarDecimal(base)} · VEL ${sinal}${formatarDecimal(bonusVelocidade)}`;
+};
+const mostrarBase = ( campo, meta ) => { const base = normalizarMovimentoBase( campo.dataset.base );
+campo.value = base === null ? "" : formatarDecimal(base);
+atualizarMeta( campo, meta ); };
+const mostrarTotal = ( campo, meta ) => { const base = normalizarMovimentoBase( campo.dataset.base );
+campo.value = base === null ? "" : formatarDecimal( movimentoComVelocidade( base, estagioVelocidade ) );
+atualizarMeta( campo, meta ); };
+CAMPOS_MOVIMENTACAO.forEach( ({ id, metaId, chave }) => { const campo = document.querySelector(
+`#${id}`
+); const meta = document.querySelector(
+`#${metaId}`
+); if (!campo) { return; } const baseInicial = normalizarMovimentoBase( campo.dataset.base ); campo.dataset.base = baseInicial === null ? "" : String(baseInicial); mostrarTotal( campo, meta ); campo.addEventListener( "focus", () => { mostrarBase( campo, meta ); campo.select?.(); } ); let temporizadorMovimento = null; const salvarBaseAtual = () => { const base = normalizarMovimentoBase( campo.dataset.base ); return salvarMovimentoBaseNoToken( token, chave, base ); }; const programarSalvamentoMovimento = () => { if (temporizadorMovimento) { clearTimeout( temporizadorMovimento ); } temporizadorMovimento = setTimeout( () => { temporizadorMovimento = null; salvarBaseAtual(); }, 350 ); }; campo.addEventListener( "input", () => { const texto = campo.value.trim(); if (texto === "") { campo.dataset.base = ""; atualizarMeta( campo, meta ); programarSalvamentoMovimento(); return; } const base = normalizarMovimentoBase( texto ); if (base === null) { return; } campo.dataset.base = String(base); atualizarMeta( campo, meta ); programarSalvamentoMovimento(); } ); campo.addEventListener( "blur", () => { if (temporizadorMovimento) { clearTimeout( temporizadorMovimento ); temporizadorMovimento = null; } salvarBaseAtual(); mostrarTotal( campo, meta ); } ); campo.addEventListener( "keydown", (evento) => { if (evento.key === "Enter") { evento.preventDefault(); campo.blur(); } } ); } ); }
+function pegarMovimentoBase(campoId) { const campo = document.querySelector(
+`#${campoId}`
+);
+if (!campo) { return ""; }
+const numero = normalizarMovimentoBase( campo.dataset.base );
+return numero === null ? "" : numero; }
+async function definirTipoFicha( token, tipo ) { await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[
+`${PREFIX}/tipoFicha`
+] = tipo; } } ); }
+function mostrarEscolhaFicha( token ) { const app = document.querySelector( "#app" );
+app.innerHTML = `
     ${ESTILO_FICHA}
     <div style="
       text-align:center;
@@ -4188,64 +1832,14 @@ function mostrarEscolhaFicha(
       </button>
     </div>
   `;
-    document
-        .querySelector(
-            "#abrirPokemon"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                await definirTipoFicha(
-                    token,
-                    "pokemon"
-                );
-                const tokenAtualizado =
-                    await pegarTokenAtualizado(
-                        token.id
-                    );
-                mostrarFichaPokemon(
-                    tokenAtualizado || token
-                );
-            }
-        );
-    document
-        .querySelector(
-            "#abrirTreinador"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                await definirTipoFicha(
-                    token,
-                    "treinador"
-                );
-                mostrarFichaTreinadorPagina1(
-                    token
-                );
-            }
-        );
-}
-async function trocarTipoFicha(
-    token
-) {
-    await OBR.scene.items.updateItems(
-        [token.id],
-        (items) => {
-            for (const item of items) {
-                delete item.metadata[
-                    `${PREFIX}/tipoFicha`
-                ];
-            }
-        }
-    );
-    mostrarEscolhaFicha(
-        token
-    );
-}
-function menuTreinador(
-    paginaAtual
-) {
-    return `
+document .querySelector( "#abrirPokemon" ) .addEventListener( "click", async () => { await definirTipoFicha( token, "pokemon" ); const tokenAtualizado = await pegarTokenAtualizado( token.id ); mostrarFichaPokemon( tokenAtualizado || token ); } );
+document .querySelector( "#abrirTreinador" ) .addEventListener( "click", async () => { await definirTipoFicha( token, "treinador" ); mostrarFichaTreinadorPagina1( token ); } ); }
+async function trocarTipoFicha( token ) { await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { delete item.metadata[
+`${PREFIX}/tipoFicha`
+]; } } );
+mostrarEscolhaFicha( token ); }
+function menuTreinador( paginaAtual ) {
+return `
     <div class="fichaAbas" style="
       display:flex;
       gap:6px;
@@ -4311,15 +1905,8 @@ function menuTreinador(
     </div>
   `;
 }
-function cabecalhoTreinador(
-    token,
-    paginaAtual
-) {
-    const imagemToken =
-        token.type === "IMAGE"
-            ? token.image?.url || ""
-            : "";
-    return `
+function cabecalhoTreinador( token, paginaAtual ) { const imagemToken = token.type === "IMAGE" ? token.image?.url || "" : "";
+return `
     <div class="fichaCabecalho" style="
       display:flex;
       justify-content:space-between;
@@ -4337,49 +1924,44 @@ function cabecalhoTreinador(
         ${
             imagemToken
                 ? `
-                    <div style="
-                      width:72px;
-                      height:72px;
-                      flex:0 0 72px;
-                      display:flex;
-                      align-items:center;
-                      justify-content:center;
-                      overflow:hidden;
-                      border-radius:14px;
-                      border:2px solid #4C8DFF;
-                      background:#f3f6fb;
-                      box-sizing:border-box;
-                      padding:4px;
-                    ">
-                      <img
-                        src="${esc(imagemToken)}"
-                        alt="${esc(token.name || "Treinador")}"
-                        style="
-                          width:100%;
-                          height:100%;
-                          object-fit:contain;
-                          display:block;
-                        "
-                      >
-                    </div>
-                `
+<div style="
+width:72px;
+height:72px;
+flex:0 0 72px;
+display:flex;
+align-items:center;
+justify-content:center;
+overflow:hidden;
+border-radius:14px;
+border:2px solid #4C8DFF;
+background:#f3f6fb;
+box-sizing:border-box;
+padding:4px;
+"> <img
+src="${esc(imagemToken)}"
+alt="${esc(token.name || "Treinador")}"
+style="
+width:100%;
+height:100%;
+object-fit:contain;
+display:block;
+" > </div>
+`
                 : `
-                    <div style="
-                      width:72px;
-                      height:72px;
-                      flex:0 0 72px;
-                      display:flex;
-                      align-items:center;
-                      justify-content:center;
-                      border-radius:14px;
-                      border:2px solid #4C8DFF;
-                      background:#f3f6fb;
-                      box-sizing:border-box;
-                      font-size:30px;
-                    ">
-                      👤
-                    </div>
-                `
+<div style="
+width:72px;
+height:72px;
+flex:0 0 72px;
+display:flex;
+align-items:center;
+justify-content:center;
+border-radius:14px;
+border:2px solid #4C8DFF;
+background:#f3f6fb;
+box-sizing:border-box;
+font-size:30px;
+"> 👤 </div>
+`
         }
         <div style="
           min-width:0;
@@ -4417,111 +1999,14 @@ function cabecalhoTreinador(
     ${menuTreinador(paginaAtual)}
   `;
 }
-function ativarCabecalhoTreinador(
-    token
-) {
-    document
-        .querySelector(
-            "#trocarTipo"
-        )
-        .addEventListener(
-            "click",
-            () =>
-                trocarTipoFicha(
-                    token
-                )
-        );
-    ativarMenuTreinador(
-        token
-    );
-}
-function ativarMenuTreinador(
-    token
-) {
-    document
-        .querySelector(
-            "#paginaTreinador1"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const tokenAtualizado =
-                    await pegarTokenAtualizado(
-                        token.id
-                    );
-                if (!tokenAtualizado) {
-                    return;
-                }
-                mostrarFichaTreinadorPagina1(
-                    tokenAtualizado
-                );
-            }
-        );
-    document
-        .querySelector(
-            "#paginaTreinador2"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const tokenAtualizado =
-                    await pegarTokenAtualizado(
-                        token.id
-                    );
-                if (!tokenAtualizado) {
-                    return;
-                }
-                mostrarFichaTreinadorPerTal(
-                    tokenAtualizado
-                );
-            }
-        );
-    document
-        .querySelector(
-            "#paginaTreinador3"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const tokenAtualizado =
-                    await pegarTokenAtualizado(
-                        token.id
-                    );
-                if (!tokenAtualizado) {
-                    return;
-                }
-                mostrarFichaTreinadorHabilidades(
-                    tokenAtualizado
-                );
-            }
-        );
-    document
-        .querySelector(
-            "#paginaTreinador4"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const tokenAtualizado =
-                    await pegarTokenAtualizado(
-                        token.id
-                    );
-                if (!tokenAtualizado) {
-                    return;
-                }
-                mostrarFichaTreinadorAnotacoes(
-                    tokenAtualizado
-                );
-            }
-        );
-}
-function criarPericiasTreinador(
-    valores
-) {
-    return PERICIAS.map(
-        (grupo) => {
-            if (!grupo.pericias.length) {
-                return `
+function ativarCabecalhoTreinador( token ) { document .querySelector( "#trocarTipo" ) .addEventListener( "click", () => trocarTipoFicha( token ) );
+ativarMenuTreinador( token ); }
+function ativarMenuTreinador( token ) { document .querySelector( "#paginaTreinador1" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorPagina1( tokenAtualizado ); } );
+document .querySelector( "#paginaTreinador2" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorPerTal( tokenAtualizado ); } );
+document .querySelector( "#paginaTreinador3" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorHabilidades( tokenAtualizado ); } );
+document .querySelector( "#paginaTreinador4" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorAnotacoes( tokenAtualizado ); } ); }
+function criarPericiasTreinador( valores ) { return PERICIAS.map( (grupo) => { if (!grupo.pericias.length) {
+return `
           <div style="
             margin-bottom:12px;
             border:1px solid #555;
@@ -4541,10 +2026,8 @@ function criarPericiasTreinador(
             </div>
           </div>
         `;
-            }
-            const linhas =
-                grupo.pericias.map(
-                    (pericia) => `
+} const linhas = grupo.pericias.map(
+(pericia) => `
             <div style="
               display:flex;
               align-items:center;
@@ -4593,8 +2076,8 @@ function criarPericiasTreinador(
               </button>
             </div>
           `
-                ).join("");
-            return `
+).join("");
+return `
         <div style="
           margin-bottom:12px;
           border:1px solid #555;
@@ -4611,124 +2094,50 @@ function criarPericiasTreinador(
           ${linhas}
         </div>
       `;
-        }
-    ).join("");
-}
-function ativarRolagensPericiasTreinador() {
-    document
-        .querySelectorAll(
-            ".rolarPericiaTreinador"
-        )
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const pericia =
-                            botao.dataset.pericia;
-                        const nome =
-                            botao.dataset.nome ||
-                            pericia;
-                        const campo =
-                            document.querySelector(
-                                `#pericia-${pericia}`
-                            );
-                        const formula =
-                            formulaSalvaguarda(
-                                campo?.value
-                            );
-                        if (!formula) {
-                            alert(
-                                "Valor da perícia inválido."
-                            );
-                            return;
-                        }
-                        await rolarNoDicePlus(
-                            formula,
-                            `Perícia ${nome}`
-                        );
-                    }
-                );
-            }
-        );
-}
-function mostrarFichaTreinadorPagina1(
-    token
-) {
-    const app =
-        document.querySelector(
-            "#app"
-        );
-    const hpAtual =
-        token.metadata[
-            `${PREFIX}/hpAtual`
-        ] ?? 100;
-    const hpMax =
-        token.metadata[
-            `${PREFIX}/hpMax`
-        ] ?? 100;
-    const caBase =
-        Number(
-            token.metadata[
-                `${PREFIX}/ca`
-            ] ?? 10
-        ) || 0;
-    const estagioEvasao =
-        normalizarEstagioBuff(
-            token.metadata[
-                `${PREFIX}/buff-evas`
-            ] ?? 0,
-            "evas"
-        );
-    const ca =
-        caBase + estagioEvasao;
-    const proficiencia =
-        token.metadata[
-            `${PREFIX}/treinador-proficiencia`
-        ] ?? 0;
-    const bonusCaptura =
-        token.metadata[
-            `${PREFIX}/treinador-captura-bonus`
-        ] ?? "";
-    const modificadores = {};
-    const salvaguardas = {};
-    ATRIBUTOS.forEach(
-        (atributo) => {
-            modificadores[
-                atributo
-            ] =
-                token.metadata[
-                    `${PREFIX}/treinador-mod-${atributo}`
-                ] ?? "";
-            salvaguardas[
-                atributo
-            ] =
-                token.metadata[
-                    `${PREFIX}/treinador-save-${atributo}`
-                ] ?? "";
-        }
-    );
-    const iniciativaAlerta =
-        token.metadata[
-            `${PREFIX}/treinador-iniciativa-alerta`
-        ] === true;
-    const iniciativaHabilidade =
-        token.metadata[
-            `${PREFIX}/treinador-iniciativa-habilidade`
-        ] === true;
-    const estagioVelocidade =
-        normalizarEstagioBuff(
-            token.metadata[
-                `${PREFIX}/buff-vel`
-            ] ?? 0,
-            "vel"
-        );
-    const iniciativa =
-        (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
-        (estagioVelocidade * (Number(proficiencia) || 0)) +
-        (iniciativaAlerta ? 5 : 0) +
-        (iniciativaHabilidade ? (Number(proficiencia) || 0) * 2 : 0);
-    app.innerHTML = `
+} ).join(""); }
+function ativarRolagensPericiasTreinador() { document .querySelectorAll( ".rolarPericiaTreinador" ) .forEach( (botao) => { botao.addEventListener( "click", async () => { const pericia = botao.dataset.pericia; const nome = botao.dataset.nome || pericia; const campo = document.querySelector(
+`#pericia-${pericia}`
+); const formula = formulaSalvaguarda( campo?.value ); if (!formula) { alert( "Valor da perícia inválido." ); return; } await rolarNoDicePlus( formula,
+`Perícia ${nome}`
+); } ); } ); }
+function mostrarFichaTreinadorPagina1( token ) { const app = document.querySelector( "#app" );
+const hpAtual = token.metadata[
+`${PREFIX}/hpAtual`
+] ?? 100;
+const hpMax = token.metadata[
+`${PREFIX}/hpMax`
+] ?? 100;
+const caBase = Number( token.metadata[
+`${PREFIX}/ca`
+] ?? 10 ) || 0;
+const estagioEvasao = normalizarEstagioBuff( token.metadata[
+`${PREFIX}/buff-evas`
+] ?? 0, "evas" );
+const ca = caBase + estagioEvasao;
+const proficiencia = token.metadata[
+`${PREFIX}/treinador-proficiencia`
+] ?? 0;
+const bonusCaptura = token.metadata[
+`${PREFIX}/treinador-captura-bonus`
+] ?? "";
+const modificadores = {};
+const salvaguardas = {};
+ATRIBUTOS.forEach( (atributo) => { modificadores[ atributo ] = token.metadata[
+`${PREFIX}/treinador-mod-${atributo}`
+] ?? ""; salvaguardas[ atributo ] = token.metadata[
+`${PREFIX}/treinador-save-${atributo}`
+] ?? ""; } );
+const iniciativaAlerta = token.metadata[
+`${PREFIX}/treinador-iniciativa-alerta`
+] === true;
+const iniciativaHabilidade = token.metadata[
+`${PREFIX}/treinador-iniciativa-habilidade`
+] === true;
+const estagioVelocidade = normalizarEstagioBuff( token.metadata[
+`${PREFIX}/buff-vel`
+] ?? 0, "vel" );
+const iniciativa = (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) + (estagioVelocidade * (Number(proficiencia) || 0)) + (iniciativaAlerta ? 5 : 0) + (iniciativaHabilidade ? (Number(proficiencia) || 0) * 2 : 0);
+app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(
         token,
@@ -5013,234 +2422,46 @@ function mostrarFichaTreinadorPagina1(
       Salvar Status
     </button>
   `;
-    ativarCabecalhoTreinador(
-        token
-    );
-    ativarRolagensSalvaguarda(token);
-    ativarRolagemIniciativa(token);
-    ativarCalculadoraHp();
-    document
-        .querySelector(
-            "#rolarCaptura"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const valor =
-                    document
-                        .querySelector(
-                            "#treinadorCapturaBonus"
-                        )
-                        .value;
-                const formula =
-                    formulaSalvaguarda(
-                        valor
-                    );
-                if (!formula) {
-                    alert(
-                        "Bônus de captura inválido."
-                    );
-                    return;
-                }
-                await rolarNoDicePlus(
-                    formula,
-                    "Captura"
-                );
-            }
-        );
-    document
-        .querySelector(
-            "#salvarTreinadorStatus"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const botaoSalvarStatus =
-                    document.querySelector("#salvarTreinadorStatus");
-                const aplicarCalculadora =
-                    botaoSalvarStatus?.dataset.aplicarCalculadora === "1";
-                if (botaoSalvarStatus) {
-                    botaoSalvarStatus.dataset.aplicarCalculadora = "0";
-                }
-                const dados =
-                    await pegarHpCaDaTela(aplicarCalculadora);
-                if (!dados) {
-                    return;
-                }
-                const novaProficiencia =
-                    Number(
-                        document
-                            .querySelector(
-                                "#treinadorProficiencia"
-                            )
-                            .value
-                    ) || 0;
-                const novaIniciativa =
-                    document
-                        .querySelector("#iniciativa")
-                        .value
-                        .trim();
-                const iniciativaAlertaAtiva =
-                    document
-                        .querySelector("#iniciativaAlerta")
-                        ?.value === "1";
-                const iniciativaHabilidadeAtiva =
-                    document
-                        .querySelector("#iniciativaHabilidade")
-                        ?.value === "1";
-                const novoBonusCaptura =
-                    document
-                        .querySelector(
-                            "#treinadorCapturaBonus"
-                        )
-                        .value
-                        .trim();
-                const novosModificadores =
-                    {};
-                const novasSalvaguardas =
-                    {};
-                ATRIBUTOS.forEach(
-                    (atributo) => {
-                        novosModificadores[
-                            atributo
-                        ] =
-                            document
-                                .querySelector(
-                                    `#treinador-mod-${atributo}`
-                                )
-                                .value
-                                .trim();
-                        novasSalvaguardas[
-                            atributo
-                        ] =
-                            document
-                                .querySelector(
-                                    `#treinador-save-${atributo}`
-                                )
-                                .value
-                                .trim();
-                    }
-                );
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (
-                            const item
-                            of items
-                        ) {
-                            item.metadata[
-                                `${PREFIX}/hpAtual`
-                            ] =
-                                dados.hpAtual;
-                            item.metadata[
-                                `${PREFIX}/hpMax`
-                            ] =
-                                dados.hpMax;
-                            item.metadata[
-                                `${PREFIX}/ca`
-                            ] =
-                                dados.caBase;
-                            item.metadata[
-                                `${PREFIX}/treinador-proficiencia`
-                            ] =
-                                novaProficiencia;
-                            item.metadata[
-                                `${PREFIX}/treinador-iniciativa`
-                            ] =
-                                novaIniciativa;
-                            item.metadata[
-                                `${PREFIX}/treinador-iniciativa-alerta`
-                            ] =
-                                iniciativaAlertaAtiva;
-                            item.metadata[
-                                `${PREFIX}/treinador-iniciativa-habilidade`
-                            ] =
-                                iniciativaHabilidadeAtiva;
-                            item.metadata[
-                                `${PREFIX}/treinador-captura-bonus`
-                            ] =
-                                novoBonusCaptura;
-                            ATRIBUTOS.forEach(
-                                (atributo) => {
-                                    item.metadata[
-                                        `${PREFIX}/treinador-mod-${atributo}`
-                                    ] =
-                                        novosModificadores[
-                                            atributo
-                                        ];
-                                    item.metadata[
-                                        `${PREFIX}/treinador-save-${atributo}`
-                                    ] =
-                                        novasSalvaguardas[
-                                            atributo
-                                        ];
-                                }
-                            );
-                        }
-                    }
-                );
-                document
-                    .querySelector(
-                        "#hpAtual"
-                    )
-                    .value =
-                        dados.hpAtual;
-                document
-                    .querySelector(
-                        "#hpMax"
-                    )
-                    .value =
-                        dados.hpMax;
-                if (dados.calculadoraAplicada) {
-                    document
-                        .querySelector(
-                            "#alterarHp"
-                        )
-                        .value = "";
-                }
-                await criarStatusNoToken(
-                    token,
-                    dados.hpAtual,
-                    dados.hpMax,
-                    dados.ca
-                );
-            }
-        );
-}
-function mostrarFichaTreinadorPerTal(
-    token
-) {
-    const app =
-        document.querySelector(
-            "#app"
-        );
-    const valoresPericias = {};
-    const talentos = {};
-    PERICIAS.forEach(
-        (grupo) => {
-            grupo.pericias.forEach(
-                (pericia) => {
-                    valoresPericias[
-                        pericia.id
-                    ] =
-                        token.metadata[
-                            `${PREFIX}/pericia-${pericia.id}`
-                        ] ?? "";
-                }
-            );
-        }
-    );
-    for (
-        let i = 1;
-        i <= 5;
-        i++
-    ) {
-        talentos[i] =
-            token.metadata[
-                `${PREFIX}/talento-${i}`
-            ] ?? "";
-    }
-    app.innerHTML = `
+ativarCabecalhoTreinador( token );
+ativarRolagensSalvaguarda(token);
+ativarRolagemIniciativa(token);
+ativarCalculadoraHp();
+document .querySelector( "#rolarCaptura" ) .addEventListener( "click", async () => { const valor = document .querySelector( "#treinadorCapturaBonus" ) .value; const formula = formulaSalvaguarda( valor ); if (!formula) { alert( "Bônus de captura inválido." ); return; } await rolarNoDicePlus( formula, "Captura" ); } );
+document .querySelector( "#salvarTreinadorStatus" ) .addEventListener( "click", async () => { const botaoSalvarStatus = document.querySelector("#salvarTreinadorStatus"); const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1"; if (botaoSalvarStatus) { botaoSalvarStatus.dataset.aplicarCalculadora = "0"; } const dados = await pegarHpCaDaTela(aplicarCalculadora); if (!dados) { return; } const novaProficiencia = Number( document .querySelector( "#treinadorProficiencia" ) .value ) || 0; const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const novoBonusCaptura = document .querySelector( "#treinadorCapturaBonus" ) .value .trim(); const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach( (atributo) => { novosModificadores[ atributo ] = document .querySelector(
+`#treinador-mod-${atributo}`
+) .value .trim(); novasSalvaguardas[ atributo ] = document .querySelector(
+`#treinador-save-${atributo}`
+) .value .trim(); } ); await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { item.metadata[
+`${PREFIX}/hpAtual`
+] = dados.hpAtual; item.metadata[
+`${PREFIX}/hpMax`
+] = dados.hpMax; item.metadata[
+`${PREFIX}/ca`
+] = dados.caBase; item.metadata[
+`${PREFIX}/treinador-proficiencia`
+] = novaProficiencia; item.metadata[
+`${PREFIX}/treinador-iniciativa`
+] = novaIniciativa; item.metadata[
+`${PREFIX}/treinador-iniciativa-alerta`
+] = iniciativaAlertaAtiva; item.metadata[
+`${PREFIX}/treinador-iniciativa-habilidade`
+] = iniciativaHabilidadeAtiva; item.metadata[
+`${PREFIX}/treinador-captura-bonus`
+] = novoBonusCaptura; ATRIBUTOS.forEach( (atributo) => { item.metadata[
+`${PREFIX}/treinador-mod-${atributo}`
+] = novosModificadores[ atributo ]; item.metadata[
+`${PREFIX}/treinador-save-${atributo}`
+] = novasSalvaguardas[ atributo ]; } ); } } ); document .querySelector( "#hpAtual" ) .value = dados.hpAtual; document .querySelector( "#hpMax" ) .value = dados.hpMax; if (dados.calculadoraAplicada) { document .querySelector( "#alterarHp" ) .value = ""; } await criarStatusNoToken( token, dados.hpAtual, dados.hpMax, dados.ca ); } ); }
+function mostrarFichaTreinadorPerTal( token ) { const app = document.querySelector( "#app" );
+const valoresPericias = {};
+const talentos = {};
+PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = token.metadata[
+`${PREFIX}/pericia-${pericia.id}`
+] ?? ""; } ); } );
+for ( let i = 1; i <= 5; i++ ) { talentos[i] = token.metadata[
+`${PREFIX}/talento-${i}`
+] ?? ""; }
+app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(
         token,
@@ -5278,139 +2499,33 @@ function mostrarFichaTreinadorPerTal(
       Salvar Perícias / Talentos
     </button>
   `;
-    ativarCabecalhoTreinador(
-        token
-    );
-    ativarRolagensPericiasTreinador();
-    document
-        .querySelector(
-            "#salvarTreinadorPerTal"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const novasPericias =
-                    {};
-                const novosTalentos =
-                    {};
-                PERICIAS.forEach(
-                    (grupo) => {
-                        grupo.pericias.forEach(
-                            (pericia) => {
-                                novasPericias[
-                                    pericia.id
-                                ] =
-                                    document
-                                        .querySelector(
-                                            `#pericia-${pericia.id}`
-                                        )
-                                        .value
-                                        .trim();
-                            }
-                        );
-                    }
-                );
-                for (
-                    let i = 1;
-                    i <= 5;
-                    i++
-                ) {
-                    novosTalentos[
-                        i
-                    ] =
-                        document
-                            .querySelector(
-                                `#talento${i}`
-                            )
-                            .value
-                            .trim();
-                }
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (
-                            const item
-                            of items
-                        ) {
-                            PERICIAS.forEach(
-                                (grupo) => {
-                                    grupo.pericias.forEach(
-                                        (pericia) => {
-                                            item.metadata[
-                                                `${PREFIX}/pericia-${pericia.id}`
-                                            ] =
-                                                novasPericias[
-                                                    pericia.id
-                                                ];
-                                        }
-                                    );
-                                }
-                            );
-                            for (
-                                let i = 1;
-                                i <= 5;
-                                i++
-                            ) {
-                                item.metadata[
-                                    `${PREFIX}/talento-${i}`
-                                ] =
-                                    novosTalentos[
-                                        i
-                                    ];
-                            }
-                        }
-                    }
-                );
-            }
-        );
-}
-function mostrarFichaTreinadorHabilidades(
-    token
-) {
-    const app =
-        document.querySelector(
-            "#app"
-        );
-    const especializacoes = {};
-    const habilidades = {};
-    const rolagens = {};
-    for (
-        let i = 1;
-        i <= 4;
-        i++
-    ) {
-        especializacoes[i] =
-            token.metadata[
-                `${PREFIX}/especializacao-${i}`
-            ] ?? "";
-    }
-    for (
-        let i = 1;
-        i <= 8;
-        i++
-    ) {
-        habilidades[i] =
-            token.metadata[
-                `${PREFIX}/habilidade-treinador-${i}`
-            ] ?? "";
-    }
-    for (
-        let i = 1;
-        i <= 3;
-        i++
-    ) {
-        rolagens[i] =
-            token.metadata[
-                `${PREFIX}/rolagem-d6-${i}`
-            ] ?? "";
-    }
-    let htmlRolagens = "";
-    for (
-        let i = 1;
-        i <= 3;
-        i++
-    ) {
-        htmlRolagens += `
+ativarCabecalhoTreinador( token );
+ativarRolagensPericiasTreinador();
+document .querySelector( "#salvarTreinadorPerTal" ) .addEventListener( "click", async () => { const novasPericias = {}; const novosTalentos = {}; PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { novasPericias[ pericia.id ] = document .querySelector(
+`#pericia-${pericia.id}`
+) .value .trim(); } ); } ); for ( let i = 1; i <= 5; i++ ) { novosTalentos[ i ] = document .querySelector(
+`#talento${i}`
+) .value .trim(); } await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { item.metadata[
+`${PREFIX}/pericia-${pericia.id}`
+] = novasPericias[ pericia.id ]; } ); } ); for ( let i = 1; i <= 5; i++ ) { item.metadata[
+`${PREFIX}/talento-${i}`
+] = novosTalentos[ i ]; } } } ); } ); }
+function mostrarFichaTreinadorHabilidades( token ) { const app = document.querySelector( "#app" );
+const especializacoes = {};
+const habilidades = {};
+const rolagens = {};
+for ( let i = 1; i <= 4; i++ ) { especializacoes[i] = token.metadata[
+`${PREFIX}/especializacao-${i}`
+] ?? ""; }
+for ( let i = 1; i <= 8; i++ ) { habilidades[i] = token.metadata[
+`${PREFIX}/habilidade-treinador-${i}`
+] ?? ""; }
+for ( let i = 1; i <= 3; i++ ) { rolagens[i] = token.metadata[
+`${PREFIX}/rolagem-d6-${i}`
+] ?? ""; }
+let htmlRolagens = "";
+for ( let i = 1; i <= 3; i++ ) {
+htmlRolagens += `
       <div style="
         display:flex;
         gap:6px;
@@ -5443,8 +2558,8 @@ function mostrarFichaTreinadorHabilidades(
         </button>
       </div>
     `;
-    }
-    app.innerHTML = `
+}
+app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(
         token,
@@ -5494,160 +2609,28 @@ function mostrarFichaTreinadorHabilidades(
       Salvar Habilidades
     </button>
   `;
-    ativarCabecalhoTreinador(
-        token
-    );
-    document
-        .querySelectorAll(
-            ".rolarD6"
-        )
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.rolagem;
-                        const nome =
-                            document
-                                .querySelector(
-                                    `#rolagemD6-${numero}`
-                                )
-                                .value
-                                .trim();
-                        if (!nome) {
-                            alert(
-                                "Coloque o nome da rolagem primeiro."
-                            );
-                            return;
-                        }
-                        await rolarNoDicePlus(
-                            "1d6",
-                            nome
-                        );
-                    }
-                );
-            }
-        );
-    document
-        .querySelector(
-            "#salvarTreinadorHabilidades"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const novasEspecializacoes =
-                    {};
-                const novasHabilidades =
-                    {};
-                const novasRolagens =
-                    {};
-                for (
-                    let i = 1;
-                    i <= 4;
-                    i++
-                ) {
-                    novasEspecializacoes[
-                        i
-                    ] =
-                        document
-                            .querySelector(
-                                `#especializacao${i}`
-                            )
-                            .value
-                            .trim();
-                }
-                for (
-                    let i = 1;
-                    i <= 8;
-                    i++
-                ) {
-                    novasHabilidades[
-                        i
-                    ] =
-                        document
-                            .querySelector(
-                                `#habilidadeTreinador${i}`
-                            )
-                            .value
-                            .trim();
-                }
-                for (
-                    let i = 1;
-                    i <= 3;
-                    i++
-                ) {
-                    novasRolagens[
-                        i
-                    ] =
-                        document
-                            .querySelector(
-                                `#rolagemD6-${i}`
-                            )
-                            .value
-                            .trim();
-                }
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (
-                            const item
-                            of items
-                        ) {
-                            for (
-                                let i = 1;
-                                i <= 4;
-                                i++
-                            ) {
-                                item.metadata[
-                                    `${PREFIX}/especializacao-${i}`
-                                ] =
-                                    novasEspecializacoes[
-                                        i
-                                    ];
-                            }
-                            for (
-                                let i = 1;
-                                i <= 8;
-                                i++
-                            ) {
-                                item.metadata[
-                                    `${PREFIX}/habilidade-treinador-${i}`
-                                ] =
-                                    novasHabilidades[
-                                        i
-                                    ];
-                            }
-                            for (
-                                let i = 1;
-                                i <= 3;
-                                i++
-                            ) {
-                                item.metadata[
-                                    `${PREFIX}/rolagem-d6-${i}`
-                                ] =
-                                    novasRolagens[
-                                        i
-                                    ];
-                            }
-                        }
-                    }
-                );
-            }
-        );
-}
-function mostrarFichaTreinadorAnotacoes(
-    token
-) {
-    const app =
-        document.querySelector(
-            "#app"
-        );
-    const anotacoes =
-        token.metadata[
-            `${PREFIX}/treinador-anotacoes`
-        ] ?? "";
-    app.innerHTML = `
+ativarCabecalhoTreinador( token );
+document .querySelectorAll( ".rolarD6" ) .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.rolagem; const nome = document .querySelector(
+`#rolagemD6-${numero}`
+) .value .trim(); if (!nome) { alert( "Coloque o nome da rolagem primeiro." ); return; } await rolarNoDicePlus( "1d6", nome ); } ); } );
+document .querySelector( "#salvarTreinadorHabilidades" ) .addEventListener( "click", async () => { const novasEspecializacoes = {}; const novasHabilidades = {}; const novasRolagens = {}; for ( let i = 1; i <= 4; i++ ) { novasEspecializacoes[ i ] = document .querySelector(
+`#especializacao${i}`
+) .value .trim(); } for ( let i = 1; i <= 8; i++ ) { novasHabilidades[ i ] = document .querySelector(
+`#habilidadeTreinador${i}`
+) .value .trim(); } for ( let i = 1; i <= 3; i++ ) { novasRolagens[ i ] = document .querySelector(
+`#rolagemD6-${i}`
+) .value .trim(); } await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { for ( let i = 1; i <= 4; i++ ) { item.metadata[
+`${PREFIX}/especializacao-${i}`
+] = novasEspecializacoes[ i ]; } for ( let i = 1; i <= 8; i++ ) { item.metadata[
+`${PREFIX}/habilidade-treinador-${i}`
+] = novasHabilidades[ i ]; } for ( let i = 1; i <= 3; i++ ) { item.metadata[
+`${PREFIX}/rolagem-d6-${i}`
+] = novasRolagens[ i ]; } } } ); } ); }
+function mostrarFichaTreinadorAnotacoes( token ) { const app = document.querySelector( "#app" );
+const anotacoes = token.metadata[
+`${PREFIX}/treinador-anotacoes`
+] ?? "";
+app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(
         token,
@@ -5684,41 +2667,12 @@ function mostrarFichaTreinadorAnotacoes(
       Salvar Anotações
     </button>
   `;
-    ativarCabecalhoTreinador(
-        token
-    );
-    document
-        .querySelector(
-            "#salvarTreinadorAnotacoes"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const novasAnotacoes =
-                    document
-                        .querySelector(
-                            "#treinadorAnotacoes"
-                        )
-                        .value;
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (
-                            const item
-                            of items
-                        ) {
-                            item.metadata[
-                                `${PREFIX}/treinador-anotacoes`
-                            ] =
-                                novasAnotacoes;
-                        }
-                    }
-                );
-            }
-        );
-}
+ativarCabecalhoTreinador( token );
+document .querySelector( "#salvarTreinadorAnotacoes" ) .addEventListener( "click", async () => { const novasAnotacoes = document .querySelector( "#treinadorAnotacoes" ) .value; await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { item.metadata[
+`${PREFIX}/treinador-anotacoes`
+] = novasAnotacoes; } } ); } ); }
 function menuPokemon(paginaAtual) {
-    return `
+return `
     <div class="fichaAbas" style="
       display:flex;
       gap:6px;
@@ -5770,85 +2724,14 @@ function menuPokemon(paginaAtual) {
     </div>
   `;
 }
-async function pegarTokenAtualizado(tokenId) {
-    const items =
-        await OBR.scene.items.getItems(
-            [tokenId]
-        );
-    if (
-        !items ||
-        items.length === 0
-    ) {
-        return null;
-    }
-    return items[0];
-}
-function ativarMenuPokemon(token) {
-    document
-        .querySelector("#paginaPokemon1")
-        .addEventListener(
-            "click",
-            async () => {
-                await salvamentoBuffPendente.catch(() => {});
-                await salvamentoMovimentoPendente.catch(() => {});
-                const tokenAtualizado =
-                    await pegarTokenAtualizado(
-                        token.id
-                    );
-                if (!tokenAtualizado) {
-                    return;
-                }
-                mostrarFichaPokemon(
-                    tokenAtualizado
-                );
-            }
-        );
-    document
-        .querySelector("#paginaPokemon2")
-        .addEventListener(
-            "click",
-            async () => {
-                await salvamentoMovimentoPendente.catch(() => {});
-                const tokenAtualizado =
-                    await pegarTokenAtualizado(
-                        token.id
-                    );
-                if (!tokenAtualizado) {
-                    return;
-                }
-                mostrarFichaPokemonMoves(
-                    tokenAtualizado
-                );
-            }
-        );
-    document
-        .querySelector("#paginaPokemon3")
-        .addEventListener(
-            "click",
-            async () => {
-                await salvamentoMovimentoPendente.catch(() => {});
-                const tokenAtualizado =
-                    await pegarTokenAtualizado(
-                        token.id
-                    );
-                if (!tokenAtualizado) {
-                    return;
-                }
-                mostrarFichaPokemonPericias(
-                    tokenAtualizado
-                );
-            }
-        );
-}
-function cabecalhoPokemon(
-    token,
-    paginaAtual
-) {
-    const imagemToken =
-        token.type === "IMAGE"
-            ? token.image?.url || ""
-            : "";
-    return `
+async function pegarTokenAtualizado(tokenId) { const items = await OBR.scene.items.getItems( [tokenId] );
+if ( !items || items.length === 0 ) { return null; }
+return items[0]; }
+function ativarMenuPokemon(token) { document .querySelector("#paginaPokemon1") .addEventListener( "click", async () => { await salvamentoBuffPendente.catch(() => {}); await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemon( tokenAtualizado ); } );
+document .querySelector("#paginaPokemon2") .addEventListener( "click", async () => { await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonMoves( tokenAtualizado ); } );
+document .querySelector("#paginaPokemon3") .addEventListener( "click", async () => { await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonPericias( tokenAtualizado ); } ); }
+function cabecalhoPokemon( token, paginaAtual ) { const imagemToken = token.type === "IMAGE" ? token.image?.url || "" : "";
+return `
     <div class="fichaCabecalho" style="
       display:flex;
       justify-content:space-between;
@@ -5866,49 +2749,44 @@ function cabecalhoPokemon(
         ${
             imagemToken
                 ? `
-                    <div style="
-                      width:72px;
-                      height:72px;
-                      flex:0 0 72px;
-                      display:flex;
-                      align-items:center;
-                      justify-content:center;
-                      overflow:hidden;
-                      border-radius:14px;
-                      border:2px solid #4C8DFF;
-                      background:#f3f6fb;
-                      box-sizing:border-box;
-                      padding:4px;
-                    ">
-                      <img
-                        src="${esc(imagemToken)}"
-                        alt="${esc(token.name || "Pokémon")}"
-                        style="
-                          width:100%;
-                          height:100%;
-                          object-fit:contain;
-                          display:block;
-                        "
-                      >
-                    </div>
-                `
+<div style="
+width:72px;
+height:72px;
+flex:0 0 72px;
+display:flex;
+align-items:center;
+justify-content:center;
+overflow:hidden;
+border-radius:14px;
+border:2px solid #4C8DFF;
+background:#f3f6fb;
+box-sizing:border-box;
+padding:4px;
+"> <img
+src="${esc(imagemToken)}"
+alt="${esc(token.name || "Pokémon")}"
+style="
+width:100%;
+height:100%;
+object-fit:contain;
+display:block;
+" > </div>
+`
                 : `
-                    <div style="
-                      width:72px;
-                      height:72px;
-                      flex:0 0 72px;
-                      display:flex;
-                      align-items:center;
-                      justify-content:center;
-                      border-radius:14px;
-                      border:2px solid #4C8DFF;
-                      background:#f3f6fb;
-                      box-sizing:border-box;
-                      font-size:30px;
-                    ">
-                      🐾
-                    </div>
-                `
+<div style="
+width:72px;
+height:72px;
+flex:0 0 72px;
+display:flex;
+align-items:center;
+justify-content:center;
+border-radius:14px;
+border:2px solid #4C8DFF;
+background:#f3f6fb;
+box-sizing:border-box;
+font-size:30px;
+"> 🐾 </div>
+`
         }
         <div style="
           min-width:0;
@@ -5947,32 +2825,10 @@ function cabecalhoPokemon(
     ${menuPokemon(paginaAtual)}
   `;
 }
-function ativarCabecalhoPokemon(token) {
-    document
-        .querySelector("#trocarTipo")
-        .addEventListener(
-            "click",
-            () =>
-                trocarTipoFicha(
-                    token
-                )
-        );
-    ativarMenuPokemon(token);
-}
-function criarPericiasPokemon(valores) {
-    const pericias =
-        PERICIAS.flatMap(
-            (grupo) =>
-                grupo.pericias.map(
-                    (pericia) => ({
-                        ...pericia,
-                        atributo:
-                            grupo.atributo
-                    })
-                )
-        );
-
-    return `
+function ativarCabecalhoPokemon(token) { document .querySelector("#trocarTipo") .addEventListener( "click", () => trocarTipoFicha( token ) );
+ativarMenuPokemon(token); }
+function criarPericiasPokemon(valores) { const pericias = PERICIAS.flatMap( (grupo) => grupo.pericias.map( (pericia) => ({ ...pericia, atributo: grupo.atributo }) ) );
+return `
       <div
         class="pokemonPericiasCompactas"
         style="
@@ -5984,236 +2840,139 @@ function criarPericiasPokemon(valores) {
       >
         ${pericias.map(
             (pericia) => `
-              <div
-                title="${esc(pericia.nome)}"
-                style="
-                  min-width:0;
-                  display:grid;
-                  grid-template-columns:minmax(0,1fr) 42px 30px;
-                  align-items:center;
-                  gap:4px;
-                  padding:5px 6px;
-                  border:1px solid #dbe5f0;
-                  border-radius:8px;
-                  background:#fbfdff;
-                "
-              >
-                <div style="
-                  min-width:0;
-                  overflow:hidden;
-                ">
-                  <div style="
-                    min-width:0;
-                    overflow:hidden;
-                    white-space:nowrap;
-                    text-overflow:ellipsis;
-                    font-size:10px;
-                    line-height:1.05;
-                    font-weight:900;
-                    color:#33475f;
-                  ">
-                    ${pericia.nome}
-                  </div>
-                  <div style="
-                    margin-top:2px;
-                    font-size:7px;
-                    line-height:1;
-                    font-weight:900;
-                    color:#8798ad;
-                  ">
-                    ${pericia.atributo}
-                  </div>
-                </div>
-
-                <input
-                  id="pokemon-pericia-${pericia.id}"
-                  type="text"
-                  value="${esc(valores[pericia.id])}"
-                  placeholder="+0"
-                  style="
-                    width:42px;
-                    height:29px;
-                    min-height:29px !important;
-                    box-sizing:border-box;
-                    padding:2px 3px !important;
-                    text-align:center;
-                    font-size:10px;
-                    font-weight:900;
-                  "
-                >
-
-                <button
-                  type="button"
-                  class="rolarPericiaPokemon"
-                  data-pericia="${pericia.id}"
-                  data-nome="${esc(pericia.nome)}"
-                  title="Rolar ${esc(pericia.nome)}"
-                  style="
-                    width:30px;
-                    min-width:30px;
-                    height:29px;
-                    min-height:29px !important;
-                    padding:1px !important;
-                    box-sizing:border-box;
-                    font-size:12px;
-                    cursor:pointer;
-                  "
-                >
-                  🎲
-                </button>
-              </div>
-            `
+<div
+title="${esc(pericia.nome)}"
+style="
+min-width:0;
+display:grid;
+grid-template-columns:minmax(0,1fr) 42px 30px;
+align-items:center;
+gap:4px;
+padding:5px 6px;
+border:1px solid #dbe5f0;
+border-radius:8px;
+background:#fbfdff;
+" > <div style="
+min-width:0;
+overflow:hidden;
+"> <div style="
+min-width:0;
+overflow:hidden;
+white-space:nowrap;
+text-overflow:ellipsis;
+font-size:10px;
+line-height:1.05;
+font-weight:900;
+color:#33475f;
+"> ${pericia.nome} </div> <div style="
+margin-top:2px;
+font-size:7px;
+line-height:1;
+font-weight:900;
+color:#8798ad;
+"> ${pericia.atributo} </div> </div> <input
+id="pokemon-pericia-${pericia.id}"
+type="text"
+value="${esc(valores[pericia.id])}"
+placeholder="+0"
+style="
+width:42px;
+height:29px;
+min-height:29px !important;
+box-sizing:border-box;
+padding:2px 3px !important;
+text-align:center;
+font-size:10px;
+font-weight:900;
+" > <button
+type="button"
+class="rolarPericiaPokemon"
+data-pericia="${pericia.id}"
+data-nome="${esc(pericia.nome)}"
+title="Rolar ${esc(pericia.nome)}"
+style="
+width:30px;
+min-width:30px;
+height:29px;
+min-height:29px !important;
+padding:1px !important;
+box-sizing:border-box;
+font-size:12px;
+cursor:pointer;
+" > 🎲 </button> </div>
+`
         ).join("")}
       </div>
     `;
 }
-
-function ativarRolagensPericiasPokemon() {
-    document
-        .querySelectorAll(
-            ".rolarPericiaPokemon"
-        )
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const pericia =
-                            botao.dataset.pericia;
-                        const nome =
-                            botao.dataset.nome ||
-                            pericia;
-                        const campo =
-                            document.querySelector(
-                                `#pokemon-pericia-${pericia}`
-                            );
-                        const formula =
-                            formulaSalvaguarda(
-                                campo?.value
-                            );
-                        if (!formula) {
-                            alert(
-                                "Valor da perícia inválido."
-                            );
-                            return;
-                        }
-                        await rolarNoDicePlus(
-                            formula,
-                            `Perícia ${nome}`
-                        );
-                    }
-                );
-            }
-        );
-}
-function mostrarFichaPokemon(token) {
-    const app =
-        document.querySelector("#app");
-    const hpAtual =
-        token.metadata[
-            `${PREFIX}/hpAtual`
-        ] ?? 100;
-    const hpMax =
-        token.metadata[
-            `${PREFIX}/hpMax`
-        ] ?? 100;
-    const nivelPokemonSalvo =
-        token.metadata[
-            `${PREFIX}/pokemon-level`
-        ];
-    const nivelPokemon =
-        nivelPokemonSalvo === undefined ||
-        nivelPokemonSalvo === null
-            ? ""
-            : String(nivelPokemonSalvo);
-    const caBase =
-        Number(
-            token.metadata[
-                `${PREFIX}/ca`
-            ] ?? 10
-        ) || 0;
-    const estagioEvasao =
-        normalizarEstagioBuff(
-            token.metadata[
-                `${PREFIX}/buff-evas`
-            ] ?? 0,
-            "evas"
-        );
-    const ca =
-        caBase + estagioEvasao;
-    const habilidade =
-        token.metadata[
-            `${PREFIX}/pokemon-habilidade`
-        ] ?? "";
-    const itemPokemon =
-        token.metadata[
-            `${PREFIX}/pokemon-item`
-        ] ?? "";
-    const movimentoCaminhada =
-        token.metadata[
-            `${PREFIX}/movimento-caminhada`
-        ] ?? "";
-    const movimentoEscalada =
-        token.metadata[
-            `${PREFIX}/movimento-escalada`
-        ] ?? "";
-    const movimentoVoo =
-        token.metadata[
-            `${PREFIX}/movimento-voo`
-        ] ?? "";
-    const movimentoNatacao =
-        token.metadata[
-            `${PREFIX}/movimento-natacao`
-        ] ?? "";
-    const movimentoEscavacao =
-        token.metadata[
-            `${PREFIX}/movimento-escavacao`
-        ] ?? "";
-    const movimentoFlutuacao =
-        token.metadata[
-            `${PREFIX}/movimento-flutuacao`
-        ] ?? "";
-    const proficiencia =
-        Number(
-            token.metadata[
-                `${PREFIX}/proficiencia`
-            ] ?? 0
-        );
-    const modificadores = {};
-    const salvaguardas = {};
-    ATRIBUTOS.forEach(
-        (atributo) => {
-            modificadores[atributo] =
-                token.metadata[
-                    `${PREFIX}/mod-${atributo}`
-                ] ?? "";
-            salvaguardas[atributo] =
-                token.metadata[
-                    `${PREFIX}/save-${atributo}`
-                ] ?? "";
-        }
-    );
-    const iniciativaAlerta =
-        token.metadata[
-            `${PREFIX}/iniciativa-alerta`
-        ] === true;
-    const iniciativaHabilidade =
-        token.metadata[
-            `${PREFIX}/iniciativa-habilidade`
-        ] === true;
-    const estagioVelocidade =
-        normalizarEstagioBuff(
-            token.metadata[
-                `${PREFIX}/buff-vel`
-            ] ?? 0,
-            "vel"
-        );
-    const iniciativa =
-        (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) +
-        (estagioVelocidade * proficiencia) +
-        (iniciativaAlerta ? 5 : 0) +
-        (iniciativaHabilidade ? proficiencia * 2 : 0);
-    app.innerHTML = `
+function ativarRolagensPericiasPokemon() { document .querySelectorAll( ".rolarPericiaPokemon" ) .forEach( (botao) => { botao.addEventListener( "click", async () => { const pericia = botao.dataset.pericia; const nome = botao.dataset.nome || pericia; const campo = document.querySelector(
+`#pokemon-pericia-${pericia}`
+); const formula = formulaSalvaguarda( campo?.value ); if (!formula) { alert( "Valor da perícia inválido." ); return; } await rolarNoDicePlus( formula,
+`Perícia ${nome}`
+); } ); } ); }
+function mostrarFichaPokemon(token) { const app = document.querySelector("#app");
+const hpAtual = token.metadata[
+`${PREFIX}/hpAtual`
+] ?? 100;
+const hpMax = token.metadata[
+`${PREFIX}/hpMax`
+] ?? 100;
+const nivelPokemonSalvo = token.metadata[
+`${PREFIX}/pokemon-level`
+];
+const nivelPokemon = nivelPokemonSalvo === undefined || nivelPokemonSalvo === null ? "" : String(nivelPokemonSalvo);
+const caBase = Number( token.metadata[
+`${PREFIX}/ca`
+] ?? 10 ) || 0;
+const estagioEvasao = normalizarEstagioBuff( token.metadata[
+`${PREFIX}/buff-evas`
+] ?? 0, "evas" );
+const ca = caBase + estagioEvasao;
+const habilidade = token.metadata[
+`${PREFIX}/pokemon-habilidade`
+] ?? "";
+const itemPokemon = token.metadata[
+`${PREFIX}/pokemon-item`
+] ?? "";
+const movimentoCaminhada = token.metadata[
+`${PREFIX}/movimento-caminhada`
+] ?? "";
+const movimentoEscalada = token.metadata[
+`${PREFIX}/movimento-escalada`
+] ?? "";
+const movimentoVoo = token.metadata[
+`${PREFIX}/movimento-voo`
+] ?? "";
+const movimentoNatacao = token.metadata[
+`${PREFIX}/movimento-natacao`
+] ?? "";
+const movimentoEscavacao = token.metadata[
+`${PREFIX}/movimento-escavacao`
+] ?? "";
+const movimentoFlutuacao = token.metadata[
+`${PREFIX}/movimento-flutuacao`
+] ?? "";
+const proficiencia = Number( token.metadata[
+`${PREFIX}/proficiencia`
+] ?? 0 );
+const modificadores = {};
+const salvaguardas = {};
+ATRIBUTOS.forEach( (atributo) => { modificadores[atributo] = token.metadata[
+`${PREFIX}/mod-${atributo}`
+] ?? ""; salvaguardas[atributo] = token.metadata[
+`${PREFIX}/save-${atributo}`
+] ?? ""; } );
+const iniciativaAlerta = token.metadata[
+`${PREFIX}/iniciativa-alerta`
+] === true;
+const iniciativaHabilidade = token.metadata[
+`${PREFIX}/iniciativa-habilidade`
+] === true;
+const estagioVelocidade = normalizarEstagioBuff( token.metadata[
+`${PREFIX}/buff-vel`
+] ?? 0, "vel" );
+const iniciativa = (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) + (estagioVelocidade * proficiencia) + (iniciativaAlerta ? 5 : 0) + (iniciativaHabilidade ? proficiencia * 2 : 0);
+app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 1)}
     <div class="statusGrid statusGridPokemon" style="
@@ -6611,361 +3370,97 @@ function mostrarFichaPokemon(token) {
       Salvar Status
     </button>
   `;
-    ativarCabecalhoPokemon(token);
-    ativarRolagensSalvaguarda(token);
-    ativarRolagemIniciativa(token);
-    ativarCalculadoraHp();
-    ativarMovimentacaoComVelocidade(
-        token,
-        estagioVelocidade
-    );
-    document
-        .querySelector(
-            "#salvarPokemonStatus"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const botaoSalvarStatus =
-                    document.querySelector("#salvarPokemonStatus");
-                const aplicarCalculadora =
-                    botaoSalvarStatus?.dataset.aplicarCalculadora === "1";
-                if (botaoSalvarStatus) {
-                    botaoSalvarStatus.dataset.aplicarCalculadora = "0";
-                }
-                const dados =
-                    await pegarHpCaDaTela(aplicarCalculadora);
-                if (!dados) {
-                    return;
-                }
-                const movimentoCaminhadaNovo =
-                    pegarMovimentoBase(
-                        "movimentoCaminhada"
-                    );
-                const movimentoEscaladaNovo =
-                    pegarMovimentoBase(
-                        "movimentoEscalada"
-                    );
-                const movimentoVooNovo =
-                    pegarMovimentoBase(
-                        "movimentoVoo"
-                    );
-                const movimentoNatacaoNovo =
-                    pegarMovimentoBase(
-                        "movimentoNatacao"
-                    );
-                const movimentoEscavacaoNovo =
-                    pegarMovimentoBase(
-                        "movimentoEscavacao"
-                    );
-                const movimentoFlutuacaoNovo =
-                    pegarMovimentoBase(
-                        "movimentoFlutuacao"
-                    );
-                const novaHabilidade =
-                    document
-                        .querySelector("#habilidadePokemon")
-                        .value
-                        .trim();
-                const novoItemPokemon =
-                    document
-                        .querySelector("#itemPokemon")
-                        .value
-                        .trim();
-                const novaProficiencia =
-                    Number(
-                        document
-                            .querySelector("#proficiencia")
-                            .value
-                    ) || 0;
-                const nivelPokemonBruto =
-                    document
-                        .querySelector("#nivelPokemon")
-                        ?.value
-                        .trim() ?? "";
-                const novoNivelPokemon =
-                    nivelPokemonBruto === ""
-                        ? ""
-                        : Math.max(
-                            1,
-                            Math.trunc(
-                                Number(nivelPokemonBruto) || 1
-                            )
-                        );
-                const novaIniciativa =
-                    document
-                        .querySelector("#iniciativa")
-                        .value
-                        .trim();
-                const iniciativaAlertaAtiva =
-                    document
-                        .querySelector("#iniciativaAlerta")
-                        ?.value === "1";
-                const iniciativaHabilidadeAtiva =
-                    document
-                        .querySelector("#iniciativaHabilidade")
-                        ?.value === "1";
-                const novosModificadores = {};
-                const novasSalvaguardas = {};
-                ATRIBUTOS.forEach(
-                    (atributo) => {
-                        novosModificadores[atributo] =
-                            document
-                                .querySelector(
-                                    `#mod-${atributo}`
-                                )
-                                .value
-                                .trim();
-                        novasSalvaguardas[atributo] =
-                            document
-                                .querySelector(
-                                    `#save-${atributo}`
-                                )
-                                .value
-                                .trim();
-                    }
-                );
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (const item of items) {
-                            item.metadata[
-                                `${PREFIX}/hpAtual`
-                            ] =
-                                dados.hpAtual;
-                            item.metadata[
-                                `${PREFIX}/hpMax`
-                            ] =
-                                dados.hpMax;
-                            item.metadata[
-                                `${PREFIX}/ca`
-                            ] =
-                                dados.caBase;
-                            item.metadata[
-                                `${PREFIX}/pokemon-habilidade`
-                            ] =
-                                novaHabilidade;
-                            item.metadata[
-                                `${PREFIX}/pokemon-item`
-                            ] =
-                                novoItemPokemon;
-                            item.metadata[
-                                `${PREFIX}/movimento-caminhada`
-                            ] =
-                                movimentoCaminhadaNovo;
-                            item.metadata[
-                                `${PREFIX}/movimento-escalada`
-                            ] =
-                                movimentoEscaladaNovo;
-                            item.metadata[
-                                `${PREFIX}/movimento-voo`
-                            ] =
-                                movimentoVooNovo;
-                            item.metadata[
-                                `${PREFIX}/movimento-natacao`
-                            ] =
-                                movimentoNatacaoNovo;
-                            item.metadata[
-                                `${PREFIX}/movimento-escavacao`
-                            ] =
-                                movimentoEscavacaoNovo;
-                            item.metadata[
-                                `${PREFIX}/movimento-flutuacao`
-                            ] =
-                                movimentoFlutuacaoNovo;
-                            item.metadata[
-                                `${PREFIX}/proficiencia`
-                            ] =
-                                novaProficiencia;
-                            item.metadata[
-                                `${PREFIX}/pokemon-level`
-                            ] =
-                                novoNivelPokemon;
-                            item.metadata[
-                                `${PREFIX}/iniciativa`
-                            ] =
-                                novaIniciativa;
-                            item.metadata[
-                                `${PREFIX}/iniciativa-alerta`
-                            ] =
-                                iniciativaAlertaAtiva;
-                            item.metadata[
-                                `${PREFIX}/iniciativa-habilidade`
-                            ] =
-                                iniciativaHabilidadeAtiva;
-                            ATRIBUTOS.forEach(
-                                (atributo) => {
-                                    item.metadata[
-                                        `${PREFIX}/mod-${atributo}`
-                                    ] =
-                                        novosModificadores[
-                                            atributo
-                                        ];
-                                    item.metadata[
-                                        `${PREFIX}/save-${atributo}`
-                                    ] =
-                                        novasSalvaguardas[
-                                            atributo
-                                        ];
-                                }
-                            );
-                        }
-                    }
-                );
-                document
-                    .querySelector("#hpAtual")
-                    .value =
-                        dados.hpAtual;
-                document
-                    .querySelector("#hpMax")
-                    .value =
-                        dados.hpMax;
-                if (dados.calculadoraAplicada) {
-                    document
-                        .querySelector("#alterarHp")
-                        .value = "";
-                }
-                await criarStatusNoToken(
-                    token,
-                    dados.hpAtual,
-                    dados.hpMax,
-                    dados.ca
-                );
-            }
-        );
-}
-function mostrarFichaPokemonMoves(token) {
-    const app =
-        document.querySelector("#app");
-
-    const megaConfig =
-        megaConfigDoToken(token);
-
-    const megaAtiva =
-        megaAtivaNoToken(token);
-    const proficiencia =
-        Number(
-            token.metadata[
-                `${PREFIX}/proficiencia`
-            ] ?? 0
-        );
-    const buffs = {};
-    BUFFS.forEach(
-        (buff) => {
-            buffs[buff.id] =
-                Number(
-                    token.metadata[
-                        `${PREFIX}/buff-${buff.id}`
-                    ] ?? 0
-                );
-        }
-    );
-    const precisaoInicial =
-        normalizarEstagioBuff(
-            buffs.pres ?? 0,
-            "pres"
-        );
-    const lerTalentoAtivo = (id) => {
-        const valor =
-            token.metadata[
-                `${PREFIX}/talento-${id}`
-            ];
-        return (
-            valor === true ||
-            valor === 1 ||
-            valor === "1" ||
-            valor === "true"
-        );
-    };
-    const talentosCombate = {
-        mestreCorpo: lerTalentoAtivo("mestre-corpo"),
-        mestreDistancia: lerTalentoAtivo("mestre-distancia"),
-        atacanteBestial: lerTalentoAtivo("atacante-bestial"),
-        disputador: lerTalentoAtivo("disputador"),
-        investidaPoderosa: lerTalentoAtivo("investida-poderosa")
-    };
-    const golpes = [];
-    for (
-        let i = 1;
-        i <= 5;
-        i++
-    ) {
-        golpes.push({
-            tipo:
-                token.metadata[
-                    `${PREFIX}/golpe${i}Tipo`
-                ] ?? "",
-            nome:
-                token.metadata[
-                    `${PREFIX}/golpe${i}Nome`
-                ] ?? "",
-            categoria:
-                token.metadata[
-                    `${PREFIX}/golpe${i}Categoria`
-                ] ?? "",
-            acerto:
-                token.metadata[
-                    `${PREFIX}/golpe${i}Acerto`
-                ] ?? "",
-            dano:
-                token.metadata[
-                    `${PREFIX}/golpe${i}Dano`
-                ] ?? "",
-            dobrarDadosVezes:
-                Math.max(
-                    1,
-                    Math.min(
-                        10,
-                        Number(
-                            token.metadata[
-                                `${PREFIX}/golpe${i}DobrarDadosVezes`
-                            ] ?? 1
-                        ) || 1
-                    )
-                ),
-            cd:
-                token.metadata[
-                    `${PREFIX}/golpe${i}CD`
-                ] ?? "",
-            danoCD:
-                token.metadata[
-                    `${PREFIX}/golpe${i}DanoCD`
-                ] ?? "",
-            cura:
-                token.metadata[
-                    `${PREFIX}/golpe${i}Cura`
-                ] ?? "",
-            buffAcerto:
-                token.metadata[
-                    `${PREFIX}/golpe${i}BuffAcerto`
-                ] ?? "",
-            statusNome:
-                token.metadata[
-                    `${PREFIX}/golpe${i}StatusNome`
-                ] ?? ""
-        });
-    }
-    let htmlGolpes = "";
-    golpes.forEach(
-        (golpe, index) => {
-            const numero = index + 1;
-            const titulo = golpe.nome || `Move ${numero}`;
-            const tipoInicial =
-                ["macerto", "mcd", "cura", "buffdebuff"]
-                    .includes(golpe.tipo)
-                    ? golpe.tipo
-                    : "";
-            const categoriaInicial =
-                golpe.categoria === "especial"
-                    ? "especial"
-                    : golpe.categoria === "fisico"
-                        ? "fisico"
-                        : "";
-            const mostrarNome = tipoInicial !== "";
-            const ehAtaque =
-                tipoInicial === "macerto" ||
-                tipoInicial === "mcd";
-            htmlGolpes += `
+ativarCabecalhoPokemon(token);
+ativarRolagensSalvaguarda(token);
+ativarRolagemIniciativa(token);
+ativarCalculadoraHp();
+ativarMovimentacaoComVelocidade( token, estagioVelocidade );
+document .querySelector( "#salvarPokemonStatus" ) .addEventListener( "click", async () => { const botaoSalvarStatus = document.querySelector("#salvarPokemonStatus"); const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1"; if (botaoSalvarStatus) { botaoSalvarStatus.dataset.aplicarCalculadora = "0"; } const dados = await pegarHpCaDaTela(aplicarCalculadora); if (!dados) { return; } const movimentoCaminhadaNovo = pegarMovimentoBase( "movimentoCaminhada" ); const movimentoEscaladaNovo = pegarMovimentoBase( "movimentoEscalada" ); const movimentoVooNovo = pegarMovimentoBase( "movimentoVoo" ); const movimentoNatacaoNovo = pegarMovimentoBase( "movimentoNatacao" ); const movimentoEscavacaoNovo = pegarMovimentoBase( "movimentoEscavacao" ); const movimentoFlutuacaoNovo = pegarMovimentoBase( "movimentoFlutuacao" ); const novaHabilidade = document .querySelector("#habilidadePokemon") .value .trim(); const novoItemPokemon = document .querySelector("#itemPokemon") .value .trim(); const novaProficiencia = Number( document .querySelector("#proficiencia") .value ) || 0; const nivelPokemonBruto = document .querySelector("#nivelPokemon") ?.value .trim() ?? ""; const novoNivelPokemon = nivelPokemonBruto === "" ? "" : Math.max( 1, Math.trunc( Number(nivelPokemonBruto) || 1 ) ); const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach( (atributo) => { novosModificadores[atributo] = document .querySelector(
+`#mod-${atributo}`
+) .value .trim(); novasSalvaguardas[atributo] = document .querySelector(
+`#save-${atributo}`
+) .value .trim(); } ); await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[
+`${PREFIX}/hpAtual`
+] = dados.hpAtual; item.metadata[
+`${PREFIX}/hpMax`
+] = dados.hpMax; item.metadata[
+`${PREFIX}/ca`
+] = dados.caBase; item.metadata[
+`${PREFIX}/pokemon-habilidade`
+] = novaHabilidade; item.metadata[
+`${PREFIX}/pokemon-item`
+] = novoItemPokemon; item.metadata[
+`${PREFIX}/movimento-caminhada`
+] = movimentoCaminhadaNovo; item.metadata[
+`${PREFIX}/movimento-escalada`
+] = movimentoEscaladaNovo; item.metadata[
+`${PREFIX}/movimento-voo`
+] = movimentoVooNovo; item.metadata[
+`${PREFIX}/movimento-natacao`
+] = movimentoNatacaoNovo; item.metadata[
+`${PREFIX}/movimento-escavacao`
+] = movimentoEscavacaoNovo; item.metadata[
+`${PREFIX}/movimento-flutuacao`
+] = movimentoFlutuacaoNovo; item.metadata[
+`${PREFIX}/proficiencia`
+] = novaProficiencia; item.metadata[
+`${PREFIX}/pokemon-level`
+] = novoNivelPokemon; item.metadata[
+`${PREFIX}/iniciativa`
+] = novaIniciativa; item.metadata[
+`${PREFIX}/iniciativa-alerta`
+] = iniciativaAlertaAtiva; item.metadata[
+`${PREFIX}/iniciativa-habilidade`
+] = iniciativaHabilidadeAtiva; ATRIBUTOS.forEach( (atributo) => { item.metadata[
+`${PREFIX}/mod-${atributo}`
+] = novosModificadores[ atributo ]; item.metadata[
+`${PREFIX}/save-${atributo}`
+] = novasSalvaguardas[ atributo ]; } ); } } ); document .querySelector("#hpAtual") .value = dados.hpAtual; document .querySelector("#hpMax") .value = dados.hpMax; if (dados.calculadoraAplicada) { document .querySelector("#alterarHp") .value = ""; } await criarStatusNoToken( token, dados.hpAtual, dados.hpMax, dados.ca ); } ); }
+function mostrarFichaPokemonMoves(token) { const app = document.querySelector("#app");
+const megaConfig = megaConfigDoToken(token);
+const megaAtiva = megaAtivaNoToken(token);
+const proficiencia = Number( token.metadata[
+`${PREFIX}/proficiencia`
+] ?? 0 );
+const buffs = {};
+BUFFS.forEach( (buff) => { buffs[buff.id] = Number( token.metadata[
+`${PREFIX}/buff-${buff.id}`
+] ?? 0 ); } );
+const precisaoInicial = normalizarEstagioBuff( buffs.pres ?? 0, "pres" );
+const lerTalentoAtivo = (id) => { const valor = token.metadata[
+`${PREFIX}/talento-${id}`
+];
+return ( valor === true || valor === 1 || valor === "1" || valor === "true" ); };
+const talentosCombate = { mestreCorpo: lerTalentoAtivo("mestre-corpo"), mestreDistancia: lerTalentoAtivo("mestre-distancia"), atacanteBestial: lerTalentoAtivo("atacante-bestial"), disputador: lerTalentoAtivo("disputador"), investidaPoderosa: lerTalentoAtivo("investida-poderosa") };
+const golpes = [];
+for ( let i = 1; i <= 5; i++ ) { golpes.push({ tipo: token.metadata[
+`${PREFIX}/golpe${i}Tipo`
+] ?? "", nome: token.metadata[
+`${PREFIX}/golpe${i}Nome`
+] ?? "", categoria: token.metadata[
+`${PREFIX}/golpe${i}Categoria`
+] ?? "", acerto: token.metadata[
+`${PREFIX}/golpe${i}Acerto`
+] ?? "", dano: token.metadata[
+`${PREFIX}/golpe${i}Dano`
+] ?? "", dobrarDadosVezes: Math.max( 1, Math.min( 10, Number( token.metadata[
+`${PREFIX}/golpe${i}DobrarDadosVezes`
+] ?? 1 ) || 1 ) ), cd: token.metadata[
+`${PREFIX}/golpe${i}CD`
+] ?? "", danoCD: token.metadata[
+`${PREFIX}/golpe${i}DanoCD`
+] ?? "", cura: token.metadata[
+`${PREFIX}/golpe${i}Cura`
+] ?? "", buffAcerto: token.metadata[
+`${PREFIX}/golpe${i}BuffAcerto`
+] ?? "", statusNome: token.metadata[
+`${PREFIX}/golpe${i}StatusNome`
+] ?? "" }); }
+let htmlGolpes = "";
+golpes.forEach( (golpe, index) => { const numero = index + 1;
+const titulo = golpe.nome || `Move ${numero}`;
+const tipoInicial = ["macerto", "mcd", "cura", "buffdebuff"] .includes(golpe.tipo) ? golpe.tipo : ""; const categoriaInicial = golpe.categoria === "especial" ? "especial" : golpe.categoria === "fisico" ? "fisico" : ""; const mostrarNome = tipoInicial !== ""; const ehAtaque = tipoInicial === "macerto" || tipoInicial === "mcd";
+htmlGolpes += `
         <details style="
           margin-bottom:8px;
           border:1px solid #555;
@@ -7525,23 +4020,8 @@ function mostrarFichaPokemonMoves(token) {
                 ">
                   ${BUFFS.map(
                       (buff) => `
-                        <button
-                          type="button"
-                          class="alterarBuffMove"
-                          data-golpe="${numero}"
-                          data-buff="${buff.id}"
-                          data-delta="1"
-                          style="
-                            min-height:30px !important;
-                            padding:4px 2px !important;
-                            cursor:pointer;
-                            font-size:9px;
-                            font-weight:bold;
-                          "
-                        >
-                          +1 ${buff.nome}
-                        </button>
-                      `
+<button type="button" class="alterarBuffMove" data-golpe="${numero}" data-buff="${buff.id}" data-delta="1" style=" min-height:30px !important; padding:4px 2px !important; cursor:pointer; font-size:9px; font-weight:bold; " > +1 ${buff.nome} </button>
+`
                   ).join("")}
                 </div>
               </div>
@@ -7564,23 +4044,8 @@ function mostrarFichaPokemonMoves(token) {
                 ">
                   ${BUFFS.map(
                       (buff) => `
-                        <button
-                          type="button"
-                          class="alterarBuffMove"
-                          data-golpe="${numero}"
-                          data-buff="${buff.id}"
-                          data-delta="-1"
-                          style="
-                            min-height:30px !important;
-                            padding:4px 2px !important;
-                            cursor:pointer;
-                            font-size:9px;
-                            font-weight:bold;
-                          "
-                        >
-                          -1 ${buff.nome}
-                        </button>
-                      `
+<button type="button" class="alterarBuffMove" data-golpe="${numero}" data-buff="${buff.id}" data-delta="-1" style=" min-height:30px !important; padding:4px 2px !important; cursor:pointer; font-size:9px; font-weight:bold; " > -1 ${buff.nome} </button>
+`
                   ).join("")}
                 </div>
               </div>
@@ -7588,9 +4053,8 @@ function mostrarFichaPokemonMoves(token) {
           </div>
         </details>
       `;
-        }
-    );
-    app.innerHTML = `
+} );
+app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 2)}
     <h3 style="
@@ -7670,9 +4134,9 @@ function mostrarFichaPokemonMoves(token) {
     <div
       id="megaEvolucaoCard"
       style="
-        padding:9px;
+        padding:10px;
         border:1px solid #ddd3f4;
-        border-radius:11px;
+        border-radius:12px;
         background:linear-gradient(180deg,#fbf8ff 0%,#f6f0ff 100%);
         box-shadow:0 3px 10px rgba(91,53,140,.08);
         margin-bottom:8px;
@@ -7681,105 +4145,161 @@ function mostrarFichaPokemonMoves(token) {
       <div style="
         display:flex;
         align-items:center;
-        justify-content:space-between;
-        gap:8px;
-        margin-bottom:7px;
+        gap:9px;
+        margin-bottom:8px;
       ">
-        <div>
+        <div style="
+          width:50px;
+          height:50px;
+          flex:0 0 50px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          overflow:hidden;
+          border-radius:12px;
+          background:#ffffff;
+          border:1px solid #ded3f1;
+          box-shadow:0 2px 7px rgba(91,53,140,.10);
+          padding:4px;
+        ">
+          <img
+            src="${esc(urlImagemMegaEvolucao())}"
+            alt="Mega Evolução"
+            title="Mega Evolução"
+            draggable="false"
+            onerror="this.style.display='none'"
+            style="
+              width:100%;
+              height:100%;
+              object-fit:contain;
+              display:block;
+            "
+          >
+        </div>
+
+        <div style="
+          min-width:0;
+          flex:1;
+        ">
           <div style="
-            font-size:11px;
-            font-weight:900;
-            color:#63418f;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:8px;
           ">
-            ✨ MEGA EVOLUÇÃO
+            <div style="
+              font-size:11px;
+              font-weight:900;
+              color:#63418f;
+            ">
+              MEGA EVOLUÇÃO
+            </div>
+
+            <div
+              id="megaEstadoTexto"
+              style="
+                font-size:9px;
+                font-weight:900;
+                white-space:nowrap;
+                color:${megaAtiva ? "#269653" : "#7a688e"};
+              "
+            >
+              ${megaAtiva ? "MEGA ATIVA" : "FORMA NORMAL"}
+            </div>
           </div>
+
           <div
             id="megaReferenciaTexto"
             style="
-              margin-top:2px;
+              margin-top:3px;
               font-size:9px;
               font-weight:800;
               color:#8a77a5;
+              word-break:break-word;
             "
           >
             ${
               megaConfig
-                ? `Mega definida: ${esc(megaConfig.referenciaNome || "Token")}`
+                ? `Mega definida: ${esc(megaConfig.referenciaNome || "Personagem")}`
                 : "Nenhuma forma Mega definida"
             }
           </div>
         </div>
-
-        <div
-          id="megaEstadoTexto"
-          style="
-            font-size:9px;
-            font-weight:900;
-            color:${megaAtiva ? "#269653" : "#7a688e"};
-          "
-        >
-          ${megaAtiva ? "MEGA ATIVA" : "FORMA NORMAL"}
-        </div>
-      </div>
-
-      <div style="
-        display:flex;
-        gap:6px;
-        align-items:center;
-        flex-wrap:wrap;
-      ">
-        <select
-          id="megaTokenReferencia"
-          style="
-            flex:1 1 160px;
-            min-width:130px;
-            min-height:34px;
-            padding:5px 7px;
-            font-size:10px;
-            font-weight:800;
-          "
-        >
-          <option value="">
-            Escolher token da Mega...
-          </option>
-        </select>
-
-        <button
-          id="definirMegaEvolucao"
-          type="button"
-          style="
-            min-height:34px;
-            padding:5px 9px;
-            font-size:9px;
-            font-weight:900;
-            cursor:pointer;
-          "
-        >
-          DEFINIR MEGA
-        </button>
       </div>
 
       <button
-        id="botaoMegaEvolucao"
+        id="escolherMegaEvolucao"
         type="button"
         style="
           width:100%;
-          min-height:42px !important;
-          margin-top:7px;
-          padding:7px 10px !important;
-          border-radius:10px;
-          font-size:11px;
+          min-height:38px !important;
+          padding:7px 9px !important;
+          font-size:10px;
           font-weight:900;
           cursor:pointer;
-          ${
-            megaAtiva
-              ? "background:linear-gradient(135deg,#42b96b 0%,#269653 100%) !important;color:#fff !important;border-color:#218447 !important;"
-              : "background:linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%) !important;color:#fff !important;border-color:#6045c6 !important;"
-          }
+          background:linear-gradient(180deg,#ffffff 0%,#f0e9fb 100%) !important;
+          color:#5f4485 !important;
+          border-color:#c9b7e6 !important;
         "
       >
-        ${megaAtiva ? "DESFAZER MEGA" : "MEGA EVOLUÇÃO"}
+        📁 ESCOLHER MEGA NOS PERSONAGENS
       </button>
+
+      <div style="
+        margin-top:4px;
+        font-size:8px;
+        line-height:1.25;
+        font-weight:800;
+        color:#8a77a5;
+        text-align:center;
+      ">
+        Abre sua biblioteca de Personagens para navegar pelas pastas.
+      </div>
+
+      <div style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:6px;
+        margin-top:8px;
+      ">
+        <button
+          id="botaoMegaEvolucao"
+          type="button"
+          ${megaConfig && !megaAtiva ? "" : "disabled"}
+          style="
+            min-height:42px !important;
+            padding:7px 8px !important;
+            border-radius:10px;
+            font-size:10px;
+            font-weight:900;
+            cursor:pointer;
+            background:linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%) !important;
+            color:#fff !important;
+            border-color:#6045c6 !important;
+          "
+        >
+          MEGA EVOLUÇÃO
+        </button>
+
+        <button
+          id="retirarMegaEvolucao"
+          type="button"
+          ${megaAtiva ? "" : "disabled"}
+          style="
+            min-height:42px !important;
+            padding:7px 8px !important;
+            border-radius:10px;
+            font-size:10px;
+            font-weight:900;
+            cursor:pointer;
+            background:linear-gradient(135deg,#ef7676 0%,#ce4f4f 100%) !important;
+            color:#fff !important;
+            border-color:#bb4545 !important;
+          "
+        >
+          RETIRAR EVOLUÇÃO
+        </button>
+      </div>
 
       <div
         id="megaMensagem"
@@ -7807,1682 +4327,324 @@ function mostrarFichaPokemonMoves(token) {
       Salvar Moves / Buffs
     </button>
   `;
-    ativarCabecalhoPokemon(token);
-
-    const seletorMega =
-        document.querySelector(
-            "#megaTokenReferencia"
-        );
-
-    const botaoDefinirMega =
-        document.querySelector(
-            "#definirMegaEvolucao"
-        );
-
-    const botaoMega =
-        document.querySelector(
-            "#botaoMegaEvolucao"
-        );
-
-    const mensagemMega =
-        document.querySelector(
-            "#megaMensagem"
-        );
-
-    const textoReferenciaMega =
-        document.querySelector(
-            "#megaReferenciaTexto"
-        );
-
-    const textoEstadoMega =
-        document.querySelector(
-            "#megaEstadoTexto"
-        );
-
-    let tokensMegaDisponiveis = [];
-
-    const atualizarListaMega =
-        async () => {
-            if (!seletorMega) {
-                return;
-            }
-
-            const itens =
-                await OBR.scene.items.getItems(
-                    (item) =>
-                        item.type === "IMAGE" &&
-                        item.id !== token.id &&
-                        item.layer !== "ATTACHMENT"
-                );
-
-            tokensMegaDisponiveis =
-                [...itens]
-                    .sort(
-                        (a, b) =>
-                            String(
-                                a.name || ""
-                            ).localeCompare(
-                                String(
-                                    b.name || ""
-                                )
-                            )
-                    );
-
-            const opcoes =
-                tokensMegaDisponiveis
-                    .map(
-                        (item) => `
-                          <option
-                            value="${esc(item.id)}"
-                          >
-                            ${esc(item.name || "Token sem nome")}
-                          </option>
-                        `
-                    )
-                    .join("");
-
-            seletorMega.innerHTML = `
-              <option value="">
-                Escolher token da Mega...
-              </option>
-              ${opcoes}
-            `;
-
-            const configAtual =
-                megaConfigDoToken(token);
-
-            if (
-                configAtual?.referenciaId &&
-                tokensMegaDisponiveis.some(
-                    (item) =>
-                        item.id ===
-                        configAtual.referenciaId
-                )
-            ) {
-                seletorMega.value =
-                    configAtual.referenciaId;
-            }
-        };
-
-    atualizarListaMega().catch(
-        (erro) => {
-            console.warn(
-                "Não foi possível listar tokens para Mega:",
-                erro
-            );
-        }
-    );
-
-    if (
-        botaoDefinirMega &&
-        seletorMega
-    ) {
-        botaoDefinirMega.addEventListener(
-            "click",
-            async () => {
-                const idReferencia =
-                    seletorMega.value;
-
-                if (!idReferencia) {
-                    if (mensagemMega) {
-                        mensagemMega.textContent =
-                            "Escolha um token de imagem primeiro.";
-                    }
-                    return;
-                }
-
-                const referencia =
-                    tokensMegaDisponiveis.find(
-                        (item) =>
-                            item.id === idReferencia
-                    ) ||
-                    (
-                        await OBR.scene.items.getItems(
-                            [idReferencia]
-                        )
-                    )[0];
-
-                if (!referencia) {
-                    if (mensagemMega) {
-                        mensagemMega.textContent =
-                            "Token da Mega não foi encontrado.";
-                    }
-                    return;
-                }
-
-                botaoDefinirMega.disabled = true;
-
-                try {
-                    const config =
-                        await definirReferenciaMega(
-                            token,
-                            referencia
-                        );
-
-                    if (textoReferenciaMega) {
-                        textoReferenciaMega.textContent =
-                            `Mega definida: ${
+ativarCabecalhoPokemon(token);
+const botaoEscolherMega = document.querySelector( "#escolherMegaEvolucao" );
+const botaoMega = document.querySelector( "#botaoMegaEvolucao" );
+const botaoRetirarMega = document.querySelector( "#retirarMegaEvolucao" );
+const mensagemMega = document.querySelector( "#megaMensagem" );
+const textoReferenciaMega = document.querySelector( "#megaReferenciaTexto" );
+const textoEstadoMega = document.querySelector( "#megaEstadoTexto" );
+const atualizarVisualMega = (ativa) => { if (textoEstadoMega) { textoEstadoMega.textContent = ativa ? "MEGA ATIVA" : "FORMA NORMAL";
+textoEstadoMega.style.color = ativa ? "#269653" : "#7a688e"; }
+const temConfig = Boolean( megaConfigDoToken(token) );
+if (botaoMega) { botaoMega.disabled = !temConfig || ativa; }
+if (botaoRetirarMega) { botaoRetirarMega.disabled = !temConfig || !ativa; } };
+if (botaoEscolherMega) { botaoEscolherMega.addEventListener( "click", async () => { botaoEscolherMega.disabled = true; if (mensagemMega) { mensagemMega.textContent = "Abrindo a biblioteca de Personagens..."; } try {
+// O seletor nativo do Owlbear abre a biblioteca
+// de imagens diretamente na categoria CHARACTER.
+// Assim o Mestre pode navegar pelas próprias pastas
+// de Personagens em vez de receber uma lista gigante
+// de tokens colocados na cena.
+const escolhidos = await OBR.assets.downloadImages( false, "", "CHARACTER" ); const referencia = Array.isArray(escolhidos) ? escolhidos[0] : null; if (!referencia) { if (mensagemMega) { mensagemMega.textContent = "Nenhuma forma Mega foi escolhida."; } return; } const config = await definirReferenciaMega( token, referencia ); if (textoReferenciaMega) { textoReferenciaMega.textContent =
+`Mega definida: ${
                                 config.referenciaNome ||
                                 referencia.name ||
-                                "Token"
+                                "Personagem"
                             }`;
-                    }
-
-                    if (textoEstadoMega) {
-                        textoEstadoMega.textContent =
-                            "FORMA NORMAL";
-
-                        textoEstadoMega.style.color =
-                            "#7a688e";
-                    }
-
-                    if (botaoMega) {
-                        botaoMega.textContent =
-                            "MEGA EVOLUÇÃO";
-
-                        botaoMega.style.setProperty(
-                            "background",
-                            "linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%)",
-                            "important"
-                        );
-
-                        botaoMega.style.setProperty(
-                            "border-color",
-                            "#6045c6",
-                            "important"
-                        );
-                    }
-
-                    if (mensagemMega) {
-                        mensagemMega.textContent =
-                            "Forma Mega salva com sucesso.";
-                    }
-                }
-                catch (erro) {
-                    console.error(
-                        "Erro ao definir Mega:",
-                        erro
-                    );
-
-                    if (mensagemMega) {
-                        mensagemMega.textContent =
-                            erro?.message ||
-                            "Não foi possível definir a Mega.";
-                    }
-                }
-                finally {
-                    botaoDefinirMega.disabled = false;
-                }
-            }
-        );
-    }
-
-    if (botaoMega) {
-        botaoMega.addEventListener(
-            "click",
-            async () => {
-                botaoMega.disabled = true;
-
-                try {
-                    const ativa =
-                        await alternarMegaEvolucao(
-                            token
-                        );
-
-                    botaoMega.textContent =
-                        ativa
-                            ? "DESFAZER MEGA"
-                            : "MEGA EVOLUÇÃO";
-
-                    botaoMega.style.setProperty(
-                        "background",
-                        ativa
-                            ? "linear-gradient(135deg,#42b96b 0%,#269653 100%)"
-                            : "linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%)",
-                        "important"
-                    );
-
-                    botaoMega.style.setProperty(
-                        "border-color",
-                        ativa
-                            ? "#218447"
-                            : "#6045c6",
-                        "important"
-                    );
-
-                    if (textoEstadoMega) {
-                        textoEstadoMega.textContent =
-                            ativa
-                                ? "MEGA ATIVA"
-                                : "FORMA NORMAL";
-
-                        textoEstadoMega.style.color =
-                            ativa
-                                ? "#269653"
-                                : "#7a688e";
-                    }
-
-                    if (mensagemMega) {
-                        mensagemMega.textContent =
-                            ativa
-                                ? "Mega Evolução ativada."
-                                : "Pokémon voltou à forma normal.";
-                    }
-                }
-                catch (erro) {
-                    console.error(
-                        "Erro ao alternar Mega Evolução:",
-                        erro
-                    );
-
-                    if (mensagemMega) {
-                        mensagemMega.textContent =
-                            erro?.message ||
-                            "Não foi possível alterar a Mega.";
-                    }
-                }
-                finally {
-                    botaoMega.disabled = false;
-                }
-            }
-        );
-    }
-
-    function atualizarBuffsPagina() {
-        BUFFS.forEach(
-            (buff) => {
-                const campoBuff =
-                    document.querySelector(
-                        `#buff-${buff.id}`
-                    );
-                if (!campoBuff) {
-                    return;
-                }
-                const estagio =
-                    normalizarEstagioBuff(
-                        campoBuff.value,
-                        buff.id
-                    );
-                const campoBonus =
-                    document.querySelector(
-                        `#bonus-${buff.id}`
-                    );
-                if (campoBonus) {
-                    campoBonus.textContent =
-                        buff.id === "crit"
-                            ? faixaCritico(estagio)
-                            : formatarBonus(
-                                bonusPorEstagio(
-                                    buff.id,
-                                    estagio,
-                                    proficiencia
-                                )
-                              );
-                }
-            }
-        );
-    }
-    document
-        .querySelectorAll(".campoBuff")
-        .forEach(
-            (campo) => {
-                campo.addEventListener(
-                    "input",
-                    () => {
-                        atualizarBuffsPagina();
-                        const buffId =
-                            campo.id.replace("buff-", "");
-                        if (buffId === "pres") {
-                            atualizarCDsComPrecisao();
-                        }
-                        const valorBuff =
-                            normalizarEstagioBuff(
-                                campo.value,
-                                buffId
-                            );
-                        token.metadata[
-                            `${PREFIX}/buff-${buffId}`
-                        ] = valorBuff;
-                        salvamentoBuffPendente =
-                            salvamentoBuffPendente
-                                .catch(() => {})
-                                .then(async () => {
-                                    await OBR.scene.items.updateItems(
-                                        [token.id],
-                                        (items) => {
-                                            for (const item of items) {
-                                                item.metadata[
-                                                    `${PREFIX}/buff-${buffId}`
-                                                ] = valorBuff;
-                                            }
-                                        }
-                                    );
-                                    if (buffId === "evas") {
-                                        const hpAtualHud =
-                                            Number(
-                                                token.metadata[
-                                                    `${PREFIX}/hpAtual`
-                                                ] ?? 100
-                                            ) || 0;
-                                        const hpMaxHud =
-                                            Math.max(
-                                                1,
-                                                Number(
-                                                    token.metadata[
-                                                        `${PREFIX}/hpMax`
-                                                    ] ?? 100
-                                                ) || 1
-                                            );
-                                        const caBaseHud =
-                                            Number(
-                                                token.metadata[
-                                                    `${PREFIX}/ca`
-                                                ] ?? 10
-                                            ) || 0;
-                                        await criarStatusNoToken(
-                                            token,
-                                            hpAtualHud,
-                                            hpMaxHud,
-                                            caBaseHud + valorBuff
-                                        );
-                                    }
-                                });
-                    }
-                );
-                campo.addEventListener(
-                    "change",
-                    () => {
-                        const buffId =
-                            campo.id.replace("buff-", "");
-                        campo.value = String(
-                            normalizarEstagioBuff(
-                                campo.value,
-                                buffId
-                            )
-                        );
-                        atualizarBuffsPagina();
-                        if (buffId === "pres") {
-                            atualizarCDsComPrecisao();
-                        }
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".cdBaseMove")
-        .forEach((campo) => {
-            campo.addEventListener(
-                "input",
-                atualizarCDsComPrecisao
-            );
-            campo.addEventListener(
-                "change",
-                atualizarCDsComPrecisao
-            );
-        });
-    atualizarCDsComPrecisao();
-    function atualizarTipoMoveVisual(numero, tipo) {
-        const tiposValidos =
-            ["macerto", "mcd", "cura", "buffdebuff"];
-        const tipoSeguro =
-            tiposValidos.includes(tipo)
-                ? tipo
-                : "";
-        const campoTipo =
-            document.querySelector(
-                `#golpe${numero}Tipo`
-            );
-        if (campoTipo) {
-            campoTipo.value = tipoSeguro;
-        }
-        document
-            .querySelectorAll(
-                `.tipoMove[data-golpe="${numero}"]`
-            )
-            .forEach(
-                (opcao) => {
-                    const ativo =
-                        opcao.dataset.tipo === tipoSeguro;
-                    opcao.style.opacity =
-                        ativo ? "1" : "0.62";
-                    opcao.style.border =
-                        ativo
-                            ? "2px solid #4C8DFF"
-                            : "1px solid #c9d5e3";
-                    opcao.style.background =
-                        ativo
-                            ? "#eaf3ff"
-                            : "";
-                }
-            );
-        const blocoNome =
-            document.querySelector(
-                `#golpe${numero}BlocoNome`
-            );
-        const grupoCategoria =
-            document.querySelector(
-                `#golpe${numero}GrupoCategoria`
-            );
-        const painelMAcerto =
-            document.querySelector(
-                `#golpe${numero}PainelMAcerto`
-            );
-        const painelMCD =
-            document.querySelector(
-                `#golpe${numero}PainelMCD`
-            );
-        const painelCura =
-            document.querySelector(
-                `#golpe${numero}PainelCura`
-            );
-        const painelBuffDebuff =
-            document.querySelector(
-                `#golpe${numero}PainelBuffDebuff`
-            );
-        const ehAtaque =
-            tipoSeguro === "macerto" ||
-            tipoSeguro === "mcd";
-        if (blocoNome) {
-            blocoNome.style.display =
-                tipoSeguro ? "block" : "none";
-        }
-        if (grupoCategoria) {
-            grupoCategoria.style.display =
-                ehAtaque ? "flex" : "none";
-        }
-        if (painelMAcerto) {
-            painelMAcerto.style.display =
-                tipoSeguro === "macerto"
-                    ? "block"
-                    : "none";
-        }
-        if (painelMCD) {
-            painelMCD.style.display =
-                tipoSeguro === "mcd"
-                    ? "block"
-                    : "none";
-        }
-        if (painelCura) {
-            painelCura.style.display =
-                tipoSeguro === "cura"
-                    ? "block"
-                    : "none";
-        }
-        if (painelBuffDebuff) {
-            painelBuffDebuff.style.display =
-                tipoSeguro === "buffdebuff"
-                    ? "block"
-                    : "none";
-        }
-    }
-    document
-        .querySelectorAll(".tipoMove")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const tipo =
-                            botao.dataset.tipo;
-                        atualizarTipoMoveVisual(
-                            numero,
-                            tipo
-                        );
-                        document
-                            .querySelector("#salvarPokemonMoves")
-                            ?.click();
-                    }
-                );
-            }
-        );
-    for (let numero = 1; numero <= 5; numero++) {
-        const campoNome =
-            document.querySelector(
-                `#golpe${numero}Nome`
-            );
-        const resumo =
-            document.querySelector(
-                `#golpe${numero}Resumo`
-            );
-        if (!campoNome || !resumo) {
-            continue;
-        }
-        const atualizarResumo = () => {
-            const nome = campoNome.value.trim();
-            resumo.textContent =
-                nome || `Move ${numero}`;
-        };
-        campoNome.addEventListener(
-            "input",
-            atualizarResumo
-        );
-        campoNome.addEventListener(
-            "change",
-            atualizarResumo
-        );
-    }
-    function talentoCombateAtivo(id) {
-        return (
-            document
-                .querySelector(`#talento-${id}`)
-                ?.value === "1"
-        );
-    }
-    function atualizarVisualTalento(botao, ativo) {
-        botao.classList.toggle("ativo", ativo);
-        botao.style.opacity = ativo ? "1" : "0.55";
-    }
-    document
-        .querySelectorAll(".talentoCombate")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    () => {
-                        const id =
-                            botao.dataset.talento;
-                        const campo =
-                            document.querySelector(
-                                `#talento-${id}`
-                            );
-                        if (!campo) {
-                            return;
-                        }
-                        const ativo =
-                            campo.value !== "1";
-                        campo.value =
-                            ativo ? "1" : "0";
-                        atualizarVisualTalento(
-                            botao,
-                            ativo
-                        );
-                        document
-                            .querySelector("#salvarPokemonMoves")
-                            ?.click();
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".categoriaGolpe")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const categoria =
-                            botao.dataset.categoria;
-                        const campoCategoria =
-                            document.querySelector(
-                                `#golpe${numero}Categoria`
-                            );
-                        campoCategoria.value =
-                            categoria;
-                        document
-                            .querySelectorAll(
-                                `.categoriaGolpe[data-golpe="${numero}"]`
-                            )
-                            .forEach(
-                                (opcao) => {
-                                    const ativo =
-                                        opcao.dataset.categoria ===
-                                        categoria;
-                                    opcao.style.opacity =
-                                        ativo ? "1" : "0.55";
-                                    opcao.style.border =
-                                        ativo
-                                            ? "2px solid #FFFFFF"
-                                            : "1px solid #666";
-                                }
-                            );
-                    }
-                );
-            }
-        );
-    function nomeGolpe(numero) {
-        return (
-            document
-                .querySelector(
-                    `#golpe${numero}Nome`
-                )
-                ?.value
-                .trim() ||
-            `Move ${numero}`
-        );
-    }
-    function categoriaGolpeAtual(numero) {
-        return (
-            document
-                .querySelector(
-                    `#golpe${numero}Categoria`
-                )
-                ?.value || ""
-        );
-    }
-    function estagioPrecisaoAtual() {
-        return normalizarEstagioBuff(
-            document
-                .querySelector("#buff-pres")
-                ?.value ?? buffs.pres ?? 0,
-            "pres"
-        );
-    }
-    function adicionarPrecisaoAoAcerto(formula) {
-        return adicionarBonusNaFormula(
-            formula,
-            estagioPrecisaoAtual()
-        );
-    }
-    function atualizarCDsComPrecisao() {
-        const precisao =
-            estagioPrecisaoAtual();
-        for (let numero = 1; numero <= 5; numero++) {
-            const campoCD =
-                document.querySelector(
-                    `#golpe${numero}CD`
-                );
-            const indicador =
-                document.querySelector(
-                    `#golpe${numero}CDAtual`
-                );
-            if (!campoCD || !indicador) {
-                continue;
-            }
-            const textoBase =
-                String(campoCD.value ?? "").trim();
-            if (textoBase === "") {
-                indicador.textContent =
-                    "CD ATUAL —";
-                indicador.title =
-                    "Defina a CD Base do move.";
-                continue;
-            }
-            const cdBase = Number(
-                textoBase.replace(",", ".")
-            );
-            if (!Number.isFinite(cdBase)) {
-                indicador.textContent =
-                    "CD ATUAL —";
-                continue;
-            }
-            const cdAtual =
-                cdBase + precisao;
-            indicador.textContent =
-                `CD ATUAL ${formatarDecimal(cdAtual)}`;
-            if (precisao === 0) {
-                indicador.title =
-                    `CD Base ${formatarDecimal(cdBase)} · Precisão 0`;
-            }
-            else {
-                const sinalPrecisao =
-                    precisao > 0 ? "+" : "";
-                indicador.title =
-                    `CD Base ${formatarDecimal(cdBase)} · Precisão ${sinalPrecisao}${precisao} · CD Atual ${formatarDecimal(cdAtual)}`;
-            }
-        }
-    }
-    function formulaComVantagem(formula) {
-        const base =
-            String(formula || "").trim();
-        if (!base) {
-            return base;
-        }
-        return `(${base},${base})kh1`;
-    }
-    function formulaAcertoComTalentos(
-        numero,
-        formulaOriginal
-    ) {
-        const categoria =
-            categoriaGolpeAtual(numero);
-        let bonusTalento =
-            estagioPrecisaoAtual();
-        if (
-            categoria === "fisico" &&
-            talentoCombateAtivo("mestre-corpo")
-        ) {
-            bonusTalento -= 5;
-        }
-        if (
-            categoria === "especial" &&
-            talentoCombateAtivo("mestre-distancia")
-        ) {
-            bonusTalento -= 5;
-        }
-        let formulaFinal =
-            adicionarBonusNaFormula(
-                formulaOriginal,
-                bonusTalento
-            );
-        if (talentoCombateAtivo("disputador")) {
-            formulaFinal =
-                formulaComVantagem(
-                    formulaFinal
-                );
-        }
-        return formulaFinal;
-    }
-    function formulaDanoComBuff(
-        numero,
-        formulaOriginal,
-        opcoes = {}
-    ) {
-        const incluirBonusMestres =
-            opcoes.incluirBonusMestres !== false;
-        const categoria =
-            categoriaGolpeAtual(numero);
-        if (!categoria) {
-            alert(
-                "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o dano."
-            );
-            return null;
-        }
-        const buffId =
-            categoria === "fisico"
-                ? "atq"
-                : "atqsp";
-        const estagioBuff =
-            normalizarEstagioBuff(
-                document
-                    .querySelector(
-                        `#buff-${buffId}`
-                    )
-                    ?.value,
-                buffId
-            );
-        const bonusBuff =
-            bonusPorEstagio(
-                buffId,
-                estagioBuff,
-                proficiencia
-            );
-        let bonusTalentos = 0;
-        if (categoria === "fisico") {
-            if (
-                incluirBonusMestres &&
-                talentoCombateAtivo("mestre-corpo")
-            ) {
-                bonusTalentos += 10;
-            }
-            if (talentoCombateAtivo("investida-poderosa")) {
-                bonusTalentos += 5;
-            }
-        }
-        if (
-            incluirBonusMestres &&
-            categoria === "especial" &&
-            talentoCombateAtivo("mestre-distancia")
-        ) {
-            bonusTalentos += 10;
-        }
-        let formulaFinal =
-            adicionarBonusNaFormula(
-                formulaOriginal,
-                bonusBuff + bonusTalentos
-            );
-        if (
-            categoria === "fisico" &&
-            talentoCombateAtivo("atacante-bestial")
-        ) {
-            formulaFinal =
-                formulaComVantagem(
-                    formulaFinal
-                );
-        }
-        return formulaFinal;
-    }
-    function dobrarDadosPorVezes(
-        formula,
-        vezes
-    ) {
-        const quantidadeDobras =
-            Math.max(
-                1,
-                Math.min(
-                    10,
-                    Number(vezes) || 1
-                )
-            );
-        const multiplicador =
-            Math.pow(2, quantidadeDobras);
-        return String(formula || "").replace(
-            /(^|[^A-Za-z0-9_])(\d*)d(\d+)/gi,
-            (match, prefixo, quantidade, faces) => {
-                const qtdOriginal =
-                    quantidade === ""
-                        ? 1
-                        : Number(quantidade);
-                return `${prefixo}${qtdOriginal * multiplicador}d${faces}`;
-            }
-        );
-    }
-    document
-        .querySelectorAll(".rolarAcerto")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const formula =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}Acerto`
-                                )
-                                .value
-                                .trim();
-                        if (!formula) {
-                            alert(
-                                "A fórmula de acerto está vazia."
-                            );
-                            return;
-                        }
-                        const formulaFinal =
-                            formulaAcertoComTalentos(
-                                numero,
-                                formula
-                            );
-                        await rolarNoDicePlus(
-                            formulaFinal,
-                            nomeGolpe(numero),
-                            "Acerto"
-                        );
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".rolarDano")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const formulaOriginal =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}Dano`
-                                )
-                                .value
-                                .trim();
-                        if (!formulaOriginal) {
-                            alert(
-                                "A fórmula de dano está vazia."
-                            );
-                            return;
-                        }
-                        const formulaFinal =
-                            formulaDanoComBuff(
-                                numero,
-                                formulaOriginal
-                            );
-                        if (!formulaFinal) {
-                            return;
-                        }
-                        await rolarNoDicePlus(
-                            formulaFinal,
-                            nomeGolpe(numero),
-                            "Dano"
-                        );
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".rolarDobrarDados")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const formulaOriginal =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}Dano`
-                                )
-                                .value
-                                .trim();
-                        if (!formulaOriginal) {
-                            alert(
-                                "A fórmula de dano está vazia."
-                            );
-                            return;
-                        }
-                        const campoDobras =
-                            document.querySelector(
-                                `#golpe${numero}DobrarDadosVezes`
-                            );
-                        const vezes =
-                            Math.max(
-                                1,
-                                Math.min(
-                                    10,
-                                    Number(campoDobras?.value) || 1
-                                )
-                            );
-                        const formulaDadosDobrados =
-                            dobrarDadosPorVezes(
-                                formulaOriginal,
-                                vezes
-                            );
-                        const formulaFinal =
-                            formulaDanoComBuff(
-                                numero,
-                                formulaDadosDobrados
-                            );
-                        if (!formulaFinal) {
-                            return;
-                        }
-                        await rolarNoDicePlus(
-                            formulaFinal,
-                            nomeGolpe(numero),
-                            `Dobrar Dados ${vezes}x`
-                        );
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".rolarCritico")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const formulaOriginal =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}Dano`
-                                )
-                                .value
-                                .trim();
-                        if (!formulaOriginal) {
-                            alert(
-                                "A fórmula de dano está vazia."
-                            );
-                            return;
-                        }
-                        const categoria =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}Categoria`
-                                )
-                                ?.value || "";
-                        if (!categoria) {
-                            alert(
-                                "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico."
-                            );
-                            return;
-                        }
-                        const formulaCritica =
-                            duplicarDadosFormula(
-                                formulaOriginal
-                            );
-                        const formulaFinal =
-                            formulaDanoComBuff(
-                                numero,
-                                formulaCritica
-                            );
-                        if (!formulaFinal) {
-                            return;
-                        }
-                        await rolarNoDicePlus(
-                            formulaFinal,
-                            nomeGolpe(numero),
-                            "Crítico"
-                        );
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".rolarPassouCD")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const formulaOriginal =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}DanoCD`
-                                )
-                                .value
-                                .trim();
-                        if (!formulaOriginal) {
-                            alert(
-                                "A fórmula de dano está vazia."
-                            );
-                            return;
-                        }
-                        const formulaComBuff =
-                            formulaDanoComBuff(
-                                numero,
-                                formulaOriginal,
-                                { incluirBonusMestres: false }
-                            );
-                        if (!formulaComBuff) {
-                            return;
-                        }
-                        const formulaFinal =
-                            `(${formulaComBuff})/2`;
-                        await rolarNoDicePlus(
-                            formulaFinal,
-                            nomeGolpe(numero),
-                            "Passou na CD"
-                        );
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".rolarReprovouCD")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const formulaOriginal =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}DanoCD`
-                                )
-                                .value
-                                .trim();
-                        if (!formulaOriginal) {
-                            alert(
-                                "A fórmula de dano está vazia."
-                            );
-                            return;
-                        }
-                        const formulaFinal =
-                            formulaDanoComBuff(
-                                numero,
-                                formulaOriginal
-                            );
-                        if (!formulaFinal) {
-                            return;
-                        }
-                        await rolarNoDicePlus(
-                            formulaFinal,
-                            nomeGolpe(numero),
-                            "Reprovou CD"
-                        );
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".rolarCriticoCD")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const formulaOriginal =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}DanoCD`
-                                )
-                                .value
-                                .trim();
-                        if (!formulaOriginal) {
-                            alert(
-                                "A fórmula de dano está vazia."
-                            );
-                            return;
-                        }
-                        const categoria =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}Categoria`
-                                )
-                                ?.value || "";
-                        if (!categoria) {
-                            alert(
-                                "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico."
-                            );
-                            return;
-                        }
-                        const formulaCritica =
-                            duplicarDadosFormula(
-                                formulaOriginal
-                            );
-                        const formulaFinal =
-                            formulaDanoComBuff(
-                                numero,
-                                formulaCritica
-                            );
-                        if (!formulaFinal) {
-                            return;
-                        }
-                        await rolarNoDicePlus(
-                            formulaFinal,
-                            nomeGolpe(numero),
-                            "Golpe Crítico"
-                        );
-                    }
-                );
-            }
-        );
-    async function aplicarCuraNoHp(valorCura) {
-        const cura =
-            Math.max(0, Number(valorCura) || 0);
-        const hpAtualAnterior =
-            Number(
-                token.metadata[
-                    `${PREFIX}/hpAtual`
-                ] ?? 0
-            ) || 0;
-        const hpMax =
-            Math.max(
-                1,
-                Number(
-                    token.metadata[
-                        `${PREFIX}/hpMax`
-                    ] ?? 100
-                ) || 1
-            );
-        const hpAtualNovo =
-            Math.max(
-                0,
-                Math.min(
-                    hpMax,
-                    hpAtualAnterior + cura
-                )
-            );
-        token.metadata[
-            `${PREFIX}/hpAtual`
-        ] = hpAtualNovo;
-        await OBR.scene.items.updateItems(
-            [token.id],
-            (items) => {
-                for (const item of items) {
-                    item.metadata[
-                        `${PREFIX}/hpAtual`
-                    ] = hpAtualNovo;
-                }
-            }
-        );
-        const caBase =
-            Number(
-                token.metadata[
-                    `${PREFIX}/ca`
-                ] ?? 10
-            ) || 0;
-        const evasao =
-            normalizarEstagioBuff(
-                token.metadata[
-                    `${PREFIX}/buff-evas`
-                ] ?? 0,
-                "evas"
-            );
-        await criarStatusNoToken(
-            token,
-            hpAtualNovo,
-            hpMax,
-            caBase + evasao
-        );
-        return {
-            curaRolada: cura,
-            curaAplicada:
-                Math.max(
-                    0,
-                    hpAtualNovo - hpAtualAnterior
-                ),
-            hpAnterior: hpAtualAnterior,
-            hpAtual: hpAtualNovo,
-            hpMax
-        };
-    }
-    document
-        .querySelectorAll(".rolarCura")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const formula =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}Cura`
-                                )
-                                ?.value
-                                .trim();
-                        if (!formula) {
-                            alert(
-                                "A fórmula de cura está vazia."
-                            );
-                            return;
-                        }
-                        botao.disabled = true;
-                        try {
-                            const resultado =
-                                await rolarNoDicePlusComResultado(
-                                    formula,
-                                    nomeGolpe(numero),
-                                    "Cura"
-                                );
-                            if (resultado === null) {
-                                return;
-                            }
-                            const dadosCura =
-                                await aplicarCuraNoHp(
-                                    resultado
-                                );
-                            const info =
-                                document.querySelector(
-                                    `#golpe${numero}CuraInfo`
-                                );
-                            if (info) {
-                                info.textContent =
-                                    `Rolou ${dadosCura.curaRolada} · ` +
-                                    `Curou +${dadosCura.curaAplicada} · ` +
-                                    `HP ${dadosCura.hpAnterior} → ${dadosCura.hpAtual}/${dadosCura.hpMax}`;
-                            }
-                        }
-                        finally {
-                            botao.disabled = false;
-                        }
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".rolarAcertoBuffDebuff")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const numero =
-                            botao.dataset.golpe;
-                        const formula =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}BuffAcerto`
-                                )
-                                ?.value
-                                .trim();
-                        if (!formula) {
-                            alert(
-                                "A fórmula de acerto está vazia."
-                            );
-                            return;
-                        }
-                        const statusNome =
-                            document
-                                .querySelector(
-                                    `#golpe${numero}StatusNome`
-                                )
-                                ?.value
-                                .trim();
-                        const formulaFinal =
-                            adicionarPrecisaoAoAcerto(
-                                formula
-                            );
-                        await rolarNoDicePlus(
-                            formulaFinal,
-                            nomeGolpe(numero),
-                            statusNome
-                                ? `Acerto · ${statusNome}`
-                                : "Acerto"
-                        );
-                    }
-                );
-            }
-        );
-    document
-        .querySelectorAll(".alterarBuffMove")
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    () => {
-                        const buffId =
-                            botao.dataset.buff;
-                        const delta =
-                            Number(
-                                botao.dataset.delta
-                            ) || 0;
-                        const campoBuff =
-                            document.querySelector(
-                                `#buff-${buffId}`
-                            );
-                        if (!campoBuff || !delta) {
-                            return;
-                        }
-                        const atual =
-                            normalizarEstagioBuff(
-                                campoBuff.value,
-                                buffId
-                            );
-                        const novo =
-                            normalizarEstagioBuff(
-                                atual + delta,
-                                buffId
-                            );
-                        campoBuff.value =
-                            String(novo);
-                        campoBuff.dispatchEvent(
-                            new Event(
-                                "input",
-                                { bubbles: true }
-                            )
-                        );
-                        campoBuff.dispatchEvent(
-                            new Event(
-                                "change",
-                                { bubbles: true }
-                            )
-                        );
-                    }
-                );
-            }
-        );
-    document
-        .querySelector("#salvarPokemonMoves")
-        .addEventListener(
-            "click",
-            async () => {
-                const novosBuffs = {};
-                BUFFS.forEach(
-                    (buff) => {
-                        novosBuffs[buff.id] =
-                            normalizarEstagioBuff(
-                                document
-                                    .querySelector(
-                                        `#buff-${buff.id}`
-                                    )
-                                    .value,
-                                buff.id
-                            );
-                    }
-                );
-                const novosTalentos = {
-                    mestreCorpo:
-                        talentoCombateAtivo("mestre-corpo"),
-                    mestreDistancia:
-                        talentoCombateAtivo("mestre-distancia"),
-                    atacanteBestial:
-                        talentoCombateAtivo("atacante-bestial"),
-                    disputador:
-                        talentoCombateAtivo("disputador"),
-                    investidaPoderosa:
-                        talentoCombateAtivo("investida-poderosa")
-                };
-                const novosGolpes = [];
-                for (
-                    let i = 1;
-                    i <= 5;
-                    i++
-                ) {
-                    const tipoCampo =
-                        document
-                            .querySelector(
-                                `#golpe${i}Tipo`
-                            )
-                            .value;
-                    const categoriaCampo =
-                        document
-                            .querySelector(
-                                `#golpe${i}Categoria`
-                            )
-                            .value;
-                    novosGolpes.push({
-                        tipo:
-                            ["macerto", "mcd", "cura", "buffdebuff"]
-                                .includes(tipoCampo)
-                                ? tipoCampo
-                                : "",
-                        nome:
-                            document
-                                .querySelector(
-                                    `#golpe${i}Nome`
-                                )
-                                .value
-                                .trim(),
-                        categoria:
-                            categoriaCampo === "especial"
-                                ? "especial"
-                                : categoriaCampo === "fisico"
-                                    ? "fisico"
-                                    : "",
-                        acerto:
-                            document
-                                .querySelector(
-                                    `#golpe${i}Acerto`
-                                )
-                                .value
-                                .trim(),
-                        dano:
-                            document
-                                .querySelector(
-                                    `#golpe${i}Dano`
-                                )
-                                .value
-                                .trim(),
-                        dobrarDadosVezes:
-                            Math.max(
-                                1,
-                                Math.min(
-                                    10,
-                                    Number(
-                                        document
-                                            .querySelector(
-                                                `#golpe${i}DobrarDadosVezes`
-                                            )
-                                            ?.value
-                                    ) || 1
-                                )
-                            ),
-                        cd:
-                            document
-                                .querySelector(
-                                    `#golpe${i}CD`
-                                )
-                                .value
-                                .trim(),
-                        danoCD:
-                            document
-                                .querySelector(
-                                    `#golpe${i}DanoCD`
-                                )
-                                .value
-                                .trim(),
-                        cura:
-                            document
-                                .querySelector(
-                                    `#golpe${i}Cura`
-                                )
-                                ?.value
-                                .trim() || "",
-                        buffAcerto:
-                            document
-                                .querySelector(
-                                    `#golpe${i}BuffAcerto`
-                                )
-                                ?.value
-                                .trim() || "",
-                        statusNome:
-                            document
-                                .querySelector(
-                                    `#golpe${i}StatusNome`
-                                )
-                                ?.value
-                                .trim() || ""
-                    });
-                }
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (const item of items) {
-                            BUFFS.forEach(
-                                (buff) => {
-                                    item.metadata[
-                                        `${PREFIX}/buff-${buff.id}`
-                                    ] =
-                                        novosBuffs[buff.id];
-                                }
-                            );
-                            item.metadata[
-                                `${PREFIX}/talento-mestre-corpo`
-                            ] = novosTalentos.mestreCorpo;
-                            item.metadata[
-                                `${PREFIX}/talento-mestre-distancia`
-                            ] = novosTalentos.mestreDistancia;
-                            item.metadata[
-                                `${PREFIX}/talento-atacante-bestial`
-                            ] = novosTalentos.atacanteBestial;
-                            item.metadata[
-                                `${PREFIX}/talento-disputador`
-                            ] = novosTalentos.disputador;
-                            item.metadata[
-                                `${PREFIX}/talento-investida-poderosa`
-                            ] = novosTalentos.investidaPoderosa;
-                            novosGolpes.forEach(
-                                (golpe, index) => {
-                                    const numero =
-                                        index + 1;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}Tipo`
-                                    ] = golpe.tipo;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}Nome`
-                                    ] = golpe.nome;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}Categoria`
-                                    ] = golpe.categoria;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}Acerto`
-                                    ] = golpe.acerto;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}Dano`
-                                    ] = golpe.dano;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}DobrarDadosVezes`
-                                    ] = golpe.dobrarDadosVezes;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}CD`
-                                    ] = golpe.cd;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}DanoCD`
-                                    ] = golpe.danoCD;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}Cura`
-                                    ] = golpe.cura;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}BuffAcerto`
-                                    ] = golpe.buffAcerto;
-                                    item.metadata[
-                                        `${PREFIX}/golpe${numero}StatusNome`
-                                    ] = golpe.statusNome;
-                                }
-                            );
-                        }
-                    }
-                );
-                const hpAtualHud =
-                    Number(
-                        token.metadata[
-                            `${PREFIX}/hpAtual`
-                        ] ?? 100
-                    ) || 0;
-                const hpMaxHud =
-                    Math.max(
-                        1,
-                        Number(
-                            token.metadata[
-                                `${PREFIX}/hpMax`
-                            ] ?? 100
-                        ) || 1
-                    );
-                const caBaseHud =
-                    Number(
-                        token.metadata[
-                            `${PREFIX}/ca`
-                        ] ?? 10
-                    ) || 0;
-                const caEfetivaHud =
-                    caBaseHud +
-                    (Number(novosBuffs.evas) || 0);
-                await criarStatusNoToken(
-                    token,
-                    hpAtualHud,
-                    hpMaxHud,
-                    caEfetivaHud
-                );
-            }
-        );
+} atualizarVisualMega(false); if (mensagemMega) { mensagemMega.textContent = "Forma Mega salva. O Pokémon está na forma normal."; } } catch (erro) { console.error( "Erro ao escolher Mega na biblioteca de Personagens:", erro ); if (mensagemMega) { mensagemMega.textContent = erro?.message || "Não foi possível escolher a forma Mega."; } } finally { botaoEscolherMega.disabled = false; } } ); }
+if (botaoMega) { botaoMega.addEventListener( "click", async () => { botaoMega.disabled = true; try { await ativarMegaEvolucao( token ); atualizarVisualMega(true); if (mensagemMega) { mensagemMega.textContent = "Mega Evolução ativada."; } } catch (erro) { console.error( "Erro ao ativar Mega Evolução:", erro ); if (mensagemMega) { mensagemMega.textContent = erro?.message || "Não foi possível ativar a Mega."; } atualizarVisualMega( megaAtivaNoToken(token) ); } } ); }
+if (botaoRetirarMega) { botaoRetirarMega.addEventListener( "click", async () => { botaoRetirarMega.disabled = true; try { await retirarMegaEvolucao( token ); atualizarVisualMega(false); if (mensagemMega) { mensagemMega.textContent = "Evolução retirada. O token original foi restaurado."; } } catch (erro) { console.error( "Erro ao retirar Mega Evolução:", erro ); if (mensagemMega) { mensagemMega.textContent = erro?.message || "Não foi possível restaurar o token original."; } atualizarVisualMega( megaAtivaNoToken(token) ); } } ); }
+atualizarVisualMega( megaAtivaNoToken(token) );
+function atualizarBuffsPagina() { BUFFS.forEach( (buff) => { const campoBuff = document.querySelector(
+`#buff-${buff.id}`
+); if (!campoBuff) { return; } const estagio = normalizarEstagioBuff( campoBuff.value, buff.id ); const campoBonus = document.querySelector(
+`#bonus-${buff.id}`
+); if (campoBonus) { campoBonus.textContent = buff.id === "crit" ? faixaCritico(estagio) : formatarBonus( bonusPorEstagio( buff.id, estagio, proficiencia ) ); } } ); }
+document .querySelectorAll(".campoBuff") .forEach( (campo) => { campo.addEventListener( "input", () => { atualizarBuffsPagina(); const buffId = campo.id.replace("buff-", ""); if (buffId === "pres") { atualizarCDsComPrecisao(); } const valorBuff = normalizarEstagioBuff( campo.value, buffId ); token.metadata[
+`${PREFIX}/buff-${buffId}`
+] = valorBuff; salvamentoBuffPendente = salvamentoBuffPendente .catch(() => {}) .then(async () => { await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[
+`${PREFIX}/buff-${buffId}`
+] = valorBuff; } } ); if (buffId === "evas") { const hpAtualHud = Number( token.metadata[
+`${PREFIX}/hpAtual`
+] ?? 100 ) || 0; const hpMaxHud = Math.max( 1, Number( token.metadata[
+`${PREFIX}/hpMax`
+] ?? 100 ) || 1 ); const caBaseHud = Number( token.metadata[
+`${PREFIX}/ca`
+] ?? 10 ) || 0; await criarStatusNoToken( token, hpAtualHud, hpMaxHud, caBaseHud + valorBuff ); } }); } ); campo.addEventListener( "change", () => { const buffId = campo.id.replace("buff-", ""); campo.value = String( normalizarEstagioBuff( campo.value, buffId ) ); atualizarBuffsPagina(); if (buffId === "pres") { atualizarCDsComPrecisao(); } } ); } );
+document .querySelectorAll(".cdBaseMove") .forEach((campo) => { campo.addEventListener( "input", atualizarCDsComPrecisao ); campo.addEventListener( "change", atualizarCDsComPrecisao ); });
+atualizarCDsComPrecisao();
+function atualizarTipoMoveVisual(numero, tipo) { const tiposValidos = ["macerto", "mcd", "cura", "buffdebuff"];
+const tipoSeguro = tiposValidos.includes(tipo) ? tipo : "";
+const campoTipo = document.querySelector(
+`#golpe${numero}Tipo`
+);
+if (campoTipo) { campoTipo.value = tipoSeguro; }
+document .querySelectorAll(
+`.tipoMove[data-golpe="${numero}"]`
+) .forEach( (opcao) => { const ativo = opcao.dataset.tipo === tipoSeguro; opcao.style.opacity = ativo ? "1" : "0.62"; opcao.style.border = ativo ? "2px solid #4C8DFF" : "1px solid #c9d5e3"; opcao.style.background = ativo ? "#eaf3ff" : ""; } );
+const blocoNome = document.querySelector(
+`#golpe${numero}BlocoNome`
+);
+const grupoCategoria = document.querySelector(
+`#golpe${numero}GrupoCategoria`
+);
+const painelMAcerto = document.querySelector(
+`#golpe${numero}PainelMAcerto`
+);
+const painelMCD = document.querySelector(
+`#golpe${numero}PainelMCD`
+);
+const painelCura = document.querySelector(
+`#golpe${numero}PainelCura`
+);
+const painelBuffDebuff = document.querySelector(
+`#golpe${numero}PainelBuffDebuff`
+);
+const ehAtaque = tipoSeguro === "macerto" || tipoSeguro === "mcd";
+if (blocoNome) { blocoNome.style.display = tipoSeguro ? "block" : "none"; }
+if (grupoCategoria) { grupoCategoria.style.display = ehAtaque ? "flex" : "none"; }
+if (painelMAcerto) { painelMAcerto.style.display = tipoSeguro === "macerto" ? "block" : "none"; }
+if (painelMCD) { painelMCD.style.display = tipoSeguro === "mcd" ? "block" : "none"; }
+if (painelCura) { painelCura.style.display = tipoSeguro === "cura" ? "block" : "none"; }
+if (painelBuffDebuff) { painelBuffDebuff.style.display = tipoSeguro === "buffdebuff" ? "block" : "none"; } }
+document .querySelectorAll(".tipoMove") .forEach( (botao) => { botao.addEventListener( "click", () => { const numero = botao.dataset.golpe; const tipo = botao.dataset.tipo; atualizarTipoMoveVisual( numero, tipo ); document .querySelector("#salvarPokemonMoves") ?.click(); } ); } );
+for (let numero = 1; numero <= 5; numero++) { const campoNome = document.querySelector(
+`#golpe${numero}Nome`
+);
+const resumo = document.querySelector(
+`#golpe${numero}Resumo`
+);
+if (!campoNome || !resumo) { continue; }
+const atualizarResumo = () => { const nome = campoNome.value.trim();
+resumo.textContent =
+nome || `Move ${numero}`;
+};
+campoNome.addEventListener( "input", atualizarResumo );
+campoNome.addEventListener( "change", atualizarResumo ); }
+function talentoCombateAtivo(id) { return ( document
+.querySelector(`#talento-${id}`)
+?.value === "1" ); }
+function atualizarVisualTalento(botao, ativo) { botao.classList.toggle("ativo", ativo);
+botao.style.opacity = ativo ? "1" : "0.55"; }
+document .querySelectorAll(".talentoCombate") .forEach( (botao) => { botao.addEventListener( "click", () => { const id = botao.dataset.talento; const campo = document.querySelector(
+`#talento-${id}`
+); if (!campo) { return; } const ativo = campo.value !== "1"; campo.value = ativo ? "1" : "0"; atualizarVisualTalento( botao, ativo ); document .querySelector("#salvarPokemonMoves") ?.click(); } ); } );
+document .querySelectorAll(".categoriaGolpe") .forEach( (botao) => { botao.addEventListener( "click", () => { const numero = botao.dataset.golpe; const categoria = botao.dataset.categoria; const campoCategoria = document.querySelector(
+`#golpe${numero}Categoria`
+); campoCategoria.value = categoria; document .querySelectorAll(
+`.categoriaGolpe[data-golpe="${numero}"]`
+) .forEach( (opcao) => { const ativo = opcao.dataset.categoria === categoria; opcao.style.opacity = ativo ? "1" : "0.55"; opcao.style.border = ativo ? "2px solid #FFFFFF" : "1px solid #666"; } ); } ); } );
+function nomeGolpe(numero) { return ( document .querySelector(
+`#golpe${numero}Nome`
+) ?.value .trim() ||
+`Move ${numero}`
+); }
+function categoriaGolpeAtual(numero) { return ( document .querySelector(
+`#golpe${numero}Categoria`
+) ?.value || "" ); }
+function estagioPrecisaoAtual() { return normalizarEstagioBuff( document .querySelector("#buff-pres") ?.value ?? buffs.pres ?? 0, "pres" ); }
+function adicionarPrecisaoAoAcerto(formula) { return adicionarBonusNaFormula( formula, estagioPrecisaoAtual() ); }
+function atualizarCDsComPrecisao() { const precisao = estagioPrecisaoAtual();
+for (let numero = 1; numero <= 5; numero++) { const campoCD = document.querySelector(
+`#golpe${numero}CD`
+);
+const indicador = document.querySelector(
+`#golpe${numero}CDAtual`
+);
+if (!campoCD || !indicador) { continue; }
+const textoBase = String(campoCD.value ?? "").trim();
+if (textoBase === "") { indicador.textContent = "CD ATUAL —";
+indicador.title = "Defina a CD Base do move.";
+continue; }
+const cdBase = Number( textoBase.replace(",", ".") );
+if (!Number.isFinite(cdBase)) { indicador.textContent = "CD ATUAL —";
+continue; }
+const cdAtual = cdBase + precisao;
+indicador.textContent =
+`CD ATUAL ${formatarDecimal(cdAtual)}`;
+if (precisao === 0) { indicador.title =
+`CD Base ${formatarDecimal(cdBase)} · Precisão 0`;
+} else { const sinalPrecisao = precisao > 0 ? "+" : "";
+indicador.title =
+`CD Base ${formatarDecimal(cdBase)} · Precisão ${sinalPrecisao}${precisao} · CD Atual ${formatarDecimal(cdAtual)}`;
+} } }
+function formulaComVantagem(formula) { const base = String(formula || "").trim();
+if (!base) { return base; }
+return `(${base},${base})kh1`;
 }
-function mostrarFichaPokemonPericias(
-    token
-) {
-    const app =
-        document.querySelector("#app");
-
-    const valoresPericias = {};
-
-    PERICIAS.forEach(
-        (grupo) => {
-            grupo.pericias.forEach(
-                (pericia) => {
-                    valoresPericias[
-                        pericia.id
-                    ] =
-                        token.metadata[
-                            `${PREFIX}/pokemon-pericia-${pericia.id}`
-                        ] ?? "";
-                }
-            );
-        }
-    );
-
-    const debuffsAtivos =
-        new Set(
-            STATUS_DEBUFFS
-                .filter(
-                    (status) =>
-                        debuffAtivoNoToken(
-                            token,
-                            status
-                        )
-                )
-                .map(
-                    (status) =>
-                        status.id
-                )
-        );
-
-    const htmlDebuffs =
-        STATUS_DEBUFFS
-            .map(
-                (status) => {
-                    const ativo =
-                        debuffsAtivos.has(
-                            status.id
-                        );
-
-                    return `
+function formulaAcertoComTalentos( numero, formulaOriginal ) { const categoria = categoriaGolpeAtual(numero);
+let bonusTalento = estagioPrecisaoAtual();
+if ( categoria === "fisico" && talentoCombateAtivo("mestre-corpo") ) { bonusTalento -= 5; }
+if ( categoria === "especial" && talentoCombateAtivo("mestre-distancia") ) { bonusTalento -= 5; }
+let formulaFinal = adicionarBonusNaFormula( formulaOriginal, bonusTalento );
+if (talentoCombateAtivo("disputador")) { formulaFinal = formulaComVantagem( formulaFinal ); }
+return formulaFinal; }
+function formulaDanoComBuff( numero, formulaOriginal, opcoes = {} ) { const incluirBonusMestres = opcoes.incluirBonusMestres !== false;
+const categoria = categoriaGolpeAtual(numero);
+if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o dano." );
+return null; }
+const buffId = categoria === "fisico" ? "atq" : "atqsp";
+const estagioBuff = normalizarEstagioBuff( document .querySelector(
+`#buff-${buffId}`
+) ?.value, buffId );
+const bonusBuff = bonusPorEstagio( buffId, estagioBuff, proficiencia );
+let bonusTalentos = 0;
+if (categoria === "fisico") { if ( incluirBonusMestres && talentoCombateAtivo("mestre-corpo") ) { bonusTalentos += 10; }
+if (talentoCombateAtivo("investida-poderosa")) { bonusTalentos += 5; } }
+if ( incluirBonusMestres && categoria === "especial" && talentoCombateAtivo("mestre-distancia") ) { bonusTalentos += 10; }
+let formulaFinal = adicionarBonusNaFormula( formulaOriginal, bonusBuff + bonusTalentos );
+if ( categoria === "fisico" && talentoCombateAtivo("atacante-bestial") ) { formulaFinal = formulaComVantagem( formulaFinal ); }
+return formulaFinal; }
+function dobrarDadosPorVezes( formula, vezes ) { const quantidadeDobras = Math.max( 1, Math.min( 10, Number(vezes) || 1 ) );
+const multiplicador = Math.pow(2, quantidadeDobras);
+return String(formula || "").replace( /(^|[^A-Za-z0-9_])(\d*)d(\d+)/gi, (match, prefixo, quantidade, faces) => { const qtdOriginal = quantidade === "" ? 1 : Number(quantidade);
+return `${prefixo}${qtdOriginal * multiplicador}d${faces}`;
+} ); }
+document .querySelectorAll(".rolarAcerto") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formula = document .querySelector(
+`#golpe${numero}Acerto`
+) .value .trim(); if (!formula) { alert( "A fórmula de acerto está vazia." ); return; } const formulaFinal = formulaAcertoComTalentos( numero, formula ); await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Acerto" ); } ); } );
+document .querySelectorAll(".rolarDano") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+`#golpe${numero}Dano`
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Dano" ); } ); } );
+document .querySelectorAll(".rolarDobrarDados") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+`#golpe${numero}Dano`
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const campoDobras = document.querySelector(
+`#golpe${numero}DobrarDadosVezes`
+); const vezes = Math.max( 1, Math.min( 10, Number(campoDobras?.value) || 1 ) ); const formulaDadosDobrados = dobrarDadosPorVezes( formulaOriginal, vezes ); const formulaFinal = formulaDanoComBuff( numero, formulaDadosDobrados ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero),
+`Dobrar Dados ${vezes}x`
+); } ); } );
+document .querySelectorAll(".rolarCritico") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+`#golpe${numero}Dano`
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
+`#golpe${numero}Categoria`
+) ?.value || ""; if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico." ); return; } const formulaCritica = duplicarDadosFormula( formulaOriginal ); const formulaFinal = formulaDanoComBuff( numero, formulaCritica ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Crítico" ); } ); } );
+document .querySelectorAll(".rolarPassouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+`#golpe${numero}DanoCD`
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaComBuff = formulaDanoComBuff( numero, formulaOriginal, { incluirBonusMestres: false } ); if (!formulaComBuff) { return; } const formulaFinal =
+`(${formulaComBuff})/2`;
+await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Passou na CD" ); } ); } );
+document .querySelectorAll(".rolarReprovouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+`#golpe${numero}DanoCD`
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Reprovou CD" ); } ); } );
+document .querySelectorAll(".rolarCriticoCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+`#golpe${numero}DanoCD`
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
+`#golpe${numero}Categoria`
+) ?.value || ""; if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico." ); return; } const formulaCritica = duplicarDadosFormula( formulaOriginal ); const formulaFinal = formulaDanoComBuff( numero, formulaCritica ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Golpe Crítico" ); } ); } );
+async function aplicarCuraNoHp(valorCura) { const cura = Math.max(0, Number(valorCura) || 0);
+const hpAtualAnterior = Number( token.metadata[
+`${PREFIX}/hpAtual`
+] ?? 0 ) || 0;
+const hpMax = Math.max( 1, Number( token.metadata[
+`${PREFIX}/hpMax`
+] ?? 100 ) || 1 );
+const hpAtualNovo = Math.max( 0, Math.min( hpMax, hpAtualAnterior + cura ) );
+token.metadata[
+`${PREFIX}/hpAtual`
+] = hpAtualNovo;
+await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[
+`${PREFIX}/hpAtual`
+] = hpAtualNovo; } } );
+const caBase = Number( token.metadata[
+`${PREFIX}/ca`
+] ?? 10 ) || 0;
+const evasao = normalizarEstagioBuff( token.metadata[
+`${PREFIX}/buff-evas`
+] ?? 0, "evas" );
+await criarStatusNoToken( token, hpAtualNovo, hpMax, caBase + evasao );
+return { curaRolada: cura, curaAplicada: Math.max( 0, hpAtualNovo - hpAtualAnterior ), hpAnterior: hpAtualAnterior, hpAtual: hpAtualNovo, hpMax }; }
+document .querySelectorAll(".rolarCura") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formula = document .querySelector(
+`#golpe${numero}Cura`
+) ?.value .trim(); if (!formula) { alert( "A fórmula de cura está vazia." ); return; } botao.disabled = true; try { const resultado = await rolarNoDicePlusComResultado( formula, nomeGolpe(numero), "Cura" ); if (resultado === null) { return; } const dadosCura = await aplicarCuraNoHp( resultado ); const info = document.querySelector(
+`#golpe${numero}CuraInfo`
+); if (info) { info.textContent =
+`Rolou ${dadosCura.curaRolada} · ` +
+`Curou +${dadosCura.curaAplicada} · ` +
+`HP ${dadosCura.hpAnterior} → ${dadosCura.hpAtual}/${dadosCura.hpMax}`;
+} } finally { botao.disabled = false; } } ); } );
+document .querySelectorAll(".rolarAcertoBuffDebuff") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formula = document .querySelector(
+`#golpe${numero}BuffAcerto`
+) ?.value .trim(); if (!formula) { alert( "A fórmula de acerto está vazia." ); return; } const statusNome = document .querySelector(
+`#golpe${numero}StatusNome`
+) ?.value .trim(); const formulaFinal = adicionarPrecisaoAoAcerto( formula ); await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), statusNome
+? `Acerto · ${statusNome}`
+: "Acerto" ); } ); } );
+document .querySelectorAll(".alterarBuffMove") .forEach( (botao) => { botao.addEventListener( "click", () => { const buffId = botao.dataset.buff; const delta = Number( botao.dataset.delta ) || 0; const campoBuff = document.querySelector(
+`#buff-${buffId}`
+); if (!campoBuff || !delta) { return; } const atual = normalizarEstagioBuff( campoBuff.value, buffId ); const novo = normalizarEstagioBuff( atual + delta, buffId ); campoBuff.value = String(novo); campoBuff.dispatchEvent( new Event( "input", { bubbles: true } ) ); campoBuff.dispatchEvent( new Event( "change", { bubbles: true } ) ); } ); } );
+document .querySelector("#salvarPokemonMoves") .addEventListener( "click", async () => { const novosBuffs = {}; BUFFS.forEach( (buff) => { novosBuffs[buff.id] = normalizarEstagioBuff( document .querySelector(
+`#buff-${buff.id}`
+) .value, buff.id ); } ); const novosTalentos = { mestreCorpo: talentoCombateAtivo("mestre-corpo"), mestreDistancia: talentoCombateAtivo("mestre-distancia"), atacanteBestial: talentoCombateAtivo("atacante-bestial"), disputador: talentoCombateAtivo("disputador"), investidaPoderosa: talentoCombateAtivo("investida-poderosa") }; const novosGolpes = []; for ( let i = 1; i <= 5; i++ ) { const tipoCampo = document .querySelector(
+`#golpe${i}Tipo`
+) .value; const categoriaCampo = document .querySelector(
+`#golpe${i}Categoria`
+) .value; novosGolpes.push({ tipo: ["macerto", "mcd", "cura", "buffdebuff"] .includes(tipoCampo) ? tipoCampo : "", nome: document .querySelector(
+`#golpe${i}Nome`
+) .value .trim(), categoria: categoriaCampo === "especial" ? "especial" : categoriaCampo === "fisico" ? "fisico" : "", acerto: document .querySelector(
+`#golpe${i}Acerto`
+) .value .trim(), dano: document .querySelector(
+`#golpe${i}Dano`
+) .value .trim(), dobrarDadosVezes: Math.max( 1, Math.min( 10, Number( document .querySelector(
+`#golpe${i}DobrarDadosVezes`
+) ?.value ) || 1 ) ), cd: document .querySelector(
+`#golpe${i}CD`
+) .value .trim(), danoCD: document .querySelector(
+`#golpe${i}DanoCD`
+) .value .trim(), cura: document .querySelector(
+`#golpe${i}Cura`
+) ?.value .trim() || "", buffAcerto: document .querySelector(
+`#golpe${i}BuffAcerto`
+) ?.value .trim() || "", statusNome: document .querySelector(
+`#golpe${i}StatusNome`
+) ?.value .trim() || "" }); } await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { BUFFS.forEach( (buff) => { item.metadata[
+`${PREFIX}/buff-${buff.id}`
+] = novosBuffs[buff.id]; } ); item.metadata[
+`${PREFIX}/talento-mestre-corpo`
+] = novosTalentos.mestreCorpo; item.metadata[
+`${PREFIX}/talento-mestre-distancia`
+] = novosTalentos.mestreDistancia; item.metadata[
+`${PREFIX}/talento-atacante-bestial`
+] = novosTalentos.atacanteBestial; item.metadata[
+`${PREFIX}/talento-disputador`
+] = novosTalentos.disputador; item.metadata[
+`${PREFIX}/talento-investida-poderosa`
+] = novosTalentos.investidaPoderosa; novosGolpes.forEach( (golpe, index) => { const numero = index + 1; item.metadata[
+`${PREFIX}/golpe${numero}Tipo`
+] = golpe.tipo; item.metadata[
+`${PREFIX}/golpe${numero}Nome`
+] = golpe.nome; item.metadata[
+`${PREFIX}/golpe${numero}Categoria`
+] = golpe.categoria; item.metadata[
+`${PREFIX}/golpe${numero}Acerto`
+] = golpe.acerto; item.metadata[
+`${PREFIX}/golpe${numero}Dano`
+] = golpe.dano; item.metadata[
+`${PREFIX}/golpe${numero}DobrarDadosVezes`
+] = golpe.dobrarDadosVezes; item.metadata[
+`${PREFIX}/golpe${numero}CD`
+] = golpe.cd; item.metadata[
+`${PREFIX}/golpe${numero}DanoCD`
+] = golpe.danoCD; item.metadata[
+`${PREFIX}/golpe${numero}Cura`
+] = golpe.cura; item.metadata[
+`${PREFIX}/golpe${numero}BuffAcerto`
+] = golpe.buffAcerto; item.metadata[
+`${PREFIX}/golpe${numero}StatusNome`
+] = golpe.statusNome; } ); } } ); const hpAtualHud = Number( token.metadata[
+`${PREFIX}/hpAtual`
+] ?? 100 ) || 0; const hpMaxHud = Math.max( 1, Number( token.metadata[
+`${PREFIX}/hpMax`
+] ?? 100 ) || 1 ); const caBaseHud = Number( token.metadata[
+`${PREFIX}/ca`
+] ?? 10 ) || 0; const caEfetivaHud = caBaseHud + (Number(novosBuffs.evas) || 0); await criarStatusNoToken( token, hpAtualHud, hpMaxHud, caEfetivaHud ); } ); }
+function mostrarFichaPokemonPericias( token ) { const app = document.querySelector("#app");
+const valoresPericias = {};
+PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = token.metadata[
+`${PREFIX}/pokemon-pericia-${pericia.id}`
+] ?? ""; } ); } );
+const debuffsAtivos = new Set( STATUS_DEBUFFS .filter( (status) => debuffAtivoNoToken( token, status ) ) .map( (status) => status.id ) );
+const htmlDebuffs = STATUS_DEBUFFS .map( (status) => { const ativo = debuffsAtivos.has( status.id );
+return `
                       <button
                         type="button"
                         class="botaoDebuffPokemon"
@@ -9513,11 +4675,8 @@ function mostrarFichaPokemonPericias(
                         ${ativo ? " ✓" : ""}
                       </button>
                     `;
-                }
-            )
-            .join("");
-
-    app.innerHTML = `
+} ) .join("");
+app.innerHTML = `
       ${ESTILO_FICHA}
       ${cabecalhoPokemon(token, 3)}
 
@@ -9589,262 +4748,43 @@ function mostrarFichaPokemonPericias(
         Salvar Perícias
       </button>
     `;
-
-    ativarCabecalhoPokemon(token);
-    ativarRolagensPericiasPokemon();
-
-    const atualizarHudDebuffs =
-        async () => {
-            const hpAtual =
-                Number(
-                    token.metadata[
-                        `${PREFIX}/hpAtual`
-                    ] ?? 100
-                ) || 0;
-
-            const hpMax =
-                Math.max(
-                    1,
-                    Number(
-                        token.metadata[
-                            `${PREFIX}/hpMax`
-                        ] ?? 100
-                    ) || 1
-                );
-
-            const caBase =
-                Number(
-                    token.metadata[
-                        `${PREFIX}/ca`
-                    ] ?? 10
-                ) || 0;
-
-            const evasao =
-                Number(
-                    token.metadata[
-                        `${PREFIX}/buff-evas`
-                    ] ?? 0
-                ) || 0;
-
-            await criarStatusNoToken(
-                token,
-                hpAtual,
-                hpMax,
-                caBase + evasao
-            );
-        };
-
-    document
-        .querySelectorAll(
-            ".botaoDebuffPokemon"
-        )
-        .forEach(
-            (botao) => {
-                botao.addEventListener(
-                    "click",
-                    async () => {
-                        const id =
-                            botao.dataset.debuff;
-
-                        const status =
-                            STATUS_DEBUFFS.find(
-                                (item) =>
-                                    item.id === id
-                            );
-
-                        if (!status) {
-                            return;
-                        }
-
-                        const chave =
-                            chaveDebuff(id);
-
-                        const novoEstado =
-                            !(
-                                token.metadata[
-                                    chave
-                                ] === true
-                            );
-
-                        token.metadata[
-                            chave
-                        ] = novoEstado;
-
-                        if (
-                            status.legacyId
-                        ) {
-                            delete token.metadata[
-                                chaveDebuff(
-                                    status.legacyId
-                                )
-                            ];
-                        }
-
-                        botao.disabled = true;
-
-                        try {
-                            await OBR.scene.items.updateItems(
-                                [token.id],
-                                (items) => {
-                                    for (
-                                        const item
-                                        of items
-                                    ) {
-                                        item.metadata[
-                                            chave
-                                        ] = novoEstado;
-
-                                        if (
-                                            status.legacyId
-                                        ) {
-                                            delete item.metadata[
-                                                chaveDebuff(
-                                                    status.legacyId
-                                                )
-                                            ];
-                                        }
-                                    }
-                                }
-                            );
-
-                            if (novoEstado) {
-                                botao.textContent =
-                                    `${status.sigla} ${status.nome} ✓`;
-
-                                botao.style.setProperty(
-                                    "background",
-                                    status.cor,
-                                    "important"
-                                );
-
-                                botao.style.setProperty(
-                                    "color",
-                                    "#ffffff",
-                                    "important"
-                                );
-
-                                botao.style.setProperty(
-                                    "border-color",
-                                    status.cor,
-                                    "important"
-                                );
-                            }
-                            else {
-                                botao.textContent =
-                                    `${status.sigla} ${status.nome}`;
-
-                                botao.style.removeProperty(
-                                    "background"
-                                );
-
-                                botao.style.removeProperty(
-                                    "color"
-                                );
-
-                                botao.style.removeProperty(
-                                    "border-color"
-                                );
-                            }
-
-                            await atualizarHudDebuffs();
-                        }
-                        catch (erro) {
-                            console.error(
-                                `Erro ao alternar ${status.nome}:`,
-                                erro
-                            );
-                        }
-                        finally {
-                            botao.disabled = false;
-                        }
-                    }
-                );
-            }
-        );
-
-    document
-        .querySelector(
-            "#salvarPokemonPericias"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const novasPericias = {};
-
-                PERICIAS.forEach(
-                    (grupo) => {
-                        grupo.pericias.forEach(
-                            (pericia) => {
-                                novasPericias[
-                                    pericia.id
-                                ] =
-                                    document
-                                        .querySelector(
-                                            `#pokemon-pericia-${pericia.id}`
-                                        )
-                                        .value
-                                        .trim();
-                            }
-                        );
-                    }
-                );
-
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (
-                            const item
-                            of items
-                        ) {
-                            PERICIAS.forEach(
-                                (grupo) => {
-                                    grupo.pericias.forEach(
-                                        (pericia) => {
-                                            item.metadata[
-                                                `${PREFIX}/pokemon-pericia-${pericia.id}`
-                                            ] =
-                                                novasPericias[
-                                                    pericia.id
-                                                ];
-                                        }
-                                    );
-                                }
-                            );
-                        }
-                    }
-                );
-            }
-        );
-}
-
-function mostrarFichaPokemonTalentos(
-    token
-) {
-    const app =
-        document.querySelector("#app");
-    const talentos = [];
-    for (
-        let i = 1;
-        i <= 5;
-        i++
-    ) {
-        talentos.push({
-            titulo:
-                token.metadata[
-                    `${PREFIX}/pokemon-talento-${i}-titulo`
-                ] ?? "",
-            descricao:
-                token.metadata[
-                    `${PREFIX}/pokemon-talento-${i}-descricao`
-                ] ?? ""
-        });
-    }
-    let htmlTalentos = "";
-    talentos.forEach(
-        (talento, index) => {
-            const numero =
-                index + 1;
-            htmlTalentos += `
+ativarCabecalhoPokemon(token);
+ativarRolagensPericiasPokemon();
+const atualizarHudDebuffs = async () => { const hpAtual = Number( token.metadata[
+`${PREFIX}/hpAtual`
+] ?? 100 ) || 0;
+const hpMax = Math.max( 1, Number( token.metadata[
+`${PREFIX}/hpMax`
+] ?? 100 ) || 1 );
+const caBase = Number( token.metadata[
+`${PREFIX}/ca`
+] ?? 10 ) || 0;
+const evasao = Number( token.metadata[
+`${PREFIX}/buff-evas`
+] ?? 0 ) || 0;
+await criarStatusNoToken( token, hpAtual, hpMax, caBase + evasao ); };
+document .querySelectorAll( ".botaoDebuffPokemon" ) .forEach( (botao) => { botao.addEventListener( "click", async () => { const id = botao.dataset.debuff; const status = STATUS_DEBUFFS.find( (item) => item.id === id ); if (!status) { return; } const chave = chaveDebuff(id); const novoEstado = !( token.metadata[ chave ] === true ); token.metadata[ chave ] = novoEstado; if ( status.legacyId ) { delete token.metadata[ chaveDebuff( status.legacyId ) ]; } botao.disabled = true; try { await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { item.metadata[ chave ] = novoEstado; if ( status.legacyId ) { delete item.metadata[ chaveDebuff( status.legacyId ) ]; } } } ); if (novoEstado) { botao.textContent =
+`${status.sigla} ${status.nome} ✓`;
+botao.style.setProperty( "background", status.cor, "important" ); botao.style.setProperty( "color", "#ffffff", "important" ); botao.style.setProperty( "border-color", status.cor, "important" ); } else { botao.textContent =
+`${status.sigla} ${status.nome}`;
+botao.style.removeProperty( "background" ); botao.style.removeProperty( "color" ); botao.style.removeProperty( "border-color" ); } await atualizarHudDebuffs(); } catch (erro) { console.error(
+`Erro ao alternar ${status.nome}:`,
+erro ); } finally { botao.disabled = false; } } ); } );
+document .querySelector( "#salvarPokemonPericias" ) .addEventListener( "click", async () => { const novasPericias = {}; PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { novasPericias[ pericia.id ] = document .querySelector(
+`#pokemon-pericia-${pericia.id}`
+) .value .trim(); } ); } ); await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { item.metadata[
+`${PREFIX}/pokemon-pericia-${pericia.id}`
+] = novasPericias[ pericia.id ]; } ); } ); } } ); } ); }
+function mostrarFichaPokemonTalentos( token ) { const app = document.querySelector("#app");
+const talentos = [];
+for ( let i = 1; i <= 5; i++ ) { talentos.push({ titulo: token.metadata[
+`${PREFIX}/pokemon-talento-${i}-titulo`
+] ?? "", descricao: token.metadata[
+`${PREFIX}/pokemon-talento-${i}-descricao`
+] ?? "" }); }
+let htmlTalentos = "";
+talentos.forEach( (talento, index) => { const numero = index + 1;
+htmlTalentos += `
         <div style="
           margin-bottom:14px;
           border:1px solid #555;
@@ -9895,9 +4835,8 @@ function mostrarFichaPokemonTalentos(
           )}</textarea>
         </div>
       `;
-        }
-    );
-    app.innerHTML = `
+} );
+app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 4)}
     <h3>
@@ -9917,126 +4856,32 @@ function mostrarFichaPokemonTalentos(
       Salvar Talentos
     </button>
   `;
-    ativarCabecalhoPokemon(token);
-    document
-        .querySelector(
-            "#salvarPokemonTalentos"
-        )
-        .addEventListener(
-            "click",
-            async () => {
-                const novosTalentos = [];
-                for (
-                    let i = 1;
-                    i <= 5;
-                    i++
-                ) {
-                    novosTalentos.push({
-                        titulo:
-                            document
-                                .querySelector(
-                                    `#pokemonTalento${i}Titulo`
-                                )
-                                .value
-                                .trim(),
-                        descricao:
-                            document
-                                .querySelector(
-                                    `#pokemonTalento${i}Descricao`
-                                )
-                                .value
-                                .trim()
-                    });
-                }
-                await OBR.scene.items.updateItems(
-                    [token.id],
-                    (items) => {
-                        for (
-                            const item
-                            of items
-                        ) {
-                            novosTalentos.forEach(
-                                (
-                                    talento,
-                                    index
-                                ) => {
-                                    const numero =
-                                        index + 1;
-                                    item.metadata[
-                                        `${PREFIX}/pokemon-talento-${numero}-titulo`
-                                    ] =
-                                        talento.titulo;
-                                    item.metadata[
-                                        `${PREFIX}/pokemon-talento-${numero}-descricao`
-                                    ] =
-                                        talento.descricao;
-                                }
-                            );
-                        }
-                    }
-                );
-            }
-        );
-}
-async function mostrarTokenSelecionado() {
-    const selection =
-        await OBR.player.getSelection();
-    if (
-        !selection ||
-        selection.length === 0
-    ) {
-        return;
-    }
-    const items =
-        await OBR.scene.items.getItems(
-            selection
-        );
-    if (
-        !items ||
-        items.length === 0
-    ) {
-        return;
-    }
-    const token =
-        items[0];
-    const tipoFicha =
-        token.metadata[
-            `${PREFIX}/tipoFicha`
-        ];
-    try {
-        if (
-            tipoFicha === "pokemon"
-        ) {
-            mostrarFichaPokemon(
-                token
-            );
-            return;
-        }
-
-        if (
-            tipoFicha === "treinador"
-        ) {
-            mostrarFichaTreinadorPagina1(
-                token
-            );
-            return;
-        }
-
-        mostrarEscolhaFicha(
-            token
-        );
-    }
-    catch (erro) {
-        console.error(
-            "Erro ao abrir a ficha:",
-            erro
-        );
-
-        const app =
-            document.querySelector("#app");
-
-        if (app) {
-            app.innerHTML = `
+ativarCabecalhoPokemon(token);
+document .querySelector( "#salvarPokemonTalentos" ) .addEventListener( "click", async () => { const novosTalentos = []; for ( let i = 1; i <= 5; i++ ) { novosTalentos.push({ titulo: document .querySelector(
+`#pokemonTalento${i}Titulo`
+) .value .trim(), descricao: document .querySelector(
+`#pokemonTalento${i}Descricao`
+) .value .trim() }); } await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { novosTalentos.forEach( ( talento, index ) => { const numero = index + 1; item.metadata[
+`${PREFIX}/pokemon-talento-${numero}-titulo`
+] = talento.titulo; item.metadata[
+`${PREFIX}/pokemon-talento-${numero}-descricao`
+] = talento.descricao; } ); } } ); } ); }
+async function mostrarTokenSelecionado() { const selection = await OBR.player.getSelection();
+if ( !selection || selection.length === 0 ) { return; }
+const items = await OBR.scene.items.getItems( selection );
+if ( !items || items.length === 0 ) { return; }
+const token = items[0];
+const tipoFicha = token.metadata[
+`${PREFIX}/tipoFicha`
+];
+try { if ( tipoFicha === "pokemon" ) { mostrarFichaPokemon( token );
+return; }
+if ( tipoFicha === "treinador" ) { mostrarFichaTreinadorPagina1( token );
+return; }
+mostrarEscolhaFicha( token ); } catch (erro) { console.error( "Erro ao abrir a ficha:", erro );
+const app = document.querySelector("#app");
+if (app) {
+app.innerHTML = `
               ${ESTILO_FICHA}
               <div style="
                 padding:14px;
@@ -10062,40 +4907,5 @@ async function mostrarTokenSelecionado() {
                 </div>
               </div>
             `;
-        }
-    }
-}
-OBR.onReady(
-    async () => {
-        if (MODO_APRESENTADOR_INICIATIVA) {
-            await iniciarApresentadorIniciativa();
-            return;
-        }
-        try {
-            await corrigirHudExistente();
-        }
-        catch (erro) {
-            console.warn(
-                "Não foi possível normalizar o HUD existente:",
-                erro
-            );
-        }
-        const app = document.querySelector("#app");
-        if (app) {
-            const observerAutosave = new MutationObserver(
-                () => ativarAutosaveDaTela()
-            );
-            observerAutosave.observe(
-                app,
-                { childList: true, subtree: true }
-            );
-        }
-        await mostrarTokenSelecionado();
-        ativarAutosaveDaTela();
-        OBR.player.onChange(
-            async () => {
-                await mostrarTokenSelecionado();
-            }
-        );
-    }
-);
+} } }
+OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
