@@ -212,74 +212,59 @@ async function executarAnimacaoMegaEvolucao(token) {
     return false;
   }
 
-  let efeito = null;
   try {
-    const bounds = await OBR.scene.items.getItemBounds([token.id]);
+    const boundsAntes = await OBR.scene.items.getItemBounds([token.id]);
+    const centroAntes = centroDoBounds(boundsAntes);
     const dpiCena = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
-    const larguraToken = Math.max(1, Number(bounds.width) || dpiCena);
-    const alturaToken = Math.max(1, Number(bounds.height) || dpiCena);
+    const larguraToken = Math.max(1, Number(boundsAntes.width) || dpiCena);
+    const alturaToken = Math.max(1, Number(boundsAntes.height) || dpiCena);
 
+    // A animação usa o PRÓPRIO token, então sempre fica exatamente em cima dele.
     // Mantemos o tamanho gigante que você aprovou.
     const tamanho = Math.max(larguraToken, alturaToken) * 16;
     const pxAnimacao = 512;
-    const escalaMundo = tamanho / dpiCena;
-
-    // Agora o alvo da animação é a barra de HP do plugin.
-    // O GIF deve nascer CENTRALIZADO na barra e ficar logo acima dela.
-    let centroAlvo = centroDoBounds(bounds);
-    const boundsBarra = await boundsBarraHpDoToken(token.id);
-    if (boundsBarra?.min && boundsBarra?.max) {
-      centroAlvo = {
-        x: (Number(boundsBarra.min.x) + Number(boundsBarra.max.x)) / 2,
-        y: Number(boundsBarra.min.y) - (tamanho / 2)
-      };
-    }
-
-    efeito = buildImage(
-      {
-        width: pxAnimacao,
-        height: pxAnimacao,
-        url: urlAnimacaoMegaEvolucao(),
-        mime: "image/gif"
-      },
-      {
+    const escalaAnimacao = tamanho / pxAnimacao;
+    const formaAnimacao = {
+      url: urlAnimacaoMegaEvolucao(),
+      mime: "image/gif",
+      width: pxAnimacao,
+      height: pxAnimacao,
+      grid: {
         dpi: pxAnimacao,
         offset: { x: pxAnimacao / 2, y: pxAnimacao / 2 }
-      }
-    )
-      .name("Animação Mega Evolução")
-      .position(centroAlvo)
-      .scale({ x: escalaMundo, y: escalaMundo })
-      .layer("ATTACHMENT")
-      .zIndex(999)
-      .disableAutoZIndex(true)
-      .locked(true)
-      .disableHit(true)
-      .metadata({
-        [`${PREFIX}/mega-animacao`]: token.id
-      })
-      .build();
-
-    await OBR.scene.items.addItems([efeito]);
-
-    // Medimos onde o GIF realmente surgiu e o movemos para o alvo real.
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    const boundsEfeito = await OBR.scene.items.getItemBounds([efeito.id]);
-    const centroEfeito = centroDoBounds(boundsEfeito);
-    const correcao = {
-      x: centroAlvo.x - centroEfeito.x,
-      y: centroAlvo.y - centroEfeito.y
+      },
+      scale: { x: escalaAnimacao, y: escalaAnimacao }
     };
 
-    if (Math.abs(correcao.x) > 0.01 || Math.abs(correcao.y) > 0.01) {
-      await OBR.scene.items.updateItems([efeito.id], (items) => {
+    const megaJaAtiva = megaAtivaNoToken(token);
+
+    await OBR.scene.items.updateItems([token.id], (items) => {
+      for (const item of items) aplicarFormaNoItem(item, formaAnimacao, megaJaAtiva);
+    });
+    aplicarFormaNoItem(token, formaAnimacao, megaJaAtiva);
+
+    // Depois de trocar para o GIF, medimos os bounds REAIS e recentralizamos o MESMO token.
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    const boundsAnimacao = await OBR.scene.items.getItemBounds([token.id]);
+    const centroAnimacao = centroDoBounds(boundsAnimacao);
+    const delta = {
+      x: centroAntes.x - centroAnimacao.x,
+      y: centroAntes.y - centroAnimacao.y
+    };
+
+    if (Math.abs(delta.x) > 0.01 || Math.abs(delta.y) > 0.01) {
+      await OBR.scene.items.updateItems([token.id], (items) => {
         for (const item of items) {
           item.position = {
-            x: Number(item.position?.x || 0) + correcao.x,
-            y: Number(item.position?.y || 0) + correcao.y
+            x: Number(item.position?.x || 0) + delta.x,
+            y: Number(item.position?.y || 0) + delta.y
           };
         }
       });
+      token.position = {
+        x: Number(token.position?.x || 0) + delta.x,
+        y: Number(token.position?.y || 0) + delta.y
+      };
     }
 
     await new Promise((resolve) => setTimeout(resolve, MEGA_ANIMACAO_MS));
@@ -287,10 +272,6 @@ async function executarAnimacaoMegaEvolucao(token) {
   } catch (erro) {
     console.warn("Não foi possível reproduzir a animação de Mega Evolução:", erro);
     return false;
-  } finally {
-    if (efeito?.id) {
-      try { await OBR.scene.items.deleteItems([efeito.id]); } catch (_) {}
-    }
   }
 }
 
