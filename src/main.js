@@ -11,6 +11,230 @@ const META_INICIATIVA_TRACKER =
 const META_TURNO_INICIATIVA =
     `${PREFIX}/initiative-turn`;
 
+const META_MEGA_CONFIG =
+    `${PREFIX}/mega-config`;
+
+const META_MEGA_ATIVA =
+    `${PREFIX}/mega-ativa`;
+
+function dadosImagemDoToken(item) {
+    if (
+        !item ||
+        item.type !== "IMAGE" ||
+        !item.image?.url
+    ) {
+        return null;
+    }
+
+    return {
+        url: item.image.url,
+        mime:
+            item.image.mime ||
+            "image/webp",
+        width:
+            Number(item.image.width) || 1,
+        height:
+            Number(item.image.height) || 1
+    };
+}
+
+function megaConfigDoToken(token) {
+    const config =
+        token?.metadata?.[
+            META_MEGA_CONFIG
+        ];
+
+    if (
+        !config ||
+        typeof config !== "object"
+    ) {
+        return null;
+    }
+
+    if (
+        !config.normal?.url ||
+        !config.mega?.url
+    ) {
+        return null;
+    }
+
+    return config;
+}
+
+function megaAtivaNoToken(token) {
+    return (
+        token?.metadata?.[
+            META_MEGA_ATIVA
+        ] === true
+    );
+}
+
+async function definirReferenciaMega(
+    tokenAtual,
+    tokenReferencia
+) {
+    const imagemNormal =
+        dadosImagemDoToken(
+            tokenAtual
+        );
+
+    const imagemMega =
+        dadosImagemDoToken(
+            tokenReferencia
+        );
+
+    if (
+        !imagemNormal ||
+        !imagemMega
+    ) {
+        throw new Error(
+            "Os dois tokens precisam ser imagens."
+        );
+    }
+
+    const configAnterior =
+        megaConfigDoToken(
+            tokenAtual
+        );
+
+    const normalSalvar =
+        configAnterior?.normal?.url
+            ? configAnterior.normal
+            : imagemNormal;
+
+    const config = {
+        normal: normalSalvar,
+        mega: imagemMega,
+        referenciaId:
+            tokenReferencia.id,
+        referenciaNome:
+            tokenReferencia.name ||
+            "Mega"
+    };
+
+    await OBR.scene.items.updateItems(
+        [tokenAtual.id],
+        (items) => {
+            for (
+                const item
+                of items
+            ) {
+                item.metadata[
+                    META_MEGA_CONFIG
+                ] = config;
+
+                item.metadata[
+                    META_MEGA_ATIVA
+                ] = false;
+
+                // Ao redefinir a Mega,
+                // garante que o token volte
+                // para a forma normal.
+                item.image.url =
+                    normalSalvar.url;
+
+                item.image.mime =
+                    normalSalvar.mime;
+
+                item.image.width =
+                    normalSalvar.width;
+
+                item.image.height =
+                    normalSalvar.height;
+            }
+        }
+    );
+
+    tokenAtual.metadata[
+        META_MEGA_CONFIG
+    ] = config;
+
+    tokenAtual.metadata[
+        META_MEGA_ATIVA
+    ] = false;
+
+    tokenAtual.image.url =
+        normalSalvar.url;
+
+    tokenAtual.image.mime =
+        normalSalvar.mime;
+
+    tokenAtual.image.width =
+        normalSalvar.width;
+
+    tokenAtual.image.height =
+        normalSalvar.height;
+
+    return config;
+}
+
+async function alternarMegaEvolucao(
+    token
+) {
+    const config =
+        megaConfigDoToken(token);
+
+    if (!config) {
+        throw new Error(
+            "Defina primeiro qual token será a Mega Evolução."
+        );
+    }
+
+    const ativar =
+        !megaAtivaNoToken(token);
+
+    const destino =
+        ativar
+            ? config.mega
+            : config.normal;
+
+    await OBR.scene.items.updateItems(
+        [token.id],
+        (items) => {
+            for (
+                const item
+                of items
+            ) {
+                // Mantém o MESMO item/id.
+                // Só troca a imagem.
+                item.image.url =
+                    destino.url;
+
+                item.image.mime =
+                    destino.mime;
+
+                item.image.width =
+                    destino.width;
+
+                item.image.height =
+                    destino.height;
+
+                item.metadata[
+                    META_MEGA_ATIVA
+                ] = ativar;
+            }
+        }
+    );
+
+    token.metadata[
+        META_MEGA_ATIVA
+    ] = ativar;
+
+    token.image.url =
+        destino.url;
+
+    token.image.mime =
+        destino.mime;
+
+    token.image.width =
+        destino.width;
+
+    token.image.height =
+        destino.height;
+
+    return ativar;
+}
+
 const STATUS_DEBUFFS = [
     {
         id: "envenenado",
@@ -6614,10 +6838,11 @@ function mostrarFichaPokemonMoves(token) {
     const app =
         document.querySelector("#app");
 
-    const urlMega =
-        urlDebuff({
-            arquivo: "Mega.webp"
-        });
+    const megaConfig =
+        megaConfigDoToken(token);
+
+    const megaAtiva =
+        megaAtivaNoToken(token);
     const proficiencia =
         Number(
             token.metadata[
@@ -7438,98 +7663,135 @@ function mostrarFichaPokemonMoves(token) {
     ${htmlGolpes}
 
     <div style="
-      border-top:1px solid #555;
-      margin:8px 0 7px;
+      border-top:1px solid #dbe5f0;
+      margin:10px 0 8px;
     "></div>
 
-    <div style="
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-height:54px;
-      margin-bottom:6px;
-    ">
+    <div
+      id="megaEvolucaoCard"
+      style="
+        padding:9px;
+        border:1px solid #ddd3f4;
+        border-radius:11px;
+        background:linear-gradient(180deg,#fbf8ff 0%,#f6f0ff 100%);
+        box-shadow:0 3px 10px rgba(91,53,140,.08);
+        margin-bottom:8px;
+      "
+    >
+      <div style="
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:8px;
+        margin-bottom:7px;
+      ">
+        <div>
+          <div style="
+            font-size:11px;
+            font-weight:900;
+            color:#63418f;
+          ">
+            ✨ MEGA EVOLUÇÃO
+          </div>
+          <div
+            id="megaReferenciaTexto"
+            style="
+              margin-top:2px;
+              font-size:9px;
+              font-weight:800;
+              color:#8a77a5;
+            "
+          >
+            ${
+              megaConfig
+                ? `Mega definida: ${esc(megaConfig.referenciaNome || "Token")}`
+                : "Nenhuma forma Mega definida"
+            }
+          </div>
+        </div>
+
+        <div
+          id="megaEstadoTexto"
+          style="
+            font-size:9px;
+            font-weight:900;
+            color:${megaAtiva ? "#269653" : "#7a688e"};
+          "
+        >
+          ${megaAtiva ? "MEGA ATIVA" : "FORMA NORMAL"}
+        </div>
+      </div>
+
+      <div style="
+        display:flex;
+        gap:6px;
+        align-items:center;
+        flex-wrap:wrap;
+      ">
+        <select
+          id="megaTokenReferencia"
+          style="
+            flex:1 1 160px;
+            min-width:130px;
+            min-height:34px;
+            padding:5px 7px;
+            font-size:10px;
+            font-weight:800;
+          "
+        >
+          <option value="">
+            Escolher token da Mega...
+          </option>
+        </select>
+
+        <button
+          id="definirMegaEvolucao"
+          type="button"
+          style="
+            min-height:34px;
+            padding:5px 9px;
+            font-size:9px;
+            font-weight:900;
+            cursor:pointer;
+          "
+        >
+          DEFINIR MEGA
+        </button>
+      </div>
+
       <button
         id="botaoMegaEvolucao"
         type="button"
-        title="Mega Evolução"
         style="
-          width:52px !important;
-          height:52px !important;
-          min-width:52px !important;
-          min-height:52px !important;
-          padding:3px !important;
-          margin:0 !important;
-          border:1px solid #8b5cf6;
-          border-radius:12px;
-          background:linear-gradient(180deg,#24163d 0%,#15111f 100%);
-          box-shadow:0 2px 8px rgba(124,58,237,.24);
-          display:flex;
-          align-items:center;
-          justify-content:center;
+          width:100%;
+          min-height:42px !important;
+          margin-top:7px;
+          padding:7px 10px !important;
+          border-radius:10px;
+          font-size:11px;
+          font-weight:900;
           cursor:pointer;
-          overflow:hidden;
-          position:relative;
+          ${
+            megaAtiva
+              ? "background:linear-gradient(135deg,#42b96b 0%,#269653 100%) !important;color:#fff !important;border-color:#218447 !important;"
+              : "background:linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%) !important;color:#fff !important;border-color:#6045c6 !important;"
+          }
         "
       >
-        <span
-          id="fallbackMega"
-          style="
-            position:absolute;
-            display:none;
-            font-size:9px;
-            font-weight:900;
-            color:#ffffff;
-            pointer-events:none;
-          "
-        >
-          MEGA
-        </span>
-
-        <img
-          id="imagemMegaEvolucao"
-          src="${esc(urlMega)}"
-          alt="Mega Evolução"
-          draggable="false"
-          style="
-            display:block;
-            width:100%;
-            height:100%;
-            object-fit:contain;
-            pointer-events:none;
-            user-select:none;
-          "
-        >
+        ${megaAtiva ? "DESFAZER MEGA" : "MEGA EVOLUÇÃO"}
       </button>
 
-      <div style="
-        min-width:0;
-        display:flex;
-        flex-direction:column;
-        justify-content:center;
-        gap:2px;
-      ">
-        <div style="
-          font-size:10px;
-          font-weight:900;
-          line-height:1;
-        ">
-          MEGA EVOLUÇÃO
-        </div>
-
-        <span
-          id="textoTesteMega"
-          style="
-            display:none;
-            font-size:10px;
-            font-weight:800;
-            color:#8b5cf6;
-            line-height:1.1;
-          "
-        >
-          teste feito
-        </span>
-      </div>
+      <div
+        id="megaMensagem"
+        style="
+          min-height:12px;
+          margin-top:5px;
+          font-size:9px;
+          font-weight:800;
+          text-align:center;
+          color:#725a91;
+        "
+      ></div>
     </div>
 
     <br>
@@ -7547,91 +7809,281 @@ function mostrarFichaPokemonMoves(token) {
   `;
     ativarCabecalhoPokemon(token);
 
-    const botaoMegaEvolucao =
+    const seletorMega =
+        document.querySelector(
+            "#megaTokenReferencia"
+        );
+
+    const botaoDefinirMega =
+        document.querySelector(
+            "#definirMegaEvolucao"
+        );
+
+    const botaoMega =
         document.querySelector(
             "#botaoMegaEvolucao"
         );
 
-    const textoTesteMega =
+    const mensagemMega =
         document.querySelector(
-            "#textoTesteMega"
+            "#megaMensagem"
         );
 
-    const imagemMegaEvolucao =
+    const textoReferenciaMega =
         document.querySelector(
-            "#imagemMegaEvolucao"
+            "#megaReferenciaTexto"
         );
 
-    const fallbackMega =
+    const textoEstadoMega =
         document.querySelector(
-            "#fallbackMega"
+            "#megaEstadoTexto"
         );
+
+    let tokensMegaDisponiveis = [];
+
+    const atualizarListaMega =
+        async () => {
+            if (!seletorMega) {
+                return;
+            }
+
+            const itens =
+                await OBR.scene.items.getItems(
+                    (item) =>
+                        item.type === "IMAGE" &&
+                        item.id !== token.id &&
+                        item.layer !== "ATTACHMENT"
+                );
+
+            tokensMegaDisponiveis =
+                [...itens]
+                    .sort(
+                        (a, b) =>
+                            String(
+                                a.name || ""
+                            ).localeCompare(
+                                String(
+                                    b.name || ""
+                                )
+                            )
+                    );
+
+            const opcoes =
+                tokensMegaDisponiveis
+                    .map(
+                        (item) => `
+                          <option
+                            value="${esc(item.id)}"
+                          >
+                            ${esc(item.name || "Token sem nome")}
+                          </option>
+                        `
+                    )
+                    .join("");
+
+            seletorMega.innerHTML = `
+              <option value="">
+                Escolher token da Mega...
+              </option>
+              ${opcoes}
+            `;
+
+            const configAtual =
+                megaConfigDoToken(token);
+
+            if (
+                configAtual?.referenciaId &&
+                tokensMegaDisponiveis.some(
+                    (item) =>
+                        item.id ===
+                        configAtual.referenciaId
+                )
+            ) {
+                seletorMega.value =
+                    configAtual.referenciaId;
+            }
+        };
+
+    atualizarListaMega().catch(
+        (erro) => {
+            console.warn(
+                "Não foi possível listar tokens para Mega:",
+                erro
+            );
+        }
+    );
 
     if (
-        imagemMegaEvolucao &&
-        fallbackMega &&
-        textoTesteMega
+        botaoDefinirMega &&
+        seletorMega
     ) {
-        imagemMegaEvolucao.addEventListener(
-            "load",
-            () => {
-                fallbackMega.style.display =
-                    "none";
-            }
-        );
+        botaoDefinirMega.addEventListener(
+            "click",
+            async () => {
+                const idReferencia =
+                    seletorMega.value;
 
-        imagemMegaEvolucao.addEventListener(
-            "error",
-            () => {
-                imagemMegaEvolucao.style.display =
-                    "none";
+                if (!idReferencia) {
+                    if (mensagemMega) {
+                        mensagemMega.textContent =
+                            "Escolha um token de imagem primeiro.";
+                    }
+                    return;
+                }
 
-                fallbackMega.style.display =
-                    "block";
+                const referencia =
+                    tokensMegaDisponiveis.find(
+                        (item) =>
+                            item.id === idReferencia
+                    ) ||
+                    (
+                        await OBR.scene.items.getItems(
+                            [idReferencia]
+                        )
+                    )[0];
 
-                textoTesteMega.style.display =
-                    "inline";
+                if (!referencia) {
+                    if (mensagemMega) {
+                        mensagemMega.textContent =
+                            "Token da Mega não foi encontrado.";
+                    }
+                    return;
+                }
 
-                textoTesteMega.textContent =
-                    "Mega.webp não carregou";
+                botaoDefinirMega.disabled = true;
 
-                textoTesteMega.style.color =
-                    "#dc2626";
+                try {
+                    const config =
+                        await definirReferenciaMega(
+                            token,
+                            referencia
+                        );
 
-                console.error(
-                    "Falha ao carregar Mega.webp:",
-                    urlMega
-                );
+                    if (textoReferenciaMega) {
+                        textoReferenciaMega.textContent =
+                            `Mega definida: ${
+                                config.referenciaNome ||
+                                referencia.name ||
+                                "Token"
+                            }`;
+                    }
+
+                    if (textoEstadoMega) {
+                        textoEstadoMega.textContent =
+                            "FORMA NORMAL";
+
+                        textoEstadoMega.style.color =
+                            "#7a688e";
+                    }
+
+                    if (botaoMega) {
+                        botaoMega.textContent =
+                            "MEGA EVOLUÇÃO";
+
+                        botaoMega.style.setProperty(
+                            "background",
+                            "linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%)",
+                            "important"
+                        );
+
+                        botaoMega.style.setProperty(
+                            "border-color",
+                            "#6045c6",
+                            "important"
+                        );
+                    }
+
+                    if (mensagemMega) {
+                        mensagemMega.textContent =
+                            "Forma Mega salva com sucesso.";
+                    }
+                }
+                catch (erro) {
+                    console.error(
+                        "Erro ao definir Mega:",
+                        erro
+                    );
+
+                    if (mensagemMega) {
+                        mensagemMega.textContent =
+                            erro?.message ||
+                            "Não foi possível definir a Mega.";
+                    }
+                }
+                finally {
+                    botaoDefinirMega.disabled = false;
+                }
             }
         );
     }
 
-    if (
-        botaoMegaEvolucao &&
-        textoTesteMega
-    ) {
-        botaoMegaEvolucao.addEventListener(
+    if (botaoMega) {
+        botaoMega.addEventListener(
             "click",
-            () => {
-                if (
-                    textoTesteMega.textContent !==
-                    "Mega.webp não carregou"
-                ) {
-                    textoTesteMega.style.display =
-                        "inline";
+            async () => {
+                botaoMega.disabled = true;
 
-                    textoTesteMega.textContent =
-                        "teste feito";
+                try {
+                    const ativa =
+                        await alternarMegaEvolucao(
+                            token
+                        );
 
-                    textoTesteMega.style.color =
-                        "#8b5cf6";
+                    botaoMega.textContent =
+                        ativa
+                            ? "DESFAZER MEGA"
+                            : "MEGA EVOLUÇÃO";
+
+                    botaoMega.style.setProperty(
+                        "background",
+                        ativa
+                            ? "linear-gradient(135deg,#42b96b 0%,#269653 100%)"
+                            : "linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%)",
+                        "important"
+                    );
+
+                    botaoMega.style.setProperty(
+                        "border-color",
+                        ativa
+                            ? "#218447"
+                            : "#6045c6",
+                        "important"
+                    );
+
+                    if (textoEstadoMega) {
+                        textoEstadoMega.textContent =
+                            ativa
+                                ? "MEGA ATIVA"
+                                : "FORMA NORMAL";
+
+                        textoEstadoMega.style.color =
+                            ativa
+                                ? "#269653"
+                                : "#7a688e";
+                    }
+
+                    if (mensagemMega) {
+                        mensagemMega.textContent =
+                            ativa
+                                ? "Mega Evolução ativada."
+                                : "Pokémon voltou à forma normal.";
+                    }
                 }
+                catch (erro) {
+                    console.error(
+                        "Erro ao alternar Mega Evolução:",
+                        erro
+                    );
 
-                botaoMegaEvolucao.style.border =
-                    "2px solid #a855f7";
-
-                botaoMegaEvolucao.style.boxShadow =
-                    "0 0 12px rgba(168,85,247,.48)";
+                    if (mensagemMega) {
+                        mensagemMega.textContent =
+                            erro?.message ||
+                            "Não foi possível alterar a Mega.";
+                    }
+                }
+                finally {
+                    botaoMega.disabled = false;
+                }
             }
         );
     }
