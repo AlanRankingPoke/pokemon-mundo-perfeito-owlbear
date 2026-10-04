@@ -51,7 +51,7 @@ tokenAtual.image.width = Number(normalSalvar.width) || 1;
 tokenAtual.image.height = Number(normalSalvar.height) || 1;
 return config; }
 async function ativarMegaEvolucao( token ) { const config = megaConfigDoToken(token);
-if (!config) { throw new Error( "Escolha primeiro a forma Mega na biblioteca de Personagens." ); }
+if (!config) { throw new Error( "Escolha primeiro um token da Mega entre os personagens da mesa." ); }
 await aplicarImagemMegaAoToken( token, config.mega, true );
 return true; }
 async function retirarMegaEvolucao( token ) { const config = megaConfigDoToken(token);
@@ -4227,13 +4227,54 @@ app.innerHTML = `
         </div>
       </div>
 
+      <div style="
+        display:grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        gap:6px;
+        align-items:center;
+      ">
+        <select
+          id="megaTokenReferencia"
+          style="
+            width:100%;
+            min-width:0;
+            min-height:38px !important;
+            padding:7px 9px !important;
+            font-size:10px;
+            font-weight:900;
+            color:#5f4485 !important;
+            border-color:#c9b7e6 !important;
+            background:#ffffff !important;
+          "
+        >
+          <option value="">Carregando personagens da mesa...</option>
+        </select>
+
+        <button
+          id="atualizarTokensMega"
+          type="button"
+          title="Atualizar personagens disponíveis na mesa"
+          style="
+            min-width:38px;
+            min-height:38px !important;
+            padding:6px 9px !important;
+            font-size:14px;
+            font-weight:900;
+            cursor:pointer;
+          "
+        >
+          ↻
+        </button>
+      </div>
+
       <button
-        id="escolherMegaEvolucao"
+        id="definirMegaEvolucao"
         type="button"
         style="
           width:100%;
-          min-height:38px !important;
-          padding:7px 9px !important;
+          min-height:36px !important;
+          margin-top:6px;
+          padding:6px 9px !important;
           font-size:10px;
           font-weight:900;
           cursor:pointer;
@@ -4242,7 +4283,7 @@ app.innerHTML = `
           border-color:#c9b7e6 !important;
         "
       >
-        📁 ESCOLHER MEGA NOS PERSONAGENS
+        DEFINIR TOKEN COMO MEGA
       </button>
 
       <div style="
@@ -4253,7 +4294,7 @@ app.innerHTML = `
         color:#8a77a5;
         text-align:center;
       ">
-        Abre sua biblioteca de Personagens para navegar pelas pastas.
+        Mostra somente personagens que estão colocados na mesa.
       </div>
 
       <div style="
@@ -4328,33 +4369,132 @@ app.innerHTML = `
     </button>
   `;
 ativarCabecalhoPokemon(token);
-const botaoEscolherMega = document.querySelector( "#escolherMegaEvolucao" );
-const botaoMega = document.querySelector( "#botaoMegaEvolucao" );
-const botaoRetirarMega = document.querySelector( "#retirarMegaEvolucao" );
-const mensagemMega = document.querySelector( "#megaMensagem" );
-const textoReferenciaMega = document.querySelector( "#megaReferenciaTexto" );
-const textoEstadoMega = document.querySelector( "#megaEstadoTexto" );
-const atualizarVisualMega = (ativa) => { if (textoEstadoMega) { textoEstadoMega.textContent = ativa ? "MEGA ATIVA" : "FORMA NORMAL";
-textoEstadoMega.style.color = ativa ? "#269653" : "#7a688e"; }
-const temConfig = Boolean( megaConfigDoToken(token) );
-if (botaoMega) { botaoMega.disabled = !temConfig || ativa; }
-if (botaoRetirarMega) { botaoRetirarMega.disabled = !temConfig || !ativa; } };
-if (botaoEscolherMega) { botaoEscolherMega.addEventListener( "click", async () => { botaoEscolherMega.disabled = true; if (mensagemMega) { mensagemMega.textContent = "Abrindo a biblioteca de Personagens..."; } try {
-// O seletor nativo do Owlbear abre a biblioteca
-// de imagens diretamente na categoria CHARACTER.
-// Assim o Mestre pode navegar pelas próprias pastas
-// de Personagens em vez de receber uma lista gigante
-// de tokens colocados na cena.
-const escolhidos = await OBR.assets.downloadImages( false, "", "CHARACTER" ); const referencia = Array.isArray(escolhidos) ? escolhidos[0] : null; if (!referencia) { if (mensagemMega) { mensagemMega.textContent = "Nenhuma forma Mega foi escolhida."; } return; } const config = await definirReferenciaMega( token, referencia ); if (textoReferenciaMega) { textoReferenciaMega.textContent =
-`Mega definida: ${
-                                config.referenciaNome ||
-                                referencia.name ||
-                                "Personagem"
-                            }`;
-} atualizarVisualMega(false); if (mensagemMega) { mensagemMega.textContent = "Forma Mega salva. O Pokémon está na forma normal."; } } catch (erro) { console.error( "Erro ao escolher Mega na biblioteca de Personagens:", erro ); if (mensagemMega) { mensagemMega.textContent = erro?.message || "Não foi possível escolher a forma Mega."; } } finally { botaoEscolherMega.disabled = false; } } ); }
-if (botaoMega) { botaoMega.addEventListener( "click", async () => { botaoMega.disabled = true; try { await ativarMegaEvolucao( token ); atualizarVisualMega(true); if (mensagemMega) { mensagemMega.textContent = "Mega Evolução ativada."; } } catch (erro) { console.error( "Erro ao ativar Mega Evolução:", erro ); if (mensagemMega) { mensagemMega.textContent = erro?.message || "Não foi possível ativar a Mega."; } atualizarVisualMega( megaAtivaNoToken(token) ); } } ); }
-if (botaoRetirarMega) { botaoRetirarMega.addEventListener( "click", async () => { botaoRetirarMega.disabled = true; try { await retirarMegaEvolucao( token ); atualizarVisualMega(false); if (mensagemMega) { mensagemMega.textContent = "Evolução retirada. O token original foi restaurado."; } } catch (erro) { console.error( "Erro ao retirar Mega Evolução:", erro ); if (mensagemMega) { mensagemMega.textContent = erro?.message || "Não foi possível restaurar o token original."; } atualizarVisualMega( megaAtivaNoToken(token) ); } } ); }
-atualizarVisualMega( megaAtivaNoToken(token) );
+const seletorMega = document.querySelector("#megaTokenReferencia");
+const botaoAtualizarMega = document.querySelector("#atualizarTokensMega");
+const botaoDefinirMega = document.querySelector("#definirMegaEvolucao");
+const botaoMega = document.querySelector("#botaoMegaEvolucao");
+const botaoRetirarMega = document.querySelector("#retirarMegaEvolucao");
+const mensagemMega = document.querySelector("#megaMensagem");
+const textoReferenciaMega = document.querySelector("#megaReferenciaTexto");
+const textoEstadoMega = document.querySelector("#megaEstadoTexto");
+let tokensMegaDisponiveis = [];
+
+const atualizarVisualMega = (ativa) => {
+  if (textoEstadoMega) {
+    textoEstadoMega.textContent = ativa ? "MEGA ATIVA" : "FORMA NORMAL";
+    textoEstadoMega.style.color = ativa ? "#269653" : "#7a688e";
+  }
+  const temConfig = Boolean(megaConfigDoToken(token));
+  if (botaoMega) botaoMega.disabled = !temConfig || ativa;
+  if (botaoRetirarMega) botaoRetirarMega.disabled = !temConfig || !ativa;
+};
+
+const atualizarListaTokensMega = async () => {
+  if (!seletorMega) return;
+  const valorAnterior = seletorMega.value;
+  seletorMega.disabled = true;
+  if (botaoAtualizarMega) botaoAtualizarMega.disabled = true;
+  try {
+    const itens = await OBR.scene.items.getItems(
+      (item) => item.type === "IMAGE" && item.layer === "CHARACTER" && item.id !== token.id
+    );
+    tokensMegaDisponiveis = [...itens].sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
+    );
+    if (!tokensMegaDisponiveis.length) {
+      seletorMega.innerHTML = '<option value="">Nenhum outro personagem na mesa</option>';
+      if (mensagemMega) mensagemMega.textContent = "Coloque o token da Mega na mesa e atualize a lista.";
+      return;
+    }
+    seletorMega.innerHTML = [
+      '<option value="">Escolher token da Mega...</option>',
+      ...tokensMegaDisponiveis.map((item) =>
+        `<option value="${esc(item.id)}">${esc(item.name || "Token sem nome")}</option>`
+      )
+    ].join("");
+    const configAtual = megaConfigDoToken(token);
+    const candidato = valorAnterior || configAtual?.referenciaId || "";
+    if (candidato && tokensMegaDisponiveis.some((item) => item.id === candidato)) {
+      seletorMega.value = candidato;
+    }
+    if (mensagemMega) mensagemMega.textContent = `${tokensMegaDisponiveis.length} personagem(ns) disponível(is) na mesa.`;
+  } catch (erro) {
+    console.error("Erro ao listar personagens da mesa para Mega:", erro);
+    seletorMega.innerHTML = '<option value="">Erro ao carregar personagens</option>';
+    if (mensagemMega) mensagemMega.textContent = "Não foi possível carregar os personagens da mesa.";
+  } finally {
+    seletorMega.disabled = false;
+    if (botaoAtualizarMega) botaoAtualizarMega.disabled = false;
+  }
+};
+
+if (botaoAtualizarMega) {
+  botaoAtualizarMega.addEventListener("click", atualizarListaTokensMega);
+}
+
+if (botaoDefinirMega && seletorMega) {
+  botaoDefinirMega.addEventListener("click", async () => {
+    const idReferencia = seletorMega.value;
+    if (!idReferencia) {
+      if (mensagemMega) mensagemMega.textContent = "Escolha um personagem da mesa primeiro.";
+      return;
+    }
+    let referencia = tokensMegaDisponiveis.find((item) => item.id === idReferencia);
+    if (!referencia) referencia = (await OBR.scene.items.getItems([idReferencia]))[0];
+    if (!referencia || referencia.type !== "IMAGE" || referencia.layer !== "CHARACTER") {
+      if (mensagemMega) mensagemMega.textContent = "Esse personagem não está mais disponível na mesa.";
+      await atualizarListaTokensMega();
+      return;
+    }
+    botaoDefinirMega.disabled = true;
+    try {
+      const config = await definirReferenciaMega(token, referencia);
+      if (textoReferenciaMega) {
+        textoReferenciaMega.textContent = `Mega definida: ${config.referenciaNome || referencia.name || "Personagem"}`;
+      }
+      atualizarVisualMega(false);
+      if (mensagemMega) mensagemMega.textContent = "Token da mesa salvo como forma Mega.";
+    } catch (erro) {
+      console.error("Erro ao definir token da mesa como Mega:", erro);
+      if (mensagemMega) mensagemMega.textContent = erro?.message || "Não foi possível definir a forma Mega.";
+    } finally {
+      botaoDefinirMega.disabled = false;
+    }
+  });
+}
+
+if (botaoMega) {
+  botaoMega.addEventListener("click", async () => {
+    botaoMega.disabled = true;
+    try {
+      await ativarMegaEvolucao(token);
+      atualizarVisualMega(true);
+      if (mensagemMega) mensagemMega.textContent = "Mega Evolução ativada.";
+    } catch (erro) {
+      console.error("Erro ao ativar Mega Evolução:", erro);
+      if (mensagemMega) mensagemMega.textContent = erro?.message || "Não foi possível ativar a Mega.";
+      atualizarVisualMega(megaAtivaNoToken(token));
+    }
+  });
+}
+
+if (botaoRetirarMega) {
+  botaoRetirarMega.addEventListener("click", async () => {
+    botaoRetirarMega.disabled = true;
+    try {
+      await retirarMegaEvolucao(token);
+      atualizarVisualMega(false);
+      if (mensagemMega) mensagemMega.textContent = "Evolução retirada. O token original foi restaurado.";
+    } catch (erro) {
+      console.error("Erro ao retirar Mega Evolução:", erro);
+      if (mensagemMega) mensagemMega.textContent = erro?.message || "Não foi possível restaurar o token original.";
+      atualizarVisualMega(megaAtivaNoToken(token));
+    }
+  });
+}
+
+atualizarVisualMega(megaAtivaNoToken(token));
+atualizarListaTokensMega();
 function atualizarBuffsPagina() { BUFFS.forEach( (buff) => { const campoBuff = document.querySelector(
 `#buff-${buff.id}`
 ); if (!campoBuff) { return; } const estagio = normalizarEstagioBuff( campoBuff.value, buff.id ); const campoBonus = document.querySelector(
