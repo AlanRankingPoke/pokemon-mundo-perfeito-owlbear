@@ -13,9 +13,9 @@ const META_MEGA_CONFIG =
 const META_MEGA_ATIVA =
 `${PREFIX}/mega-ativa`;
 function urlImagemMegaEvolucao() { return new URL("status/Mega.webp?v=2", window.location.href).toString(); }
-function urlAnimacaoMegaEvolucao() { return new URL("status/MegaEvolucao.gif?v=3", window.location.href).toString(); }
+function urlAnimacaoMegaEvolucao() { return new URL("status/MegaEvolucao.gif?v=4", window.location.href).toString(); }
 const MEGA_ANIMACAO_MS = 1800;
-const MEGA_GIF_MULTIPLICADOR = 5.4; // 3x maior que o tamanho anterior (1.8)
+const MEGA_GIF_MULTIPLICADOR = 4; // GIF = 4x o tamanho visual atual do Pokémon
 
 function copiarGridMega(grid, imagem, centralizar = false) {
   const largura = Math.max(1, Number(imagem?.width) || 1);
@@ -200,30 +200,19 @@ async function boundsBarraHpDoToken(tokenId) {
 async function executarAnimacaoMegaEvolucao(token) {
   let efeito = null;
   try {
+    // O centro vem dos bounds REAIS do próprio Pokémon.
+    // É exatamente a mesma região onde a forma Mega ficará depois da troca.
     const boundsToken = await OBR.scene.items.getItemBounds([token.id]);
-    const boundsBarra = await boundsBarraHpDoToken(token.id);
     const dpiCena = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
     const larguraToken = Math.max(1, Number(boundsToken.width) || dpiCena);
     const alturaToken = Math.max(1, Number(boundsToken.height) || dpiCena);
+    const centroToken = boundsToken.center || centroDoBounds(boundsToken);
 
-    // Mantém o GIF três vezes maior que a primeira versão que funcionou.
-    const tamanho = Math.max(larguraToken, alturaToken) * MEGA_GIF_MULTIPLICADOR;
+    // O GIF ocupa 4x o maior lado visual do Pokémon.
+    // Assim ele fica grande sem depender do tamanho em pixels do arquivo GIF.
+    const tamanhoMundo = Math.max(larguraToken, alturaToken) * MEGA_GIF_MULTIPLICADOR;
     const pxAnimacao = 512;
-    const escalaMundo = tamanho / dpiCena;
-
-    // Usa os BOUNDS REAIS da barra. Assim não dependemos de como o Owlbear
-    // interpreta position/width do SHAPE e o efeito não some para o lado.
-    const centroX = boundsBarra?.center?.x ??
-      ((Number(boundsToken.min?.x) + Number(boundsToken.max?.x)) / 2);
-    const topoBarra = Number(boundsBarra?.min?.y ?? boundsToken.max?.y ?? 0);
-    const folga = Math.max(2, dpiCena * 0.01);
-
-    // A borda inferior do GIF encosta na região logo acima da barra de HP.
-    // Como o GIF é grande, ele cobre o Pokémon inteiro durante a evolução.
-    const centro = {
-      x: centroX,
-      y: topoBarra - (tamanho / 2) - folga
-    };
+    const escalaMundo = tamanhoMundo / dpiCena;
 
     efeito = buildImage(
       {
@@ -233,16 +222,25 @@ async function executarAnimacaoMegaEvolucao(token) {
         mime: "image/gif"
       },
       {
+        // 512px = 1 célula de grid em escala 1.
+        // A escala abaixo transforma isso exatamente em tamanhoMundo.
         dpi: pxAnimacao,
         offset: { x: pxAnimacao / 2, y: pxAnimacao / 2 }
       }
     )
       .name("Animação Mega Evolução")
-      .position(centro)
+      .position({
+        x: Number(centroToken.x) || 0,
+        y: Number(centroToken.y) || 0
+      })
+      .rotation(0)
       .scale({ x: escalaMundo, y: escalaMundo })
-      .layer("ATTACHMENT")
+      // NOTE fica acima de CHARACTER e ATTACHMENT.
+      // O GIF não pode mais ficar escondido atrás do Pokémon ou da barra de HP.
+      .layer("NOTE")
       .zIndex(999999)
       .disableAutoZIndex(true)
+      .visible(true)
       .locked(true)
       .disableHit(true)
       .metadata({
@@ -250,9 +248,10 @@ async function executarAnimacaoMegaEvolucao(token) {
       })
       .build();
 
-    // Não fazemos HEAD/fetch antes. Se o GIF existe, o Owlbear carrega direto.
-    // Isso evita a animação ser pulada por uma checagem HTTP que falhou.
     await OBR.scene.items.addItems([efeito]);
+
+    // Confirma que o item entrou na cena antes de começar a contar o tempo.
+    await new Promise((resolve) => setTimeout(resolve, 120));
     await new Promise((resolve) => setTimeout(resolve, MEGA_ANIMACAO_MS));
     return true;
   } catch (erro) {
