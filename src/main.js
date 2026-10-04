@@ -207,7 +207,6 @@ async function animacaoMegaDisponivel() {
 }
 
 async function executarAnimacaoMegaEvolucao(token) {
-  // Este é o MESMO método da versão em que o GIF apareceu corretamente.
   if (!(await animacaoMegaDisponivel())) {
     console.warn("MegaEvolucao.gif não foi encontrado em public/status/.");
     return false;
@@ -220,18 +219,21 @@ async function executarAnimacaoMegaEvolucao(token) {
     const larguraToken = Math.max(1, Number(bounds.width) || dpiCena);
     const alturaToken = Math.max(1, Number(bounds.height) || dpiCena);
 
-    // Centro exato da forma atual. Como a Mega também é corrigida para este
-    // mesmo centro, a animação nasce no mesmo lugar da transformação.
-    const centro = {
-      x: (Number(bounds.min?.x) + Number(bounds.max?.x)) / 2,
-      y: (Number(bounds.min?.y) + Number(bounds.max?.y)) / 2
-    };
-
-    // A versão anterior já era 4x. Agora quadruplicamos NOVAMENTE:
-    // 16x o maior lado visual do Pokémon.
+    // Mantemos o tamanho gigante que você aprovou.
     const tamanho = Math.max(larguraToken, alturaToken) * 16;
     const pxAnimacao = 512;
     const escalaMundo = tamanho / dpiCena;
+
+    // Agora o alvo da animação é a barra de HP do plugin.
+    // O GIF deve nascer CENTRALIZADO na barra e ficar logo acima dela.
+    let centroAlvo = centroDoBounds(bounds);
+    const boundsBarra = await boundsBarraHpDoToken(token.id);
+    if (boundsBarra?.min && boundsBarra?.max) {
+      centroAlvo = {
+        x: (Number(boundsBarra.min.x) + Number(boundsBarra.max.x)) / 2,
+        y: Number(boundsBarra.min.y) - (tamanho / 2)
+      };
+    }
 
     efeito = buildImage(
       {
@@ -246,7 +248,7 @@ async function executarAnimacaoMegaEvolucao(token) {
       }
     )
       .name("Animação Mega Evolução")
-      .position(centro)
+      .position(centroAlvo)
       .scale({ x: escalaMundo, y: escalaMundo })
       .layer("ATTACHMENT")
       .zIndex(999)
@@ -260,17 +262,13 @@ async function executarAnimacaoMegaEvolucao(token) {
 
     await OBR.scene.items.addItems([efeito]);
 
-    // NÃO confiamos na posição teórica do buildImage.
-    // Depois que o Owlbear cria o GIF, medimos os bounds REAIS dele
-    // e movemos o item até seu centro coincidir exatamente com o
-    // centro do Pokémon. Como a Mega também é centralizada nesse mesmo
-    // ponto, GIF e Mega ficam um em cima do outro.
+    // Medimos onde o GIF realmente surgiu e o movemos para o alvo real.
     await new Promise((resolve) => setTimeout(resolve, 60));
     const boundsEfeito = await OBR.scene.items.getItemBounds([efeito.id]);
     const centroEfeito = centroDoBounds(boundsEfeito);
     const correcao = {
-      x: centro.x - centroEfeito.x,
-      y: centro.y - centroEfeito.y
+      x: centroAlvo.x - centroEfeito.x,
+      y: centroAlvo.y - centroEfeito.y
     };
 
     if (Math.abs(correcao.x) > 0.01 || Math.abs(correcao.y) > 0.01) {
