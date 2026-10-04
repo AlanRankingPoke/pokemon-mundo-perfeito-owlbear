@@ -37,10 +37,11 @@ const STATUS_DEBUFFS = [
         }
     },
     {
-        id: "paralisado",
+        id: "paralizado",
+        legacyId: "paralisado",
         nome: "Paralizado",
         sigla: "PAR",
-        arquivo: "Paralisado.png",
+        arquivo: "Paralizado.png",
         cor: "#e4b900",
         imagem: {
             width: 1254,
@@ -125,9 +126,23 @@ const STATUS_DEBUFFS = [
 const chaveDebuff = (id) =>
     `${PREFIX}/debuff-${id}`;
 
+const debuffAtivoNoToken = (
+    token,
+    status
+) =>
+    token?.metadata?.[
+        chaveDebuff(status.id)
+    ] === true ||
+    (
+        status.legacyId &&
+        token?.metadata?.[
+            chaveDebuff(status.legacyId)
+        ] === true
+    );
+
 const urlDebuff = (status) =>
     new URL(
-        `status/${status.arquivo}?v=8`,
+        `status/${status.arquivo}?v=9`,
         window.location.href
     ).toString();
 const ESTILO_FICHA = `
@@ -2140,9 +2155,10 @@ async function criarStatusNoToken(
       const debuffsAtivos =
         STATUS_DEBUFFS.filter(
           (status) =>
-            token.metadata?.[
-              chaveDebuff(status.id)
-            ] === true
+            debuffAtivoNoToken(
+              token,
+              status
+            )
         );
 
       const visuaisDebuff = [];
@@ -2156,31 +2172,28 @@ async function criarStatusNoToken(
             ) || 150
           );
 
-        // Badges maiores: aproximadamente o dobro
-        // da versão anterior. Para não embolar,
-        // usamos no máximo 2 por linha.
-        const maxPorLinha = 2;
-        const gapX = 5;
-        const gapY = 4;
+        // Badges novamente maiores, aproximadamente
+        // o dobro da versão anterior.
+        // Para manter tudo legível, usamos 1 por linha.
+        const maxPorLinha = 1;
+        const gapX = 0;
+        const gapY = 5;
 
         const larguraBadge =
           Math.max(
-            36,
+            68,
             Math.min(
-              48,
-              (
-                larguraBarra -
-                gapX
-              ) / 2
+              88,
+              larguraBarra * 0.72
             )
           );
 
-        // Alguns pixels abaixo da barra de HP,
+        // Fica claramente abaixo da barra de HP,
         // sem encostar nela.
         const topoDebuffs =
           barraY +
           alturaBarra +
-          8;
+          12;
 
         for (
           let indice = 0;
@@ -2248,7 +2261,7 @@ async function criarStatusNoToken(
           // Espaçamento vertical proporcional
           // ao novo tamanho maior dos badges.
           const passoLinha =
-            (larguraBadge * 0.48) +
+            (larguraBadge * 0.46) +
             gapY;
 
           const y =
@@ -8459,11 +8472,10 @@ function mostrarFichaPokemonPericias(
             STATUS_DEBUFFS
                 .filter(
                     (status) =>
-                        token.metadata[
-                            chaveDebuff(
-                                status.id
-                            )
-                        ] === true
+                        debuffAtivoNoToken(
+                            token,
+                            status
+                        )
                 )
                 .map(
                     (status) =>
@@ -8668,6 +8680,16 @@ function mostrarFichaPokemonPericias(
                             chave
                         ] = novoEstado;
 
+                        if (
+                            status.legacyId
+                        ) {
+                            delete token.metadata[
+                                chaveDebuff(
+                                    status.legacyId
+                                )
+                            ];
+                        }
+
                         botao.disabled = true;
 
                         try {
@@ -8681,6 +8703,16 @@ function mostrarFichaPokemonPericias(
                                         item.metadata[
                                             chave
                                         ] = novoEstado;
+
+                                        if (
+                                            status.legacyId
+                                        ) {
+                                            delete item.metadata[
+                                                chaveDebuff(
+                                                    status.legacyId
+                                                )
+                                            ];
+                                        }
                                     }
                                 }
                             );
