@@ -13,7 +13,7 @@ const META_MEGA_CONFIG =
 const META_MEGA_ATIVA =
 `${PREFIX}/mega-ativa`;
 function urlImagemMegaEvolucao() { return new URL("status/Mega.webp?v=2", window.location.href).toString(); }
-function urlAnimacaoMegaEvolucao() { return new URL("status/MegaEvolucao.gif?v=4", window.location.href).toString(); }
+function urlAnimacaoMegaEvolucao() { return new URL("status/MegaEvolucao.gif?v=1", window.location.href).toString(); }
 const MEGA_ANIMACAO_MS = 1800;
 const MEGA_GIF_MULTIPLICADOR = 4; // GIF = 4x o tamanho visual atual do Pokémon
 
@@ -197,22 +197,40 @@ async function boundsBarraHpDoToken(tokenId) {
   }
 }
 
+async function animacaoMegaDisponivel() {
+  try {
+    const resposta = await fetch(urlAnimacaoMegaEvolucao(), { method: "HEAD", cache: "no-store" });
+    return resposta.ok;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function executarAnimacaoMegaEvolucao(token) {
+  // Este é o MESMO método da versão em que o GIF apareceu corretamente.
+  if (!(await animacaoMegaDisponivel())) {
+    console.warn("MegaEvolucao.gif não foi encontrado em public/status/.");
+    return false;
+  }
+
   let efeito = null;
   try {
-    // O centro vem dos bounds REAIS do próprio Pokémon.
-    // É exatamente a mesma região onde a forma Mega ficará depois da troca.
-    const boundsToken = await OBR.scene.items.getItemBounds([token.id]);
+    const bounds = await OBR.scene.items.getItemBounds([token.id]);
     const dpiCena = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
-    const larguraToken = Math.max(1, Number(boundsToken.width) || dpiCena);
-    const alturaToken = Math.max(1, Number(boundsToken.height) || dpiCena);
-    const centroToken = boundsToken.center || centroDoBounds(boundsToken);
+    const larguraToken = Math.max(1, Number(bounds.width) || dpiCena);
+    const alturaToken = Math.max(1, Number(bounds.height) || dpiCena);
 
-    // O GIF ocupa 4x o maior lado visual do Pokémon.
-    // Assim ele fica grande sem depender do tamanho em pixels do arquivo GIF.
-    const tamanhoMundo = Math.max(larguraToken, alturaToken) * MEGA_GIF_MULTIPLICADOR;
+    // Centro exato da forma atual. Como a Mega também é corrigida para este
+    // mesmo centro, a animação nasce no mesmo lugar da transformação.
+    const centro = {
+      x: (Number(bounds.min?.x) + Number(bounds.max?.x)) / 2,
+      y: (Number(bounds.min?.y) + Number(bounds.max?.y)) / 2
+    };
+
+    // 4x o tamanho visual do Pokémon.
+    const tamanho = Math.max(larguraToken, alturaToken) * 4;
     const pxAnimacao = 512;
-    const escalaMundo = tamanhoMundo / dpiCena;
+    const escalaMundo = tamanho / dpiCena;
 
     efeito = buildImage(
       {
@@ -222,25 +240,17 @@ async function executarAnimacaoMegaEvolucao(token) {
         mime: "image/gif"
       },
       {
-        // 512px = 1 célula de grid em escala 1.
-        // A escala abaixo transforma isso exatamente em tamanhoMundo.
         dpi: pxAnimacao,
         offset: { x: pxAnimacao / 2, y: pxAnimacao / 2 }
       }
     )
       .name("Animação Mega Evolução")
-      .position({
-        x: Number(centroToken.x) || 0,
-        y: Number(centroToken.y) || 0
-      })
-      .rotation(0)
+      .position(centro)
       .scale({ x: escalaMundo, y: escalaMundo })
-      // NOTE fica acima de CHARACTER e ATTACHMENT.
-      // O GIF não pode mais ficar escondido atrás do Pokémon ou da barra de HP.
-      .layer("NOTE")
-      .zIndex(999999)
+      // ATTACHMENT é exatamente a camada da versão que já funcionou.
+      .layer("ATTACHMENT")
+      .zIndex(999)
       .disableAutoZIndex(true)
-      .visible(true)
       .locked(true)
       .disableHit(true)
       .metadata({
@@ -249,9 +259,6 @@ async function executarAnimacaoMegaEvolucao(token) {
       .build();
 
     await OBR.scene.items.addItems([efeito]);
-
-    // Confirma que o item entrou na cena antes de começar a contar o tempo.
-    await new Promise((resolve) => setTimeout(resolve, 120));
     await new Promise((resolve) => setTimeout(resolve, MEGA_ANIMACAO_MS));
     return true;
   } catch (erro) {
