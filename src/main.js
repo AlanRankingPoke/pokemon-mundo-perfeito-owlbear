@@ -15,187 +15,277 @@ const META_MEGA_ATIVA =
 function urlImagemMegaEvolucao() { return new URL("status/Mega.webp?v=2", window.location.href).toString(); }
 function urlAnimacaoMegaEvolucao() { return new URL("status/MegaEvolucao.gif?v=1", window.location.href).toString(); }
 const MEGA_ANIMACAO_MS = 1800;
+const MEGA_GIF_MULTIPLICADOR = 5.4; // 3x maior que o tamanho anterior (1.8)
 
-function copiarGridMega(grid, imagem) {
-if (!grid) {
-  const largura = Number(imagem?.width) || 1;
-  const altura = Number(imagem?.height) || 1;
-  return { dpi: Math.max(largura, altura), offset: { x: largura / 2, y: altura / 2 } };
-}
-return {
-  dpi: Number(grid.dpi) || Math.max(Number(imagem?.width) || 1, Number(imagem?.height) || 1),
-  offset: {
-    x: Number(grid.offset?.x) || 0,
-    y: Number(grid.offset?.y) || 0
-  }
-};
+function copiarGridMega(grid, imagem, centralizar = false) {
+  const largura = Math.max(1, Number(imagem?.width) || 1);
+  const altura = Math.max(1, Number(imagem?.height) || 1);
+  const dpi = Number(grid?.dpi) || Math.max(largura, altura);
+  return {
+    dpi,
+    offset: centralizar
+      ? { x: largura / 2, y: altura / 2 }
+      : {
+          x: Number(grid?.offset?.x) || largura / 2,
+          y: Number(grid?.offset?.y) || altura / 2
+        }
+  };
 }
 
 function dadosFormaDoToken(item) {
-if (!item || item.type !== "IMAGE" || !item.image?.url) return null;
-const imagem = {
-  url: item.image.url,
-  mime: item.image.mime || "image/webp",
-  width: Number(item.image.width) || 1,
-  height: Number(item.image.height) || 1
-};
-return {
-  ...imagem,
-  grid: copiarGridMega(item.grid, imagem),
-  scale: {
-    x: Number(item.scale?.x) || 1,
-    y: Number(item.scale?.y) || 1
-  }
-};
+  if (!item || item.type !== "IMAGE" || !item.image?.url) return null;
+  const imagem = {
+    url: item.image.url,
+    mime: item.image.mime || "image/webp",
+    width: Number(item.image.width) || 1,
+    height: Number(item.image.height) || 1
+  };
+  return {
+    ...imagem,
+    grid: copiarGridMega(item.grid, imagem),
+    scale: {
+      x: Number(item.scale?.x) || 1,
+      y: Number(item.scale?.y) || 1
+    }
+  };
 }
 
 function dadosImagemDaReferenciaMega(referencia) { return dadosFormaDoToken(referencia); }
 function dadosImagemDoToken(item) { return dadosFormaDoToken(item); }
 
 function megaConfigDoToken(token) {
-const config = token?.metadata?.[META_MEGA_CONFIG];
-if (!config || typeof config !== "object") return null;
-if (!config.normal?.url || !config.mega?.url) return null;
-return config;
+  const config = token?.metadata?.[META_MEGA_CONFIG];
+  if (!config || typeof config !== "object") return null;
+  if (!config.normal?.url || !config.mega?.url) return null;
+  return config;
 }
 
-function megaAtivaNoToken(token) { return token?.metadata?.[META_MEGA_ATIVA] === true; }
+function megaAtivaNoToken(token) {
+  return token?.metadata?.[META_MEGA_ATIVA] === true;
+}
 
-function aplicarFormaNoItem(item, destino, ativa) {
-item.image.url = destino.url;
-item.image.mime = destino.mime || "image/webp";
-item.image.width = Number(destino.width) || 1;
-item.image.height = Number(destino.height) || 1;
-if (destino.grid) item.grid = copiarGridMega(destino.grid, destino);
-if (destino.scale) {
-  item.scale = {
-    x: Number(destino.scale.x) || 1,
-    y: Number(destino.scale.y) || 1
+function centroDoBounds(bounds) {
+  return {
+    x: (Number(bounds?.min?.x) + Number(bounds?.max?.x)) / 2,
+    y: (Number(bounds?.min?.y) + Number(bounds?.max?.y)) / 2
   };
 }
-item.metadata[META_MEGA_ATIVA] = ativa;
-// IMPORTANTE: position NÃO é alterada.
-// A forma muda no mesmo lugar em que o Pokémon já estava.
+
+function aplicarFormaNoItem(item, destino, ativa) {
+  item.image.url = destino.url;
+  item.image.mime = destino.mime || "image/webp";
+  item.image.width = Math.max(1, Number(destino.width) || 1);
+  item.image.height = Math.max(1, Number(destino.height) || 1);
+
+  // A Mega usa o MESMO tamanho/configuração do token Mega escolhido,
+  // mas o ponto de ancoragem é centralizado para não saltar para o lado.
+  item.grid = copiarGridMega(destino.grid, destino, ativa);
+
+  if (destino.scale) {
+    item.scale = {
+      x: Number(destino.scale.x) || 1,
+      y: Number(destino.scale.y) || 1
+    };
+  }
+
+  item.metadata[META_MEGA_ATIVA] = ativa;
+}
+
+async function recriarHudDepoisDaMega(token) {
+  const hpAtual = Number(token.metadata?.[`${PREFIX}/hpAtual`] ?? 100) || 0;
+  const hpMax = Math.max(1, Number(token.metadata?.[`${PREFIX}/hpMax`] ?? 100) || 1);
+  const caBase = Number(token.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+  const evasao = Number(token.metadata?.[`${PREFIX}/buff-evas`] ?? 0) || 0;
+  await criarStatusNoToken(token, hpAtual, hpMax, caBase + evasao);
 }
 
 async function aplicarImagemMegaAoToken(token, destino, ativa) {
-if (!destino?.url) throw new Error("A imagem da evolução não está disponível.");
-await OBR.scene.items.updateItems([token.id], (items) => {
-  for (const item of items) aplicarFormaNoItem(item, destino, ativa);
-});
-aplicarFormaNoItem(token, destino, ativa);
+  if (!destino?.url) throw new Error("A imagem da evolução não está disponível.");
+
+  // Guarda o centro REAL da forma atual antes de trocar a imagem.
+  const boundsAntes = await OBR.scene.items.getItemBounds([token.id]);
+  const centroAntes = centroDoBounds(boundsAntes);
+
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) aplicarFormaNoItem(item, destino, ativa);
+  });
+  aplicarFormaNoItem(token, destino, ativa);
+
+  // Dá um instante para o Owlbear recalcular os bounds da nova imagem.
+  await new Promise((resolve) => setTimeout(resolve, 80));
+
+  // Corrige qualquer salto lateral/vertical causado pelo offset da imagem.
+  const boundsDepois = await OBR.scene.items.getItemBounds([token.id]);
+  const centroDepois = centroDoBounds(boundsDepois);
+  const delta = {
+    x: centroAntes.x - centroDepois.x,
+    y: centroAntes.y - centroDepois.y
+  };
+
+  if (Math.abs(delta.x) > 0.01 || Math.abs(delta.y) > 0.01) {
+    await OBR.scene.items.updateItems([token.id], (items) => {
+      for (const item of items) {
+        item.position = {
+          x: Number(item.position?.x || 0) + delta.x,
+          y: Number(item.position?.y || 0) + delta.y
+        };
+      }
+    });
+    token.position = {
+      x: Number(token.position?.x || 0) + delta.x,
+      y: Number(token.position?.y || 0) + delta.y
+    };
+  }
+
+  // A barra é apagada e criada novamente usando os bounds da forma nova.
+  // Assim a Mega fica SEMPRE imediatamente acima da barra de HP.
+  await recriarHudDepoisDaMega(token);
 }
 
 async function definirReferenciaMega(tokenAtual, referenciaMega) {
-const imagemNormalAtual = dadosFormaDoToken(tokenAtual);
-const imagemMega = dadosFormaDoToken(referenciaMega);
-if (!imagemNormalAtual || !imagemMega) {
-  throw new Error("Não foi possível ler a imagem normal ou a imagem da Mega Evolução.");
-}
-const configAnterior = megaConfigDoToken(tokenAtual);
-// Preserva a forma normal ORIGINAL mesmo depois de trocar a Mega escolhida.
-const normalSalvar = configAnterior?.normal?.url ? configAnterior.normal : imagemNormalAtual;
-const config = {
-  normal: normalSalvar,
-  mega: imagemMega,
-  referenciaId: referenciaMega?.id || "",
-  referenciaNome: referenciaMega?.name || "Mega",
-  referenciaOrigem: "CENA"
-};
-
-await OBR.scene.items.updateItems([tokenAtual.id], (items) => {
-  for (const item of items) {
-    item.metadata[META_MEGA_CONFIG] = config;
-    aplicarFormaNoItem(item, normalSalvar, false);
+  const imagemNormalAtual = dadosFormaDoToken(tokenAtual);
+  const imagemMega = dadosFormaDoToken(referenciaMega);
+  if (!imagemNormalAtual || !imagemMega) {
+    throw new Error("Não foi possível ler a imagem normal ou a imagem da Mega Evolução.");
   }
-});
-tokenAtual.metadata[META_MEGA_CONFIG] = config;
-aplicarFormaNoItem(tokenAtual, normalSalvar, false);
-return config;
+
+  const configAnterior = megaConfigDoToken(tokenAtual);
+  const normalSalvar = configAnterior?.normal?.url ? configAnterior.normal : imagemNormalAtual;
+  const config = {
+    normal: normalSalvar,
+    mega: imagemMega,
+    referenciaId: referenciaMega?.id || "",
+    referenciaNome: referenciaMega?.name || "Mega",
+    referenciaOrigem: "CENA"
+  };
+
+  await OBR.scene.items.updateItems([tokenAtual.id], (items) => {
+    for (const item of items) {
+      item.metadata[META_MEGA_CONFIG] = config;
+      aplicarFormaNoItem(item, normalSalvar, false);
+    }
+  });
+  tokenAtual.metadata[META_MEGA_CONFIG] = config;
+  aplicarFormaNoItem(tokenAtual, normalSalvar, false);
+  await recriarHudDepoisDaMega(tokenAtual);
+  return config;
 }
 
 async function animacaoMegaDisponivel() {
-try {
-  const resposta = await fetch(urlAnimacaoMegaEvolucao(), { method: "HEAD", cache: "no-store" });
-  return resposta.ok;
-} catch (_) {
-  return false;
+  try {
+    const resposta = await fetch(urlAnimacaoMegaEvolucao(), {
+      method: "HEAD",
+      cache: "no-store"
+    });
+    return resposta.ok;
+  } catch (_) {
+    return false;
+  }
 }
+
+async function pegarBarraHpDoToken(tokenId) {
+  const barras = await OBR.scene.items.getItems(
+    (item) =>
+      item.type === "SHAPE" &&
+      item.metadata?.[`${PREFIX}/statusToken`] === tokenId &&
+      item.metadata?.[`${PREFIX}/tipoVisual`] === "fundo"
+  );
+  if (!barras.length) return null;
+  barras.sort((a, b) => {
+    const dataA = Date.parse(a.lastModified || "") || 0;
+    const dataB = Date.parse(b.lastModified || "") || 0;
+    return dataB - dataA;
+  });
+  return barras[0];
 }
 
 async function executarAnimacaoMegaEvolucao(token) {
-if (!(await animacaoMegaDisponivel())) return false;
+  if (!(await animacaoMegaDisponivel())) return false;
 
-let efeito = null;
-try {
-  const bounds = await OBR.scene.items.getItemBounds([token.id]);
-  const dpiCena = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
-  const larguraToken = Math.max(1, Number(bounds.width) || dpiCena);
-  const alturaToken = Math.max(1, Number(bounds.height) || dpiCena);
-  const tamanho = Math.max(larguraToken, alturaToken) * 1.8;
-  const centro = {
-    x: (Number(bounds.min?.x) + Number(bounds.max?.x)) / 2,
-    y: (Number(bounds.min?.y) + Number(bounds.max?.y)) / 2
-  };
-  const pxAnimacao = 512;
-  const escalaMundo = tamanho / dpiCena;
+  let efeito = null;
+  try {
+    const bounds = await OBR.scene.items.getItemBounds([token.id]);
+    const dpiCena = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
+    const larguraToken = Math.max(1, Number(bounds.width) || dpiCena);
+    const alturaToken = Math.max(1, Number(bounds.height) || dpiCena);
 
-  efeito = buildImage(
-    {
-      width: pxAnimacao,
-      height: pxAnimacao,
-      url: urlAnimacaoMegaEvolucao(),
-      mime: "image/gif"
-    },
-    {
-      dpi: pxAnimacao,
-      offset: { x: pxAnimacao / 2, y: pxAnimacao / 2 }
+    // O GIF agora é TRÊS VEZES maior que antes: 1.8 -> 5.4.
+    const tamanho = Math.max(larguraToken, alturaToken) * MEGA_GIF_MULTIPLICADOR;
+    const pxAnimacao = 512;
+    const escalaMundo = tamanho / dpiCena;
+    const barraHp = await pegarBarraHpDoToken(token.id);
+
+    // O GIF nasce centralizado horizontalmente NA BARRA DE HP.
+    // A borda de baixo do GIF fica logo acima da barra.
+    let centroX = (Number(bounds.min?.x) + Number(bounds.max?.x)) / 2;
+    let topoBarra = Number(bounds.max?.y) + 8;
+
+    if (barraHp) {
+      centroX = Number(barraHp.position?.x || 0) + (Number(barraHp.width) || 0) / 2;
+      topoBarra = Number(barraHp.position?.y || topoBarra);
     }
-  )
-    .name("Animação Mega Evolução")
-    .position(centro)
-    .scale({ x: escalaMundo, y: escalaMundo })
-    .layer("ATTACHMENT")
-    .zIndex(999)
-    .disableAutoZIndex(true)
-    .locked(true)
-    .disableHit(true)
-    .metadata({
-      [`${PREFIX}/mega-animacao`]: token.id
-    })
-    .build();
 
-  await OBR.scene.items.addItems([efeito]);
-  await new Promise((resolve) => setTimeout(resolve, MEGA_ANIMACAO_MS));
-  return true;
-} catch (erro) {
-  console.warn("Não foi possível reproduzir a animação de Mega Evolução:", erro);
-  return false;
-} finally {
-  if (efeito?.id) {
-    try { await OBR.scene.items.deleteItems([efeito.id]); } catch (_) {}
+    const folga = Math.max(6, dpiCena * 0.03);
+    const centro = {
+      x: centroX,
+      y: topoBarra - (tamanho / 2) - folga
+    };
+
+    efeito = buildImage(
+      {
+        width: pxAnimacao,
+        height: pxAnimacao,
+        url: urlAnimacaoMegaEvolucao(),
+        mime: "image/gif"
+      },
+      {
+        dpi: pxAnimacao,
+        offset: { x: pxAnimacao / 2, y: pxAnimacao / 2 }
+      }
+    )
+      .name("Animação Mega Evolução")
+      .position(centro)
+      .scale({ x: escalaMundo, y: escalaMundo })
+      .layer("ATTACHMENT")
+      .zIndex(999)
+      .disableAutoZIndex(true)
+      .locked(true)
+      .disableHit(true)
+      .metadata({
+        [`${PREFIX}/mega-animacao`]: token.id
+      })
+      .build();
+
+    await OBR.scene.items.addItems([efeito]);
+    await new Promise((resolve) => setTimeout(resolve, MEGA_ANIMACAO_MS));
+    return true;
+  } catch (erro) {
+    console.warn("Não foi possível reproduzir a animação de Mega Evolução:", erro);
+    return false;
+  } finally {
+    if (efeito?.id) {
+      try { await OBR.scene.items.deleteItems([efeito.id]); } catch (_) {}
+    }
   }
-}
 }
 
 async function ativarMegaEvolucao(token) {
-const config = megaConfigDoToken(token);
-if (!config) throw new Error("Escolha primeiro um token da Mega entre os personagens da mesa.");
-await executarAnimacaoMegaEvolucao(token);
-await aplicarImagemMegaAoToken(token, config.mega, true);
-return true;
+  const config = megaConfigDoToken(token);
+  if (!config) throw new Error("Escolha primeiro um token da Mega entre os personagens da mesa.");
+  await executarAnimacaoMegaEvolucao(token);
+  await aplicarImagemMegaAoToken(token, config.mega, true);
+  return true;
 }
 
 async function retirarMegaEvolucao(token) {
-const config = megaConfigDoToken(token);
-if (!config) throw new Error("Nenhuma forma Mega foi configurada para este Pokémon.");
-await aplicarImagemMegaAoToken(token, config.normal, false);
-return false;
+  const config = megaConfigDoToken(token);
+  if (!config) throw new Error("Nenhuma forma Mega foi configurada para este Pokémon.");
+  await aplicarImagemMegaAoToken(token, config.normal, false);
+  return false;
 }
 
-// Mantém compatibilidade com qualquer chamada antiga.
 async function alternarMegaEvolucao(token) {
-return megaAtivaNoToken(token) ? retirarMegaEvolucao(token) : ativarMegaEvolucao(token);
+  return megaAtivaNoToken(token) ? retirarMegaEvolucao(token) : ativarMegaEvolucao(token);
 }
 const STATUS_DEBUFFS = [ { id: "envenenado", nome: "Envenenado", sigla: "ENV", arquivo: "Envenenado.png", cor: "#8f39c7", imagem: { width: 1254, height: 1254, bbox: { x: 94, y: 416, width: 1066, height: 448 } } }, { id: "queimado", nome: "Queimado", sigla: "QMD", arquivo: "Queimado.png", cor: "#ef4b18", imagem: { width: 1254, height: 1254, bbox: { x: 88, y: 393, width: 1078, height: 465 } } }, { id: "paralizado", legacyId: "paralisado", nome: "Paralizado", sigla: "PAR", arquivo: "Paralizado.png", cor: "#e4b900", imagem: { width: 1254, height: 1254, bbox: { x: 48, y: 373, width: 1158, height: 498 } } }, { id: "congelado", nome: "Congelado", sigla: "GEL", arquivo: "Congelado.png", cor: "#40aee0", imagem: { width: 1254, height: 1254, bbox: { x: 78, y: 403, width: 1099, height: 472 } } }, { id: "dormindo", nome: "Dormindo", sigla: "DRM", arquivo: "Dormindo.png", cor: "#404bc9", imagem: { width: 1254, height: 1254, bbox: { x: 31, y: 374, width: 1192, height: 514 } } }, { id: "sonolento", nome: "Sonolento", sigla: "SON", arquivo: "Sonolento.png", cor: "#8580df", imagem: { width: 1254, height: 1254, bbox: { x: 78, y: 392, width: 1099, height: 471 } } }, { id: "atordoado", nome: "Atordoado", sigla: "ATO", arquivo: "Atordoado.png", cor: "#e2a900", imagem: { width: 1254, height: 1254, bbox: { x: 180, y: 438, width: 894, height: 378 } } }, { id: "encantado", nome: "Encantado", sigla: "ENC", arquivo: "Encantado.png", cor: "#df3889", imagem: { width: 1254, height: 1254, bbox: { x: 164, y: 429, width: 927, height: 397 } } }, { id: "confuso", nome: "Confuso", sigla: "CNF", arquivo: "Confuso.png", cor: "#16aaa5", imagem: { width: 1254, height: 1254, bbox: { x: 150, y: 431, width: 954, height: 392 } } } ];
 const chaveDebuff = (id) =>
