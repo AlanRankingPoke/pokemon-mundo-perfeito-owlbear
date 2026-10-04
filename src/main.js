@@ -4249,10 +4249,6 @@ function mostrarFichaTreinadorPagina1(
         token.metadata[
             `${PREFIX}/hpMax`
         ] ?? 100;
-    const nivelPokemon =
-        token.metadata[
-            `${PREFIX}/pokemon-level`
-        ] ?? "";
     const caBase =
         Number(
             token.metadata[
@@ -5703,6 +5699,10 @@ function mostrarFichaPokemon(token) {
         token.metadata[
             `${PREFIX}/hpMax`
         ] ?? 100;
+    const nivelPokemon =
+        token.metadata[
+            `${PREFIX}/pokemon-level`
+        ] ?? "";
     const caBase =
         Number(
             token.metadata[
