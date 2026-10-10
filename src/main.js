@@ -13,9 +13,6 @@ const META_MEGA_CONFIG =
 const META_MEGA_ATIVA =
 `${PREFIX}/mega-ativa`;
 function urlImagemMegaEvolucao() { return new URL("status/Mega.webp?v=2", window.location.href).toString(); }
-function urlAnimacaoMegaEvolucao() { return new URL("status/MegaEvolucao.gif?v=1", window.location.href).toString(); }
-const MEGA_ANIMACAO_MS = 1800;
-const MEGA_GIF_MULTIPLICADOR = 4; // GIF = 4x o tamanho visual atual do Pokémon
 const MEGA_PONTOS_TOTAL = 11;
 const MEGA_CUSTO_CA = 2;
 const MEGA_CUSTO_ATRIBUTO = 1;
@@ -299,88 +296,9 @@ async function boundsBarraHpDoToken(tokenId) {
   }
 }
 
-async function animacaoMegaDisponivel() {
-  try {
-    const resposta = await fetch(urlAnimacaoMegaEvolucao(), { method: "HEAD", cache: "no-store" });
-    return resposta.ok;
-  } catch (_) {
-    return false;
-  }
-}
-
-async function executarAnimacaoMegaEvolucao(token) {
-  if (!(await animacaoMegaDisponivel())) {
-    console.warn("MegaEvolucao.gif não foi encontrado em public/status/.");
-    return false;
-  }
-
-  try {
-    const boundsAntes = await OBR.scene.items.getItemBounds([token.id]);
-    const centroAntes = centroDoBounds(boundsAntes);
-    const dpiCena = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
-    const larguraToken = Math.max(1, Number(boundsAntes.width) || dpiCena);
-    const alturaToken = Math.max(1, Number(boundsAntes.height) || dpiCena);
-
-    // A animação usa o PRÓPRIO token, então sempre fica exatamente em cima dele.
-    // Mantemos o tamanho gigante que você aprovou.
-    const tamanho = Math.max(larguraToken, alturaToken) * 16;
-    const pxAnimacao = 512;
-    const escalaAnimacao = tamanho / pxAnimacao;
-    const formaAnimacao = {
-      url: urlAnimacaoMegaEvolucao(),
-      mime: "image/gif",
-      width: pxAnimacao,
-      height: pxAnimacao,
-      grid: {
-        dpi: pxAnimacao,
-        offset: { x: pxAnimacao / 2, y: pxAnimacao / 2 }
-      },
-      scale: { x: escalaAnimacao, y: escalaAnimacao }
-    };
-
-    const megaJaAtiva = megaAtivaNoToken(token);
-
-    await OBR.scene.items.updateItems([token.id], (items) => {
-      for (const item of items) aplicarFormaNoItem(item, formaAnimacao, megaJaAtiva);
-    });
-    aplicarFormaNoItem(token, formaAnimacao, megaJaAtiva);
-
-    // Depois de trocar para o GIF, medimos os bounds REAIS e recentralizamos o MESMO token.
-    await new Promise((resolve) => setTimeout(resolve, 80));
-    const boundsAnimacao = await OBR.scene.items.getItemBounds([token.id]);
-    const centroAnimacao = centroDoBounds(boundsAnimacao);
-    const delta = {
-      x: centroAntes.x - centroAnimacao.x,
-      y: centroAntes.y - centroAnimacao.y
-    };
-
-    if (Math.abs(delta.x) > 0.01 || Math.abs(delta.y) > 0.01) {
-      await OBR.scene.items.updateItems([token.id], (items) => {
-        for (const item of items) {
-          item.position = {
-            x: Number(item.position?.x || 0) + delta.x,
-            y: Number(item.position?.y || 0) + delta.y
-          };
-        }
-      });
-      token.position = {
-        x: Number(token.position?.x || 0) + delta.x,
-        y: Number(token.position?.y || 0) + delta.y
-      };
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, MEGA_ANIMACAO_MS));
-    return true;
-  } catch (erro) {
-    console.warn("Não foi possível reproduzir a animação de Mega Evolução:", erro);
-    return false;
-  }
-}
-
 async function ativarMegaEvolucao(token) {
   const config = megaConfigDoToken(token);
   if (!config) throw new Error("Escolha primeiro um token da Mega entre os personagens da mesa.");
-  await executarAnimacaoMegaEvolucao(token);
   await aplicarImagemMegaAoToken(token, config.mega, true);
   return true;
 }
@@ -654,41 +572,54 @@ const ESTILO_FICHA = `
 
   .pokemonStatusTopo {
     display:grid !important;
-    grid-template-columns:1.15fr 1.15fr .9fr .9fr .8fr !important;
+    grid-template-columns:repeat(6,minmax(0,1fr)) !important;
     gap:7px !important;
-    align-items:end !important;
+    align-items:stretch !important;
     width:100% !important;
+  }
+
+  /* HP ganha mais espaço; CA / Prof / Lv ficam organizados abaixo. */
+  .pokemonStatusCampo:nth-child(1),
+  .pokemonStatusCampo:nth-child(2) {
+    grid-column:span 3 !important;
+  }
+
+  .pokemonStatusCampo:nth-child(3),
+  .pokemonStatusCampo:nth-child(4),
+  .pokemonStatusCampo:nth-child(5) {
+    grid-column:span 2 !important;
   }
 
   .pokemonStatusCampo {
     min-width:0 !important;
-    padding:6px !important;
+    padding:7px !important;
     border:1px solid #d6e3f2 !important;
-    border-radius:10px !important;
+    border-radius:11px !important;
     background:#ffffff !important;
   }
 
   .pokemonStatusCampo p {
-    margin:0 0 4px !important;
+    margin:0 0 5px !important;
     text-align:center !important;
-    font-size:10px !important;
+    font-size:11px !important;
     font-weight:900 !important;
     color:#526a88 !important;
-    line-height:1 !important;
+    line-height:1.05 !important;
+    white-space:nowrap !important;
   }
 
   .pokemonStatusCampo input {
     width:100% !important;
-    min-height:34px !important;
-    height:34px !important;
-    padding:4px 5px !important;
+    min-height:38px !important;
+    height:38px !important;
+    padding:4px 7px !important;
     text-align:center !important;
-    font-size:15px !important;
+    font-size:16px !important;
     font-weight:900 !important;
     color:#18385f !important;
     background:#f7fbff !important;
     border:1px solid #a9c4e7 !important;
-    border-radius:8px !important;
+    border-radius:9px !important;
     box-shadow:inset 0 1px 2px rgba(33,68,110,.05) !important;
   }
 
@@ -742,22 +673,21 @@ const ESTILO_FICHA = `
 
   @media (max-width: 430px) {
     .pokemonStatusTopo {
-      grid-template-columns:repeat(5,minmax(52px,1fr)) !important;
-      gap:4px !important;
+      gap:5px !important;
     }
 
     .pokemonStatusCampo {
-      padding:4px !important;
+      padding:6px !important;
     }
 
     .pokemonStatusCampo p {
-      font-size:9px !important;
+      font-size:10px !important;
     }
 
     .pokemonStatusCampo input {
-      font-size:13px !important;
-      min-height:32px !important;
-      height:32px !important;
+      font-size:15px !important;
+      min-height:36px !important;
+      height:36px !important;
     }
   }
   .pokemonDetalhesCompactos {
