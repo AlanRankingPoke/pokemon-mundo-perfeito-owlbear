@@ -18,7 +18,7 @@ const MEGA_ANIMACAO_MS = 1800;
 const MEGA_GIF_MULTIPLICADOR = 4; // GIF = 4x o tamanho visual atual do Pokémon
 const MEGA_PONTOS_TOTAL = 11;
 const MEGA_CUSTO_CA = 2;
-const MEGA_CUSTO_ATRIBUTO = 2;
+const MEGA_CUSTO_ATRIBUTO = 1;
 const MEGA_PASSO_MOVIMENTO = 1.5;
 const MEGA_ATRIBUTOS = ["for", "des", "con", "int", "sab", "car"];
 const MEGA_MOVIMENTOS = [
@@ -28,6 +28,7 @@ const MEGA_MOVIMENTOS = [
 
 function distribuicaoMegaPadrao() {
   return {
+    versaoAtributos: 2,
     ca: 0,
     atributos: Object.fromEntries(MEGA_ATRIBUTOS.map((id) => [id, 0])),
     movimentos: Object.fromEntries(MEGA_MOVIMENTOS.map((id) => [id, 0])),
@@ -38,9 +39,13 @@ function distribuicaoMegaPadrao() {
 function normalizarDistribuicaoMega(valor) {
   const base = distribuicaoMegaPadrao();
   const origem = valor && typeof valor === "object" ? valor : {};
+  const formatoStatusBruto = Number(origem.versaoAtributos) === 2;
   base.ca = Math.max(0, Math.trunc(Number(origem.ca) || 0));
   for (const id of MEGA_ATRIBUTOS) {
-    base.atributos[id] = Math.max(0, Math.trunc(Number(origem.atributos?.[id]) || 0));
+    const salvo = Math.max(0, Math.trunc(Number(origem.atributos?.[id]) || 0));
+    // Migração: versões anteriores guardavam +1 modificador por 2 pontos.
+    // Agora guardamos pontos de Status bruto, então +1 mod antigo vira +2 Status.
+    base.atributos[id] = formatoStatusBruto ? salvo : salvo * 2;
   }
   for (const id of MEGA_MOVIMENTOS) {
     base.movimentos[id] = Math.max(0, Math.trunc(Number(origem.movimentos?.[id]) || 0));
@@ -64,7 +69,7 @@ function bonusCaMegaDoToken(token) {
   return megaAtivaNoToken(token) ? distribuicaoMegaDoToken(token).ca : 0;
 }
 
-function bonusModMegaDoToken(token, atributo) {
+function bonusStatusMegaDoToken(token, atributo) {
   if (!megaAtivaNoToken(token)) return 0;
   return Number(distribuicaoMegaDoToken(token).atributos?.[atributo]) || 0;
 }
@@ -75,13 +80,25 @@ function bonusMovimentoMegaDoToken(token, chave) {
   return passos * MEGA_PASSO_MOVIMENTO;
 }
 
-function somarBonusTextoMega(valorBase, bonus) {
-  const incremento = Number(bonus) || 0;
-  if (!incremento) return valorBase ?? "";
-  const texto = String(valorBase ?? "").trim().replace(",", ".");
-  const base = Number(texto);
-  const total = (Number.isFinite(base) ? base : 0) + incremento;
-  return total > 0 ? `+${total}` : String(total);
+function modificadorPorStatus(valor) {
+  const numero = Number(String(valor ?? "").trim().replace(",", "."));
+  if (!Number.isFinite(numero)) return 0;
+  return Math.floor((numero - 10) / 2);
+}
+
+function statusBaseDoToken(token, atributo) {
+  const salvo = token?.metadata?.[`${PREFIX}/status-${atributo}`];
+  const numeroSalvo = Number(String(salvo ?? "").trim().replace(",", "."));
+  if (Number.isFinite(numeroSalvo)) return Math.trunc(numeroSalvo);
+
+  // Compatibilidade com fichas antigas que guardavam somente o modificador.
+  const modAntigo = Number(String(token?.metadata?.[`${PREFIX}/mod-${atributo}`] ?? "0").trim().replace(",", "."));
+  const mod = Number.isFinite(modAntigo) ? Math.trunc(modAntigo) : 0;
+  return 10 + (mod * 2);
+}
+
+function statusTotalDoToken(token, atributo) {
+  return statusBaseDoToken(token, atributo) + bonusStatusMegaDoToken(token, atributo);
 }
 
 async function salvarDistribuicaoMega(token, distribuicao) {
@@ -1747,6 +1764,8 @@ hpAtual = Math.max( 0, Math.min( hpAtual, hpMax ) );
 return { hpAtual, hpMax, ca, caBase, calculadoraAplicada: aplicarCalculadora && alterarHp !== "" }; }
 function criarLinhaAtributos( titulo, tipo, valores ) { const ehSalvaguarda = tipo.includes("save");
 const ehModificador = tipo.includes("mod");
+const ehStatusPokemon = tipo === "status";
+const ehModificadorPokemon = tipo === "mod";
 const rolavel = ehSalvaguarda || ehModificador;
 const caixas = ATRIBUTOS.map( (atributo) => { const tipoRolagem = ehSalvaguarda ? "Salvaguarda" : "Modificador"; const botao = rolavel
 ? `
@@ -1786,9 +1805,11 @@ return `
             </div>
             <input
               id="${tipo}-${atributo}"
-              type="text"
+              type="${ehStatusPokemon ? "number" : "text"}"
+              ${ehStatusPokemon ? 'step="1"' : ''}
+              ${ehModificadorPokemon ? 'readonly title="Calculado automaticamente pelo Status"' : ''}
               value="${esc(valores[atributo])}"
-              placeholder="+0"
+              placeholder="${ehStatusPokemon ? "10" : "+0"}"
               style="
                 width:100%;
                 box-sizing:border-box;
@@ -1820,6 +1841,23 @@ return `
     </div>
   `;
 }
+function ativarCalculoStatusPokemon() {
+  for (const atributo of ATRIBUTOS) {
+    const campoStatus = document.querySelector(`#status-${atributo}`);
+    const campoMod = document.querySelector(`#mod-${atributo}`);
+    if (!campoStatus || !campoMod) continue;
+    const atualizar = () => {
+      const numero = Number(String(campoStatus.value ?? "").trim().replace(",", "."));
+      if (!Number.isFinite(numero)) return;
+      campoMod.value = formatarBonus(modificadorPorStatus(numero));
+      campoMod.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    campoStatus.addEventListener("input", atualizar);
+    campoStatus.addEventListener("change", atualizar);
+    atualizar();
+  }
+}
+
 function ativarRolagensSalvaguarda(token) { document .querySelectorAll(".rolarAtributo") .forEach( (botao) => { botao.addEventListener( "click", async () => { const atributo = botao.dataset.atributo; const tipoRolagem = botao.dataset.tipoRolagem || "Modificador"; const campo = document.querySelector(
 `#${botao.dataset.campo}`
 ); let valorRolagem = campo?.value; if (tipoRolagem === "Salvaguarda") { const valorBase = Number( String(campo?.value ?? "") .trim() .replace(",", ".") ); if (Number.isNaN(valorBase)) { alert( "Valor de salvaguarda inválido." ); return; } const estagioEvasao = normalizarEstagioBuff( token?.metadata?.[
@@ -3312,12 +3350,13 @@ const movimentoFlutuacao = token.metadata[
 const proficiencia = Number( token.metadata[
 `${PREFIX}/proficiencia`
 ] ?? 0 );
+const statusAtributos = {};
 const modificadores = {};
 const salvaguardas = {};
 ATRIBUTOS.forEach((atributo) => {
-  const baseMod = token.metadata[`${PREFIX}/mod-${atributo}`] ?? "";
-  const bonusMega = megaAtivaStatus ? (Number(megaDistribuicaoStatus.atributos?.[atributo]) || 0) : 0;
-  modificadores[atributo] = somarBonusTextoMega(baseMod, bonusMega);
+  const statusTotal = statusTotalDoToken(token, atributo);
+  statusAtributos[atributo] = statusTotal;
+  modificadores[atributo] = formatarBonus(modificadorPorStatus(statusTotal));
   salvaguardas[atributo] = token.metadata[`${PREFIX}/save-${atributo}`] ?? "";
 });
 const iniciativaAlerta = token.metadata[
@@ -3707,6 +3746,11 @@ app.innerHTML = `
     </div>
     <hr>
     ${criarLinhaAtributos(
+        "Status",
+        "status",
+        statusAtributos
+    )}
+    ${criarLinhaAtributos(
         "Modificadores",
         "mod",
         modificadores
@@ -3730,18 +3774,20 @@ app.innerHTML = `
     </button>
   `;
 ativarCabecalhoPokemon(token);
+ativarCalculoStatusPokemon();
 ativarRolagensSalvaguarda(token);
 ativarRolagemIniciativa(token);
 ativarCalculadoraHp();
 ativarMovimentacaoComVelocidade(token, estagioVelocidade, megaAtivaStatus ? megaDistribuicaoStatus.movimentos : {});
 document .querySelector( "#salvarPokemonStatus" ) .addEventListener( "click", async () => { const botaoSalvarStatus = document.querySelector("#salvarPokemonStatus"); const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1"; if (botaoSalvarStatus) { botaoSalvarStatus.dataset.aplicarCalculadora = "0"; } const dados = await pegarHpCaDaTela(aplicarCalculadora); if (!dados) { return; } const movimentoCaminhadaNovo = pegarMovimentoBase( "movimentoCaminhada" ); const movimentoEscaladaNovo = pegarMovimentoBase( "movimentoEscalada" ); const movimentoVooNovo = pegarMovimentoBase( "movimentoVoo" ); const movimentoNatacaoNovo = pegarMovimentoBase( "movimentoNatacao" ); const movimentoEscavacaoNovo = pegarMovimentoBase( "movimentoEscavacao" ); const movimentoFlutuacaoNovo = pegarMovimentoBase( "movimentoFlutuacao" ); const novaHabilidadeTela = document.querySelector("#habilidadePokemon").value.trim();
-const novaHabilidade = megaAtivaStatus ? habilidadeNormal : novaHabilidadeTela; const novoItemPokemon = document .querySelector("#itemPokemon") .value .trim(); const novaProficiencia = Number( document .querySelector("#proficiencia") .value ) || 0; const nivelPokemonBruto = document .querySelector("#nivelPokemon") ?.value .trim() ?? ""; const novoNivelPokemon = nivelPokemonBruto === "" ? "" : Math.max( 1, Math.trunc( Number(nivelPokemonBruto) || 1 ) ); const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach((atributo) => {
-  const valorTela = document.querySelector(`#mod-${atributo}`).value.trim();
-  const numeroTela = Number(String(valorTela).replace(",", "."));
-  const bonusMega = megaAtivaStatus ? (Number(megaDistribuicaoStatus.atributos?.[atributo]) || 0) : 0;
-  novosModificadores[atributo] = Number.isFinite(numeroTela)
-    ? formatarBonus(numeroTela - bonusMega)
-    : valorTela;
+const novaHabilidade = megaAtivaStatus ? habilidadeNormal : novaHabilidadeTela; const novoItemPokemon = document .querySelector("#itemPokemon") .value .trim(); const novaProficiencia = Number( document .querySelector("#proficiencia") .value ) || 0; const nivelPokemonBruto = document .querySelector("#nivelPokemon") ?.value .trim() ?? ""; const novoNivelPokemon = nivelPokemonBruto === "" ? "" : Math.max( 1, Math.trunc( Number(nivelPokemonBruto) || 1 ) ); const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const novosStatus = {}; const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach((atributo) => {
+  const statusTela = Number(String(document.querySelector(`#status-${atributo}`)?.value ?? "").trim().replace(",", "."));
+  const bonusStatusMega = megaAtivaStatus ? (Number(megaDistribuicaoStatus.atributos?.[atributo]) || 0) : 0;
+  const statusBase = Number.isFinite(statusTela)
+    ? Math.trunc(statusTela - bonusStatusMega)
+    : statusBaseDoToken(token, atributo);
+  novosStatus[atributo] = statusBase;
+  novosModificadores[atributo] = formatarBonus(modificadorPorStatus(statusBase));
   novasSalvaguardas[atributo] = document.querySelector(`#save-${atributo}`).value.trim();
 });
 const caBaseParaSalvar = dados.caBase - (megaAtivaStatus ? megaDistribuicaoStatus.ca : 0);
@@ -3778,6 +3824,8 @@ await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of i
 ] = iniciativaAlertaAtiva; item.metadata[
 `${PREFIX}/iniciativa-habilidade`
 ] = iniciativaHabilidadeAtiva; ATRIBUTOS.forEach( (atributo) => { item.metadata[
+`${PREFIX}/status-${atributo}`
+] = novosStatus[ atributo ]; item.metadata[
 `${PREFIX}/mod-${atributo}`
 ] = novosModificadores[ atributo ]; item.metadata[
 `${PREFIX}/save-${atributo}`
@@ -3796,7 +3844,7 @@ const htmlMegaAtributos = MEGA_ATRIBUTOS.map((id) => `
   <div style="display:grid;grid-template-columns:32px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;">
     <strong style="font-size:9px;color:#604281;">${megaNomesAtributos[id]}</strong>
     <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
-    <span id="megaAtributo-${id}" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.atributos[id]} mod</span>
+    <span id="megaAtributo-${id}" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.atributos[id]} Status</span>
     <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
   </div>`).join("");
 const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
@@ -4690,7 +4738,7 @@ app.innerHTML = `
           <span id="megaPontosTexto" style="font-size:10px;font-weight:900;color:#6f52d9;">${megaPontosIniciais}/${MEGA_PONTOS_TOTAL} pts</span>
         </div>
         <div style="font-size:8px;line-height:1.25;color:#806b99;margin-bottom:7px;">
-          CA: 2 pts = +1 CA · Atributos: 2 pts = +1 modificador · Movimento: 1 pt = +1,5 m
+          CA: 2 pts = +1 CA · Status: 1 pt = +1 atributo · Movimento: 1 pt = +1,5 m
         </div>
 
         <div style="display:grid;grid-template-columns:48px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;margin-bottom:6px;">
@@ -4700,7 +4748,7 @@ app.innerHTML = `
           <button type="button" class="megaAjuste" data-mega-grupo="ca" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
         </div>
 
-        <div style="font-size:8px;font-weight:900;color:#806b99;margin:7px 0 4px;">MODIFICADORES</div>
+        <div style="font-size:8px;font-weight:900;color:#806b99;margin:7px 0 4px;">STATUS</div>
         <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;">${htmlMegaAtributos}</div>
 
         <div style="font-size:8px;font-weight:900;color:#806b99;margin:8px 0 4px;">MOVIMENTAÇÃO</div>
@@ -4798,7 +4846,7 @@ let distribuicaoMegaEdicao = normalizarDistribuicaoMega(megaDistribuicaoInicial)
 let temporizadorSalvarMega = null;
 let tokensMegaDisponiveis = [];
 
-const custoMegaAjuste = (grupo) => grupo === "movimento" ? 1 : 2;
+const custoMegaAjuste = (grupo) => grupo === "ca" ? 2 : 1;
 const atualizarEditorMega = () => {
   const usados = pontosUsadosMega(distribuicaoMegaEdicao);
   const restantes = MEGA_PONTOS_TOTAL - usados;
@@ -4810,7 +4858,7 @@ const atualizarEditorMega = () => {
   if (caTexto) caTexto.textContent = `+${distribuicaoMegaEdicao.ca} CA`;
   for (const id of MEGA_ATRIBUTOS) {
     const el = document.querySelector(`#megaAtributo-${id}`);
-    if (el) el.textContent = `+${distribuicaoMegaEdicao.atributos[id]} mod`;
+    if (el) el.textContent = `+${distribuicaoMegaEdicao.atributos[id]} Status`;
   }
   for (const id of MEGA_MOVIMENTOS) {
     const el = document.querySelector(`#megaMovimento-${id}`);
@@ -5557,5 +5605,4 @@ app.innerHTML = `
             `;
 } } }
 OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
-
-// FIM DO CÓDIGO - POKÉMON MUNDO PERFEITO
+// FIM
