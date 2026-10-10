@@ -8,6 +8,11 @@ const META_INICIATIVA_TRACKER =
 `${PREFIX}/initiative-tracker`;
 const META_TURNO_INICIATIVA =
 `${PREFIX}/initiative-turn`;
+const META_PAINEL_INICIATIVA = `${PREFIX}/painel-iniciativa`;
+const META_PAINEL_INICIATIVA_FILHO = `${PREFIX}/painel-iniciativa-filho`;
+const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
+const META_POKEMON_DONO_TREINADOR = `${PREFIX}/treinador-pokemon-dono`;
+const META_POKEMON_SLOT_TREINADOR = `${PREFIX}/treinador-pokemon-slot`;
 const META_MEGA_CONFIG =
 `${PREFIX}/mega-config`;
 const META_MEGA_ATIVA =
@@ -238,6 +243,7 @@ async function aplicarImagemMegaAoToken(token, destino, ativa) {
   // A barra é apagada e criada novamente usando os bounds da forma nova.
   // Assim a Mega fica SEMPRE imediatamente acima da barra de HP.
   await recriarHudDepoisDaMega(token);
+  await atualizarPainelIniciativa(false);
 }
 
 async function definirReferenciaMega(tokenAtual, referenciaMega) {
@@ -502,7 +508,8 @@ const ESTILO_FICHA = `
   #paginaTreinador1,
   #paginaTreinador2,
   #paginaTreinador3,
-  #paginaTreinador4 {
+  #paginaTreinador4,
+  #paginaTreinador5 {
     flex:1 !important;
     min-height:52px !important;
     padding:8px 5px !important;
@@ -520,7 +527,8 @@ const ESTILO_FICHA = `
   #paginaTreinador1[style*="opacity:1"],
   #paginaTreinador2[style*="opacity:1"],
   #paginaTreinador3[style*="opacity:1"],
-  #paginaTreinador4[style*="opacity:1"] {
+  #paginaTreinador4[style*="opacity:1"],
+  #paginaTreinador5[style*="opacity:1"] {
     background: linear-gradient(135deg, #4c8dff 0%, #2f73dc 100%) !important;
     color:#ffffff !important;
     border-color:#2f73dc !important;
@@ -1131,23 +1139,289 @@ const ESTILO_FICHA = `
 function urlApresentadorIniciativa() { const url = new URL(window.location.href);
 url.searchParams.set( "view", "initiative" );
 return url.toString(); }
-async function abrirApresentadorIniciativa() { let larguraViewport = 900;
-let quantidade = 1;
-try { const [viewport, participantes] = await Promise.all([ OBR.viewport.getWidth(), OBR.scene.items.getItems( (item) => dadosIniciativaDoItem(item) !== null ) ]);
-larguraViewport = Number(viewport) || 900;
-quantidade = Math.max(1, participantes.length); } catch (_) {}
-const larguraMaxima = Math.max(170, larguraViewport - 30);
-const largura = Math.min(920, larguraMaxima, Math.max(170, quantidade * 79 + 18));
-try { await OBR.popover.close(ID_POPOVER_INICIATIVA); } catch (_) {}
-await OBR.popover.open({ id: ID_POPOVER_INICIATIVA, url: urlApresentadorIniciativa(), width: largura, height: 132, anchorReference: "POSITION", anchorPosition: { left: larguraViewport / 2, top: 6 }, anchorOrigin: { horizontal: "CENTER", vertical: "TOP" }, transformOrigin: { horizontal: "CENTER", vertical: "TOP" }, hidePaper: true, disableClickAway: true, marginThreshold: 0 }); }
+
+async function pegarPainelIniciativa() {
+  const paineis = await OBR.scene.items.getItems(
+    (item) => item.metadata?.[META_PAINEL_INICIATIVA] === true
+  );
+  if (!paineis.length) return null;
+  paineis.sort((a, b) => (Date.parse(b.lastModified || "") || 0) - (Date.parse(a.lastModified || "") || 0));
+  return paineis[0];
+}
+
+async function apagarFilhosPainelIniciativa(painelId) {
+  const filhos = await OBR.scene.items.getItems(
+    (item) => item.metadata?.[META_PAINEL_INICIATIVA_FILHO] === painelId
+  );
+  if (filhos.length) await OBR.scene.items.deleteItems(filhos.map((item) => item.id));
+}
+
+async function posicaoInicialPainelIniciativa(tokenReferencia, largura, altura) {
+  if (tokenReferencia?.id) {
+    try {
+      const bounds = await OBR.scene.items.getItemBounds([tokenReferencia.id]);
+      return {
+        x: Number(bounds.min?.x || 0),
+        y: Number(bounds.min?.y || 0) - altura - 24
+      };
+    } catch (_) {}
+  }
+  try {
+    const posicao = await OBR.viewport.getPosition();
+    return { x: Number(posicao?.x || 0) + 30, y: Number(posicao?.y || 0) + 30 };
+  } catch (_) {
+    return { x: 30, y: 30 };
+  }
+}
+
+async function atualizarPainelIniciativa(criarSeNaoExistir = false, tokenReferencia = null) {
+  const todos = await OBR.scene.items.getItems();
+  const iniciativas = iniciativasOrdenadas(todos);
+  const turnoMarcado = iniciativas.find(({ item }) => item.metadata?.[META_TURNO_INICIATIVA] === true);
+  const turnoId = turnoMarcado?.item.id || iniciativas[0]?.item.id || "";
+  const quantidade = Math.max(1, iniciativas.length);
+  const larguraCard = 82;
+  const largura = Math.max(250, 28 + quantidade * larguraCard);
+  const altura = 132;
+  let painel = await pegarPainelIniciativa();
+
+  if (!painel && !criarSeNaoExistir) return null;
+
+  if (!painel) {
+    const posicao = await posicaoInicialPainelIniciativa(tokenReferencia, largura, altura);
+    painel = buildShape()
+      .shapeType("RECTANGLE")
+      .width(largura)
+      .height(altura)
+      .position(posicao)
+      .fillColor("#172235")
+      .fillOpacity(0.96)
+      .strokeColor("#5d7aa3")
+      .strokeWidth(3)
+      .layer("NOTE")
+      .zIndex(900)
+      .disableAutoZIndex(true)
+      .locked(false)
+      .metadata({ [META_PAINEL_INICIATIVA]: true })
+      .build();
+    await OBR.scene.items.addItems([painel]);
+  } else {
+    await OBR.scene.items.updateItems([painel.id], (items) => {
+      for (const item of items) {
+        item.width = largura;
+        item.height = altura;
+        item.locked = false;
+        item.visible = true;
+        item.metadata[META_PAINEL_INICIATIVA] = true;
+      }
+    });
+    painel = (await OBR.scene.items.getItems([painel.id]))[0] || painel;
+  }
+
+  await apagarFilhosPainelIniciativa(painel.id);
+  const px = Number(painel.position?.x || 0);
+  const py = Number(painel.position?.y || 0);
+  const dpiCena = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
+  const filhos = [];
+  const metaFilho = { [META_PAINEL_INICIATIVA_FILHO]: painel.id };
+
+  filhos.push(
+    buildText()
+      .textType("PLAIN")
+      .plainText("⚔ INICIATIVA — arraste este painel para onde quiser")
+      .position({ x: px + 12, y: py + 8 })
+      .width(largura - 24)
+      .height("AUTO")
+      .fontFamily("Arial")
+      .fontSize(15)
+      .fontWeight(700)
+      .fillColor("#F4F8FF")
+      .fillOpacity(1)
+      .strokeWidth(0)
+      .textAlign("LEFT")
+      .padding(0)
+      .layer("ATTACHMENT")
+      .zIndex(910)
+      .disableAutoZIndex(true)
+      .attachedTo(painel.id)
+      .locked(true)
+      .disableHit(true)
+      .metadata(metaFilho)
+      .build()
+  );
+
+  if (!iniciativas.length) {
+    filhos.push(
+      buildText()
+        .textType("PLAIN")
+        .plainText("Nenhum participante na iniciativa")
+        .position({ x: px + 12, y: py + 58 })
+        .width(largura - 24)
+        .height("AUTO")
+        .fontFamily("Arial")
+        .fontSize(14)
+        .fontWeight(700)
+        .fillColor("#AFC0D8")
+        .fillOpacity(1)
+        .strokeWidth(0)
+        .textAlign("CENTER")
+        .padding(0)
+        .layer("ATTACHMENT")
+        .zIndex(910)
+        .disableAutoZIndex(true)
+        .attachedTo(painel.id)
+        .locked(true)
+        .disableHit(true)
+        .metadata(metaFilho)
+        .build()
+    );
+  }
+
+  iniciativas.forEach(({ item, dados }, indice) => {
+    const x = px + 15 + indice * larguraCard;
+    const y = py + 34;
+    const turnoAtual = item.id === turnoId;
+    filhos.push(
+      buildShape()
+        .shapeType("RECTANGLE")
+        .width(62)
+        .height(62)
+        .position({ x, y })
+        .fillColor(turnoAtual ? "#214f39" : "#F4F7FB")
+        .fillOpacity(1)
+        .strokeColor(turnoAtual ? "#55E391" : "#7487A1")
+        .strokeWidth(turnoAtual ? 4 : 2)
+        .layer("ATTACHMENT")
+        .zIndex(911)
+        .disableAutoZIndex(true)
+        .attachedTo(painel.id)
+        .locked(true)
+        .disableHit(true)
+        .metadata(metaFilho)
+        .build()
+    );
+
+    if (item.type === "IMAGE" && item.image?.url) {
+      const w = Math.max(1, Number(item.image.width) || 1);
+      const h = Math.max(1, Number(item.image.height) || 1);
+      const dpiImagem = Math.max(w, h);
+      const escalaRetrato = 50 / dpiCena;
+      filhos.push(
+        buildImage(
+          { width: w, height: h, url: item.image.url, mime: item.image.mime || "image/webp" },
+          { dpi: dpiImagem, offset: { x: w / 2, y: h / 2 } }
+        )
+          .name(`Iniciativa — ${item.name || "Pokémon"}`)
+          .position({ x: x + 31, y: y + 31 })
+          .scale({ x: escalaRetrato, y: escalaRetrato })
+          .layer("ATTACHMENT")
+          .zIndex(912)
+          .disableAutoZIndex(true)
+          .attachedTo(painel.id)
+          .locked(true)
+          .disableHit(true)
+          .metadata(metaFilho)
+          .build()
+      );
+    }
+
+    filhos.push(
+      buildText()
+        .textType("PLAIN")
+        .plainText(String(dados.total))
+        .position({ x, y: y + 66 })
+        .width(62)
+        .height("AUTO")
+        .fontFamily("Arial")
+        .fontSize(17)
+        .fontWeight(700)
+        .fillColor(turnoAtual ? "#73F3A8" : "#FFFFFF")
+        .fillOpacity(1)
+        .strokeWidth(0)
+        .textAlign("CENTER")
+        .padding(0)
+        .layer("ATTACHMENT")
+        .zIndex(913)
+        .disableAutoZIndex(true)
+        .attachedTo(painel.id)
+        .locked(true)
+        .disableHit(true)
+        .metadata(metaFilho)
+        .build()
+    );
+
+    filhos.push(
+      buildText()
+        .textType("PLAIN")
+        .plainText(String(item.name || "Token").slice(0, 13))
+        .position({ x: x - 7, y: y + 91 })
+        .width(76)
+        .height("AUTO")
+        .fontFamily("Arial")
+        .fontSize(9)
+        .fontWeight(700)
+        .fillColor("#DDE7F5")
+        .fillOpacity(1)
+        .strokeWidth(0)
+        .textAlign("CENTER")
+        .padding(0)
+        .layer("ATTACHMENT")
+        .zIndex(913)
+        .disableAutoZIndex(true)
+        .attachedTo(painel.id)
+        .locked(true)
+        .disableHit(true)
+        .metadata(metaFilho)
+        .build()
+    );
+  });
+
+  for (const filho of filhos) {
+    const comportamentos = new Set(filho.disableAttachmentBehavior || []);
+    comportamentos.add("SCALE");
+    comportamentos.add("ROTATION");
+    filho.disableAttachmentBehavior = [...comportamentos];
+  }
+  if (filhos.length) await OBR.scene.items.addItems(filhos);
+  return painel;
+}
+
+async function abrirApresentadorIniciativa(tokenReferencia = null) {
+  return atualizarPainelIniciativa(true, tokenReferencia);
+}
+
+function assinaturaPainelIniciativa(items) {
+  return iniciativasOrdenadas(items).map(({ item, dados }) =>
+    `${item.id}|${dados.total}|${item.metadata?.[META_TURNO_INICIATIVA] === true ? 1 : 0}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}`
+  ).join("§");
+}
+
+async function iniciarSincronizacaoPainelIniciativa() {
+  let assinaturaAnterior = assinaturaPainelIniciativa(await OBR.scene.items.getItems());
+  let temporizador = null;
+  OBR.scene.items.onChange((items) => {
+    const assinatura = assinaturaPainelIniciativa(items);
+    if (assinatura === assinaturaAnterior) return;
+    assinaturaAnterior = assinatura;
+    if (temporizador) clearTimeout(temporizador);
+    temporizador = setTimeout(() => {
+      atualizarPainelIniciativa(false).catch((erro) => console.warn("Não foi possível atualizar o painel móvel de iniciativa:", erro));
+    }, 120);
+  });
+  await atualizarPainelIniciativa(false);
+}
+
 async function salvarResultadoIniciativa( token, total ) { const numero = Number(total);
 if (!Number.isFinite(numero)) { return; }
 await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[ META_INICIATIVA_TRACKER ] = { total: numero, atualizadoEm: Date.now() }; } } );
-token.metadata[ META_INICIATIVA_TRACKER ] = { total: numero, atualizadoEm: Date.now() }; }
+token.metadata[ META_INICIATIVA_TRACKER ] = { total: numero, atualizadoEm: Date.now() };
+await atualizarPainelIniciativa(false); }
 async function ajustarResultadoIniciativa( tokenId, delta ) { const ajuste = Number(delta);
 if (!Number.isFinite(ajuste) || ajuste === 0) { return; }
-await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { const dadosAtuais = dadosIniciativaDoItem(item); if (!dadosAtuais) { continue; } item.metadata[ META_INICIATIVA_TRACKER ] = { total: dadosAtuais.total + ajuste, atualizadoEm: Date.now() }; } } ); }
-async function removerDaIniciativa(tokenId) { await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { delete item.metadata[ META_INICIATIVA_TRACKER ]; delete item.metadata[ META_TURNO_INICIATIVA ]; } } ); }
+await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { const dadosAtuais = dadosIniciativaDoItem(item); if (!dadosAtuais) { continue; } item.metadata[ META_INICIATIVA_TRACKER ] = { total: dadosAtuais.total + ajuste, atualizadoEm: Date.now() }; } } );
+await atualizarPainelIniciativa(false); }
+async function removerDaIniciativa(tokenId) { await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { delete item.metadata[ META_INICIATIVA_TRACKER ]; delete item.metadata[ META_TURNO_INICIATIVA ]; } } );
+await atualizarPainelIniciativa(false); }
 function dadosIniciativaDoItem(item) { const dados = item?.metadata?.[ META_INICIATIVA_TRACKER ];
 if (!dados) { return null; }
 const total = Number( typeof dados === "object" ? dados.total : dados );
@@ -1160,7 +1434,8 @@ iniciativas.sort((a, b) => b.dados.total - a.dados.total || a.dados.atualizadoEm
 return iniciativas; }
 async function definirTurnoIniciativa( tokenId, participantes = null ) { const itens = participantes || await OBR.scene.items.getItems( (item) => dadosIniciativaDoItem(item) !== null );
 if (!itens.length) { return; }
-await OBR.scene.items.updateItems( itens.map((item) => item.id), (items) => { for (const item of items) { if (item.id === tokenId) { item.metadata[ META_TURNO_INICIATIVA ] = true; } else { delete item.metadata[ META_TURNO_INICIATIVA ]; } } } ); }
+await OBR.scene.items.updateItems( itens.map((item) => item.id), (items) => { for (const item of items) { if (item.id === tokenId) { item.metadata[ META_TURNO_INICIATIVA ] = true; } else { delete item.metadata[ META_TURNO_INICIATIVA ]; } } } );
+await atualizarPainelIniciativa(false); }
 async function avancarTurnoIniciativa(tokenId) { const iniciativas = iniciativasOrdenadas( await OBR.scene.items.getItems() );
 if (!iniciativas.length) { return; }
 let indice = iniciativas.findIndex( ({ item }) => item.id === tokenId );
@@ -1462,6 +1737,395 @@ function limparRotuloDice(texto) { return String(texto || "") .replace(/[#+\-*/(
 function formatarBonus(valor) { const numero = Number(valor) || 0;
 return numero > 0 ? `+${numero}` : `${numero}`;
 }
+
+const QUANTIDADE_EQUIPE_TREINADOR = 6;
+const QUANTIDADE_PC_TREINADOR = 10;
+
+function clonarDadosSimples(valor) {
+  if (valor === undefined) return undefined;
+  try { return JSON.parse(JSON.stringify(valor)); } catch (_) { return valor; }
+}
+
+function rosterTreinadorPadrao() {
+  return {
+    versao: 1,
+    equipe: Array.from({ length: QUANTIDADE_EQUIPE_TREINADOR }, () => null),
+    pc: Array.from({ length: QUANTIDADE_PC_TREINADOR }, () => null)
+  };
+}
+
+function normalizarRosterTreinador(valor) {
+  const padrao = rosterTreinadorPadrao();
+  if (!valor || typeof valor !== "object") return padrao;
+  const normalizarLista = (lista, quantidade) => Array.from({ length: quantidade }, (_, i) => {
+    const slot = Array.isArray(lista) ? lista[i] : null;
+    return slot && typeof slot === "object" ? clonarDadosSimples(slot) : null;
+  });
+  return {
+    versao: 1,
+    equipe: normalizarLista(valor.equipe, QUANTIDADE_EQUIPE_TREINADOR),
+    pc: normalizarLista(valor.pc, QUANTIDADE_PC_TREINADOR)
+  };
+}
+
+function rosterDoTreinador(token) {
+  return normalizarRosterTreinador(token?.metadata?.[META_TREINADOR_POKEMONS]);
+}
+
+function chaveSlotTreinador(grupo, indice) { return `${grupo}:${indice}`; }
+function separarChaveSlotTreinador(chave) {
+  const [grupo, indiceTexto] = String(chave || "").split(":");
+  const indice = Number(indiceTexto);
+  if (!['equipe', 'pc'].includes(grupo) || !Number.isInteger(indice)) return null;
+  const limite = grupo === 'equipe' ? QUANTIDADE_EQUIPE_TREINADOR : QUANTIDADE_PC_TREINADOR;
+  if (indice < 0 || indice >= limite) return null;
+  return { grupo, indice };
+}
+
+function metadataPokemonParaSlot(item) {
+  const resultado = {};
+  for (const [chave, valor] of Object.entries(item?.metadata || {})) {
+    if (!chave.startsWith(`${PREFIX}/`)) continue;
+    if ([META_INICIATIVA_TRACKER, META_TURNO_INICIATIVA, META_POKEMON_DONO_TREINADOR, META_POKEMON_SLOT_TREINADOR].includes(chave)) continue;
+    resultado[chave] = clonarDadosSimples(valor);
+  }
+  resultado[`${PREFIX}/tipoFicha`] = "pokemon";
+  resultado[META_MEGA_ATIVA] = false;
+  return resultado;
+}
+
+function snapshotPokemonParaTreinador(item) {
+  if (!item || item.type !== "IMAGE" || !item.image?.url) return null;
+  const configMega = megaConfigDoToken(item);
+  const formaAtual = dadosFormaDoToken(item);
+  const formaGuardar = megaAtivaNoToken(item) && configMega?.normal?.url ? clonarDadosSimples(configMega.normal) : formaAtual;
+  if (!formaGuardar?.url) return null;
+  return {
+    versao: 1,
+    nome: item.name || "Pokémon",
+    forma: clonarDadosSimples(formaGuardar),
+    rotation: Number(item.rotation) || 0,
+    metadata: metadataPokemonParaSlot(item),
+    campoId: null,
+    atualizadoEm: Date.now()
+  };
+}
+
+async function salvarRosterTreinador(token, roster) {
+  const salvar = normalizarRosterTreinador(roster);
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) item.metadata[META_TREINADOR_POKEMONS] = salvar;
+  });
+  token.metadata[META_TREINADOR_POKEMONS] = salvar;
+  return salvar;
+}
+
+async function sincronizarRosterTreinadorComCena(token, roster = null) {
+  const atual = normalizarRosterTreinador(roster || rosterDoTreinador(token));
+  const emCampo = await OBR.scene.items.getItems(
+    (item) => item.type === "IMAGE" && item.metadata?.[META_POKEMON_DONO_TREINADOR] === token.id
+  );
+  const porSlot = new Map(emCampo.map((item) => [String(item.metadata?.[META_POKEMON_SLOT_TREINADOR] || ""), item]));
+  let mudou = false;
+  for (const grupo of ['equipe', 'pc']) {
+    atual[grupo].forEach((slot, indice) => {
+      if (!slot) return;
+      const chave = chaveSlotTreinador(grupo, indice);
+      const item = porSlot.get(chave);
+      const novoId = item?.id || null;
+      if ((slot.campoId || null) !== novoId) {
+        slot.campoId = novoId;
+        mudou = true;
+      }
+    });
+  }
+  if (mudou) await salvarRosterTreinador(token, atual);
+  return atual;
+}
+
+async function acharPokemonDoSlotEmCampo(token, chave, slot) {
+  if (slot?.campoId) {
+    const porId = await OBR.scene.items.getItems([slot.campoId]);
+    if (porId?.[0]) return porId[0];
+  }
+  const encontrados = await OBR.scene.items.getItems(
+    (item) => item.type === "IMAGE" &&
+      item.metadata?.[META_POKEMON_DONO_TREINADOR] === token.id &&
+      item.metadata?.[META_POKEMON_SLOT_TREINADOR] === chave
+  );
+  return encontrados[0] || null;
+}
+
+async function pontoUmGridNaFrenteDoTreinador(token) {
+  const dpi = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
+  const bounds = await OBR.scene.items.getItemBounds([token.id]);
+  const centro = centroDoBounds(bounds);
+  const rad = (Number(token.rotation) || 0) * Math.PI / 180;
+  return {
+    x: centro.x + Math.sin(rad) * dpi,
+    y: centro.y - Math.cos(rad) * dpi
+  };
+}
+
+async function centralizarItemNoPonto(itemId, ponto) {
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  const bounds = await OBR.scene.items.getItemBounds([itemId]);
+  const centro = centroDoBounds(bounds);
+  const dx = ponto.x - centro.x;
+  const dy = ponto.y - centro.y;
+  if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return;
+  await OBR.scene.items.updateItems([itemId], (items) => {
+    for (const item of items) {
+      item.position = { x: Number(item.position?.x || 0) + dx, y: Number(item.position?.y || 0) + dy };
+    }
+  });
+}
+
+async function soltarPokemonDoTreinador(token, grupo, indice) {
+  let roster = await sincronizarRosterTreinadorComCena(token);
+  const slot = roster[grupo]?.[indice];
+  if (!slot?.forma?.url) return;
+  const chave = chaveSlotTreinador(grupo, indice);
+  const existente = await acharPokemonDoSlotEmCampo(token, chave, slot);
+  if (existente) return existente;
+  const alvo = await pontoUmGridNaFrenteDoTreinador(token);
+  const forma = slot.forma;
+  const metadata = clonarDadosSimples(slot.metadata || {}) || {};
+  metadata[`${PREFIX}/tipoFicha`] = "pokemon";
+  metadata[META_MEGA_ATIVA] = false;
+  metadata[META_POKEMON_DONO_TREINADOR] = token.id;
+  metadata[META_POKEMON_SLOT_TREINADOR] = chave;
+  const imagem = {
+    width: Math.max(1, Number(forma.width) || 1),
+    height: Math.max(1, Number(forma.height) || 1),
+    url: forma.url,
+    mime: forma.mime || "image/webp"
+  };
+  const grid = copiarGridMega(forma.grid, imagem);
+  const novo = buildImage(imagem, grid)
+    .name(slot.nome || "Pokémon")
+    .position(alvo)
+    .rotation(Number(slot.rotation) || 0)
+    .scale({ x: Number(forma.scale?.x) || 1, y: Number(forma.scale?.y) || 1 })
+    .layer("CHARACTER")
+    .locked(false)
+    .metadata(metadata)
+    .build();
+  await OBR.scene.items.addItems([novo]);
+  await centralizarItemNoPonto(novo.id, alvo);
+  slot.campoId = novo.id;
+  roster = await salvarRosterTreinador(token, roster);
+  const hpAtual = Number(metadata[`${PREFIX}/hpAtual`] ?? 100) || 0;
+  const hpMax = Math.max(1, Number(metadata[`${PREFIX}/hpMax`] ?? 100) || 1);
+  const caBase = Number(metadata[`${PREFIX}/ca`] ?? 10) || 0;
+  const evasao = Number(metadata[`${PREFIX}/buff-evas`] ?? 0) || 0;
+  const novoAtualizado = (await OBR.scene.items.getItems([novo.id]))[0] || novo;
+  await criarStatusNoToken(novoAtualizado, hpAtual, hpMax, caBase + evasao);
+  return novoAtualizado;
+}
+
+async function recolherPokemonDoTreinador(token, grupo, indice) {
+  let roster = await sincronizarRosterTreinadorComCena(token);
+  const slot = roster[grupo]?.[indice];
+  if (!slot) return;
+  const chave = chaveSlotTreinador(grupo, indice);
+  const item = await acharPokemonDoSlotEmCampo(token, chave, slot);
+  if (!item) {
+    slot.campoId = null;
+    await salvarRosterTreinador(token, roster);
+    return;
+  }
+  const snapshot = snapshotPokemonParaTreinador(item);
+  if (snapshot) roster[grupo][indice] = snapshot;
+  await salvarRosterTreinador(token, roster);
+  await OBR.scene.items.deleteItems([item.id]);
+  await atualizarPainelIniciativa(false);
+}
+
+async function registrarPokemonDaCenaNoSlot(token, grupo, indice, pokemon) {
+  const snapshot = snapshotPokemonParaTreinador(pokemon);
+  if (!snapshot) throw new Error("Não foi possível guardar este Pokémon.");
+  const roster = await sincronizarRosterTreinadorComCena(token);
+  roster[grupo][indice] = snapshot;
+  await salvarRosterTreinador(token, roster);
+  await OBR.scene.items.deleteItems([pokemon.id]);
+  await atualizarPainelIniciativa(false);
+}
+
+async function removerPokemonDoRoster(token, grupo, indice) {
+  const roster = await sincronizarRosterTreinadorComCena(token);
+  const slot = roster[grupo]?.[indice];
+  if (!slot) return;
+  const chave = chaveSlotTreinador(grupo, indice);
+  const emCampo = await acharPokemonDoSlotEmCampo(token, chave, slot);
+  if (emCampo) {
+    await OBR.scene.items.updateItems([emCampo.id], (items) => {
+      for (const item of items) {
+        delete item.metadata[META_POKEMON_DONO_TREINADOR];
+        delete item.metadata[META_POKEMON_SLOT_TREINADOR];
+      }
+    });
+  }
+  roster[grupo][indice] = null;
+  await salvarRosterTreinador(token, roster);
+}
+
+function htmlSlotPokemonTreinador(slot, grupo, indice, compacto = false) {
+  const chave = chaveSlotTreinador(grupo, indice);
+  if (!slot) {
+    return `
+      <button type="button" class="treinadorPokemonSlot vazio" data-slot-pokemon="${chave}" title="Adicionar Pokémon">
+        <span class="treinadorPokemonMais">＋</span>
+        <span class="treinadorPokemonSlotLabel">${grupo === 'equipe' ? `Slot ${indice + 1}` : `PC ${indice + 1}`}</span>
+      </button>`;
+  }
+  const url = slot.forma?.url || "";
+  const emCampo = Boolean(slot.campoId);
+  return `
+    <div class="treinadorPokemonSlot preenchido ${compacto ? 'compacto' : ''} ${emCampo ? 'emCampo' : ''}" data-slot-wrap="${chave}">
+      <button type="button" class="treinadorPokemonPrincipal" data-slot-pokemon="${chave}" title="${emCampo ? 'Recolher Pokémon' : 'Soltar Pokémon a 1 grid na frente'}">
+        <div class="treinadorPokemonRetrato">${url ? `<img src="${esc(url)}" alt="${esc(slot.nome || 'Pokémon')}">` : '🐾'}</div>
+        <div class="treinadorPokemonNome">${esc(slot.nome || 'Pokémon')}</div>
+        <div class="treinadorPokemonEstado">${emCampo ? '● EM CAMPO' : 'SOLTAR'}</div>
+      </button>
+      <button type="button" class="treinadorPokemonRemover" data-remover-slot="${chave}" title="Remover do slot">×</button>
+    </div>`;
+}
+
+async function pokemonsDisponiveisParaRoster(token) {
+  return OBR.scene.items.getItems((item) =>
+    item.type === "IMAGE" &&
+    item.layer === "CHARACTER" &&
+    item.id !== token.id &&
+    item.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    !item.metadata?.[META_POKEMON_DONO_TREINADOR] &&
+    !String(item.name || "").trim().toLowerCase().startsWith("mega")
+  );
+}
+
+async function mostrarFichaTreinadorPokemons(token) {
+  const app = document.querySelector("#app");
+  const roster = await sincronizarRosterTreinadorComCena(token);
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoTreinador(token, 5)}
+    <style>
+      .treinadorPokemonSecao{margin-top:10px;padding:10px;border:1px solid #d6e2f0;border-radius:13px;background:linear-gradient(180deg,#fbfdff,#f3f8ff)}
+      .treinadorPokemonTitulo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:900;color:#315b90}
+      .treinadorPokemonGradeEquipe{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+      .treinadorPokemonGradePc{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+      .treinadorPokemonSlot{position:relative;min-width:0;border:1px solid #c8d8eb;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(35,73,118,.08)}
+      button.treinadorPokemonSlot.vazio{width:100%;min-height:103px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#7990ad;border-style:dashed;cursor:pointer}
+      .treinadorPokemonMais{font-size:26px;line-height:1;color:#4c8dff}.treinadorPokemonSlotLabel{font-size:9px;font-weight:900}
+      .treinadorPokemonPrincipal{width:100%;height:100%;min-height:112px;padding:7px 4px 5px!important;border:0!important;background:transparent!important;box-shadow:none!important;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;cursor:pointer}
+      .treinadorPokemonSlot.compacto .treinadorPokemonPrincipal{min-height:91px;padding:5px 2px 4px!important}
+      .treinadorPokemonRetrato{width:58px;height:58px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:2px solid #8eabc9;background:#f4f8fd;overflow:hidden}
+      .treinadorPokemonSlot.compacto .treinadorPokemonRetrato{width:45px;height:45px;border-radius:10px}
+      .treinadorPokemonRetrato img{width:100%;height:100%;object-fit:contain;display:block}
+      .treinadorPokemonNome{width:100%;margin-top:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;font-weight:900;color:#30455f;text-align:center}
+      .treinadorPokemonSlot.compacto .treinadorPokemonNome{font-size:8px}
+      .treinadorPokemonEstado{margin-top:2px;font-size:7px;font-weight:900;color:#5e7898}.treinadorPokemonSlot.emCampo{border-color:#4bc27c;box-shadow:0 0 0 2px rgba(75,194,124,.12)}.treinadorPokemonSlot.emCampo .treinadorPokemonEstado{color:#21995a}
+      .treinadorPokemonRemover{position:absolute!important;top:3px;right:3px;width:20px!important;height:20px!important;min-height:20px!important;padding:0!important;border-radius:50%!important;background:#fff0f0!important;border:1px solid #e7a4a4!important;color:#b63e3e!important;font-size:13px!important;line-height:1!important;z-index:4}
+      .treinadorPokemonAjuda{margin:9px 1px 0!important;font-size:9px!important;color:#6f8299!important;line-height:1.35}
+      .seletorRosterFundo{position:fixed;inset:0;z-index:9999;background:rgba(12,22,35,.72);display:flex;align-items:center;justify-content:center;padding:14px}
+      .seletorRosterPainel{width:min(390px,100%);max-height:86vh;overflow:auto;background:#f7fbff;border:1px solid #9bbbe2;border-radius:15px;padding:12px;box-shadow:0 18px 55px rgba(0,0,0,.34)}
+      .seletorRosterTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;color:#284a75;font-size:13px;font-weight:900}.seletorRosterFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important}
+      .seletorRosterGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.seletorRosterPokemon{display:grid!important;grid-template-columns:52px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;min-height:64px!important;padding:6px!important;text-align:left!important}.seletorRosterPokemon img{width:50px;height:50px;object-fit:contain;border-radius:9px;background:#fff;border:1px solid #d5e0ed}.seletorRosterPokemon span{overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:900}
+      @media(max-width:430px){.treinadorPokemonGradePc{grid-template-columns:repeat(4,minmax(0,1fr))}.treinadorPokemonGradeEquipe{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    </style>
+    <div class="treinadorPokemonSecao">
+      <div class="treinadorPokemonTitulo"><span>🎒 EQUIPE PRINCIPAL</span><span>6 Pokémon</span></div>
+      <div class="treinadorPokemonGradeEquipe">${roster.equipe.map((slot, i) => htmlSlotPokemonTreinador(slot, 'equipe', i, false)).join('')}</div>
+      <p class="treinadorPokemonAjuda">Clique em um Pokémon guardado para soltá-lo 1 grid à frente do treinador. Clique novamente quando ele estiver em campo para recolher e salvar a ficha atualizada.</p>
+    </div>
+    <div class="treinadorPokemonSecao">
+      <div class="treinadorPokemonTitulo"><span>🖥️ PC</span><span>10 espaços</span></div>
+      <div class="treinadorPokemonGradePc">${roster.pc.map((slot, i) => htmlSlotPokemonTreinador(slot, 'pc', i, true)).join('')}</div>
+    </div>
+    <div id="seletorRoster" class="seletorRosterFundo" style="display:none">
+      <div class="seletorRosterPainel">
+        <div class="seletorRosterTopo"><span>Escolher Pokémon da mesa</span><button id="fecharSeletorRoster" class="seletorRosterFechar" type="button">×</button></div>
+        <div id="listaSeletorRoster" class="seletorRosterGrade"></div>
+        <p class="treinadorPokemonAjuda">Ao escolher, a ficha é salva neste treinador e o token é guardado/removido da mesa.</p>
+      </div>
+    </div>`;
+
+  ativarCabecalhoTreinador(token);
+  const seletor = document.querySelector('#seletorRoster');
+  const lista = document.querySelector('#listaSeletorRoster');
+  let destino = null;
+
+  const fechar = () => { seletor.style.display = 'none'; destino = null; };
+  document.querySelector('#fecharSeletorRoster')?.addEventListener('click', fechar);
+  seletor?.addEventListener('click', (evento) => { if (evento.target === seletor) fechar(); });
+
+  const abrirSeletor = async (grupo, indice) => {
+    destino = { grupo, indice };
+    const disponiveis = await pokemonsDisponiveisParaRoster(token);
+    lista.innerHTML = disponiveis.length ? disponiveis.map((pokemon) => `
+      <button type="button" class="seletorRosterPokemon" data-pokemon-id="${esc(pokemon.id)}">
+        <img src="${esc(pokemon.image?.url || '')}" alt="${esc(pokemon.name || 'Pokémon')}">
+        <span>${esc(pokemon.name || 'Pokémon')}</span>
+      </button>`).join('') : '<div style="grid-column:1/-1;padding:18px;text-align:center;color:#667d99;font-size:11px;font-weight:800">Nenhum Pokémon disponível na mesa.<br>O token precisa estar como CHARACTER e ter ficha do tipo POKÉMON.</div>';
+    seletor.style.display = 'flex';
+  };
+
+  document.querySelectorAll('[data-slot-pokemon]').forEach((botao) => {
+    botao.addEventListener('click', async () => {
+      const info = separarChaveSlotTreinador(botao.dataset.slotPokemon);
+      if (!info) return;
+      const trainerAtual = await pegarTokenAtualizado(token.id) || token;
+      const rosterAtual = await sincronizarRosterTreinadorComCena(trainerAtual);
+      const slot = rosterAtual[info.grupo][info.indice];
+      if (!slot) { await abrirSeletor(info.grupo, info.indice); return; }
+      botao.disabled = true;
+      try {
+        if (slot.campoId) await recolherPokemonDoTreinador(trainerAtual, info.grupo, info.indice);
+        else await soltarPokemonDoTreinador(trainerAtual, info.grupo, info.indice);
+        const atualizado = await pegarTokenAtualizado(token.id) || trainerAtual;
+        await mostrarFichaTreinadorPokemons(atualizado);
+      } catch (erro) {
+        console.error('Erro ao alternar Pokémon do treinador:', erro);
+        alert(erro?.message || 'Não foi possível soltar/recolher este Pokémon.');
+        botao.disabled = false;
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-remover-slot]').forEach((botao) => {
+    botao.addEventListener('click', async (evento) => {
+      evento.stopPropagation();
+      const info = separarChaveSlotTreinador(botao.dataset.removerSlot);
+      if (!info) return;
+      if (!confirm('Remover este Pokémon do slot? Se ele estiver em campo, o token continuará na mesa.')) return;
+      const trainerAtual = await pegarTokenAtualizado(token.id) || token;
+      await removerPokemonDoRoster(trainerAtual, info.grupo, info.indice);
+      const atualizado = await pegarTokenAtualizado(token.id) || trainerAtual;
+      await mostrarFichaTreinadorPokemons(atualizado);
+    });
+  });
+
+  lista?.addEventListener('click', async (evento) => {
+    const botao = evento.target.closest?.('[data-pokemon-id]');
+    if (!botao || !destino) return;
+    botao.disabled = true;
+    try {
+      const itens = await OBR.scene.items.getItems([botao.dataset.pokemonId]);
+      const pokemon = itens[0];
+      if (!pokemon) throw new Error('Esse Pokémon não está mais na mesa.');
+      const trainerAtual = await pegarTokenAtualizado(token.id) || token;
+      await registrarPokemonDaCenaNoSlot(trainerAtual, destino.grupo, destino.indice, pokemon);
+      fechar();
+      const atualizado = await pegarTokenAtualizado(token.id) || trainerAtual;
+      await mostrarFichaTreinadorPokemons(atualizado);
+    } catch (erro) {
+      console.error('Erro ao guardar Pokémon:', erro);
+      alert(erro?.message || 'Não foi possível guardar este Pokémon.');
+      botao.disabled = false;
+    }
+  });
+}
+
 function normalizarEstagioBuff(valor, id = "") { let estagio = Number(valor);
 if (Number.isNaN(estagio)) { estagio = 0; }
 estagio = Math.trunc(estagio);
@@ -1812,6 +2476,16 @@ const botaoAlerta = document.querySelector("#botaoIniciativaAlerta");
 const botaoHabilidade = document.querySelector("#botaoIniciativaHabilidade");
 const botaoAbrirPainel = document.querySelector("#abrirApresentadorIniciativa");
 const botaoRemoverIniciativa = document.querySelector("#removerDaIniciativa");
+let botaoAvancarTurno = document.querySelector("#avancarTurnoIniciativa");
+if (!botaoAvancarTurno && botaoRemoverIniciativa?.parentElement) {
+  botaoAvancarTurno = document.createElement("button");
+  botaoAvancarTurno.id = "avancarTurnoIniciativa";
+  botaoAvancarTurno.type = "button";
+  botaoAvancarTurno.title = "Passar o turno para o próximo participante";
+  botaoAvancarTurno.textContent = "➜";
+  botaoAvancarTurno.style.cssText = "min-width:38px;min-height:36px;padding:5px 7px;font-size:13px;cursor:pointer";
+  botaoRemoverIniciativa.parentElement.insertBefore(botaoAvancarTurno, botaoRemoverIniciativa);
+}
 if ( !botaoRolar || !campoIniciativa || !campoDestreza || !campoAlerta || !campoHabilidade || !botaoAlerta || !botaoHabilidade ) { return; }
 const numeroCampo = (valor) => { const numero = Number( String(valor ?? "") .trim() .replace(",", ".") );
 return Number.isNaN(numero) ? 0 : numero; };
@@ -1839,8 +2513,14 @@ if (campoProficiencia) { campoProficiencia.addEventListener( "input", atualizarV
 campoProficiencia.addEventListener( "change", atualizarVisual ); }
 botaoAlerta.addEventListener( "click", () => alternar(campoAlerta) );
 botaoHabilidade.addEventListener( "click", () => alternar(campoHabilidade) );
-botaoRolar.addEventListener( "click", async () => { const formula = formulaSalvaguarda( iniciativaTotal() ); if (!formula) { alert( "Não foi possível calcular a iniciativa." ); return; } const resultado = await rolarNoDicePlusComResultado( formula, "Iniciativa" ); if (resultado === null) { return; } await salvarResultadoIniciativa( token, resultado ); await abrirApresentadorIniciativa(); } );
-if (botaoAbrirPainel) { botaoAbrirPainel.addEventListener( "click", () => abrirApresentadorIniciativa() ); }
+botaoRolar.addEventListener( "click", async () => { const formula = formulaSalvaguarda( iniciativaTotal() ); if (!formula) { alert( "Não foi possível calcular a iniciativa." ); return; } const resultado = await rolarNoDicePlusComResultado( formula, "Iniciativa" ); if (resultado === null) { return; } await salvarResultadoIniciativa( token, resultado ); await abrirApresentadorIniciativa(token); } );
+if (botaoAbrirPainel) { botaoAbrirPainel.addEventListener( "click", () => abrirApresentadorIniciativa(token) ); }
+if (botaoAvancarTurno) { botaoAvancarTurno.addEventListener("click", async () => {
+  const iniciativas = iniciativasOrdenadas(await OBR.scene.items.getItems());
+  if (!iniciativas.length) return;
+  const atual = iniciativas.find(({ item }) => item.metadata?.[META_TURNO_INICIATIVA] === true)?.item || iniciativas[0].item;
+  await avancarTurnoIniciativa(atual.id);
+}); }
 if (botaoRemoverIniciativa) { botaoRemoverIniciativa.addEventListener( "click", async () => { await removerDaIniciativa( token.id ); } ); }
 atualizarVisual(); }
 function criarBuffs( valores, proficiencia ) { return BUFFS.map( (buff) => { const estagio = normalizarEstagioBuff( valores[buff.id], buff.id ); const bonus = buff.id === "crit" ? faixaCritico(estagio) : bonusPorEstagio( buff.id, estagio, proficiencia );
@@ -2214,15 +2894,29 @@ return `
         id="paginaTreinador4"
         style="
           flex:1;
-          min-width:86px;
+          min-width:76px;
           padding:8px 4px;
-          font-size:11px;
+          font-size:10px;
           font-weight:bold;
           cursor:pointer;
           opacity:${paginaAtual === 4 ? "1" : "0.65"};
         "
       >
         ANOTAÇÕES
+      </button>
+      <button
+        id="paginaTreinador5"
+        style="
+          flex:1;
+          min-width:76px;
+          padding:8px 4px;
+          font-size:10px;
+          font-weight:bold;
+          cursor:pointer;
+          opacity:${paginaAtual === 5 ? "1" : "0.65"};
+        "
+      >
+        🐾 POKÉMONS
       </button>
     </div>
   `;
@@ -2326,7 +3020,8 @@ ativarMenuTreinador( token ); }
 function ativarMenuTreinador( token ) { document .querySelector( "#paginaTreinador1" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorPagina1( tokenAtualizado ); } );
 document .querySelector( "#paginaTreinador2" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorPerTal( tokenAtualizado ); } );
 document .querySelector( "#paginaTreinador3" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorHabilidades( tokenAtualizado ); } );
-document .querySelector( "#paginaTreinador4" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorAnotacoes( tokenAtualizado ); } ); }
+document .querySelector( "#paginaTreinador4" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorAnotacoes( tokenAtualizado ); } );
+document .querySelector( "#paginaTreinador5" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } await mostrarFichaTreinadorPokemons( tokenAtualizado ); } ); }
 function criarPericiasTreinador( valores ) { return PERICIAS.map( (grupo) => { if (!grupo.pericias.length) {
 return `
           <div style="
@@ -2632,7 +3327,7 @@ app.innerHTML = `
         <button
           id="abrirApresentadorIniciativa"
           type="button"
-          title="Abrir organizador de iniciativa"
+          title="Criar ou atualizar o painel móvel de iniciativa"
           style="
             min-width:38px;
             min-height:36px;
@@ -3499,7 +4194,7 @@ app.innerHTML = `
                 <button
                   id="abrirApresentadorIniciativa"
                   type="button"
-                  title="Abrir organizador de iniciativa"
+                  title="Criar ou atualizar o painel móvel de iniciativa"
                   style="
                     min-width:38px;
                     min-height:36px;
@@ -5521,6 +6216,7 @@ if ( !selection || selection.length === 0 ) { return; }
 const items = await OBR.scene.items.getItems( selection );
 if ( !items || items.length === 0 ) { return; }
 const token = items[0];
+if (token.metadata?.[META_PAINEL_INICIATIVA] === true || token.metadata?.[META_PAINEL_INICIATIVA_FILHO]) { return; }
 const tipoFicha = token.metadata[
 `${PREFIX}/tipoFicha`
 ];
@@ -5558,5 +6254,5 @@ app.innerHTML = `
               </div>
             `;
 } } }
-OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
+OBR.onReady( async () => { try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } try { await iniciarSincronizacaoPainelIniciativa(); } catch (erro) { console.warn("Não foi possível iniciar a sincronização do painel de iniciativa:", erro); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
 // FIM
