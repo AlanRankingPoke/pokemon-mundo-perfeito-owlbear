@@ -498,6 +498,7 @@ const ESTILO_FICHA = `
   #paginaPokemon1,
   #paginaPokemon2,
   #paginaPokemon3,
+  #paginaPokemon4,
   #paginaTreinador1,
   #paginaTreinador2,
   #paginaTreinador3,
@@ -515,6 +516,7 @@ const ESTILO_FICHA = `
   #paginaPokemon1[style*="opacity:1"],
   #paginaPokemon2[style*="opacity:1"],
   #paginaPokemon3[style*="opacity:1"],
+  #paginaPokemon4[style*="opacity:1"],
   #paginaTreinador1[style*="opacity:1"],
   #paginaTreinador2[style*="opacity:1"],
   #paginaTreinador3[style*="opacity:1"],
@@ -3041,6 +3043,20 @@ return `
       >
         PERÍCIAS / DEBUFF
       </button>
+      <button
+        id="paginaPokemon4"
+        style="
+          flex:1;
+          min-width:70px;
+          padding:8px 4px;
+          font-size:10px;
+          font-weight:bold;
+          cursor:pointer;
+          opacity:${paginaAtual === 4 ? "1" : "0.65"};
+        "
+      >
+        ✨ MEGA
+      </button>
     </div>
   `;
 }
@@ -3049,7 +3065,8 @@ if ( !items || items.length === 0 ) { return null; }
 return items[0]; }
 function ativarMenuPokemon(token) { document .querySelector("#paginaPokemon1") .addEventListener( "click", async () => { await salvamentoBuffPendente.catch(() => {}); await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemon( tokenAtualizado ); } );
 document .querySelector("#paginaPokemon2") .addEventListener( "click", async () => { await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonMoves( tokenAtualizado ); } );
-document .querySelector("#paginaPokemon3") .addEventListener( "click", async () => { await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonPericias( tokenAtualizado ); } ); }
+document .querySelector("#paginaPokemon3") .addEventListener( "click", async () => { await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonPericias( tokenAtualizado ); } );
+document .querySelector("#paginaPokemon4") .addEventListener( "click", async () => { await salvamentoBuffPendente.catch(() => {}); await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonMega( tokenAtualizado ); } ); }
 function cabecalhoPokemon( token, paginaAtual ) { const imagemToken = token.type === "IMAGE" ? token.image?.url || "" : "";
 return `
     <div class="fichaCabecalho" style="
@@ -3761,29 +3778,6 @@ await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of i
 `${PREFIX}/save-${atributo}`
 ] = novasSalvaguardas[ atributo ]; } ); } } ); document .querySelector("#hpAtual") .value = dados.hpAtual; document .querySelector("#hpMax") .value = dados.hpMax; if (dados.calculadoraAplicada) { document .querySelector("#alterarHp") .value = ""; } await criarStatusNoToken( token, dados.hpAtual, dados.hpMax, dados.ca ); } ); }
 function mostrarFichaPokemonMoves(token) { const app = document.querySelector("#app");
-const megaConfig = megaConfigDoToken(token);
-const megaAtiva = megaAtivaNoToken(token);
-const megaDistribuicaoInicial = distribuicaoMegaDoToken(token);
-const megaPontosIniciais = pontosUsadosMega(megaDistribuicaoInicial);
-const megaNomesAtributos = { for: "FOR", des: "DES", con: "CON", int: "INT", sab: "SAB", car: "CAR" };
-const megaNomesMovimentos = {
-  "movimento-caminhada": "Caminhada", "movimento-escalada": "Escalada", "movimento-voo": "Voo",
-  "movimento-natacao": "Natação", "movimento-escavacao": "Escavação", "movimento-flutuacao": "Flutuação"
-};
-const htmlMegaAtributos = MEGA_ATRIBUTOS.map((id) => `
-  <div style="display:grid;grid-template-columns:32px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;">
-    <strong style="font-size:9px;color:#604281;">${megaNomesAtributos[id]}</strong>
-    <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
-    <span id="megaAtributo-${id}" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.atributos[id]} Status</span>
-    <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
-  </div>`).join("");
-const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
-  <div style="display:grid;grid-template-columns:minmax(62px,1fr) 30px 58px 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;">
-    <strong style="font-size:8px;color:#604281;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${megaNomesMovimentos[id]}</strong>
-    <button type="button" class="megaAjuste" data-mega-grupo="movimento" data-mega-id="${id}" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
-    <span id="megaMovimento-${id}" style="text-align:center;font-size:9px;font-weight:900;color:#684895;">+${formatarDecimal(megaDistribuicaoInicial.movimentos[id] * MEGA_PASSO_MOVIMENTO)}m</span>
-    <button type="button" class="megaAjuste" data-mega-grupo="movimento" data-mega-id="${id}" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
-  </div>`).join("");
 const proficiencia = Number( token.metadata[
 `${PREFIX}/proficiencia`
 ] ?? 0 );
@@ -4491,262 +4485,6 @@ app.innerHTML = `
     ">Moves</h3>
     ${htmlGolpes}
 
-    <div style="
-      border-top:1px solid #dbe5f0;
-      margin:10px 0 8px;
-    "></div>
-
-    <div
-      id="megaEvolucaoCard"
-      style="
-        padding:10px;
-        border:1px solid #ddd3f4;
-        border-radius:12px;
-        background:linear-gradient(180deg,#fbf8ff 0%,#f6f0ff 100%);
-        box-shadow:0 3px 10px rgba(91,53,140,.08);
-        margin-bottom:8px;
-      "
-    >
-      <div style="
-        display:flex;
-        align-items:center;
-        gap:9px;
-        margin-bottom:8px;
-      ">
-        <div style="
-          width:50px;
-          height:50px;
-          flex:0 0 50px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          overflow:hidden;
-          border-radius:12px;
-          background:#ffffff;
-          border:1px solid #ded3f1;
-          box-shadow:0 2px 7px rgba(91,53,140,.10);
-          padding:4px;
-        ">
-          <img
-            src="${esc(urlImagemMegaEvolucao())}"
-            alt="Mega Evolução"
-            title="Mega Evolução"
-            draggable="false"
-            onerror="this.style.display='none'"
-            style="
-              width:100%;
-              height:100%;
-              object-fit:contain;
-              display:block;
-            "
-          >
-        </div>
-
-        <div style="
-          min-width:0;
-          flex:1;
-        ">
-          <div style="
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:8px;
-          ">
-            <div style="
-              font-size:11px;
-              font-weight:900;
-              color:#63418f;
-            ">
-              MEGA EVOLUÇÃO
-            </div>
-
-            <div
-              id="megaEstadoTexto"
-              style="
-                font-size:9px;
-                font-weight:900;
-                white-space:nowrap;
-                color:${megaAtiva ? "#269653" : "#7a688e"};
-              "
-            >
-              ${megaAtiva ? "MEGA ATIVA" : "FORMA NORMAL"}
-            </div>
-          </div>
-
-          <div
-            id="megaReferenciaTexto"
-            style="
-              margin-top:3px;
-              font-size:9px;
-              font-weight:800;
-              color:#8a77a5;
-              word-break:break-word;
-            "
-          >
-            ${
-              megaConfig
-                ? `Mega definida: ${esc(megaConfig.referenciaNome || "Personagem")}`
-                : "Nenhuma forma Mega definida"
-            }
-          </div>
-        </div>
-      </div>
-
-      <div style="
-        display:grid;
-        grid-template-columns:minmax(0,1fr) auto;
-        gap:6px;
-        align-items:center;
-      ">
-        <select
-          id="megaTokenReferencia"
-          style="
-            width:100%;
-            min-width:0;
-            min-height:38px !important;
-            padding:7px 9px !important;
-            font-size:10px;
-            font-weight:900;
-            color:#5f4485 !important;
-            border-color:#c9b7e6 !important;
-            background:#ffffff !important;
-          "
-        >
-          <option value="">Carregando personagens da mesa...</option>
-        </select>
-
-        <button
-          id="atualizarTokensMega"
-          type="button"
-          title="Atualizar personagens disponíveis na mesa"
-          style="
-            min-width:38px;
-            min-height:38px !important;
-            padding:6px 9px !important;
-            font-size:14px;
-            font-weight:900;
-            cursor:pointer;
-          "
-        >
-          ↻
-        </button>
-      </div>
-
-      <button
-        id="definirMegaEvolucao"
-        type="button"
-        style="
-          width:100%;
-          min-height:36px !important;
-          margin-top:6px;
-          padding:6px 9px !important;
-          font-size:10px;
-          font-weight:900;
-          cursor:pointer;
-          background:linear-gradient(180deg,#ffffff 0%,#f0e9fb 100%) !important;
-          color:#5f4485 !important;
-          border-color:#c9b7e6 !important;
-        "
-      >
-        DEFINIR TOKEN COMO MEGA
-      </button>
-
-      <div style="
-        margin-top:4px;
-        font-size:8px;
-        line-height:1.25;
-        font-weight:800;
-        color:#8a77a5;
-        text-align:center;
-      ">
-        Mostra somente tokens da mesa cujo nome começa com Mega.
-      </div>
-
-      <div id="megaDistribuicaoCard" style="margin-top:10px;padding:8px;border:1px solid #d8caed;border-radius:10px;background:#fffaff;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;">
-          <strong style="font-size:10px;color:#604281;">DISTRIBUIÇÃO DA MEGA</strong>
-          <span id="megaPontosTexto" style="font-size:10px;font-weight:900;color:#6f52d9;">${megaPontosIniciais}/${MEGA_PONTOS_TOTAL} pts</span>
-        </div>
-        <div style="font-size:8px;line-height:1.25;color:#806b99;margin-bottom:7px;">
-          CA: 2 pts = +1 CA · Status: 1 pt = +1 atributo · Movimento: 1 pt = +1,5 m
-        </div>
-
-        <div style="display:grid;grid-template-columns:48px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;margin-bottom:6px;">
-          <strong style="font-size:9px;color:#604281;">CA</strong>
-          <button type="button" class="megaAjuste" data-mega-grupo="ca" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
-          <span id="megaCaValor" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.ca} CA</span>
-          <button type="button" class="megaAjuste" data-mega-grupo="ca" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
-        </div>
-
-        <div style="font-size:8px;font-weight:900;color:#806b99;margin:7px 0 4px;">STATUS</div>
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;">${htmlMegaAtributos}</div>
-
-        <div style="font-size:8px;font-weight:900;color:#806b99;margin:8px 0 4px;">MOVIMENTAÇÃO</div>
-        <div style="display:grid;grid-template-columns:1fr;gap:5px;">${htmlMegaMovimentos}</div>
-
-        <div style="font-size:8px;font-weight:900;color:#806b99;margin:8px 0 4px;">HABILIDADE PASSIVA DA MEGA</div>
-        <textarea id="megaHabilidadeNova" class="megaConfigCampo" rows="3" placeholder="Escreva a habilidade que substituirá a habilidade normal enquanto a Mega estiver ativa..." style="width:100%;box-sizing:border-box;resize:vertical;">${esc(megaDistribuicaoInicial.habilidade)}</textarea>
-        <div id="megaConfigSalvaTexto" style="min-height:11px;margin-top:4px;text-align:center;font-size:8px;font-weight:800;color:#7d6998;">Configuração salva no próprio Pokémon.</div>
-      </div>
-
-      <div style="
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:6px;
-        margin-top:8px;
-      ">
-        <button
-          id="botaoMegaEvolucao"
-          type="button"
-          ${megaConfig && !megaAtiva ? "" : "disabled"}
-          style="
-            min-height:42px !important;
-            padding:7px 8px !important;
-            border-radius:10px;
-            font-size:10px;
-            font-weight:900;
-            cursor:pointer;
-            background:linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%) !important;
-            color:#fff !important;
-            border-color:#6045c6 !important;
-          "
-        >
-          MEGA EVOLUÇÃO
-        </button>
-
-        <button
-          id="retirarMegaEvolucao"
-          type="button"
-          ${megaAtiva ? "" : "disabled"}
-          style="
-            min-height:42px !important;
-            padding:7px 8px !important;
-            border-radius:10px;
-            font-size:10px;
-            font-weight:900;
-            cursor:pointer;
-            background:linear-gradient(135deg,#ef7676 0%,#ce4f4f 100%) !important;
-            color:#fff !important;
-            border-color:#bb4545 !important;
-          "
-        >
-          RETIRAR EVOLUÇÃO
-        </button>
-      </div>
-
-      <div
-        id="megaMensagem"
-        style="
-          min-height:12px;
-          margin-top:5px;
-          font-size:9px;
-          font-weight:800;
-          text-align:center;
-          color:#725a91;
-        "
-      ></div>
-    </div>
-
     <br>
     <button
       id="salvarPokemonMoves"
@@ -4761,171 +4499,6 @@ app.innerHTML = `
     </button>
   `;
 ativarCabecalhoPokemon(token);
-const seletorMega = document.querySelector("#megaTokenReferencia");
-const botaoAtualizarMega = document.querySelector("#atualizarTokensMega");
-const botaoDefinirMega = document.querySelector("#definirMegaEvolucao");
-const botaoMega = document.querySelector("#botaoMegaEvolucao");
-const botaoRetirarMega = document.querySelector("#retirarMegaEvolucao");
-const mensagemMega = document.querySelector("#megaMensagem");
-const textoReferenciaMega = document.querySelector("#megaReferenciaTexto");
-const textoEstadoMega = document.querySelector("#megaEstadoTexto");
-const textoMegaPontos = document.querySelector("#megaPontosTexto");
-const campoMegaHabilidade = document.querySelector("#megaHabilidadeNova");
-const textoMegaConfigSalva = document.querySelector("#megaConfigSalvaTexto");
-let distribuicaoMegaEdicao = normalizarDistribuicaoMega(megaDistribuicaoInicial);
-let temporizadorSalvarMega = null;
-let tokensMegaDisponiveis = [];
-
-const custoMegaAjuste = (grupo) => grupo === "ca" ? 2 : 1;
-const atualizarEditorMega = () => {
-  const usados = pontosUsadosMega(distribuicaoMegaEdicao);
-  const restantes = MEGA_PONTOS_TOTAL - usados;
-  if (textoMegaPontos) {
-    textoMegaPontos.textContent = `${usados}/${MEGA_PONTOS_TOTAL} pts`;
-    textoMegaPontos.style.color = restantes === 0 ? "#269653" : "#6f52d9";
-  }
-  const caTexto = document.querySelector("#megaCaValor");
-  if (caTexto) caTexto.textContent = `+${distribuicaoMegaEdicao.ca} CA`;
-  for (const id of MEGA_ATRIBUTOS) {
-    const el = document.querySelector(`#megaAtributo-${id}`);
-    if (el) el.textContent = `+${distribuicaoMegaEdicao.atributos[id]} Status`;
-  }
-  for (const id of MEGA_MOVIMENTOS) {
-    const el = document.querySelector(`#megaMovimento-${id}`);
-    if (el) el.textContent = `+${formatarDecimal(distribuicaoMegaEdicao.movimentos[id] * MEGA_PASSO_MOVIMENTO)}m`;
-  }
-  document.querySelectorAll(".megaAjuste").forEach((botao) => {
-    const delta = Number(botao.dataset.megaDelta) || 0;
-    if (delta <= 0) { botao.disabled = false; return; }
-    botao.disabled = !megaConfigDoToken(token) || restantes < custoMegaAjuste(botao.dataset.megaGrupo || "");
-  });
-};
-
-const salvarEditorMega = async () => {
-  if (!megaConfigDoToken(token)) {
-    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Defina primeiro um token como Mega.";
-    return;
-  }
-  distribuicaoMegaEdicao.habilidade = campoMegaHabilidade?.value ?? distribuicaoMegaEdicao.habilidade;
-  try {
-    const configSalvo = await salvarDistribuicaoMega(token, distribuicaoMegaEdicao);
-    distribuicaoMegaEdicao = normalizarDistribuicaoMega(configSalvo.distribuicao);
-    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "✓ Configuração Mega salva.";
-    atualizarEditorMega();
-  } catch (erro) {
-    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = erro?.message || "Não foi possível salvar a configuração Mega.";
-  }
-};
-
-const programarSalvarEditorMega = (atraso = 300) => {
-  if (temporizadorSalvarMega) clearTimeout(temporizadorSalvarMega);
-  temporizadorSalvarMega = setTimeout(() => { temporizadorSalvarMega = null; salvarEditorMega(); }, atraso);
-};
-
-document.querySelectorAll(".megaAjuste").forEach((botao) => {
-  botao.addEventListener("click", () => {
-    if (!megaConfigDoToken(token)) {
-      if (mensagemMega) mensagemMega.textContent = "Defina primeiro o token da Mega.";
-      return;
-    }
-    const grupo = botao.dataset.megaGrupo || "";
-    const id = botao.dataset.megaId || "";
-    const delta = Number(botao.dataset.megaDelta) || 0;
-    const usados = pontosUsadosMega(distribuicaoMegaEdicao);
-    const custo = custoMegaAjuste(grupo);
-    if (delta > 0 && usados + custo > MEGA_PONTOS_TOTAL) {
-      if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Os 11 pontos da Mega já foram distribuídos.";
-      return;
-    }
-    if (grupo === "ca") distribuicaoMegaEdicao.ca = Math.max(0, distribuicaoMegaEdicao.ca + delta);
-    if (grupo === "atributo" && MEGA_ATRIBUTOS.includes(id)) distribuicaoMegaEdicao.atributos[id] = Math.max(0, distribuicaoMegaEdicao.atributos[id] + delta);
-    if (grupo === "movimento" && MEGA_MOVIMENTOS.includes(id)) distribuicaoMegaEdicao.movimentos[id] = Math.max(0, distribuicaoMegaEdicao.movimentos[id] + delta);
-    atualizarEditorMega();
-    programarSalvarEditorMega(80);
-  });
-});
-
-if (campoMegaHabilidade) {
-  campoMegaHabilidade.addEventListener("input", () => {
-    distribuicaoMegaEdicao.habilidade = campoMegaHabilidade.value;
-    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Salvando habilidade Mega...";
-    programarSalvarEditorMega(500);
-  });
-}
-
-const atualizarVisualMega = (ativa) => {
-  if (textoEstadoMega) {
-    textoEstadoMega.textContent = ativa ? "MEGA ATIVA" : "FORMA NORMAL";
-    textoEstadoMega.style.color = ativa ? "#269653" : "#7a688e";
-  }
-  const temConfig = Boolean(megaConfigDoToken(token));
-  if (botaoMega) botaoMega.disabled = !temConfig || ativa;
-  if (botaoRetirarMega) botaoRetirarMega.disabled = !temConfig || !ativa;
-};
-
-const atualizarListaTokensMega = async () => {
-  if (!seletorMega) return;
-  const valorAnterior = seletorMega.value;
-  seletorMega.disabled = true;
-  if (botaoAtualizarMega) botaoAtualizarMega.disabled = true;
-  try {
-    const itens = await OBR.scene.items.getItems(
-      (item) =>
-        item.type === "IMAGE" &&
-        item.layer === "CHARACTER" &&
-        item.id !== token.id &&
-        String(item.name || "").trim().toLocaleLowerCase("pt-BR").startsWith("mega")
-    );
-    tokensMegaDisponiveis = [...itens].sort((a, b) =>
-      String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
-    );
-    if (!tokensMegaDisponiveis.length) {
-      seletorMega.innerHTML = '<option value="">Nenhum token Mega encontrado na mesa</option>';
-      if (mensagemMega) mensagemMega.textContent = "Coloque na mesa um token cujo nome comece com Mega e atualize a lista.";
-      return;
-    }
-    seletorMega.innerHTML = [
-      '<option value="">Escolher token da Mega...</option>',
-      ...tokensMegaDisponiveis.map((item) =>
-        `<option value="${esc(item.id)}">${esc(item.name || "Token sem nome")}</option>`
-      )
-    ].join("");
-    const configAtual = megaConfigDoToken(token);
-    const candidato = valorAnterior || configAtual?.referenciaId || "";
-    if (candidato && tokensMegaDisponiveis.some((item) => item.id === candidato)) {
-      seletorMega.value = candidato;
-    }
-    if (mensagemMega) mensagemMega.textContent = `${tokensMegaDisponiveis.length} token(s) Mega disponível(is) na mesa.`;
-  } catch (erro) {
-    console.error("Erro ao listar personagens da mesa para Mega:", erro);
-    seletorMega.innerHTML = '<option value="">Erro ao carregar personagens</option>';
-    if (mensagemMega) mensagemMega.textContent = "Não foi possível carregar os personagens da mesa.";
-  } finally {
-    seletorMega.disabled = false;
-    if (botaoAtualizarMega) botaoAtualizarMega.disabled = false;
-  }
-};
-
-if (botaoAtualizarMega) {
-  botaoAtualizarMega.addEventListener("click", atualizarListaTokensMega);
-}
-
-if (botaoDefinirMega && seletorMega) {
-  botaoDefinirMega.addEventListener("click", async () => {
-    const idReferencia = seletorMega.value;
-    if (!idReferencia) {
-      if (mensagemMega) mensagemMega.textContent = "Escolha um personagem da mesa primeiro.";
-      return;
-    }
-    let referencia = tokensMegaDisponiveis.find((item) => item.id === idReferencia);
-    if (!referencia) referencia = (await OBR.scene.items.getItems([idReferencia]))[0];
-    const nomeReferenciaEhMega = String(referencia?.name || "")
-      .trim()
-      .toLocaleLowerCase("pt-BR")
-      .startsWith("mega");
-    if (!referencia || referencia.type !== "IMAGE" || referencia.layer !== "CHARACTER" || !nomeReferenciaEhMega) {
-      if (mensagemMega) mensagemMega.textContent = "Esse token não está disponível ou o nome não começa com Mega.";
-      await atualizarListaTokensMega();
       return;
     }
     botaoDefinirMega.disabled = true;
@@ -5263,6 +4836,457 @@ document .querySelector("#salvarPokemonMoves") .addEventListener( "click", async
 ] ?? 100 ) || 1 ); const caBaseHud = Number( token.metadata[
 `${PREFIX}/ca`
 ] ?? 10 ) || 0; const caEfetivaHud = caBaseHud + (Number(novosBuffs.evas) || 0); await criarStatusNoToken( token, hpAtualHud, hpMaxHud, caEfetivaHud ); } ); }
+function mostrarFichaPokemonMega(token) {
+  const app = document.querySelector("#app");
+const megaConfig = megaConfigDoToken(token);
+const megaAtiva = megaAtivaNoToken(token);
+const megaDistribuicaoInicial = distribuicaoMegaDoToken(token);
+const megaPontosIniciais = pontosUsadosMega(megaDistribuicaoInicial);
+const megaNomesAtributos = { for: "FOR", des: "DES", con: "CON", int: "INT", sab: "SAB", car: "CAR" };
+const megaNomesMovimentos = {
+  "movimento-caminhada": "Caminhada", "movimento-escalada": "Escalada", "movimento-voo": "Voo",
+  "movimento-natacao": "Natação", "movimento-escavacao": "Escavação", "movimento-flutuacao": "Flutuação"
+};
+const htmlMegaAtributos = MEGA_ATRIBUTOS.map((id) => `
+  <div style="display:grid;grid-template-columns:32px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;">
+    <strong style="font-size:9px;color:#604281;">${megaNomesAtributos[id]}</strong>
+    <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
+    <span id="megaAtributo-${id}" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.atributos[id]} Status</span>
+    <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
+  </div>`).join("");
+const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
+  <div style="display:grid;grid-template-columns:minmax(62px,1fr) 30px 58px 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;">
+    <strong style="font-size:8px;color:#604281;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${megaNomesMovimentos[id]}</strong>
+    <button type="button" class="megaAjuste" data-mega-grupo="movimento" data-mega-id="${id}" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
+    <span id="megaMovimento-${id}" style="text-align:center;font-size:9px;font-weight:900;color:#684895;">+${formatarDecimal(megaDistribuicaoInicial.movimentos[id] * MEGA_PASSO_MOVIMENTO)}m</span>
+    <button type="button" class="megaAjuste" data-mega-grupo="movimento" data-mega-id="${id}" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
+  </div>`).join("");
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoPokemon(token, 4)}
+    <div style="margin-top:2px;">
+    <div
+      id="megaEvolucaoCard"
+      style="
+        padding:10px;
+        border:1px solid #ddd3f4;
+        border-radius:12px;
+        background:linear-gradient(180deg,#fbf8ff 0%,#f6f0ff 100%);
+        box-shadow:0 3px 10px rgba(91,53,140,.08);
+        margin-bottom:8px;
+      "
+    >
+      <div style="
+        display:flex;
+        align-items:center;
+        gap:9px;
+        margin-bottom:8px;
+      ">
+        <div style="
+          width:50px;
+          height:50px;
+          flex:0 0 50px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          overflow:hidden;
+          border-radius:12px;
+          background:#ffffff;
+          border:1px solid #ded3f1;
+          box-shadow:0 2px 7px rgba(91,53,140,.10);
+          padding:4px;
+        ">
+          <img
+            src="${esc(urlImagemMegaEvolucao())}"
+            alt="Mega Evolução"
+            title="Mega Evolução"
+            draggable="false"
+            onerror="this.style.display='none'"
+            style="
+              width:100%;
+              height:100%;
+              object-fit:contain;
+              display:block;
+            "
+          >
+        </div>
+
+        <div style="
+          min-width:0;
+          flex:1;
+        ">
+          <div style="
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:8px;
+          ">
+            <div style="
+              font-size:11px;
+              font-weight:900;
+              color:#63418f;
+            ">
+              MEGA EVOLUÇÃO
+            </div>
+
+            <div
+              id="megaEstadoTexto"
+              style="
+                font-size:9px;
+                font-weight:900;
+                white-space:nowrap;
+                color:${megaAtiva ? "#269653" : "#7a688e"};
+              "
+            >
+              ${megaAtiva ? "MEGA ATIVA" : "FORMA NORMAL"}
+            </div>
+          </div>
+
+          <div
+            id="megaReferenciaTexto"
+            style="
+              margin-top:3px;
+              font-size:9px;
+              font-weight:800;
+              color:#8a77a5;
+              word-break:break-word;
+            "
+          >
+            ${
+              megaConfig
+                ? `Mega definida: ${esc(megaConfig.referenciaNome || "Personagem")}`
+                : "Nenhuma forma Mega definida"
+            }
+          </div>
+        </div>
+      </div>
+
+      <div style="
+        display:grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        gap:6px;
+        align-items:center;
+      ">
+        <select
+          id="megaTokenReferencia"
+          style="
+            width:100%;
+            min-width:0;
+            min-height:38px !important;
+            padding:7px 9px !important;
+            font-size:10px;
+            font-weight:900;
+            color:#5f4485 !important;
+            border-color:#c9b7e6 !important;
+            background:#ffffff !important;
+          "
+        >
+          <option value="">Carregando personagens da mesa...</option>
+        </select>
+
+        <button
+          id="atualizarTokensMega"
+          type="button"
+          title="Atualizar personagens disponíveis na mesa"
+          style="
+            min-width:38px;
+            min-height:38px !important;
+            padding:6px 9px !important;
+            font-size:14px;
+            font-weight:900;
+            cursor:pointer;
+          "
+        >
+          ↻
+        </button>
+      </div>
+
+      <button
+        id="definirMegaEvolucao"
+        type="button"
+        style="
+          width:100%;
+          min-height:36px !important;
+          margin-top:6px;
+          padding:6px 9px !important;
+          font-size:10px;
+          font-weight:900;
+          cursor:pointer;
+          background:linear-gradient(180deg,#ffffff 0%,#f0e9fb 100%) !important;
+          color:#5f4485 !important;
+          border-color:#c9b7e6 !important;
+        "
+      >
+        DEFINIR TOKEN COMO MEGA
+      </button>
+
+      <div style="
+        margin-top:4px;
+        font-size:8px;
+        line-height:1.25;
+        font-weight:800;
+        color:#8a77a5;
+        text-align:center;
+      ">
+        Mostra somente tokens da mesa cujo nome começa com Mega.
+      </div>
+
+      <div id="megaDistribuicaoCard" style="margin-top:10px;padding:8px;border:1px solid #d8caed;border-radius:10px;background:#fffaff;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;">
+          <strong style="font-size:10px;color:#604281;">DISTRIBUIÇÃO DA MEGA</strong>
+          <span id="megaPontosTexto" style="font-size:10px;font-weight:900;color:#6f52d9;">${megaPontosIniciais}/${MEGA_PONTOS_TOTAL} pts</span>
+        </div>
+        <div style="font-size:8px;line-height:1.25;color:#806b99;margin-bottom:7px;">
+          CA: 2 pts = +1 CA · Status: 1 pt = +1 atributo · Movimento: 1 pt = +1,5 m
+        </div>
+
+        <div style="display:grid;grid-template-columns:48px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;margin-bottom:6px;">
+          <strong style="font-size:9px;color:#604281;">CA</strong>
+          <button type="button" class="megaAjuste" data-mega-grupo="ca" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
+          <span id="megaCaValor" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.ca} CA</span>
+          <button type="button" class="megaAjuste" data-mega-grupo="ca" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
+        </div>
+
+        <div style="font-size:8px;font-weight:900;color:#806b99;margin:7px 0 4px;">STATUS</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;">${htmlMegaAtributos}</div>
+
+        <div style="font-size:8px;font-weight:900;color:#806b99;margin:8px 0 4px;">MOVIMENTAÇÃO</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:5px;">${htmlMegaMovimentos}</div>
+
+        <div style="font-size:8px;font-weight:900;color:#806b99;margin:8px 0 4px;">HABILIDADE PASSIVA DA MEGA</div>
+        <textarea id="megaHabilidadeNova" class="megaConfigCampo" rows="3" placeholder="Escreva a habilidade que substituirá a habilidade normal enquanto a Mega estiver ativa..." style="width:100%;box-sizing:border-box;resize:vertical;">${esc(megaDistribuicaoInicial.habilidade)}</textarea>
+        <div id="megaConfigSalvaTexto" style="min-height:11px;margin-top:4px;text-align:center;font-size:8px;font-weight:800;color:#7d6998;">Configuração salva no próprio Pokémon.</div>
+      </div>
+
+      <div style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:6px;
+        margin-top:8px;
+      ">
+        <button
+          id="botaoMegaEvolucao"
+          type="button"
+          ${megaConfig && !megaAtiva ? "" : "disabled"}
+          style="
+            min-height:42px !important;
+            padding:7px 8px !important;
+            border-radius:10px;
+            font-size:10px;
+            font-weight:900;
+            cursor:pointer;
+            background:linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%) !important;
+            color:#fff !important;
+            border-color:#6045c6 !important;
+          "
+        >
+          MEGA EVOLUÇÃO
+        </button>
+
+        <button
+          id="retirarMegaEvolucao"
+          type="button"
+          ${megaAtiva ? "" : "disabled"}
+          style="
+            min-height:42px !important;
+            padding:7px 8px !important;
+            border-radius:10px;
+            font-size:10px;
+            font-weight:900;
+            cursor:pointer;
+            background:linear-gradient(135deg,#ef7676 0%,#ce4f4f 100%) !important;
+            color:#fff !important;
+            border-color:#bb4545 !important;
+          "
+        >
+          RETIRAR EVOLUÇÃO
+        </button>
+      </div>
+
+      <div
+        id="megaMensagem"
+        style="
+          min-height:12px;
+          margin-top:5px;
+          font-size:9px;
+          font-weight:800;
+          text-align:center;
+          color:#725a91;
+        "
+      ></div>
+    </div>
+
+
+    </div>
+  `;
+  ativarCabecalhoPokemon(token);
+const seletorMega = document.querySelector("#megaTokenReferencia");
+const botaoAtualizarMega = document.querySelector("#atualizarTokensMega");
+const botaoDefinirMega = document.querySelector("#definirMegaEvolucao");
+const botaoMega = document.querySelector("#botaoMegaEvolucao");
+const botaoRetirarMega = document.querySelector("#retirarMegaEvolucao");
+const mensagemMega = document.querySelector("#megaMensagem");
+const textoReferenciaMega = document.querySelector("#megaReferenciaTexto");
+const textoEstadoMega = document.querySelector("#megaEstadoTexto");
+const textoMegaPontos = document.querySelector("#megaPontosTexto");
+const campoMegaHabilidade = document.querySelector("#megaHabilidadeNova");
+const textoMegaConfigSalva = document.querySelector("#megaConfigSalvaTexto");
+let distribuicaoMegaEdicao = normalizarDistribuicaoMega(megaDistribuicaoInicial);
+let temporizadorSalvarMega = null;
+let tokensMegaDisponiveis = [];
+
+const custoMegaAjuste = (grupo) => grupo === "ca" ? 2 : 1;
+const atualizarEditorMega = () => {
+  const usados = pontosUsadosMega(distribuicaoMegaEdicao);
+  const restantes = MEGA_PONTOS_TOTAL - usados;
+  if (textoMegaPontos) {
+    textoMegaPontos.textContent = `${usados}/${MEGA_PONTOS_TOTAL} pts`;
+    textoMegaPontos.style.color = restantes === 0 ? "#269653" : "#6f52d9";
+  }
+  const caTexto = document.querySelector("#megaCaValor");
+  if (caTexto) caTexto.textContent = `+${distribuicaoMegaEdicao.ca} CA`;
+  for (const id of MEGA_ATRIBUTOS) {
+    const el = document.querySelector(`#megaAtributo-${id}`);
+    if (el) el.textContent = `+${distribuicaoMegaEdicao.atributos[id]} Status`;
+  }
+  for (const id of MEGA_MOVIMENTOS) {
+    const el = document.querySelector(`#megaMovimento-${id}`);
+    if (el) el.textContent = `+${formatarDecimal(distribuicaoMegaEdicao.movimentos[id] * MEGA_PASSO_MOVIMENTO)}m`;
+  }
+  document.querySelectorAll(".megaAjuste").forEach((botao) => {
+    const delta = Number(botao.dataset.megaDelta) || 0;
+    if (delta <= 0) { botao.disabled = false; return; }
+    botao.disabled = !megaConfigDoToken(token) || restantes < custoMegaAjuste(botao.dataset.megaGrupo || "");
+  });
+};
+
+const salvarEditorMega = async () => {
+  if (!megaConfigDoToken(token)) {
+    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Defina primeiro um token como Mega.";
+    return;
+  }
+  distribuicaoMegaEdicao.habilidade = campoMegaHabilidade?.value ?? distribuicaoMegaEdicao.habilidade;
+  try {
+    const configSalvo = await salvarDistribuicaoMega(token, distribuicaoMegaEdicao);
+    distribuicaoMegaEdicao = normalizarDistribuicaoMega(configSalvo.distribuicao);
+    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "✓ Configuração Mega salva.";
+    atualizarEditorMega();
+  } catch (erro) {
+    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = erro?.message || "Não foi possível salvar a configuração Mega.";
+  }
+};
+
+const programarSalvarEditorMega = (atraso = 300) => {
+  if (temporizadorSalvarMega) clearTimeout(temporizadorSalvarMega);
+  temporizadorSalvarMega = setTimeout(() => { temporizadorSalvarMega = null; salvarEditorMega(); }, atraso);
+};
+
+document.querySelectorAll(".megaAjuste").forEach((botao) => {
+  botao.addEventListener("click", () => {
+    if (!megaConfigDoToken(token)) {
+      if (mensagemMega) mensagemMega.textContent = "Defina primeiro o token da Mega.";
+      return;
+    }
+    const grupo = botao.dataset.megaGrupo || "";
+    const id = botao.dataset.megaId || "";
+    const delta = Number(botao.dataset.megaDelta) || 0;
+    const usados = pontosUsadosMega(distribuicaoMegaEdicao);
+    const custo = custoMegaAjuste(grupo);
+    if (delta > 0 && usados + custo > MEGA_PONTOS_TOTAL) {
+      if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Os 11 pontos da Mega já foram distribuídos.";
+      return;
+    }
+    if (grupo === "ca") distribuicaoMegaEdicao.ca = Math.max(0, distribuicaoMegaEdicao.ca + delta);
+    if (grupo === "atributo" && MEGA_ATRIBUTOS.includes(id)) distribuicaoMegaEdicao.atributos[id] = Math.max(0, distribuicaoMegaEdicao.atributos[id] + delta);
+    if (grupo === "movimento" && MEGA_MOVIMENTOS.includes(id)) distribuicaoMegaEdicao.movimentos[id] = Math.max(0, distribuicaoMegaEdicao.movimentos[id] + delta);
+    atualizarEditorMega();
+    programarSalvarEditorMega(80);
+  });
+});
+
+if (campoMegaHabilidade) {
+  campoMegaHabilidade.addEventListener("input", () => {
+    distribuicaoMegaEdicao.habilidade = campoMegaHabilidade.value;
+    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Salvando habilidade Mega...";
+    programarSalvarEditorMega(500);
+  });
+}
+
+const atualizarVisualMega = (ativa) => {
+  if (textoEstadoMega) {
+    textoEstadoMega.textContent = ativa ? "MEGA ATIVA" : "FORMA NORMAL";
+    textoEstadoMega.style.color = ativa ? "#269653" : "#7a688e";
+  }
+  const temConfig = Boolean(megaConfigDoToken(token));
+  if (botaoMega) botaoMega.disabled = !temConfig || ativa;
+  if (botaoRetirarMega) botaoRetirarMega.disabled = !temConfig || !ativa;
+};
+
+const atualizarListaTokensMega = async () => {
+  if (!seletorMega) return;
+  const valorAnterior = seletorMega.value;
+  seletorMega.disabled = true;
+  if (botaoAtualizarMega) botaoAtualizarMega.disabled = true;
+  try {
+    const itens = await OBR.scene.items.getItems(
+      (item) =>
+        item.type === "IMAGE" &&
+        item.layer === "CHARACTER" &&
+        item.id !== token.id &&
+        String(item.name || "").trim().toLocaleLowerCase("pt-BR").startsWith("mega")
+    );
+    tokensMegaDisponiveis = [...itens].sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || ""), "pt-BR", { sensitivity: "base" })
+    );
+    if (!tokensMegaDisponiveis.length) {
+      seletorMega.innerHTML = '<option value="">Nenhum token Mega encontrado na mesa</option>';
+      if (mensagemMega) mensagemMega.textContent = "Coloque na mesa um token cujo nome comece com Mega e atualize a lista.";
+      return;
+    }
+    seletorMega.innerHTML = [
+      '<option value="">Escolher token da Mega...</option>',
+      ...tokensMegaDisponiveis.map((item) =>
+        `<option value="${esc(item.id)}">${esc(item.name || "Token sem nome")}</option>`
+      )
+    ].join("");
+    const configAtual = megaConfigDoToken(token);
+    const candidato = valorAnterior || configAtual?.referenciaId || "";
+    if (candidato && tokensMegaDisponiveis.some((item) => item.id === candidato)) {
+      seletorMega.value = candidato;
+    }
+    if (mensagemMega) mensagemMega.textContent = `${tokensMegaDisponiveis.length} token(s) Mega disponível(is) na mesa.`;
+  } catch (erro) {
+    console.error("Erro ao listar personagens da mesa para Mega:", erro);
+    seletorMega.innerHTML = '<option value="">Erro ao carregar personagens</option>';
+    if (mensagemMega) mensagemMega.textContent = "Não foi possível carregar os personagens da mesa.";
+  } finally {
+    seletorMega.disabled = false;
+    if (botaoAtualizarMega) botaoAtualizarMega.disabled = false;
+  }
+};
+
+if (botaoAtualizarMega) {
+  botaoAtualizarMega.addEventListener("click", atualizarListaTokensMega);
+}
+
+if (botaoDefinirMega && seletorMega) {
+  botaoDefinirMega.addEventListener("click", async () => {
+    const idReferencia = seletorMega.value;
+    if (!idReferencia) {
+      if (mensagemMega) mensagemMega.textContent = "Escolha um personagem da mesa primeiro.";
+      return;
+    }
+    let referencia = tokensMegaDisponiveis.find((item) => item.id === idReferencia);
+    if (!referencia) referencia = (await OBR.scene.items.getItems([idReferencia]))[0];
+    const nomeReferenciaEhMega = String(referencia?.name || "")
+      .trim()
+      .toLocaleLowerCase("pt-BR")
+      .startsWith("mega");
+    if (!referencia || referencia.type !== "IMAGE" || referencia.layer !== "CHARACTER" || !nomeReferenciaEhMega) {
+      if (mensagemMega) mensagemMega.textContent = "Esse token não está disponível ou o nome não começa com Mega.";
+      await atualizarListaTokensMega();
+
+}
 function mostrarFichaPokemonPericias( token ) { const app = document.querySelector("#app");
 const valoresPericias = {};
 PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = token.metadata[
