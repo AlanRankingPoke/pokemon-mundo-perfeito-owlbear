@@ -16,6 +16,89 @@ function urlImagemMegaEvolucao() { return new URL("status/Mega.webp?v=2", window
 function urlAnimacaoMegaEvolucao() { return new URL("status/MegaEvolucao.gif?v=1", window.location.href).toString(); }
 const MEGA_ANIMACAO_MS = 1800;
 const MEGA_GIF_MULTIPLICADOR = 4; // GIF = 4x o tamanho visual atual do Pokémon
+const MEGA_PONTOS_TOTAL = 11;
+const MEGA_CUSTO_CA = 2;
+const MEGA_CUSTO_ATRIBUTO = 2;
+const MEGA_PASSO_MOVIMENTO = 1.5;
+const MEGA_ATRIBUTOS = ["for", "des", "con", "int", "sab", "car"];
+const MEGA_MOVIMENTOS = [
+  "movimento-caminhada", "movimento-escalada", "movimento-voo",
+  "movimento-natacao", "movimento-escavacao", "movimento-flutuacao"
+];
+
+function distribuicaoMegaPadrao() {
+  return {
+    ca: 0,
+    atributos: Object.fromEntries(MEGA_ATRIBUTOS.map((id) => [id, 0])),
+    movimentos: Object.fromEntries(MEGA_MOVIMENTOS.map((id) => [id, 0])),
+    habilidade: ""
+  };
+}
+
+function normalizarDistribuicaoMega(valor) {
+  const base = distribuicaoMegaPadrao();
+  const origem = valor && typeof valor === "object" ? valor : {};
+  base.ca = Math.max(0, Math.trunc(Number(origem.ca) || 0));
+  for (const id of MEGA_ATRIBUTOS) {
+    base.atributos[id] = Math.max(0, Math.trunc(Number(origem.atributos?.[id]) || 0));
+  }
+  for (const id of MEGA_MOVIMENTOS) {
+    base.movimentos[id] = Math.max(0, Math.trunc(Number(origem.movimentos?.[id]) || 0));
+  }
+  base.habilidade = String(origem.habilidade ?? "");
+  return base;
+}
+
+function pontosUsadosMega(distribuicao) {
+  const d = normalizarDistribuicaoMega(distribuicao);
+  const atributos = MEGA_ATRIBUTOS.reduce((total, id) => total + d.atributos[id] * MEGA_CUSTO_ATRIBUTO, 0);
+  const movimentos = MEGA_MOVIMENTOS.reduce((total, id) => total + d.movimentos[id], 0);
+  return d.ca * MEGA_CUSTO_CA + atributos + movimentos;
+}
+
+function distribuicaoMegaDoToken(token) {
+  return normalizarDistribuicaoMega(megaConfigDoToken(token)?.distribuicao);
+}
+
+function bonusCaMegaDoToken(token) {
+  return megaAtivaNoToken(token) ? distribuicaoMegaDoToken(token).ca : 0;
+}
+
+function bonusModMegaDoToken(token, atributo) {
+  if (!megaAtivaNoToken(token)) return 0;
+  return Number(distribuicaoMegaDoToken(token).atributos?.[atributo]) || 0;
+}
+
+function bonusMovimentoMegaDoToken(token, chave) {
+  if (!megaAtivaNoToken(token)) return 0;
+  const passos = Number(distribuicaoMegaDoToken(token).movimentos?.[chave]) || 0;
+  return passos * MEGA_PASSO_MOVIMENTO;
+}
+
+function somarBonusTextoMega(valorBase, bonus) {
+  const incremento = Number(bonus) || 0;
+  if (!incremento) return valorBase ?? "";
+  const texto = String(valorBase ?? "").trim().replace(",", ".");
+  const base = Number(texto);
+  const total = (Number.isFinite(base) ? base : 0) + incremento;
+  return total > 0 ? `+${total}` : String(total);
+}
+
+async function salvarDistribuicaoMega(token, distribuicao) {
+  const configAtual = megaConfigDoToken(token);
+  if (!configAtual) throw new Error("Defina primeiro o token da Mega Evolução.");
+  const novaDistribuicao = normalizarDistribuicaoMega(distribuicao);
+  if (pontosUsadosMega(novaDistribuicao) > MEGA_PONTOS_TOTAL) {
+    throw new Error(`A Mega possui somente ${MEGA_PONTOS_TOTAL} pontos para distribuir.`);
+  }
+  const novoConfig = { ...configAtual, distribuicao: novaDistribuicao };
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) item.metadata[META_MEGA_CONFIG] = novoConfig;
+  });
+  token.metadata[META_MEGA_CONFIG] = novoConfig;
+  if (megaAtivaNoToken(token)) await recriarHudDepoisDaMega(token);
+  return novoConfig;
+}
 
 function copiarGridMega(grid, imagem, centralizar = false) {
   const largura = Math.max(1, Number(imagem?.width) || 1);
@@ -96,7 +179,8 @@ async function recriarHudDepoisDaMega(token) {
   const hpMax = Math.max(1, Number(token.metadata?.[`${PREFIX}/hpMax`] ?? 100) || 1);
   const caBase = Number(token.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
   const evasao = Number(token.metadata?.[`${PREFIX}/buff-evas`] ?? 0) || 0;
-  await criarStatusNoToken(token, hpAtual, hpMax, caBase + evasao);
+  const bonusMega = bonusCaMegaDoToken(token);
+  await criarStatusNoToken(token, hpAtual, hpMax, caBase + evasao + bonusMega);
 }
 
 async function aplicarImagemMegaAoToken(token, destino, ativa) {
@@ -156,7 +240,8 @@ async function definirReferenciaMega(tokenAtual, referenciaMega) {
     mega: imagemMega,
     referenciaId: referenciaMega?.id || "",
     referenciaNome: referenciaMega?.name || "Mega",
-    referenciaOrigem: "CENA"
+    referenciaOrigem: "CENA",
+    distribuicao: normalizarDistribuicaoMega(configAnterior?.distribuicao)
   };
 
   await OBR.scene.items.updateItems([tokenAtual.id], (items) => {
@@ -1974,7 +2059,7 @@ botaoSalvar.style.display = "none";
 let temporizador = null;
 const programarSalvamento = (atraso = 650) => { if (temporizador) { clearTimeout(temporizador); }
 temporizador = setTimeout(() => { if (!document.body.contains(botaoSalvar)) { return; } botaoSalvar.click(); }, atraso); };
-app.querySelectorAll("input, textarea, select") .forEach((campo) => { if (campo.id === "alterarHp") { return; } if (campo.classList.contains("movimentoValor")) { return; } campo.addEventListener("input", () => { programarSalvamento(650); }); campo.addEventListener("change", () => { programarSalvamento(200); }); });
+app.querySelectorAll("input, textarea, select") .forEach((campo) => { if (campo.id === "alterarHp") { return; } if (campo.classList.contains("movimentoValor")) { return; } if (campo.classList.contains("megaConfigCampo")) { return; } campo.addEventListener("input", () => { programarSalvamento(650); }); campo.addEventListener("change", () => { programarSalvamento(200); }); });
 app.querySelectorAll(".categoriaGolpe") .forEach((botao) => { botao.addEventListener("click", () => { programarSalvamento(120); }); }); }
 const CAMPOS_MOVIMENTACAO = [ { id: "movimentoCaminhada", metaId: "metaMovimentoCaminhada", chave: "movimento-caminhada" }, { id: "movimentoEscalada", metaId: "metaMovimentoEscalada", chave: "movimento-escalada" }, { id: "movimentoVoo", metaId: "metaMovimentoVoo", chave: "movimento-voo" }, { id: "movimentoNatacao", metaId: "metaMovimentoNatacao", chave: "movimento-natacao" }, { id: "movimentoEscavacao", metaId: "metaMovimentoEscavacao", chave: "movimento-escavacao" }, { id: "movimentoFlutuacao", metaId: "metaMovimentoFlutuacao", chave: "movimento-flutuacao" } ];
 function normalizarMovimentoBase(valor) { const numero = numeroDecimal(valor);
@@ -1989,30 +2074,64 @@ salvamentoMovimentoPendente = salvamentoMovimentoPendente .catch(() => {}) .then
 `${PREFIX}/${chave}`
 ] = valorSalvar; } } ); });
 return salvamentoMovimentoPendente; }
-function ativarMovimentacaoComVelocidade( token, estagioVelocidade ) { const bonusVelocidade = bonusMovimentoPorVelocidade( estagioVelocidade );
-const atualizarMeta = ( campo, meta ) => { if (!meta) { return; }
-const base = normalizarMovimentoBase( campo.dataset.base );
-if (base === null) { meta.textContent = "";
-return; }
-const total = movimentoComVelocidade( base, estagioVelocidade );
-if (bonusVelocidade === 0) { meta.textContent =
-`Atual ${formatarDecimal(total)}`;
-return; }
-const sinal = bonusVelocidade > 0 ? "+" : "";
-meta.textContent =
-`Base ${formatarDecimal(base)} · VEL ${sinal}${formatarDecimal(bonusVelocidade)}`;
-};
-const mostrarBase = ( campo, meta ) => { const base = normalizarMovimentoBase( campo.dataset.base );
-campo.value = base === null ? "" : formatarDecimal(base);
-atualizarMeta( campo, meta ); };
-const mostrarTotal = ( campo, meta ) => { const base = normalizarMovimentoBase( campo.dataset.base );
-campo.value = base === null ? "" : formatarDecimal( movimentoComVelocidade( base, estagioVelocidade ) );
-atualizarMeta( campo, meta ); };
-CAMPOS_MOVIMENTACAO.forEach( ({ id, metaId, chave }) => { const campo = document.querySelector(
-`#${id}`
-); const meta = document.querySelector(
-`#${metaId}`
-); if (!campo) { return; } const baseInicial = normalizarMovimentoBase( campo.dataset.base ); campo.dataset.base = baseInicial === null ? "" : String(baseInicial); mostrarTotal( campo, meta ); campo.addEventListener( "focus", () => { mostrarBase( campo, meta ); campo.select?.(); } ); let temporizadorMovimento = null; const salvarBaseAtual = () => { const base = normalizarMovimentoBase( campo.dataset.base ); return salvarMovimentoBaseNoToken( token, chave, base ); }; const programarSalvamentoMovimento = () => { if (temporizadorMovimento) { clearTimeout( temporizadorMovimento ); } temporizadorMovimento = setTimeout( () => { temporizadorMovimento = null; salvarBaseAtual(); }, 350 ); }; campo.addEventListener( "input", () => { const texto = campo.value.trim(); if (texto === "") { campo.dataset.base = ""; atualizarMeta( campo, meta ); programarSalvamentoMovimento(); return; } const base = normalizarMovimentoBase( texto ); if (base === null) { return; } campo.dataset.base = String(base); atualizarMeta( campo, meta ); programarSalvamentoMovimento(); } ); campo.addEventListener( "blur", () => { if (temporizadorMovimento) { clearTimeout( temporizadorMovimento ); temporizadorMovimento = null; } salvarBaseAtual(); mostrarTotal( campo, meta ); } ); campo.addEventListener( "keydown", (evento) => { if (evento.key === "Enter") { evento.preventDefault(); campo.blur(); } } ); } ); }
+function ativarMovimentacaoComVelocidade( token, estagioVelocidade, movimentosMega = {} ) {
+  const bonusVelocidade = bonusMovimentoPorVelocidade(estagioVelocidade);
+  const atualizarMeta = (campo, meta, chave) => {
+    if (!meta) return;
+    const base = normalizarMovimentoBase(campo.dataset.base);
+    if (base === null) { meta.textContent = ""; return; }
+    const bonusMega = (Number(movimentosMega?.[chave]) || 0) * MEGA_PASSO_MOVIMENTO;
+    const partes = [`Base ${formatarDecimal(base)}`];
+    if (bonusMega) partes.push(`Mega +${formatarDecimal(bonusMega)}`);
+    if (bonusVelocidade) partes.push(`VEL ${bonusVelocidade > 0 ? "+" : ""}${formatarDecimal(bonusVelocidade)}`);
+    meta.textContent = partes.join(" · ");
+  };
+  const mostrarBase = (campo, meta, chave) => {
+    const base = normalizarMovimentoBase(campo.dataset.base);
+    campo.value = base === null ? "" : formatarDecimal(base);
+    atualizarMeta(campo, meta, chave);
+  };
+  const mostrarTotal = (campo, meta, chave) => {
+    const base = normalizarMovimentoBase(campo.dataset.base);
+    if (base === null) { campo.value = ""; atualizarMeta(campo, meta, chave); return; }
+    const bonusMega = (Number(movimentosMega?.[chave]) || 0) * MEGA_PASSO_MOVIMENTO;
+    campo.value = formatarDecimal(movimentoComVelocidade(base + bonusMega, estagioVelocidade));
+    atualizarMeta(campo, meta, chave);
+  };
+  CAMPOS_MOVIMENTACAO.forEach(({ id, metaId, chave }) => {
+    const campo = document.querySelector(`#${id}`);
+    const meta = document.querySelector(`#${metaId}`);
+    if (!campo) return;
+    const baseInicial = normalizarMovimentoBase(campo.dataset.base);
+    campo.dataset.base = baseInicial === null ? "" : String(baseInicial);
+    mostrarTotal(campo, meta, chave);
+    campo.addEventListener("focus", () => { mostrarBase(campo, meta, chave); campo.select?.(); });
+    let temporizadorMovimento = null;
+    const salvarBaseAtual = () => {
+      const base = normalizarMovimentoBase(campo.dataset.base);
+      return salvarMovimentoBaseNoToken(token, chave, base);
+    };
+    const programarSalvamentoMovimento = () => {
+      if (temporizadorMovimento) clearTimeout(temporizadorMovimento);
+      temporizadorMovimento = setTimeout(() => { temporizadorMovimento = null; salvarBaseAtual(); }, 350);
+    };
+    campo.addEventListener("input", () => {
+      const texto = campo.value.trim();
+      if (texto === "") { campo.dataset.base = ""; atualizarMeta(campo, meta, chave); programarSalvamentoMovimento(); return; }
+      const base = normalizarMovimentoBase(texto);
+      if (base === null) return;
+      campo.dataset.base = String(base);
+      atualizarMeta(campo, meta, chave);
+      programarSalvamentoMovimento();
+    });
+    campo.addEventListener("blur", () => {
+      if (temporizadorMovimento) { clearTimeout(temporizadorMovimento); temporizadorMovimento = null; }
+      salvarBaseAtual();
+      mostrarTotal(campo, meta, chave);
+    });
+    campo.addEventListener("keydown", (evento) => { if (evento.key === "Enter") { evento.preventDefault(); campo.blur(); } });
+  });
+}
 function pegarMovimentoBase(campoId) { const campo = document.querySelector(
 `#${campoId}`
 );
@@ -3144,6 +3263,8 @@ function ativarRolagensPericiasPokemon() { document .querySelectorAll( ".rolarPe
 `Perícia ${nome}`
 ); } ); } ); }
 function mostrarFichaPokemon(token) { const app = document.querySelector("#app");
+const megaAtivaStatus = megaAtivaNoToken(token);
+const megaDistribuicaoStatus = distribuicaoMegaDoToken(token);
 const hpAtual = token.metadata[
 `${PREFIX}/hpAtual`
 ] ?? 100;
@@ -3160,10 +3281,13 @@ const caBase = Number( token.metadata[
 const estagioEvasao = normalizarEstagioBuff( token.metadata[
 `${PREFIX}/buff-evas`
 ] ?? 0, "evas" );
-const ca = caBase + estagioEvasao;
-const habilidade = token.metadata[
+const ca = caBase + estagioEvasao + (megaAtivaStatus ? megaDistribuicaoStatus.ca : 0);
+const habilidadeNormal = token.metadata[
 `${PREFIX}/pokemon-habilidade`
 ] ?? "";
+const habilidade = megaAtivaStatus && String(megaDistribuicaoStatus.habilidade || "").trim()
+  ? megaDistribuicaoStatus.habilidade
+  : habilidadeNormal;
 const itemPokemon = token.metadata[
 `${PREFIX}/pokemon-item`
 ] ?? "";
@@ -3190,11 +3314,12 @@ const proficiencia = Number( token.metadata[
 ] ?? 0 );
 const modificadores = {};
 const salvaguardas = {};
-ATRIBUTOS.forEach( (atributo) => { modificadores[atributo] = token.metadata[
-`${PREFIX}/mod-${atributo}`
-] ?? ""; salvaguardas[atributo] = token.metadata[
-`${PREFIX}/save-${atributo}`
-] ?? ""; } );
+ATRIBUTOS.forEach((atributo) => {
+  const baseMod = token.metadata[`${PREFIX}/mod-${atributo}`] ?? "";
+  const bonusMega = megaAtivaStatus ? (Number(megaDistribuicaoStatus.atributos?.[atributo]) || 0) : 0;
+  modificadores[atributo] = somarBonusTextoMega(baseMod, bonusMega);
+  salvaguardas[atributo] = token.metadata[`${PREFIX}/save-${atributo}`] ?? "";
+});
 const iniciativaAlerta = token.metadata[
 `${PREFIX}/iniciativa-alerta`
 ] === true;
@@ -3444,6 +3569,7 @@ app.innerHTML = `
               <textarea
                 id="habilidadePokemon"
                 rows="3"
+                ${megaAtivaStatus ? 'readonly title="Habilidade da Mega ativa. Edite-a na seção Mega Evolução em Moves / Buffs."' : ''}
                 placeholder="Escreva as habilidades e talentos do Pokémon..."
                 style="
                   width:100%;
@@ -3607,18 +3733,25 @@ ativarCabecalhoPokemon(token);
 ativarRolagensSalvaguarda(token);
 ativarRolagemIniciativa(token);
 ativarCalculadoraHp();
-ativarMovimentacaoComVelocidade( token, estagioVelocidade );
-document .querySelector( "#salvarPokemonStatus" ) .addEventListener( "click", async () => { const botaoSalvarStatus = document.querySelector("#salvarPokemonStatus"); const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1"; if (botaoSalvarStatus) { botaoSalvarStatus.dataset.aplicarCalculadora = "0"; } const dados = await pegarHpCaDaTela(aplicarCalculadora); if (!dados) { return; } const movimentoCaminhadaNovo = pegarMovimentoBase( "movimentoCaminhada" ); const movimentoEscaladaNovo = pegarMovimentoBase( "movimentoEscalada" ); const movimentoVooNovo = pegarMovimentoBase( "movimentoVoo" ); const movimentoNatacaoNovo = pegarMovimentoBase( "movimentoNatacao" ); const movimentoEscavacaoNovo = pegarMovimentoBase( "movimentoEscavacao" ); const movimentoFlutuacaoNovo = pegarMovimentoBase( "movimentoFlutuacao" ); const novaHabilidade = document .querySelector("#habilidadePokemon") .value .trim(); const novoItemPokemon = document .querySelector("#itemPokemon") .value .trim(); const novaProficiencia = Number( document .querySelector("#proficiencia") .value ) || 0; const nivelPokemonBruto = document .querySelector("#nivelPokemon") ?.value .trim() ?? ""; const novoNivelPokemon = nivelPokemonBruto === "" ? "" : Math.max( 1, Math.trunc( Number(nivelPokemonBruto) || 1 ) ); const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach( (atributo) => { novosModificadores[atributo] = document .querySelector(
-`#mod-${atributo}`
-) .value .trim(); novasSalvaguardas[atributo] = document .querySelector(
-`#save-${atributo}`
-) .value .trim(); } ); await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[
+ativarMovimentacaoComVelocidade(token, estagioVelocidade, megaAtivaStatus ? megaDistribuicaoStatus.movimentos : {});
+document .querySelector( "#salvarPokemonStatus" ) .addEventListener( "click", async () => { const botaoSalvarStatus = document.querySelector("#salvarPokemonStatus"); const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1"; if (botaoSalvarStatus) { botaoSalvarStatus.dataset.aplicarCalculadora = "0"; } const dados = await pegarHpCaDaTela(aplicarCalculadora); if (!dados) { return; } const movimentoCaminhadaNovo = pegarMovimentoBase( "movimentoCaminhada" ); const movimentoEscaladaNovo = pegarMovimentoBase( "movimentoEscalada" ); const movimentoVooNovo = pegarMovimentoBase( "movimentoVoo" ); const movimentoNatacaoNovo = pegarMovimentoBase( "movimentoNatacao" ); const movimentoEscavacaoNovo = pegarMovimentoBase( "movimentoEscavacao" ); const movimentoFlutuacaoNovo = pegarMovimentoBase( "movimentoFlutuacao" ); const novaHabilidadeTela = document.querySelector("#habilidadePokemon").value.trim();
+const novaHabilidade = megaAtivaStatus ? habilidadeNormal : novaHabilidadeTela; const novoItemPokemon = document .querySelector("#itemPokemon") .value .trim(); const novaProficiencia = Number( document .querySelector("#proficiencia") .value ) || 0; const nivelPokemonBruto = document .querySelector("#nivelPokemon") ?.value .trim() ?? ""; const novoNivelPokemon = nivelPokemonBruto === "" ? "" : Math.max( 1, Math.trunc( Number(nivelPokemonBruto) || 1 ) ); const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach((atributo) => {
+  const valorTela = document.querySelector(`#mod-${atributo}`).value.trim();
+  const numeroTela = Number(String(valorTela).replace(",", "."));
+  const bonusMega = megaAtivaStatus ? (Number(megaDistribuicaoStatus.atributos?.[atributo]) || 0) : 0;
+  novosModificadores[atributo] = Number.isFinite(numeroTela)
+    ? formatarBonus(numeroTela - bonusMega)
+    : valorTela;
+  novasSalvaguardas[atributo] = document.querySelector(`#save-${atributo}`).value.trim();
+});
+const caBaseParaSalvar = dados.caBase - (megaAtivaStatus ? megaDistribuicaoStatus.ca : 0);
+await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[
 `${PREFIX}/hpAtual`
 ] = dados.hpAtual; item.metadata[
 `${PREFIX}/hpMax`
 ] = dados.hpMax; item.metadata[
 `${PREFIX}/ca`
-] = dados.caBase; item.metadata[
+] = caBaseParaSalvar; item.metadata[
 `${PREFIX}/pokemon-habilidade`
 ] = novaHabilidade; item.metadata[
 `${PREFIX}/pokemon-item`
@@ -3652,6 +3785,27 @@ document .querySelector( "#salvarPokemonStatus" ) .addEventListener( "click", as
 function mostrarFichaPokemonMoves(token) { const app = document.querySelector("#app");
 const megaConfig = megaConfigDoToken(token);
 const megaAtiva = megaAtivaNoToken(token);
+const megaDistribuicaoInicial = distribuicaoMegaDoToken(token);
+const megaPontosIniciais = pontosUsadosMega(megaDistribuicaoInicial);
+const megaNomesAtributos = { for: "FOR", des: "DES", con: "CON", int: "INT", sab: "SAB", car: "CAR" };
+const megaNomesMovimentos = {
+  "movimento-caminhada": "Caminhada", "movimento-escalada": "Escalada", "movimento-voo": "Voo",
+  "movimento-natacao": "Natação", "movimento-escavacao": "Escavação", "movimento-flutuacao": "Flutuação"
+};
+const htmlMegaAtributos = MEGA_ATRIBUTOS.map((id) => `
+  <div style="display:grid;grid-template-columns:32px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;">
+    <strong style="font-size:9px;color:#604281;">${megaNomesAtributos[id]}</strong>
+    <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
+    <span id="megaAtributo-${id}" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.atributos[id]} mod</span>
+    <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
+  </div>`).join("");
+const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
+  <div style="display:grid;grid-template-columns:minmax(62px,1fr) 30px 58px 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;">
+    <strong style="font-size:8px;color:#604281;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${megaNomesMovimentos[id]}</strong>
+    <button type="button" class="megaAjuste" data-mega-grupo="movimento" data-mega-id="${id}" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
+    <span id="megaMovimento-${id}" style="text-align:center;font-size:9px;font-weight:900;color:#684895;">+${formatarDecimal(megaDistribuicaoInicial.movimentos[id] * MEGA_PASSO_MOVIMENTO)}m</span>
+    <button type="button" class="megaAjuste" data-mega-grupo="movimento" data-mega-id="${id}" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
+  </div>`).join("");
 const proficiencia = Number( token.metadata[
 `${PREFIX}/proficiencia`
 ] ?? 0 );
@@ -4527,7 +4681,34 @@ app.innerHTML = `
         color:#8a77a5;
         text-align:center;
       ">
-        Mostra somente personagens que estão colocados na mesa.
+        Mostra somente tokens da mesa cujo nome começa com Mega.
+      </div>
+
+      <div id="megaDistribuicaoCard" style="margin-top:10px;padding:8px;border:1px solid #d8caed;border-radius:10px;background:#fffaff;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;">
+          <strong style="font-size:10px;color:#604281;">DISTRIBUIÇÃO DA MEGA</strong>
+          <span id="megaPontosTexto" style="font-size:10px;font-weight:900;color:#6f52d9;">${megaPontosIniciais}/${MEGA_PONTOS_TOTAL} pts</span>
+        </div>
+        <div style="font-size:8px;line-height:1.25;color:#806b99;margin-bottom:7px;">
+          CA: 2 pts = +1 CA · Atributos: 2 pts = +1 modificador · Movimento: 1 pt = +1,5 m
+        </div>
+
+        <div style="display:grid;grid-template-columns:48px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;margin-bottom:6px;">
+          <strong style="font-size:9px;color:#604281;">CA</strong>
+          <button type="button" class="megaAjuste" data-mega-grupo="ca" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
+          <span id="megaCaValor" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.ca} CA</span>
+          <button type="button" class="megaAjuste" data-mega-grupo="ca" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
+        </div>
+
+        <div style="font-size:8px;font-weight:900;color:#806b99;margin:7px 0 4px;">MODIFICADORES</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;">${htmlMegaAtributos}</div>
+
+        <div style="font-size:8px;font-weight:900;color:#806b99;margin:8px 0 4px;">MOVIMENTAÇÃO</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:5px;">${htmlMegaMovimentos}</div>
+
+        <div style="font-size:8px;font-weight:900;color:#806b99;margin:8px 0 4px;">HABILIDADE PASSIVA DA MEGA</div>
+        <textarea id="megaHabilidadeNova" class="megaConfigCampo" rows="3" placeholder="Escreva a habilidade que substituirá a habilidade normal enquanto a Mega estiver ativa..." style="width:100%;box-sizing:border-box;resize:vertical;">${esc(megaDistribuicaoInicial.habilidade)}</textarea>
+        <div id="megaConfigSalvaTexto" style="min-height:11px;margin-top:4px;text-align:center;font-size:8px;font-weight:800;color:#7d6998;">Configuração salva no próprio Pokémon.</div>
       </div>
 
       <div style="
@@ -4610,7 +4791,89 @@ const botaoRetirarMega = document.querySelector("#retirarMegaEvolucao");
 const mensagemMega = document.querySelector("#megaMensagem");
 const textoReferenciaMega = document.querySelector("#megaReferenciaTexto");
 const textoEstadoMega = document.querySelector("#megaEstadoTexto");
+const textoMegaPontos = document.querySelector("#megaPontosTexto");
+const campoMegaHabilidade = document.querySelector("#megaHabilidadeNova");
+const textoMegaConfigSalva = document.querySelector("#megaConfigSalvaTexto");
+let distribuicaoMegaEdicao = normalizarDistribuicaoMega(megaDistribuicaoInicial);
+let temporizadorSalvarMega = null;
 let tokensMegaDisponiveis = [];
+
+const custoMegaAjuste = (grupo) => grupo === "movimento" ? 1 : 2;
+const atualizarEditorMega = () => {
+  const usados = pontosUsadosMega(distribuicaoMegaEdicao);
+  const restantes = MEGA_PONTOS_TOTAL - usados;
+  if (textoMegaPontos) {
+    textoMegaPontos.textContent = `${usados}/${MEGA_PONTOS_TOTAL} pts`;
+    textoMegaPontos.style.color = restantes === 0 ? "#269653" : "#6f52d9";
+  }
+  const caTexto = document.querySelector("#megaCaValor");
+  if (caTexto) caTexto.textContent = `+${distribuicaoMegaEdicao.ca} CA`;
+  for (const id of MEGA_ATRIBUTOS) {
+    const el = document.querySelector(`#megaAtributo-${id}`);
+    if (el) el.textContent = `+${distribuicaoMegaEdicao.atributos[id]} mod`;
+  }
+  for (const id of MEGA_MOVIMENTOS) {
+    const el = document.querySelector(`#megaMovimento-${id}`);
+    if (el) el.textContent = `+${formatarDecimal(distribuicaoMegaEdicao.movimentos[id] * MEGA_PASSO_MOVIMENTO)}m`;
+  }
+  document.querySelectorAll(".megaAjuste").forEach((botao) => {
+    const delta = Number(botao.dataset.megaDelta) || 0;
+    if (delta <= 0) { botao.disabled = false; return; }
+    botao.disabled = !megaConfigDoToken(token) || restantes < custoMegaAjuste(botao.dataset.megaGrupo || "");
+  });
+};
+
+const salvarEditorMega = async () => {
+  if (!megaConfigDoToken(token)) {
+    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Defina primeiro um token como Mega.";
+    return;
+  }
+  distribuicaoMegaEdicao.habilidade = campoMegaHabilidade?.value ?? distribuicaoMegaEdicao.habilidade;
+  try {
+    const configSalvo = await salvarDistribuicaoMega(token, distribuicaoMegaEdicao);
+    distribuicaoMegaEdicao = normalizarDistribuicaoMega(configSalvo.distribuicao);
+    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "✓ Configuração Mega salva.";
+    atualizarEditorMega();
+  } catch (erro) {
+    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = erro?.message || "Não foi possível salvar a configuração Mega.";
+  }
+};
+
+const programarSalvarEditorMega = (atraso = 300) => {
+  if (temporizadorSalvarMega) clearTimeout(temporizadorSalvarMega);
+  temporizadorSalvarMega = setTimeout(() => { temporizadorSalvarMega = null; salvarEditorMega(); }, atraso);
+};
+
+document.querySelectorAll(".megaAjuste").forEach((botao) => {
+  botao.addEventListener("click", () => {
+    if (!megaConfigDoToken(token)) {
+      if (mensagemMega) mensagemMega.textContent = "Defina primeiro o token da Mega.";
+      return;
+    }
+    const grupo = botao.dataset.megaGrupo || "";
+    const id = botao.dataset.megaId || "";
+    const delta = Number(botao.dataset.megaDelta) || 0;
+    const usados = pontosUsadosMega(distribuicaoMegaEdicao);
+    const custo = custoMegaAjuste(grupo);
+    if (delta > 0 && usados + custo > MEGA_PONTOS_TOTAL) {
+      if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Os 11 pontos da Mega já foram distribuídos.";
+      return;
+    }
+    if (grupo === "ca") distribuicaoMegaEdicao.ca = Math.max(0, distribuicaoMegaEdicao.ca + delta);
+    if (grupo === "atributo" && MEGA_ATRIBUTOS.includes(id)) distribuicaoMegaEdicao.atributos[id] = Math.max(0, distribuicaoMegaEdicao.atributos[id] + delta);
+    if (grupo === "movimento" && MEGA_MOVIMENTOS.includes(id)) distribuicaoMegaEdicao.movimentos[id] = Math.max(0, distribuicaoMegaEdicao.movimentos[id] + delta);
+    atualizarEditorMega();
+    programarSalvarEditorMega(80);
+  });
+});
+
+if (campoMegaHabilidade) {
+  campoMegaHabilidade.addEventListener("input", () => {
+    distribuicaoMegaEdicao.habilidade = campoMegaHabilidade.value;
+    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Salvando habilidade Mega...";
+    programarSalvarEditorMega(500);
+  });
+}
 
 const atualizarVisualMega = (ativa) => {
   if (textoEstadoMega) {
@@ -4693,7 +4956,10 @@ if (botaoDefinirMega && seletorMega) {
       if (textoReferenciaMega) {
         textoReferenciaMega.textContent = `Mega definida: ${config.referenciaNome || referencia.name || "Personagem"}`;
       }
+      distribuicaoMegaEdicao = normalizarDistribuicaoMega(config.distribuicao);
+      if (campoMegaHabilidade) campoMegaHabilidade.value = distribuicaoMegaEdicao.habilidade;
       atualizarVisualMega(false);
+      atualizarEditorMega();
       if (mensagemMega) mensagemMega.textContent = "Token da mesa salvo como forma Mega.";
     } catch (erro) {
       console.error("Erro ao definir token da mesa como Mega:", erro);
@@ -4735,6 +5001,7 @@ if (botaoRetirarMega) {
 }
 
 atualizarVisualMega(megaAtivaNoToken(token));
+atualizarEditorMega();
 atualizarListaTokensMega();
 function atualizarBuffsPagina() { BUFFS.forEach( (buff) => { const campoBuff = document.querySelector(
 `#buff-${buff.id}`
@@ -4751,7 +5018,7 @@ document .querySelectorAll(".campoBuff") .forEach( (campo) => { campo.addEventLi
 `${PREFIX}/hpMax`
 ] ?? 100 ) || 1 ); const caBaseHud = Number( token.metadata[
 `${PREFIX}/ca`
-] ?? 10 ) || 0; await criarStatusNoToken( token, hpAtualHud, hpMaxHud, caBaseHud + valorBuff ); } }); } ); campo.addEventListener( "change", () => { const buffId = campo.id.replace("buff-", ""); campo.value = String( normalizarEstagioBuff( campo.value, buffId ) ); atualizarBuffsPagina(); if (buffId === "pres") { atualizarCDsComPrecisao(); } } ); } );
+] ?? 10 ) || 0; await criarStatusNoToken(token, hpAtualHud, hpMaxHud, caBaseHud + valorBuff + bonusCaMegaDoToken(token)); } }); } ); campo.addEventListener( "change", () => { const buffId = campo.id.replace("buff-", ""); campo.value = String( normalizarEstagioBuff( campo.value, buffId ) ); atualizarBuffsPagina(); if (buffId === "pres") { atualizarCDsComPrecisao(); } } ); } );
 document .querySelectorAll(".cdBaseMove") .forEach((campo) => { campo.addEventListener( "input", atualizarCDsComPrecisao ); campo.addEventListener( "change", atualizarCDsComPrecisao ); });
 atualizarCDsComPrecisao();
 function atualizarTipoMoveVisual(numero, tipo) { const tiposValidos = ["macerto", "mcd", "cura", "buffdebuff"];
@@ -5290,3 +5557,5 @@ app.innerHTML = `
             `;
 } } }
 OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
+
+// FIM DO CÓDIGO - POKÉMON MUNDO PERFEITO
