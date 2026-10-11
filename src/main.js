@@ -1993,14 +1993,25 @@ function htmlSlotPokemonTreinador(slot, grupo, indice, compacto = false) {
 }
 
 async function pokemonsDisponiveisParaRoster(token) {
-  return OBR.scene.items.getItems((item) =>
-    item.type === "IMAGE" &&
-    item.layer === "CHARACTER" &&
-    item.id !== token.id &&
-    item.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
-    !item.metadata?.[META_POKEMON_DONO_TREINADOR] &&
-    !String(item.name || "").trim().toLowerCase().startsWith("mega")
-  );
+  return OBR.scene.items.getItems((item) => {
+    if (item.type !== "IMAGE") return false;
+    if (item.layer !== "CHARACTER") return false;
+    if (item.id === token.id) return false;
+
+    // A lista do treinador mostra SOMENTE tokens que já foram
+    // definidos como POKÉMON na ficha do plugin.
+    // Assim treinadores, NPCs humanos e outros CHARACTER não aparecem.
+    const tipoFicha = item.metadata?.[`${PREFIX}/tipoFicha`];
+    if (tipoFicha !== "pokemon") return false;
+
+    // Pokémon que já pertence a um slot não deve aparecer como disponível.
+    if (item.metadata?.[META_POKEMON_DONO_TREINADOR]) return false;
+
+    // Tokens de referência de Mega continuam fora da lista.
+    if (String(item.name || "").trim().toLowerCase().startsWith("mega")) return false;
+
+    return true;
+  });
 }
 
 async function mostrarFichaTreinadorPokemons(token) {
@@ -2066,7 +2077,7 @@ async function mostrarFichaTreinadorPokemons(token) {
       <button type="button" class="seletorRosterPokemon" data-pokemon-id="${esc(pokemon.id)}">
         <img src="${esc(pokemon.image?.url || '')}" alt="${esc(pokemon.name || 'Pokémon')}">
         <span>${esc(pokemon.name || 'Pokémon')}</span>
-      </button>`).join('') : '<div style="grid-column:1/-1;padding:18px;text-align:center;color:#667d99;font-size:11px;font-weight:800">Nenhum Pokémon disponível na mesa.<br>O token precisa estar como CHARACTER e ter ficha do tipo POKÉMON.</div>';
+      </button>`).join('') : '<div style="grid-column:1/-1;padding:18px;text-align:center;color:#667d99;font-size:11px;font-weight:800">Nenhum Pokémon disponível na mesa.<br>Coloque o token na camada CHARACTER. Tokens novos também são reconhecidos automaticamente.</div>';
     seletor.style.display = 'flex';
   };
 
@@ -3750,7 +3761,7 @@ return `
           opacity:${paginaAtual === 4 ? "1" : "0.65"};
         "
       >
-        ✨ MEGA
+        MEGA
       </button>
     </div>
   `;
@@ -5795,17 +5806,26 @@ const atualizarEditorMega = () => {
   }
   document.querySelectorAll(".megaAjuste").forEach((botao) => {
     const delta = Number(botao.dataset.megaDelta) || 0;
-    if (delta <= 0) { botao.disabled = false; return; }
-    botao.disabled = !megaConfigDoToken(token) || restantes < custoMegaAjuste(botao.dataset.megaGrupo || "");
+    const grupo = botao.dataset.megaGrupo || "";
+    const id = botao.dataset.megaId || "";
+    if (delta < 0) {
+      let valorAtual = 0;
+      if (grupo === "ca") valorAtual = Number(distribuicaoMegaEdicao.ca) || 0;
+      if (grupo === "atributo" && MEGA_ATRIBUTOS.includes(id)) valorAtual = Number(distribuicaoMegaEdicao.atributos[id]) || 0;
+      if (grupo === "movimento" && MEGA_MOVIMENTOS.includes(id)) valorAtual = Number(distribuicaoMegaEdicao.movimentos[id]) || 0;
+      botao.disabled = valorAtual <= 0;
+      return;
+    }
+    botao.disabled = restantes < custoMegaAjuste(grupo);
   });
 };
 
 const salvarEditorMega = async () => {
+  distribuicaoMegaEdicao.habilidade = campoMegaHabilidade?.value ?? distribuicaoMegaEdicao.habilidade;
   if (!megaConfigDoToken(token)) {
-    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Defina primeiro um token como Mega.";
+    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Ajustes prontos. Defina o token Mega para salvar no Pokémon.";
     return;
   }
-  distribuicaoMegaEdicao.habilidade = campoMegaHabilidade?.value ?? distribuicaoMegaEdicao.habilidade;
   try {
     const configSalvo = await salvarDistribuicaoMega(token, distribuicaoMegaEdicao);
     distribuicaoMegaEdicao = normalizarDistribuicaoMega(configSalvo.distribuicao);
@@ -5823,10 +5843,6 @@ const programarSalvarEditorMega = (atraso = 300) => {
 
 document.querySelectorAll(".megaAjuste").forEach((botao) => {
   botao.addEventListener("click", () => {
-    if (!megaConfigDoToken(token)) {
-      if (mensagemMega) mensagemMega.textContent = "Defina primeiro o token da Mega.";
-      return;
-    }
     const grupo = botao.dataset.megaGrupo || "";
     const id = botao.dataset.megaId || "";
     const delta = Number(botao.dataset.megaDelta) || 0;
@@ -5930,14 +5946,17 @@ if (botaoDefinirMega && seletorMega) {
 
     botaoDefinirMega.disabled = true;
     try {
-      const config = await definirReferenciaMega(token, referencia);
+      const configBase = await definirReferenciaMega(token, referencia);
+      distribuicaoMegaEdicao.habilidade = campoMegaHabilidade?.value ?? distribuicaoMegaEdicao.habilidade;
+      const config = await salvarDistribuicaoMega(token, distribuicaoMegaEdicao);
       if (textoReferenciaMega) {
-        textoReferenciaMega.textContent = `Mega definida: ${config.referenciaNome || referencia.name || "Personagem"}`;
+        textoReferenciaMega.textContent = `Mega definida: ${config.referenciaNome || configBase.referenciaNome || referencia.name || "Personagem"}`;
       }
       distribuicaoMegaEdicao = normalizarDistribuicaoMega(config.distribuicao);
       if (campoMegaHabilidade) campoMegaHabilidade.value = distribuicaoMegaEdicao.habilidade;
       atualizarVisualMega(false);
       atualizarEditorMega();
+      if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "✓ Forma e distribuição Mega salvas.";
       if (mensagemMega) mensagemMega.textContent = "Token da mesa salvo como forma Mega.";
     } catch (erro) {
       console.error("Erro ao definir token da mesa como Mega:", erro);
