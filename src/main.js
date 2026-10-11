@@ -243,7 +243,7 @@ async function aplicarImagemMegaAoToken(token, destino, ativa) {
   // A barra é apagada e criada novamente usando os bounds da forma nova.
   // Assim a Mega fica SEMPRE imediatamente acima da barra de HP.
   await recriarHudDepoisDaMega(token);
-  await atualizarPainelIniciativa(false);
+  
 }
 
 async function definirReferenciaMega(tokenAtual, referenciaMega) {
@@ -1140,288 +1140,60 @@ function urlApresentadorIniciativa() { const url = new URL(window.location.href)
 url.searchParams.set( "view", "initiative" );
 return url.toString(); }
 
-async function pegarPainelIniciativa() {
-  const paineis = await OBR.scene.items.getItems(
-    (item) => item.metadata?.[META_PAINEL_INICIATIVA] === true
-  );
-  if (!paineis.length) return null;
-  paineis.sort((a, b) => (Date.parse(b.lastModified || "") || 0) - (Date.parse(a.lastModified || "") || 0));
-  return paineis[0];
-}
-
-async function apagarFilhosPainelIniciativa(painelId) {
-  const filhos = await OBR.scene.items.getItems(
-    (item) => item.metadata?.[META_PAINEL_INICIATIVA_FILHO] === painelId
-  );
-  if (filhos.length) await OBR.scene.items.deleteItems(filhos.map((item) => item.id));
-}
-
-async function posicaoInicialPainelIniciativa(tokenReferencia, largura, altura) {
-  if (tokenReferencia?.id) {
-    try {
-      const bounds = await OBR.scene.items.getItemBounds([tokenReferencia.id]);
-      return {
-        x: Number(bounds.min?.x || 0),
-        y: Number(bounds.min?.y || 0) - altura - 24
-      };
-    } catch (_) {}
-  }
+async function limparPainelIniciativaMovelAntigo() {
   try {
-    const posicao = await OBR.viewport.getPosition();
-    return { x: Number(posicao?.x || 0) + 30, y: Number(posicao?.y || 0) + 30 };
-  } catch (_) {
-    return { x: 30, y: 30 };
-  }
-}
-
-async function atualizarPainelIniciativa(criarSeNaoExistir = false, tokenReferencia = null) {
-  const todos = await OBR.scene.items.getItems();
-  const iniciativas = iniciativasOrdenadas(todos);
-  const turnoMarcado = iniciativas.find(({ item }) => item.metadata?.[META_TURNO_INICIATIVA] === true);
-  const turnoId = turnoMarcado?.item.id || iniciativas[0]?.item.id || "";
-  const quantidade = Math.max(1, iniciativas.length);
-  const larguraCard = 82;
-  const largura = Math.max(250, 28 + quantidade * larguraCard);
-  const altura = 132;
-  let painel = await pegarPainelIniciativa();
-
-  if (!painel && !criarSeNaoExistir) return null;
-
-  if (!painel) {
-    const posicao = await posicaoInicialPainelIniciativa(tokenReferencia, largura, altura);
-    painel = buildShape()
-      .shapeType("RECTANGLE")
-      .width(largura)
-      .height(altura)
-      .position(posicao)
-      .fillColor("#172235")
-      .fillOpacity(0.96)
-      .strokeColor("#5d7aa3")
-      .strokeWidth(3)
-      .layer("NOTE")
-      .zIndex(900)
-      .disableAutoZIndex(true)
-      .locked(false)
-      .metadata({ [META_PAINEL_INICIATIVA]: true })
-      .build();
-    await OBR.scene.items.addItems([painel]);
-  } else {
-    await OBR.scene.items.updateItems([painel.id], (items) => {
-      for (const item of items) {
-        item.width = largura;
-        item.height = altura;
-        item.locked = false;
-        item.visible = true;
-        item.metadata[META_PAINEL_INICIATIVA] = true;
-      }
-    });
-    painel = (await OBR.scene.items.getItems([painel.id]))[0] || painel;
-  }
-
-  await apagarFilhosPainelIniciativa(painel.id);
-  const px = Number(painel.position?.x || 0);
-  const py = Number(painel.position?.y || 0);
-  const dpiCena = Math.max(1, Number(await OBR.scene.grid.getDpi()) || 150);
-  const filhos = [];
-  const metaFilho = { [META_PAINEL_INICIATIVA_FILHO]: painel.id };
-
-  filhos.push(
-    buildText()
-      .textType("PLAIN")
-      .plainText("⚔ INICIATIVA — arraste este painel para onde quiser")
-      .position({ x: px + 12, y: py + 8 })
-      .width(largura - 24)
-      .height("AUTO")
-      .fontFamily("Arial")
-      .fontSize(15)
-      .fontWeight(700)
-      .fillColor("#F4F8FF")
-      .fillOpacity(1)
-      .strokeWidth(0)
-      .textAlign("LEFT")
-      .padding(0)
-      .layer("ATTACHMENT")
-      .zIndex(910)
-      .disableAutoZIndex(true)
-      .attachedTo(painel.id)
-      .locked(true)
-      .disableHit(true)
-      .metadata(metaFilho)
-      .build()
-  );
-
-  if (!iniciativas.length) {
-    filhos.push(
-      buildText()
-        .textType("PLAIN")
-        .plainText("Nenhum participante na iniciativa")
-        .position({ x: px + 12, y: py + 58 })
-        .width(largura - 24)
-        .height("AUTO")
-        .fontFamily("Arial")
-        .fontSize(14)
-        .fontWeight(700)
-        .fillColor("#AFC0D8")
-        .fillOpacity(1)
-        .strokeWidth(0)
-        .textAlign("CENTER")
-        .padding(0)
-        .layer("ATTACHMENT")
-        .zIndex(910)
-        .disableAutoZIndex(true)
-        .attachedTo(painel.id)
-        .locked(true)
-        .disableHit(true)
-        .metadata(metaFilho)
-        .build()
+    const antigos = await OBR.scene.items.getItems(
+      (item) => item.metadata?.[META_PAINEL_INICIATIVA] === true || Boolean(item.metadata?.[META_PAINEL_INICIATIVA_FILHO])
     );
-  }
-
-  iniciativas.forEach(({ item, dados }, indice) => {
-    const x = px + 15 + indice * larguraCard;
-    const y = py + 34;
-    const turnoAtual = item.id === turnoId;
-    filhos.push(
-      buildShape()
-        .shapeType("RECTANGLE")
-        .width(62)
-        .height(62)
-        .position({ x, y })
-        .fillColor(turnoAtual ? "#214f39" : "#F4F7FB")
-        .fillOpacity(1)
-        .strokeColor(turnoAtual ? "#55E391" : "#7487A1")
-        .strokeWidth(turnoAtual ? 4 : 2)
-        .layer("ATTACHMENT")
-        .zIndex(911)
-        .disableAutoZIndex(true)
-        .attachedTo(painel.id)
-        .locked(true)
-        .disableHit(true)
-        .metadata(metaFilho)
-        .build()
-    );
-
-    if (item.type === "IMAGE" && item.image?.url) {
-      const w = Math.max(1, Number(item.image.width) || 1);
-      const h = Math.max(1, Number(item.image.height) || 1);
-      const dpiImagem = Math.max(w, h);
-      const escalaRetrato = 50 / dpiCena;
-      filhos.push(
-        buildImage(
-          { width: w, height: h, url: item.image.url, mime: item.image.mime || "image/webp" },
-          { dpi: dpiImagem, offset: { x: w / 2, y: h / 2 } }
-        )
-          .name(`Iniciativa — ${item.name || "Pokémon"}`)
-          .position({ x: x + 31, y: y + 31 })
-          .scale({ x: escalaRetrato, y: escalaRetrato })
-          .layer("ATTACHMENT")
-          .zIndex(912)
-          .disableAutoZIndex(true)
-          .attachedTo(painel.id)
-          .locked(true)
-          .disableHit(true)
-          .metadata(metaFilho)
-          .build()
-      );
+    if (antigos.length) {
+      await OBR.scene.items.deleteItems(antigos.map((item) => item.id));
     }
-
-    filhos.push(
-      buildText()
-        .textType("PLAIN")
-        .plainText(String(dados.total))
-        .position({ x, y: y + 66 })
-        .width(62)
-        .height("AUTO")
-        .fontFamily("Arial")
-        .fontSize(17)
-        .fontWeight(700)
-        .fillColor(turnoAtual ? "#73F3A8" : "#FFFFFF")
-        .fillOpacity(1)
-        .strokeWidth(0)
-        .textAlign("CENTER")
-        .padding(0)
-        .layer("ATTACHMENT")
-        .zIndex(913)
-        .disableAutoZIndex(true)
-        .attachedTo(painel.id)
-        .locked(true)
-        .disableHit(true)
-        .metadata(metaFilho)
-        .build()
-    );
-
-    filhos.push(
-      buildText()
-        .textType("PLAIN")
-        .plainText(String(item.name || "Token").slice(0, 13))
-        .position({ x: x - 7, y: y + 91 })
-        .width(76)
-        .height("AUTO")
-        .fontFamily("Arial")
-        .fontSize(9)
-        .fontWeight(700)
-        .fillColor("#DDE7F5")
-        .fillOpacity(1)
-        .strokeWidth(0)
-        .textAlign("CENTER")
-        .padding(0)
-        .layer("ATTACHMENT")
-        .zIndex(913)
-        .disableAutoZIndex(true)
-        .attachedTo(painel.id)
-        .locked(true)
-        .disableHit(true)
-        .metadata(metaFilho)
-        .build()
-    );
-  });
-
-  for (const filho of filhos) {
-    const comportamentos = new Set(filho.disableAttachmentBehavior || []);
-    comportamentos.add("SCALE");
-    comportamentos.add("ROTATION");
-    filho.disableAttachmentBehavior = [...comportamentos];
+  } catch (erro) {
+    console.warn("Não foi possível remover o painel móvel antigo de iniciativa:", erro);
   }
-  if (filhos.length) await OBR.scene.items.addItems(filhos);
-  return painel;
 }
 
-async function abrirApresentadorIniciativa(tokenReferencia = null) {
-  return atualizarPainelIniciativa(true, tokenReferencia);
-}
+async function abrirApresentadorIniciativa() {
+  let larguraViewport = 900;
+  let quantidade = 1;
+  try {
+    const [viewport, participantes] = await Promise.all([
+      OBR.viewport.getWidth(),
+      OBR.scene.items.getItems((item) => dadosIniciativaDoItem(item) !== null)
+    ]);
+    larguraViewport = Number(viewport) || 900;
+    quantidade = Math.max(1, participantes.length);
+  } catch (_) {}
 
-function assinaturaPainelIniciativa(items) {
-  return iniciativasOrdenadas(items).map(({ item, dados }) =>
-    `${item.id}|${dados.total}|${item.metadata?.[META_TURNO_INICIATIVA] === true ? 1 : 0}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}`
-  ).join("§");
-}
-
-async function iniciarSincronizacaoPainelIniciativa() {
-  let assinaturaAnterior = assinaturaPainelIniciativa(await OBR.scene.items.getItems());
-  let temporizador = null;
-  OBR.scene.items.onChange((items) => {
-    const assinatura = assinaturaPainelIniciativa(items);
-    if (assinatura === assinaturaAnterior) return;
-    assinaturaAnterior = assinatura;
-    if (temporizador) clearTimeout(temporizador);
-    temporizador = setTimeout(() => {
-      atualizarPainelIniciativa(false).catch((erro) => console.warn("Não foi possível atualizar o painel móvel de iniciativa:", erro));
-    }, 120);
+  const larguraMaxima = Math.max(170, larguraViewport - 30);
+  const largura = Math.min(920, larguraMaxima, Math.max(170, quantidade * 79 + 18));
+  try { await OBR.popover.close(ID_POPOVER_INICIATIVA); } catch (_) {}
+  await OBR.popover.open({
+    id: ID_POPOVER_INICIATIVA,
+    url: urlApresentadorIniciativa(),
+    width: largura,
+    height: 132,
+    anchorReference: "POSITION",
+    anchorPosition: { left: larguraViewport / 2, top: 6 },
+    anchorOrigin: { horizontal: "CENTER", vertical: "TOP" },
+    transformOrigin: { horizontal: "CENTER", vertical: "TOP" },
+    hidePaper: true,
+    disableClickAway: true,
+    marginThreshold: 0
   });
-  await atualizarPainelIniciativa(false);
 }
 
 async function salvarResultadoIniciativa( token, total ) { const numero = Number(total);
 if (!Number.isFinite(numero)) { return; }
 await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[ META_INICIATIVA_TRACKER ] = { total: numero, atualizadoEm: Date.now() }; } } );
 token.metadata[ META_INICIATIVA_TRACKER ] = { total: numero, atualizadoEm: Date.now() };
-await atualizarPainelIniciativa(false); }
+ }
 async function ajustarResultadoIniciativa( tokenId, delta ) { const ajuste = Number(delta);
 if (!Number.isFinite(ajuste) || ajuste === 0) { return; }
 await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { const dadosAtuais = dadosIniciativaDoItem(item); if (!dadosAtuais) { continue; } item.metadata[ META_INICIATIVA_TRACKER ] = { total: dadosAtuais.total + ajuste, atualizadoEm: Date.now() }; } } );
-await atualizarPainelIniciativa(false); }
+ }
 async function removerDaIniciativa(tokenId) { await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { delete item.metadata[ META_INICIATIVA_TRACKER ]; delete item.metadata[ META_TURNO_INICIATIVA ]; } } );
-await atualizarPainelIniciativa(false); }
+ }
 function dadosIniciativaDoItem(item) { const dados = item?.metadata?.[ META_INICIATIVA_TRACKER ];
 if (!dados) { return null; }
 const total = Number( typeof dados === "object" ? dados.total : dados );
@@ -1435,7 +1207,7 @@ return iniciativas; }
 async function definirTurnoIniciativa( tokenId, participantes = null ) { const itens = participantes || await OBR.scene.items.getItems( (item) => dadosIniciativaDoItem(item) !== null );
 if (!itens.length) { return; }
 await OBR.scene.items.updateItems( itens.map((item) => item.id), (items) => { for (const item of items) { if (item.id === tokenId) { item.metadata[ META_TURNO_INICIATIVA ] = true; } else { delete item.metadata[ META_TURNO_INICIATIVA ]; } } } );
-await atualizarPainelIniciativa(false); }
+ }
 async function avancarTurnoIniciativa(tokenId) { const iniciativas = iniciativasOrdenadas( await OBR.scene.items.getItems() );
 if (!iniciativas.length) { return; }
 let indice = iniciativas.findIndex( ({ item }) => item.id === tokenId );
@@ -1939,7 +1711,7 @@ async function recolherPokemonDoTreinador(token, grupo, indice) {
   if (snapshot) roster[grupo][indice] = snapshot;
   await salvarRosterTreinador(token, roster);
   await OBR.scene.items.deleteItems([item.id]);
-  await atualizarPainelIniciativa(false);
+  
 }
 
 async function registrarPokemonDaCenaNoSlot(token, grupo, indice, pokemon) {
@@ -1949,7 +1721,7 @@ async function registrarPokemonDaCenaNoSlot(token, grupo, indice, pokemon) {
   roster[grupo][indice] = snapshot;
   await salvarRosterTreinador(token, roster);
   await OBR.scene.items.deleteItems([pokemon.id]);
-  await atualizarPainelIniciativa(false);
+  
 }
 
 async function removerPokemonDoRoster(token, grupo, indice) {
@@ -3429,7 +3201,7 @@ app.innerHTML = `
         <button
           id="abrirApresentadorIniciativa"
           type="button"
-          title="Criar ou atualizar o painel móvel de iniciativa"
+          title="Abrir organizador de iniciativa"
           style="
             min-width:38px;
             min-height:36px;
@@ -4296,7 +4068,7 @@ app.innerHTML = `
                 <button
                   id="abrirApresentadorIniciativa"
                   type="button"
-                  title="Criar ou atualizar o painel móvel de iniciativa"
+                  title="Abrir organizador de iniciativa"
                   style="
                     min-width:38px;
                     min-height:36px;
@@ -6365,5 +6137,5 @@ app.innerHTML = `
               </div>
             `;
 } } }
-OBR.onReady( async () => { try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } try { await iniciarSincronizacaoPainelIniciativa(); } catch (erro) { console.warn("Não foi possível iniciar a sincronização do painel de iniciativa:", erro); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
+OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
 // FIM
