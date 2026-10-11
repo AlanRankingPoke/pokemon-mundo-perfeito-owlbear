@@ -1564,7 +1564,7 @@ return numero > 0 ? `+${numero}` : `${numero}`;
 }
 
 const QUANTIDADE_EQUIPE_TREINADOR = 6;
-const QUANTIDADE_PC_TREINADOR = 10;
+const QUANTIDADE_PC_TREINADOR = 16;
 
 function clonarDadosSimples(valor) {
   if (valor === undefined) return undefined;
@@ -1882,6 +1882,48 @@ async function removerPokemonDoRoster(token, grupo, indice) {
   await salvarRosterTreinador(token, roster);
 }
 
+
+async function moverOuTrocarPokemonDoRoster(token, origem, destino) {
+  if (!origem || !destino) return;
+  if (origem.grupo === destino.grupo && origem.indice === destino.indice) return;
+
+  const treinadorAtual = await pegarTokenAtualizado(token.id) || token;
+  const roster = await sincronizarRosterTreinadorComCena(treinadorAtual);
+  const slotOrigem = roster[origem.grupo]?.[origem.indice] || null;
+  const slotDestino = roster[destino.grupo]?.[destino.indice] || null;
+  if (!slotOrigem) return;
+
+  roster[origem.grupo][origem.indice] = slotDestino;
+  roster[destino.grupo][destino.indice] = slotOrigem;
+  await salvarRosterTreinador(treinadorAtual, roster);
+
+  // Se algum dos Pokémon estiver em campo, atualiza o vínculo para o novo slot.
+  const atualizar = [];
+  const novoSlotOrigem = roster[origem.grupo][origem.indice];
+  const novoSlotDestino = roster[destino.grupo][destino.indice];
+  if (novoSlotOrigem?.campoId) {
+    atualizar.push({
+      id: novoSlotOrigem.campoId,
+      chave: chaveSlotTreinador(origem.grupo, origem.indice)
+    });
+  }
+  if (novoSlotDestino?.campoId) {
+    atualizar.push({
+      id: novoSlotDestino.campoId,
+      chave: chaveSlotTreinador(destino.grupo, destino.indice)
+    });
+  }
+
+  for (const vinculo of atualizar) {
+    await OBR.scene.items.updateItems([vinculo.id], (items) => {
+      for (const item of items) {
+        item.metadata[META_POKEMON_DONO_TREINADOR] = treinadorAtual.id;
+        item.metadata[META_POKEMON_SLOT_TREINADOR] = vinculo.chave;
+      }
+    });
+  }
+}
+
 function htmlSlotPokemonTreinador(slot, grupo, indice, compacto = false) {
   const chave = chaveSlotTreinador(grupo, indice);
   if (!slot) {
@@ -1900,6 +1942,7 @@ function htmlSlotPokemonTreinador(slot, grupo, indice, compacto = false) {
         <div class="treinadorPokemonNome">${esc(slot.nome || 'Pokémon')}</div>
         <div class="treinadorPokemonEstado">${emCampo ? '● EM CAMPO' : 'SOLTAR'}</div>
       </button>
+      <button type="button" class="treinadorPokemonMover" data-mover-slot="${chave}" title="Mover ou trocar de posição">↔</button>
       <button type="button" class="treinadorPokemonRemover" data-remover-slot="${chave}" title="Remover do slot">×</button>
     </div>`;
 }
@@ -1972,7 +2015,7 @@ async function mostrarFichaTreinadorPokemons(token) {
       .treinadorPokemonSecao{margin-top:10px;padding:10px;border:1px solid #d6e2f0;border-radius:13px;background:linear-gradient(180deg,#fbfdff,#f3f8ff)}
       .treinadorPokemonTitulo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:900;color:#315b90}
       .treinadorPokemonGradeEquipe{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
-      .treinadorPokemonGradePc{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+      .treinadorPokemonGradePc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
       .treinadorPokemonSlot{position:relative;min-width:0;border:1px solid #c8d8eb;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(35,73,118,.08)}
       button.treinadorPokemonSlot.vazio{width:100%;min-height:103px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#7990ad;border-style:dashed;cursor:pointer}
       .treinadorPokemonMais{font-size:26px;line-height:1;color:#4c8dff}.treinadorPokemonSlotLabel{font-size:9px;font-weight:900}
@@ -1984,30 +2027,33 @@ async function mostrarFichaTreinadorPokemons(token) {
       .treinadorPokemonNome{width:100%;margin-top:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;font-weight:900;color:#30455f;text-align:center}
       .treinadorPokemonSlot.compacto .treinadorPokemonNome{font-size:8px}
       .treinadorPokemonEstado{margin-top:2px;font-size:7px;font-weight:900;color:#5e7898}.treinadorPokemonSlot.emCampo{border-color:#4bc27c;box-shadow:0 0 0 2px rgba(75,194,124,.12)}.treinadorPokemonSlot.emCampo .treinadorPokemonEstado{color:#21995a}
+      .treinadorPokemonMover{position:absolute!important;top:3px;left:3px;width:24px!important;height:20px!important;min-height:20px!important;padding:0!important;border-radius:7px!important;background:#eef5ff!important;border:1px solid #9dbce4!important;color:#315f9a!important;font-size:12px!important;font-weight:900!important;line-height:1!important;z-index:4}
+      .treinadorPokemonMover.ativo{background:#315f9a!important;color:#fff!important;border-color:#315f9a!important}
       .treinadorPokemonRemover{position:absolute!important;top:3px;right:3px;width:20px!important;height:20px!important;min-height:20px!important;padding:0!important;border-radius:50%!important;background:#fff0f0!important;border:1px solid #e7a4a4!important;color:#b63e3e!important;font-size:13px!important;line-height:1!important;z-index:4}
+      .treinadorPokemonMoverAviso{display:none;margin:0 0 9px;padding:7px 9px;border-radius:9px;background:#eaf3ff;border:1px solid #9fc1ea;color:#315f9a;font-size:9px;font-weight:900;text-align:center;line-height:1.3}
+      .treinadorPokemonMoverAviso.ativo{display:block}
       .treinadorPokemonAjuda{margin:9px 1px 0!important;font-size:9px!important;color:#6f8299!important;line-height:1.35}
       .seletorRosterFundo{position:fixed;inset:0;z-index:9999;background:rgba(12,22,35,.72);display:flex;align-items:center;justify-content:center;padding:14px}
       .seletorRosterPainel{width:min(390px,100%);max-height:86vh;overflow:auto;background:#f7fbff;border:1px solid #9bbbe2;border-radius:15px;padding:12px;box-shadow:0 18px 55px rgba(0,0,0,.34)}
       .seletorRosterTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:#284a75;font-size:13px;font-weight:900}.seletorRosterFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important}
-      .seletorRosterBuscaWrap{position:relative;margin-bottom:9px}.seletorRosterBuscaIcon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none}.seletorRosterBusca{width:100%;box-sizing:border-box;min-height:38px;padding:8px 10px 8px 32px!important;border:1px solid #b9cce3!important;border-radius:10px!important;background:#fff!important;color:#30455f!important;font-size:10px!important;font-weight:800!important;outline:none}.seletorRosterBusca:focus{border-color:#4c8dff!important;box-shadow:0 0 0 2px rgba(76,141,255,.12)}
       .seletorRosterGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.seletorRosterPokemon{display:grid!important;grid-template-columns:52px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;min-height:64px!important;padding:6px!important;text-align:left!important}.seletorRosterPokemon img{width:50px;height:50px;object-fit:contain;border-radius:9px;background:#fff;border:1px solid #d5e0ed}.seletorRosterPokemon span{overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:900}
       .registrarPokemonNovo{width:100%;margin:9px 0 6px!important;min-height:38px!important;background:linear-gradient(135deg,#45a86c,#2c8b55)!important;color:#fff!important;border-color:#287d4d!important;font-size:10px!important;font-weight:900!important}
       .registrarPokemonNovoLista{display:none;margin-top:7px;padding-top:8px;border-top:1px solid #d8e4f1}.registrarPokemonNovoLista.aberto{display:block}.registrarPokemonNovoTitulo{margin:0 0 7px!important;font-size:9px!important;color:#5a718d!important;text-align:center}.registrarPokemonBadge{display:inline-block;margin-left:5px;padding:2px 5px;border-radius:999px;background:#fff4cf;color:#8d6b12;font-size:7px;font-weight:900}
       @media(max-width:430px){.treinadorPokemonGradePc{grid-template-columns:repeat(4,minmax(0,1fr))}.treinadorPokemonGradeEquipe{grid-template-columns:repeat(3,minmax(0,1fr))}}
     </style>
+    <div id="avisoMoverPokemon" class="treinadorPokemonMoverAviso">Escolha o slot de destino. Se ele estiver ocupado, os dois Pokémon trocam de posição.</div>
     <div class="treinadorPokemonSecao">
       <div class="treinadorPokemonTitulo"><span>🎒 EQUIPE PRINCIPAL</span><span>6 Pokémon</span></div>
       <div class="treinadorPokemonGradeEquipe">${roster.equipe.map((slot, i) => htmlSlotPokemonTreinador(slot, 'equipe', i, false)).join('')}</div>
-      <p class="treinadorPokemonAjuda">Clique em um Pokémon guardado para soltá-lo 1 grid à frente do treinador. Clique novamente quando ele estiver em campo para recolher e salvar a ficha atualizada.</p>
+      <p class="treinadorPokemonAjuda">Clique no Pokémon para soltar/recolher. Use ↔ para mover para outro slot, trocar a ordem do time ou mandar entre EQUIPE e PC.</p>
     </div>
     <div class="treinadorPokemonSecao">
-      <div class="treinadorPokemonTitulo"><span>🖥️ PC</span><span>10 espaços</span></div>
+      <div class="treinadorPokemonTitulo"><span>🖥️ PC</span><span>16 Pokémon • 4×4</span></div>
       <div class="treinadorPokemonGradePc">${roster.pc.map((slot, i) => htmlSlotPokemonTreinador(slot, 'pc', i, true)).join('')}</div>
     </div>
     <div id="seletorRoster" class="seletorRosterFundo" style="display:none">
       <div class="seletorRosterPainel">
         <div class="seletorRosterTopo"><span>Escolher Pokémon da mesa</span><button id="fecharSeletorRoster" class="seletorRosterFechar" type="button">×</button></div>
-        <div class="seletorRosterBuscaWrap"><span class="seletorRosterBuscaIcon">🔎</span><input id="buscaPokemonRoster" class="seletorRosterBusca" type="search" placeholder="Procurar Pokémon pelo nome..." autocomplete="off"></div>
         <div id="listaSeletorRoster" class="seletorRosterGrade"></div>
         <button id="registrarPokemonNovo" class="registrarPokemonNovo" type="button">＋ REGISTRAR NOVO POKÉMON</button>
         <div id="registrarPokemonNovoLista" class="registrarPokemonNovoLista">
@@ -2024,19 +2070,9 @@ async function mostrarFichaTreinadorPokemons(token) {
   const botaoRegistrarNovo = document.querySelector('#registrarPokemonNovo');
   const areaRegistrarNovo = document.querySelector('#registrarPokemonNovoLista');
   const listaTokensSemFicha = document.querySelector('#listaTokensSemFicha');
-  const buscaPokemonRoster = document.querySelector('#buscaPokemonRoster');
   let destino = null;
+  let origemMovimento = null;
 
-  const normalizarBuscaRoster = (valor) => String(valor || '')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  const aplicarBuscaRoster = () => {
-    const termo = normalizarBuscaRoster(buscaPokemonRoster?.value);
-    document.querySelectorAll('[data-nome-pokemon-roster]').forEach((botao) => {
-      const nome = normalizarBuscaRoster(botao.dataset.nomePokemonRoster);
-      botao.style.display = !termo || nome.includes(termo) ? '' : 'none';
-    });
-  };
-  buscaPokemonRoster?.addEventListener('input', aplicarBuscaRoster);
 
   const fechar = () => {
     seletor.style.display = 'none';
@@ -2051,25 +2087,21 @@ async function mostrarFichaTreinadorPokemons(token) {
     areaRegistrarNovo?.classList.remove('aberto');
     const disponiveis = await pokemonsDisponiveisParaRoster(token);
     lista.innerHTML = disponiveis.length ? disponiveis.map((pokemon) => `
-      <button type="button" class="seletorRosterPokemon" data-pokemon-id="${esc(pokemon.id)}" data-nome-pokemon-roster="${esc(pokemon.name || 'Pokémon')}">
+      <button type="button" class="seletorRosterPokemon" data-pokemon-id="${esc(pokemon.id)}">
         <img src="${esc(pokemon.image?.url || '')}" alt="${esc(pokemon.name || 'Pokémon')}">
         <span>${esc(pokemon.name || 'Pokémon')}</span>
       </button>`).join('') : '<div style="grid-column:1/-1;padding:12px;text-align:center;color:#667d99;font-size:10px;font-weight:800">Nenhuma ficha POKÉMON disponível.<br>Para um token novo, use o botão verde abaixo.</div>';
-    if (buscaPokemonRoster) buscaPokemonRoster.value = '';
-    aplicarBuscaRoster();
     seletor.style.display = 'flex';
-    setTimeout(() => buscaPokemonRoster?.focus(), 0);
   };
 
   const atualizarListaSemFicha = async () => {
     if (!listaTokensSemFicha) return;
     const semFicha = await tokensSemFichaParaRegistrarComoPokemon(token);
     listaTokensSemFicha.innerHTML = semFicha.length ? semFicha.map((item) => `
-      <button type="button" class="seletorRosterPokemon" data-registrar-pokemon-id="${esc(item.id)}" data-nome-pokemon-roster="${esc(item.name || 'Token')}">
+      <button type="button" class="seletorRosterPokemon" data-registrar-pokemon-id="${esc(item.id)}">
         <img src="${esc(item.image?.url || '')}" alt="${esc(item.name || 'Token')}">
         <span>${esc(item.name || 'Token')}<span class="registrarPokemonBadge">SEM FICHA</span></span>
       </button>`).join('') : '<div style="grid-column:1/-1;padding:12px;text-align:center;color:#667d99;font-size:10px;font-weight:800">Nenhum token CHARACTER sem ficha encontrado.</div>';
-    aplicarBuscaRoster();
   };
 
   botaoRegistrarNovo?.addEventListener('click', async () => {
@@ -2078,11 +2110,38 @@ async function mostrarFichaTreinadorPokemons(token) {
     if (abrir) await atualizarListaSemFicha();
   });
 
+  document.querySelectorAll('[data-mover-slot]').forEach((botao) => {
+    botao.addEventListener('click', (evento) => {
+      evento.stopPropagation();
+      const info = separarChaveSlotTreinador(botao.dataset.moverSlot);
+      if (!info) return;
+      origemMovimento = info;
+      document.querySelectorAll('[data-mover-slot]').forEach((item) => item.classList.remove('ativo'));
+      botao.classList.add('ativo');
+      document.querySelector('#avisoMoverPokemon')?.classList.add('ativo');
+    });
+  });
+
   document.querySelectorAll('[data-slot-pokemon]').forEach((botao) => {
     botao.addEventListener('click', async () => {
       const info = separarChaveSlotTreinador(botao.dataset.slotPokemon);
       if (!info) return;
       const trainerAtual = await pegarTokenAtualizado(token.id) || token;
+
+      if (origemMovimento) {
+        botao.disabled = true;
+        try {
+          await moverOuTrocarPokemonDoRoster(trainerAtual, origemMovimento, info);
+          const atualizado = await pegarTokenAtualizado(token.id) || trainerAtual;
+          await mostrarFichaTreinadorPokemons(atualizado);
+        } catch (erro) {
+          console.error('Erro ao mover Pokémon entre slots:', erro);
+          alert(erro?.message || 'Não foi possível mover este Pokémon.');
+          botao.disabled = false;
+        }
+        return;
+      }
+
       const rosterAtual = await sincronizarRosterTreinadorComCena(trainerAtual);
       const slot = rosterAtual[info.grupo][info.indice];
       if (!slot) { await abrirSeletor(info.grupo, info.indice); return; }
@@ -3032,96 +3091,87 @@ document .querySelector( "#paginaTreinador2" ) .addEventListener( "click", async
 document .querySelector( "#paginaTreinador3" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorHabilidades( tokenAtualizado ); } );
 document .querySelector( "#paginaTreinador4" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorAnotacoes( tokenAtualizado ); } );
 document .querySelector( "#paginaTreinador5" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } await mostrarFichaTreinadorPokemons( tokenAtualizado ); } ); }
-function criarPericiasTreinador( valores ) { return PERICIAS.map( (grupo) => { if (!grupo.pericias.length) {
-return `
-          <div style="
-            margin-bottom:12px;
-            border:1px solid #555;
-            border-radius:6px;
-            padding:8px;
-          ">
-            <strong>
-              ${grupo.atributo} —
-              ${grupo.nomeAtributo}
-            </strong>
-            <div style="
-              font-size:12px;
-              opacity:0.7;
-              margin-top:5px;
-            ">
-              Nenhuma perícia
-            </div>
-          </div>
-        `;
-} const linhas = grupo.pericias.map(
-(pericia) => `
-            <div style="
-              display:flex;
-              align-items:center;
-              gap:6px;
-              margin-bottom:7px;
-            ">
-              <span style="
-                flex:1;
-                font-size:13px;
-              ">
-                ${pericia.nome}
-              </span>
-              <input
-                id="pericia-${pericia.id}"
-                type="text"
-                value="${esc(
-                    valores[
-                        pericia.id
-                    ]
-                )}"
-                placeholder="+0"
-                style="
-                  width:60px;
-                  box-sizing:border-box;
-                  text-align:center;
-                  padding:5px;
-                "
-              >
-              <button
-                type="button"
-                class="rolarPericiaTreinador"
-                data-pericia="${pericia.id}"
-                data-nome="${esc(
-                    pericia.nome
-                )}"
-                style="
-                  width:72px;
-                  padding:5px 3px;
-                  box-sizing:border-box;
-                  font-size:10px;
-                  font-weight:bold;
-                  cursor:pointer;
-                "
-              >
-                🎲 Rolar
-              </button>
-            </div>
-          `
-).join("");
-return `
-        <div style="
-          margin-bottom:12px;
-          border:1px solid #555;
-          border-radius:6px;
-          padding:8px;
-        ">
-          <div style="
-            font-weight:bold;
-            margin-bottom:8px;
-          ">
-            ${grupo.atributo} —
-            ${grupo.nomeAtributo}
-          </div>
-          ${linhas}
-        </div>
-      `;
-} ).join(""); }
+function criarPericiasTreinador(valores) {
+  const pericias = PERICIAS.flatMap((grupo) =>
+    grupo.pericias.map((pericia) => ({ ...pericia, atributo: grupo.atributo }))
+  );
+  return `
+      <div
+        class="pokemonPericiasCompactas"
+        style="
+          display:grid;
+          grid-template-columns:repeat(2,minmax(0,1fr));
+          gap:6px;
+          width:100%;
+        "
+      >
+        ${pericias.map(
+          (pericia) => `
+<div
+title="${esc(pericia.nome)}"
+style="
+min-width:0;
+display:grid;
+grid-template-columns:minmax(0,1fr) 42px 30px;
+align-items:center;
+gap:4px;
+padding:5px 6px;
+border:1px solid #dbe5f0;
+border-radius:8px;
+background:#fbfdff;
+"> <div style="
+min-width:0;
+overflow:hidden;
+"> <div style="
+min-width:0;
+overflow:hidden;
+white-space:nowrap;
+text-overflow:ellipsis;
+font-size:10px;
+line-height:1.05;
+font-weight:900;
+color:#33475f;
+"> ${pericia.nome} </div> <div style="
+margin-top:2px;
+font-size:7px;
+line-height:1;
+font-weight:900;
+color:#8798ad;
+"> ${pericia.atributo} </div> </div> <input
+id="pericia-${pericia.id}"
+type="text"
+value="${esc(valores[pericia.id])}"
+placeholder="+0"
+style="
+width:42px;
+height:29px;
+min-height:29px !important;
+box-sizing:border-box;
+padding:2px 3px !important;
+text-align:center;
+font-size:10px;
+font-weight:900;
+"> <button
+type="button"
+class="rolarPericiaTreinador"
+data-pericia="${pericia.id}"
+data-nome="${esc(pericia.nome)}"
+title="Rolar ${esc(pericia.nome)}"
+style="
+width:30px;
+min-width:30px;
+height:29px;
+min-height:29px !important;
+padding:1px !important;
+box-sizing:border-box;
+font-size:12px;
+cursor:pointer;
+"> 🎲 </button> </div>
+`
+        ).join("")}
+      </div>
+    `;
+}
 function ativarRolagensPericiasTreinador() { document .querySelectorAll( ".rolarPericiaTreinador" ) .forEach( (botao) => { botao.addEventListener( "click", async () => { const pericia = botao.dataset.pericia; const nome = botao.dataset.nome || pericia; const campo = document.querySelector(
 `#pericia-${pericia}`
 ); const formula = formulaSalvaguarda( campo?.value ); if (!formula) { alert( "Valor da perícia inválido." ); return; } await rolarNoDicePlus( formula,
