@@ -1183,22 +1183,75 @@ async function abrirApresentadorIniciativa() {
   });
 }
 
-async function salvarResultadoIniciativa( token, total ) { const numero = Number(total);
+async function salvarResultadoIniciativa(token, total, detalhes = {}) {
+const numero = Number(total);
 if (!Number.isFinite(numero)) { return; }
-await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { item.metadata[ META_INICIATIVA_TRACKER ] = { total: numero, atualizadoEm: Date.now() }; } } );
-token.metadata[ META_INICIATIVA_TRACKER ] = { total: numero, atualizadoEm: Date.now() };
- }
-async function ajustarResultadoIniciativa( tokenId, delta ) { const ajuste = Number(delta);
+const registro = {
+  total: numero,
+  atualizadoEm: Date.now(),
+  rolagemBase: Number.isFinite(Number(detalhes.rolagemBase)) ? Number(detalhes.rolagemBase) : numero,
+  bonusHabilidade: Number.isFinite(Number(detalhes.bonusHabilidade)) ? Number(detalhes.bonusHabilidade) : 0,
+  dobrado: detalhes.dobrado === true,
+  ajusteManual: Number.isFinite(Number(detalhes.ajusteManual)) ? Number(detalhes.ajusteManual) : 0
+};
+await OBR.scene.items.updateItems([token.id], (items) => {
+  for (const item of items) item.metadata[META_INICIATIVA_TRACKER] = registro;
+});
+token.metadata[META_INICIATIVA_TRACKER] = registro;
+}
+async function ajustarResultadoIniciativa(tokenId, delta) {
+const ajuste = Number(delta);
 if (!Number.isFinite(ajuste) || ajuste === 0) { return; }
-await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { const dadosAtuais = dadosIniciativaDoItem(item); if (!dadosAtuais) { continue; } item.metadata[ META_INICIATIVA_TRACKER ] = { total: dadosAtuais.total + ajuste, atualizadoEm: Date.now() }; } } );
- }
+await OBR.scene.items.updateItems([tokenId], (items) => {
+  for (const item of items) {
+    const dadosAtuais = dadosIniciativaDoItem(item);
+    if (!dadosAtuais) continue;
+    item.metadata[META_INICIATIVA_TRACKER] = {
+      ...dadosAtuais,
+      total: dadosAtuais.total + ajuste,
+      ajusteManual: (Number(dadosAtuais.ajusteManual) || 0) + ajuste,
+      atualizadoEm: Date.now()
+    };
+  }
+});
+}
+async function recalcularResultadoIniciativaComOpcoes(tokenId, { habilidadeAtiva, bonusHabilidade, dobrarAtiva }) {
+const itens = await OBR.scene.items.getItems([tokenId]);
+const item = itens?.[0];
+const dados = dadosIniciativaDoItem(item);
+if (!item || !dados) return;
+const base = Number.isFinite(Number(dados.rolagemBase)) ? Number(dados.rolagemBase) : dados.total;
+const ajusteManual = Number(dados.ajusteManual) || 0;
+const bonus = habilidadeAtiva ? (Number(bonusHabilidade) || 0) : 0;
+const fator = dobrarAtiva ? 2 : 1;
+const total = ((base + bonus) * fator) + ajusteManual;
+await OBR.scene.items.updateItems([tokenId], (items) => {
+  for (const alvo of items) {
+    alvo.metadata[META_INICIATIVA_TRACKER] = {
+      total,
+      atualizadoEm: Date.now(),
+      rolagemBase: base,
+      bonusHabilidade: bonus,
+      dobrado: dobrarAtiva === true,
+      ajusteManual
+    };
+  }
+});
+}
 async function removerDaIniciativa(tokenId) { await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { delete item.metadata[ META_INICIATIVA_TRACKER ]; delete item.metadata[ META_TURNO_INICIATIVA ]; } } );
  }
 function dadosIniciativaDoItem(item) { const dados = item?.metadata?.[ META_INICIATIVA_TRACKER ];
 if (!dados) { return null; }
 const total = Number( typeof dados === "object" ? dados.total : dados );
 if (!Number.isFinite(total)) { return null; }
-return { total, atualizadoEm: Number( typeof dados === "object" ? dados.atualizadoEm : 0 ) || 0 }; }
+return {
+  total,
+  atualizadoEm: Number(typeof dados === "object" ? dados.atualizadoEm : 0) || 0,
+  rolagemBase: Number(typeof dados === "object" ? dados.rolagemBase : NaN),
+  bonusHabilidade: Number(typeof dados === "object" ? dados.bonusHabilidade : 0) || 0,
+  dobrado: typeof dados === "object" ? dados.dobrado === true : false,
+  ajusteManual: Number(typeof dados === "object" ? dados.ajusteManual : 0) || 0
+}; }
 function iniciativasOrdenadas(items) { const iniciativas = [];
 for (const item of items || []) { const dados = dadosIniciativaDoItem(item);
 if (dados) { iniciativas.push({ item, dados }); } }
@@ -1712,6 +1765,68 @@ async function recolherPokemonDoTreinador(token, grupo, indice) {
   await salvarRosterTreinador(token, roster);
   await OBR.scene.items.deleteItems([item.id]);
   
+}
+
+function assinaturaSlotPokemon(slot) {
+  if (!slot) return "";
+  return JSON.stringify({
+    nome: slot.nome || "",
+    forma: slot.forma || null,
+    rotation: Number(slot.rotation) || 0,
+    metadata: slot.metadata || {},
+    campoId: slot.campoId || null
+  });
+}
+
+let sincronizacaoRosterEmCampoPendente = null;
+async function sincronizarSnapshotsPokemonsEmCampo() {
+  const itens = await OBR.scene.items.getItems();
+  const pokemonsEmCampo = itens.filter((item) =>
+    item?.type === "IMAGE" &&
+    item.metadata?.[META_POKEMON_DONO_TREINADOR] &&
+    item.metadata?.[META_POKEMON_SLOT_TREINADOR]
+  );
+  if (!pokemonsEmCampo.length) return;
+
+  const treinadoresPorId = new Map();
+  for (const pokemon of pokemonsEmCampo) {
+    const donoId = pokemon.metadata[META_POKEMON_DONO_TREINADOR];
+    if (!treinadoresPorId.has(donoId)) treinadoresPorId.set(donoId, []);
+    treinadoresPorId.get(donoId).push(pokemon);
+  }
+
+  for (const [donoId, pokemons] of treinadoresPorId) {
+    const donos = await OBR.scene.items.getItems([donoId]);
+    const dono = donos?.[0];
+    if (!dono) continue;
+    const roster = rosterDoTreinador(dono);
+    let mudou = false;
+
+    for (const pokemon of pokemons) {
+      const info = separarChaveSlotTreinador(pokemon.metadata[META_POKEMON_SLOT_TREINADOR]);
+      if (!info) continue;
+      const snapshot = snapshotPokemonParaTreinador(pokemon);
+      if (!snapshot) continue;
+      snapshot.campoId = pokemon.id;
+      const atual = roster[info.grupo]?.[info.indice] || null;
+      if (assinaturaSlotPokemon(atual) !== assinaturaSlotPokemon(snapshot)) {
+        roster[info.grupo][info.indice] = snapshot;
+        mudou = true;
+      }
+    }
+
+    if (mudou) await salvarRosterTreinador(dono, roster);
+  }
+}
+
+function agendarSincronizacaoRosterEmCampo() {
+  if (sincronizacaoRosterEmCampoPendente) clearTimeout(sincronizacaoRosterEmCampoPendente);
+  sincronizacaoRosterEmCampoPendente = setTimeout(() => {
+    sincronizacaoRosterEmCampoPendente = null;
+    sincronizarSnapshotsPokemonsEmCampo().catch((erro) =>
+      console.warn("Não foi possível atualizar o Pokémon guardado com a ficha em campo:", erro)
+    );
+  }, 180);
 }
 
 async function desvincularPokemonDoRosterAnterior(pokemon, novoTreinadorId, novoGrupo, novoIndice) {
@@ -2383,14 +2498,17 @@ function ativarRolagensSalvaguarda(token) { document .querySelectorAll(".rolarAt
                 atributo.toUpperCase()
               }`
 ); } ); } ); }
-function ativarRolagemIniciativa(token) { const botaoRolar = document.querySelector("#rolarIniciativa");
+function ativarRolagemIniciativa(token) {
+const botaoRolar = document.querySelector("#rolarIniciativa");
 const campoIniciativa = document.querySelector("#iniciativa");
 const campoDestreza = document.querySelector("#treinador-mod-des") || document.querySelector("#mod-des");
 const campoProficiencia = document.querySelector("#treinadorProficiencia") || document.querySelector("#proficiencia");
 const campoAlerta = document.querySelector("#iniciativaAlerta");
 const campoHabilidade = document.querySelector("#iniciativaHabilidade");
+const campoDobrar = document.querySelector("#iniciativaDobrar");
 const botaoAlerta = document.querySelector("#botaoIniciativaAlerta");
 const botaoHabilidade = document.querySelector("#botaoIniciativaHabilidade");
+const botaoDobrar = document.querySelector("#botaoIniciativaDobrar");
 const botaoAbrirPainel = document.querySelector("#abrirApresentadorIniciativa");
 const botaoRemoverIniciativa = document.querySelector("#removerDaIniciativa");
 let botaoAvancarTurno = document.querySelector("#avancarTurnoIniciativa");
@@ -2403,43 +2521,82 @@ if (!botaoAvancarTurno && botaoRemoverIniciativa?.parentElement) {
   botaoAvancarTurno.style.cssText = "min-width:38px;min-height:36px;padding:5px 7px;font-size:13px;cursor:pointer";
   botaoRemoverIniciativa.parentElement.insertBefore(botaoAvancarTurno, botaoRemoverIniciativa);
 }
-if ( !botaoRolar || !campoIniciativa || !campoDestreza || !campoAlerta || !campoHabilidade || !botaoAlerta || !botaoHabilidade ) { return; }
-const numeroCampo = (valor) => { const numero = Number( String(valor ?? "") .trim() .replace(",", ".") );
-return Number.isNaN(numero) ? 0 : numero; };
-const iniciativaTotal = () => { const destreza = numeroCampo(campoDestreza.value);
-const proficiencia = numeroCampo(campoProficiencia?.value);
-const bonusAlerta = campoAlerta.value === "1" ? 5 : 0;
-const bonusHabilidade = campoHabilidade.value === "1" ? proficiencia * 2 : 0;
-const estagioVelocidade = normalizarEstagioBuff( token?.metadata?.[
-`${PREFIX}/buff-vel`
-] ?? 0, "vel" );
-const bonusVelocidade = estagioVelocidade * proficiencia;
-return ( destreza + bonusVelocidade + bonusAlerta + bonusHabilidade ); };
-const atualizarVisual = () => { const total = iniciativaTotal();
-campoIniciativa.value = String(total);
-botaoAlerta.classList.toggle( "ativo", campoAlerta.value === "1" );
-botaoHabilidade.classList.toggle( "ativo", campoHabilidade.value === "1" ); };
-const salvarEstado = () => { const botaoSalvarStatus = document.querySelector( "#salvarPokemonStatus, #salvarTreinadorStatus" );
-if (botaoSalvarStatus) { botaoSalvarStatus.click(); } };
-const alternar = (campo) => { campo.value = campo.value === "1" ? "0" : "1";
+if (!botaoRolar || !campoIniciativa || !campoDestreza || !campoAlerta || !campoHabilidade || !campoDobrar || !botaoAlerta || !botaoHabilidade || !botaoDobrar) return;
+const numeroCampo = (valor) => {
+  const numero = Number(String(valor ?? "").trim().replace(",", "."));
+  return Number.isNaN(numero) ? 0 : numero;
+};
+const proficienciaAtual = () => numeroCampo(campoProficiencia?.value);
+const bonusHabilidadeFinal = () => campoHabilidade.value === "1" ? proficienciaAtual() * 2 : 0;
+const iniciativaParaRolagem = () => {
+  const destreza = numeroCampo(campoDestreza.value);
+  const proficiencia = proficienciaAtual();
+  const bonusAlerta = campoAlerta.value === "1" ? 5 : 0;
+  const estagioVelocidade = normalizarEstagioBuff(token?.metadata?.[`${PREFIX}/buff-vel`] ?? 0, "vel");
+  const bonusVelocidade = estagioVelocidade * proficiencia;
+  // Habilidade NÃO entra mais no bônus do dado. Ela é aplicada somente no total do apresentador.
+  return destreza + bonusVelocidade + bonusAlerta;
+};
+const atualizarVisual = () => {
+  campoIniciativa.value = String(iniciativaParaRolagem());
+  botaoAlerta.classList.toggle("ativo", campoAlerta.value === "1");
+  botaoHabilidade.classList.toggle("ativo", campoHabilidade.value === "1");
+  botaoDobrar.classList.toggle("ativo", campoDobrar.value === "1");
+};
+const salvarEstado = () => {
+  const botaoSalvarStatus = document.querySelector("#salvarPokemonStatus, #salvarTreinadorStatus");
+  if (botaoSalvarStatus) botaoSalvarStatus.click();
+};
+const atualizarTotalJaRolado = async () => {
+  await recalcularResultadoIniciativaComOpcoes(token.id, {
+    habilidadeAtiva: campoHabilidade.value === "1",
+    bonusHabilidade: proficienciaAtual() * 2,
+    dobrarAtiva: campoDobrar.value === "1"
+  });
+};
+const alternar = async (campo, afetaTotalApresentador = false) => {
+  campo.value = campo.value === "1" ? "0" : "1";
+  atualizarVisual();
+  salvarEstado();
+  if (afetaTotalApresentador) await atualizarTotalJaRolado();
+};
+campoDestreza.addEventListener("input", atualizarVisual);
+campoDestreza.addEventListener("change", atualizarVisual);
+if (campoProficiencia) {
+  campoProficiencia.addEventListener("input", atualizarVisual);
+  campoProficiencia.addEventListener("change", atualizarVisual);
+}
+botaoAlerta.addEventListener("click", () => alternar(campoAlerta, false));
+botaoHabilidade.addEventListener("click", () => alternar(campoHabilidade, true));
+botaoDobrar.addEventListener("click", () => alternar(campoDobrar, true));
+botaoRolar.addEventListener("click", async () => {
+  const formula = formulaSalvaguarda(iniciativaParaRolagem());
+  if (!formula) { alert("Não foi possível calcular a iniciativa."); return; }
+  const resultadoDado = await rolarNoDicePlusComResultado(formula, "Iniciativa");
+  if (resultadoDado === null) return;
+  const bonusHabilidade = bonusHabilidadeFinal();
+  const dobrado = campoDobrar.value === "1";
+  const totalFinal = (resultadoDado + bonusHabilidade) * (dobrado ? 2 : 1);
+  await salvarResultadoIniciativa(token, totalFinal, {
+    rolagemBase: resultadoDado,
+    bonusHabilidade,
+    dobrado,
+    ajusteManual: 0
+  });
+  await abrirApresentadorIniciativa(token);
+});
+if (botaoAbrirPainel) botaoAbrirPainel.addEventListener("click", () => abrirApresentadorIniciativa(token));
+if (botaoAvancarTurno) {
+  botaoAvancarTurno.addEventListener("click", async () => {
+    const iniciativas = iniciativasOrdenadas(await OBR.scene.items.getItems());
+    if (!iniciativas.length) return;
+    const atual = iniciativas.find(({ item }) => item.metadata?.[META_TURNO_INICIATIVA] === true)?.item || iniciativas[0].item;
+    await avancarTurnoIniciativa(atual.id);
+  });
+}
+if (botaoRemoverIniciativa) botaoRemoverIniciativa.addEventListener("click", async () => { await removerDaIniciativa(token.id); });
 atualizarVisual();
-salvarEstado(); };
-campoDestreza.addEventListener( "input", atualizarVisual );
-campoDestreza.addEventListener( "change", atualizarVisual );
-if (campoProficiencia) { campoProficiencia.addEventListener( "input", atualizarVisual );
-campoProficiencia.addEventListener( "change", atualizarVisual ); }
-botaoAlerta.addEventListener( "click", () => alternar(campoAlerta) );
-botaoHabilidade.addEventListener( "click", () => alternar(campoHabilidade) );
-botaoRolar.addEventListener( "click", async () => { const formula = formulaSalvaguarda( iniciativaTotal() ); if (!formula) { alert( "Não foi possível calcular a iniciativa." ); return; } const resultado = await rolarNoDicePlusComResultado( formula, "Iniciativa" ); if (resultado === null) { return; } await salvarResultadoIniciativa( token, resultado ); await abrirApresentadorIniciativa(token); } );
-if (botaoAbrirPainel) { botaoAbrirPainel.addEventListener( "click", () => abrirApresentadorIniciativa(token) ); }
-if (botaoAvancarTurno) { botaoAvancarTurno.addEventListener("click", async () => {
-  const iniciativas = iniciativasOrdenadas(await OBR.scene.items.getItems());
-  if (!iniciativas.length) return;
-  const atual = iniciativas.find(({ item }) => item.metadata?.[META_TURNO_INICIATIVA] === true)?.item || iniciativas[0].item;
-  await avancarTurnoIniciativa(atual.id);
-}); }
-if (botaoRemoverIniciativa) { botaoRemoverIniciativa.addEventListener( "click", async () => { await removerDaIniciativa( token.id ); } ); }
-atualizarVisual(); }
+}
 function criarBuffs( valores, proficiencia ) { return BUFFS.map( (buff) => { const estagio = normalizarEstagioBuff( valores[buff.id], buff.id ); const bonus = buff.id === "crit" ? faixaCritico(estagio) : bonusPorEstagio( buff.id, estagio, proficiencia );
 return `
         <div style="
@@ -2626,7 +2783,7 @@ botaoSalvar.style.display = "none";
 let temporizador = null;
 const programarSalvamento = (atraso = 650) => { if (temporizador) { clearTimeout(temporizador); }
 temporizador = setTimeout(() => { if (!document.body.contains(botaoSalvar)) { return; } botaoSalvar.click(); }, atraso); };
-app.querySelectorAll("input, textarea, select") .forEach((campo) => { if (campo.id === "alterarHp") { return; } if (campo.classList.contains("movimentoValor")) { return; } if (campo.classList.contains("megaConfigCampo")) { return; } campo.addEventListener("input", () => { programarSalvamento(650); }); campo.addEventListener("change", () => { programarSalvamento(200); }); });
+app.querySelectorAll("input, textarea, select") .forEach((campo) => { if (campo.id === "alterarHp") { return; } if (campo.classList.contains("movimentoValor")) { return; } if (campo.classList.contains("megaConfigCampo")) { return; } campo.addEventListener("input", () => { programarSalvamento(180); }); campo.addEventListener("change", () => { programarSalvamento(0); }); campo.addEventListener("blur", () => { programarSalvamento(0); }); });
 app.querySelectorAll(".categoriaGolpe") .forEach((botao) => { botao.addEventListener("click", () => { programarSalvamento(120); }); }); }
 const CAMPOS_MOVIMENTACAO = [ { id: "movimentoCaminhada", metaId: "metaMovimentoCaminhada", chave: "movimento-caminhada" }, { id: "movimentoEscalada", metaId: "metaMovimentoEscalada", chave: "movimento-escalada" }, { id: "movimentoVoo", metaId: "metaMovimentoVoo", chave: "movimento-voo" }, { id: "movimentoNatacao", metaId: "metaMovimentoNatacao", chave: "movimento-natacao" }, { id: "movimentoEscavacao", metaId: "metaMovimentoEscavacao", chave: "movimento-escavacao" }, { id: "movimentoFlutuacao", metaId: "metaMovimentoFlutuacao", chave: "movimento-flutuacao" } ];
 function normalizarMovimentoBase(valor) { const numero = numeroDecimal(valor);
@@ -3003,10 +3160,13 @@ const iniciativaAlerta = token.metadata[
 const iniciativaHabilidade = token.metadata[
 `${PREFIX}/treinador-iniciativa-habilidade`
 ] === true;
+const iniciativaDobrar = token.metadata[
+`${PREFIX}/treinador-iniciativa-dobrar`
+] === true;
 const estagioVelocidade = normalizarEstagioBuff( token.metadata[
 `${PREFIX}/buff-vel`
 ] ?? 0, "vel" );
-const iniciativa = (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) + (estagioVelocidade * (Number(proficiencia) || 0)) + (iniciativaAlerta ? 5 : 0) + (iniciativaHabilidade ? (Number(proficiencia) || 0) * 2 : 0);
+const iniciativa = (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) + (estagioVelocidade * (Number(proficiencia) || 0)) + (iniciativaAlerta ? 5 : 0);
 app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(
@@ -3170,7 +3330,7 @@ app.innerHTML = `
           type="text"
           value="${esc(iniciativa)}"
           readonly
-          title="Iniciativa = DES + (VEL × Prof) + Alerta + Habilidade"
+          title="Bônus do dado = DES + (VEL × Prof) + Alerta. Habilidade e Dobrar alteram apenas o total no apresentador."
         >
         <button
           id="rolarIniciativa"
@@ -3214,10 +3374,19 @@ app.innerHTML = `
           id="botaoIniciativaHabilidade"
           class="iniciativaCheck ${iniciativaHabilidade ? "ativo" : ""}"
           type="button"
-          title="Habilidade: +2x Prof na iniciativa"
+          title="Habilidade: +2x Prof no TOTAL mostrado no apresentador"
         >
           <span class="iniciativaCheckBolinha">✓</span>
           <span>Habilidade</span>
+        </button>
+        <button
+          id="botaoIniciativaDobrar"
+          class="iniciativaCheck ${iniciativaDobrar ? "ativo" : ""}"
+          type="button"
+          title="Dobrar o total final da iniciativa no apresentador"
+        >
+          <span class="iniciativaCheckBolinha">✓</span>
+          <span>Dobrar</span>
         </button>
       </div>
       <input
@@ -3229,6 +3398,11 @@ app.innerHTML = `
         id="iniciativaHabilidade"
         type="hidden"
         value="${iniciativaHabilidade ? "1" : "0"}"
+      >
+      <input
+        id="iniciativaDobrar"
+        type="hidden"
+        value="${iniciativaDobrar ? "1" : "0"}"
       >
     </div>
     <hr>
@@ -3297,7 +3471,7 @@ ativarRolagensSalvaguarda(token);
 ativarRolagemIniciativa(token);
 ativarCalculadoraHp();
 document .querySelector( "#rolarCaptura" ) .addEventListener( "click", async () => { const valor = document .querySelector( "#treinadorCapturaBonus" ) .value; const formula = formulaSalvaguarda( valor ); if (!formula) { alert( "Bônus de captura inválido." ); return; } await rolarNoDicePlus( formula, "Captura" ); } );
-document .querySelector( "#salvarTreinadorStatus" ) .addEventListener( "click", async () => { const botaoSalvarStatus = document.querySelector("#salvarTreinadorStatus"); const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1"; if (botaoSalvarStatus) { botaoSalvarStatus.dataset.aplicarCalculadora = "0"; } const dados = await pegarHpCaDaTela(aplicarCalculadora); if (!dados) { return; } const novaProficiencia = Number( document .querySelector( "#treinadorProficiencia" ) .value ) || 0; const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const novoBonusCaptura = document .querySelector( "#treinadorCapturaBonus" ) .value .trim(); const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach( (atributo) => { novosModificadores[ atributo ] = document .querySelector(
+document .querySelector( "#salvarTreinadorStatus" ) .addEventListener( "click", async () => { const botaoSalvarStatus = document.querySelector("#salvarTreinadorStatus"); const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1"; if (botaoSalvarStatus) { botaoSalvarStatus.dataset.aplicarCalculadora = "0"; } const dados = await pegarHpCaDaTela(aplicarCalculadora); if (!dados) { return; } const novaProficiencia = Number( document .querySelector( "#treinadorProficiencia" ) .value ) || 0; const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const iniciativaDobrarAtiva = document .querySelector("#iniciativaDobrar") ?.value === "1"; const novoBonusCaptura = document .querySelector( "#treinadorCapturaBonus" ) .value .trim(); const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach( (atributo) => { novosModificadores[ atributo ] = document .querySelector(
 `#treinador-mod-${atributo}`
 ) .value .trim(); novasSalvaguardas[ atributo ] = document .querySelector(
 `#treinador-save-${atributo}`
@@ -3316,6 +3490,8 @@ document .querySelector( "#salvarTreinadorStatus" ) .addEventListener( "click", 
 ] = iniciativaAlertaAtiva; item.metadata[
 `${PREFIX}/treinador-iniciativa-habilidade`
 ] = iniciativaHabilidadeAtiva; item.metadata[
+`${PREFIX}/treinador-iniciativa-dobrar`
+] = iniciativaDobrarAtiva; item.metadata[
 `${PREFIX}/treinador-captura-bonus`
 ] = novoBonusCaptura; ATRIBUTOS.forEach( (atributo) => { item.metadata[
 `${PREFIX}/treinador-mod-${atributo}`
@@ -3860,10 +4036,13 @@ const iniciativaAlerta = token.metadata[
 const iniciativaHabilidade = token.metadata[
 `${PREFIX}/iniciativa-habilidade`
 ] === true;
+const iniciativaDobrar = token.metadata[
+`${PREFIX}/iniciativa-dobrar`
+] === true;
 const estagioVelocidade = normalizarEstagioBuff( token.metadata[
 `${PREFIX}/buff-vel`
 ] ?? 0, "vel" );
-const iniciativa = (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) + (estagioVelocidade * proficiencia) + (iniciativaAlerta ? 5 : 0) + (iniciativaHabilidade ? proficiencia * 2 : 0);
+const iniciativa = (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) + (estagioVelocidade * proficiencia) + (iniciativaAlerta ? 5 : 0);
 app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 1)}
@@ -4037,7 +4216,7 @@ app.innerHTML = `
                   type="text"
                   value="${esc(iniciativa)}"
                   readonly
-                  title="Iniciativa = DES + (VEL × Prof) + Alerta + Habilidade"
+                  title="Bônus do dado = DES + (VEL × Prof) + Alerta. Habilidade e Dobrar alteram apenas o total no apresentador."
                 >
                 <button
                   id="rolarIniciativa"
@@ -4081,10 +4260,19 @@ app.innerHTML = `
                   id="botaoIniciativaHabilidade"
                   class="iniciativaCheck ${iniciativaHabilidade ? "ativo" : ""}"
                   type="button"
-                  title="Habilidade: +2x Prof na iniciativa"
+                  title="Habilidade: +2x Prof no TOTAL mostrado no apresentador"
                 >
                   <span class="iniciativaCheckBolinha">✓</span>
                   <span>Habilidade</span>
+                </button>
+                <button
+                  id="botaoIniciativaDobrar"
+                  class="iniciativaCheck ${iniciativaDobrar ? "ativo" : ""}"
+                  type="button"
+                  title="Dobrar o total final da iniciativa no apresentador"
+                >
+                  <span class="iniciativaCheckBolinha">✓</span>
+                  <span>Dobrar</span>
                 </button>
               </div>
               <input
@@ -4096,6 +4284,11 @@ app.innerHTML = `
                 id="iniciativaHabilidade"
                 type="hidden"
                 value="${iniciativaHabilidade ? "1" : "0"}"
+              >
+              <input
+                id="iniciativaDobrar"
+                type="hidden"
+                value="${iniciativaDobrar ? "1" : "0"}"
               >
             </div>
             <div class="pokemonDetalhesCompactos">
@@ -4275,7 +4468,7 @@ ativarRolagemIniciativa(token);
 ativarCalculadoraHp();
 ativarMovimentacaoComVelocidade(token, estagioVelocidade, megaAtivaStatus ? megaDistribuicaoStatus.movimentos : {});
 document .querySelector( "#salvarPokemonStatus" ) .addEventListener( "click", async () => { const botaoSalvarStatus = document.querySelector("#salvarPokemonStatus"); const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1"; if (botaoSalvarStatus) { botaoSalvarStatus.dataset.aplicarCalculadora = "0"; } const dados = await pegarHpCaDaTela(aplicarCalculadora); if (!dados) { return; } const movimentoCaminhadaNovo = pegarMovimentoBase( "movimentoCaminhada" ); const movimentoEscaladaNovo = pegarMovimentoBase( "movimentoEscalada" ); const movimentoVooNovo = pegarMovimentoBase( "movimentoVoo" ); const movimentoNatacaoNovo = pegarMovimentoBase( "movimentoNatacao" ); const movimentoEscavacaoNovo = pegarMovimentoBase( "movimentoEscavacao" ); const movimentoFlutuacaoNovo = pegarMovimentoBase( "movimentoFlutuacao" ); const novaHabilidadeTela = document.querySelector("#habilidadePokemon").value.trim();
-const novaHabilidade = megaAtivaStatus ? habilidadeNormal : novaHabilidadeTela; const novoItemPokemon = document .querySelector("#itemPokemon") .value .trim(); const novaProficiencia = Number( document .querySelector("#proficiencia") .value ) || 0; const nivelPokemonBruto = document .querySelector("#nivelPokemon") ?.value .trim() ?? ""; const novoNivelPokemon = nivelPokemonBruto === "" ? "" : Math.max( 1, Math.trunc( Number(nivelPokemonBruto) || 1 ) ); const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const novosStatus = {}; const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach((atributo) => {
+const novaHabilidade = megaAtivaStatus ? habilidadeNormal : novaHabilidadeTela; const novoItemPokemon = document .querySelector("#itemPokemon") .value .trim(); const novaProficiencia = Number( document .querySelector("#proficiencia") .value ) || 0; const nivelPokemonBruto = document .querySelector("#nivelPokemon") ?.value .trim() ?? ""; const novoNivelPokemon = nivelPokemonBruto === "" ? "" : Math.max( 1, Math.trunc( Number(nivelPokemonBruto) || 1 ) ); const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const iniciativaDobrarAtiva = document .querySelector("#iniciativaDobrar") ?.value === "1"; const novosStatus = {}; const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach((atributo) => {
   const statusTela = Number(String(document.querySelector(`#status-${atributo}`)?.value ?? "").trim().replace(",", "."));
   const bonusStatusMega = megaAtivaStatus ? (Number(megaDistribuicaoStatus.atributos?.[atributo]) || 0) : 0;
   const statusBase = Number.isFinite(statusTela)
@@ -4318,7 +4511,9 @@ await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of i
 `${PREFIX}/iniciativa-alerta`
 ] = iniciativaAlertaAtiva; item.metadata[
 `${PREFIX}/iniciativa-habilidade`
-] = iniciativaHabilidadeAtiva; ATRIBUTOS.forEach( (atributo) => { item.metadata[
+] = iniciativaHabilidadeAtiva; item.metadata[
+`${PREFIX}/iniciativa-dobrar`
+] = iniciativaDobrarAtiva; ATRIBUTOS.forEach( (atributo) => { item.metadata[
 `${PREFIX}/status-${atributo}`
 ] = novosStatus[ atributo ]; item.metadata[
 `${PREFIX}/mod-${atributo}`
@@ -6264,5 +6459,5 @@ app.innerHTML = `
               </div>
             `;
 } } }
-OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
+OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); OBR.scene.items.onChange(() => agendarSincronizacaoRosterEmCampo()); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
 // FIM
