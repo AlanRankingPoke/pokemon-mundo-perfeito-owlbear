@@ -1714,14 +1714,39 @@ async function recolherPokemonDoTreinador(token, grupo, indice) {
   
 }
 
+async function desvincularPokemonDoRosterAnterior(pokemon, novoTreinadorId, novoGrupo, novoIndice) {
+  const donoAnteriorId = pokemon?.metadata?.[META_POKEMON_DONO_TREINADOR];
+  const chaveAnterior = pokemon?.metadata?.[META_POKEMON_SLOT_TREINADOR];
+  if (!donoAnteriorId || !chaveAnterior) return;
+
+  const infoAnterior = separarChaveSlotTreinador(chaveAnterior);
+  if (!infoAnterior) return;
+  if (donoAnteriorId === novoTreinadorId && infoAnterior.grupo === novoGrupo && infoAnterior.indice === novoIndice) return;
+
+  const donos = await OBR.scene.items.getItems([donoAnteriorId]);
+  const donoAnterior = donos?.[0];
+  if (!donoAnterior) return;
+
+  const rosterAnterior = rosterDoTreinador(donoAnterior);
+  if (rosterAnterior[infoAnterior.grupo]?.[infoAnterior.indice]) {
+    rosterAnterior[infoAnterior.grupo][infoAnterior.indice] = null;
+    await salvarRosterTreinador(donoAnterior, rosterAnterior);
+  }
+}
+
 async function registrarPokemonDaCenaNoSlot(token, grupo, indice, pokemon) {
   const snapshot = snapshotPokemonParaTreinador(pokemon);
   if (!snapshot) throw new Error("Não foi possível guardar este Pokémon.");
-  const roster = await sincronizarRosterTreinadorComCena(token);
+
+  // Se esse Pokémon foi solto por outro treinador, transferimos o vínculo em vez
+  // de deixar uma cópia fantasma no roster antigo.
+  await desvincularPokemonDoRosterAnterior(pokemon, token.id, grupo, indice);
+
+  const treinadorAtual = await pegarTokenAtualizado(token.id) || token;
+  const roster = await sincronizarRosterTreinadorComCena(treinadorAtual);
   roster[grupo][indice] = snapshot;
-  await salvarRosterTreinador(token, roster);
+  await salvarRosterTreinador(treinadorAtual, roster);
   await OBR.scene.items.deleteItems([pokemon.id]);
-  
 }
 
 async function removerPokemonDoRoster(token, grupo, indice) {
@@ -1785,8 +1810,8 @@ async function pokemonsDisponiveisParaRoster(token) {
     const tipoFicha = item.metadata?.[`${PREFIX}/tipoFicha`];
     if (tipoFicha !== "pokemon") return false;
 
-    // Pokémon já vinculado a um slot não volta à lista de disponíveis.
-    if (item.metadata?.[META_POKEMON_DONO_TREINADOR]) return false;
+    // Pokémon que está EM CAMPO pode ser escolhido por outro treinador também.
+    // Se ele já pertencer a outro roster, o vínculo será transferido ao guardar.
 
     // Token de referência Mega não é Pokémon disponível para o treinador.
     if (String(item.name || "").trim().toLowerCase().startsWith("mega")) return false;
@@ -1848,7 +1873,8 @@ async function mostrarFichaTreinadorPokemons(token) {
       .treinadorPokemonAjuda{margin:9px 1px 0!important;font-size:9px!important;color:#6f8299!important;line-height:1.35}
       .seletorRosterFundo{position:fixed;inset:0;z-index:9999;background:rgba(12,22,35,.72);display:flex;align-items:center;justify-content:center;padding:14px}
       .seletorRosterPainel{width:min(390px,100%);max-height:86vh;overflow:auto;background:#f7fbff;border:1px solid #9bbbe2;border-radius:15px;padding:12px;box-shadow:0 18px 55px rgba(0,0,0,.34)}
-      .seletorRosterTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;color:#284a75;font-size:13px;font-weight:900}.seletorRosterFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important}
+      .seletorRosterTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:#284a75;font-size:13px;font-weight:900}.seletorRosterFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important}
+      .seletorRosterBuscaWrap{position:relative;margin-bottom:9px}.seletorRosterBuscaIcon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none}.seletorRosterBusca{width:100%;box-sizing:border-box;min-height:38px;padding:8px 10px 8px 32px!important;border:1px solid #b9cce3!important;border-radius:10px!important;background:#fff!important;color:#30455f!important;font-size:10px!important;font-weight:800!important;outline:none}.seletorRosterBusca:focus{border-color:#4c8dff!important;box-shadow:0 0 0 2px rgba(76,141,255,.12)}
       .seletorRosterGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.seletorRosterPokemon{display:grid!important;grid-template-columns:52px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;min-height:64px!important;padding:6px!important;text-align:left!important}.seletorRosterPokemon img{width:50px;height:50px;object-fit:contain;border-radius:9px;background:#fff;border:1px solid #d5e0ed}.seletorRosterPokemon span{overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:900}
       .registrarPokemonNovo{width:100%;margin:9px 0 6px!important;min-height:38px!important;background:linear-gradient(135deg,#45a86c,#2c8b55)!important;color:#fff!important;border-color:#287d4d!important;font-size:10px!important;font-weight:900!important}
       .registrarPokemonNovoLista{display:none;margin-top:7px;padding-top:8px;border-top:1px solid #d8e4f1}.registrarPokemonNovoLista.aberto{display:block}.registrarPokemonNovoTitulo{margin:0 0 7px!important;font-size:9px!important;color:#5a718d!important;text-align:center}.registrarPokemonBadge{display:inline-block;margin-left:5px;padding:2px 5px;border-radius:999px;background:#fff4cf;color:#8d6b12;font-size:7px;font-weight:900}
@@ -1866,6 +1892,7 @@ async function mostrarFichaTreinadorPokemons(token) {
     <div id="seletorRoster" class="seletorRosterFundo" style="display:none">
       <div class="seletorRosterPainel">
         <div class="seletorRosterTopo"><span>Escolher Pokémon da mesa</span><button id="fecharSeletorRoster" class="seletorRosterFechar" type="button">×</button></div>
+        <div class="seletorRosterBuscaWrap"><span class="seletorRosterBuscaIcon">🔎</span><input id="buscaPokemonRoster" class="seletorRosterBusca" type="search" placeholder="Procurar Pokémon pelo nome..." autocomplete="off"></div>
         <div id="listaSeletorRoster" class="seletorRosterGrade"></div>
         <button id="registrarPokemonNovo" class="registrarPokemonNovo" type="button">＋ REGISTRAR NOVO POKÉMON</button>
         <div id="registrarPokemonNovoLista" class="registrarPokemonNovoLista">
@@ -1882,7 +1909,19 @@ async function mostrarFichaTreinadorPokemons(token) {
   const botaoRegistrarNovo = document.querySelector('#registrarPokemonNovo');
   const areaRegistrarNovo = document.querySelector('#registrarPokemonNovoLista');
   const listaTokensSemFicha = document.querySelector('#listaTokensSemFicha');
+  const buscaPokemonRoster = document.querySelector('#buscaPokemonRoster');
   let destino = null;
+
+  const normalizarBuscaRoster = (valor) => String(valor || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const aplicarBuscaRoster = () => {
+    const termo = normalizarBuscaRoster(buscaPokemonRoster?.value);
+    document.querySelectorAll('[data-nome-pokemon-roster]').forEach((botao) => {
+      const nome = normalizarBuscaRoster(botao.dataset.nomePokemonRoster);
+      botao.style.display = !termo || nome.includes(termo) ? '' : 'none';
+    });
+  };
+  buscaPokemonRoster?.addEventListener('input', aplicarBuscaRoster);
 
   const fechar = () => {
     seletor.style.display = 'none';
@@ -1897,21 +1936,25 @@ async function mostrarFichaTreinadorPokemons(token) {
     areaRegistrarNovo?.classList.remove('aberto');
     const disponiveis = await pokemonsDisponiveisParaRoster(token);
     lista.innerHTML = disponiveis.length ? disponiveis.map((pokemon) => `
-      <button type="button" class="seletorRosterPokemon" data-pokemon-id="${esc(pokemon.id)}">
+      <button type="button" class="seletorRosterPokemon" data-pokemon-id="${esc(pokemon.id)}" data-nome-pokemon-roster="${esc(pokemon.name || 'Pokémon')}">
         <img src="${esc(pokemon.image?.url || '')}" alt="${esc(pokemon.name || 'Pokémon')}">
         <span>${esc(pokemon.name || 'Pokémon')}</span>
       </button>`).join('') : '<div style="grid-column:1/-1;padding:12px;text-align:center;color:#667d99;font-size:10px;font-weight:800">Nenhuma ficha POKÉMON disponível.<br>Para um token novo, use o botão verde abaixo.</div>';
+    if (buscaPokemonRoster) buscaPokemonRoster.value = '';
+    aplicarBuscaRoster();
     seletor.style.display = 'flex';
+    setTimeout(() => buscaPokemonRoster?.focus(), 0);
   };
 
   const atualizarListaSemFicha = async () => {
     if (!listaTokensSemFicha) return;
     const semFicha = await tokensSemFichaParaRegistrarComoPokemon(token);
     listaTokensSemFicha.innerHTML = semFicha.length ? semFicha.map((item) => `
-      <button type="button" class="seletorRosterPokemon" data-registrar-pokemon-id="${esc(item.id)}">
+      <button type="button" class="seletorRosterPokemon" data-registrar-pokemon-id="${esc(item.id)}" data-nome-pokemon-roster="${esc(item.name || 'Token')}">
         <img src="${esc(item.image?.url || '')}" alt="${esc(item.name || 'Token')}">
         <span>${esc(item.name || 'Token')}<span class="registrarPokemonBadge">SEM FICHA</span></span>
       </button>`).join('') : '<div style="grid-column:1/-1;padding:12px;text-align:center;color:#667d99;font-size:10px;font-weight:800">Nenhum token CHARACTER sem ficha encontrado.</div>';
+    aplicarBuscaRoster();
   };
 
   botaoRegistrarNovo?.addEventListener('click', async () => {
@@ -2717,81 +2760,17 @@ mostrarEscolhaFicha( token ); }
 function menuTreinador( paginaAtual ) {
 return `
     <div class="fichaAbas" style="
-      display:flex;
-      gap:6px;
+      display:grid;
+      grid-template-columns:repeat(5,minmax(0,1fr));
+      gap:5px;
       margin-bottom:15px;
-      flex-wrap:wrap;
+      width:100%;
     ">
-      <button
-        id="paginaTreinador1"
-        style="
-          flex:1;
-          min-width:72px;
-          padding:8px 4px;
-          font-size:11px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 1 ? "1" : "0.65"};
-        "
-      >
-        STATUS
-      </button>
-      <button
-        id="paginaTreinador2"
-        style="
-          flex:1;
-          min-width:72px;
-          padding:8px 4px;
-          font-size:11px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 2 ? "1" : "0.65"};
-        "
-      >
-        PER / TAL
-      </button>
-      <button
-        id="paginaTreinador3"
-        style="
-          flex:1;
-          min-width:86px;
-          padding:8px 4px;
-          font-size:11px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 3 ? "1" : "0.65"};
-        "
-      >
-        HABILIDADES
-      </button>
-      <button
-        id="paginaTreinador4"
-        style="
-          flex:1;
-          min-width:76px;
-          padding:8px 4px;
-          font-size:10px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 4 ? "1" : "0.65"};
-        "
-      >
-        ANOTAÇÕES
-      </button>
-      <button
-        id="paginaTreinador5"
-        style="
-          flex:1;
-          min-width:76px;
-          padding:8px 4px;
-          font-size:10px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 5 ? "1" : "0.65"};
-        "
-      >
-        🐾 POKÉMONS
-      </button>
+      <button id="paginaTreinador1" style="min-width:0;width:100%;padding:8px 2px;font-size:9px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 1 ? "1" : "0.65"};">STATUS</button>
+      <button id="paginaTreinador2" style="min-width:0;width:100%;padding:8px 2px;font-size:9px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 2 ? "1" : "0.65"};">PER / TAL</button>
+      <button id="paginaTreinador3" style="min-width:0;width:100%;padding:8px 2px;font-size:8px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 3 ? "1" : "0.65"};">HABILIDADES</button>
+      <button id="paginaTreinador4" style="min-width:0;width:100%;padding:8px 2px;font-size:8px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 4 ? "1" : "0.65"};">ANOTAÇÕES</button>
+      <button id="paginaTreinador5" style="min-width:0;width:100%;padding:8px 2px;font-size:8px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 5 ? "1" : "0.65"};">POKÉMONS</button>
     </div>
   `;
 }
@@ -5548,7 +5527,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
       <div id="megaDistribuicaoCard" style="margin-top:10px;padding:8px;border:1px solid #d8caed;border-radius:10px;background:#fffaff;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;">
           <strong style="font-size:10px;color:#604281;">DISTRIBUIÇÃO DA MEGA</strong>
-          <span id="megaPontosTexto" style="font-size:10px;font-weight:900;color:#6f52d9;">${megaPontosIniciais}/${MEGA_PONTOS_TOTAL} pts</span>
+          <span id="megaPontosTexto" style="font-size:10px;font-weight:900;color:#6f52d9;">${Math.max(0, MEGA_PONTOS_TOTAL - megaPontosIniciais)} pts livres</span>
         </div>
         <div style="font-size:8px;line-height:1.25;color:#806b99;margin-bottom:7px;">
           CA: 2 pts = +1 CA · Status: 1 pt = +1 atributo · Movimento: 1 pt = +1,5 m
@@ -5654,7 +5633,7 @@ const atualizarEditorMega = () => {
   const usados = pontosUsadosMega(distribuicaoMegaEdicao);
   const restantes = MEGA_PONTOS_TOTAL - usados;
   if (textoMegaPontos) {
-    textoMegaPontos.textContent = `${usados}/${MEGA_PONTOS_TOTAL} pts`;
+    textoMegaPontos.textContent = `${Math.max(0, restantes)} pts livres`;
     textoMegaPontos.style.color = restantes === 0 ? "#269653" : "#6f52d9";
   }
   const caTexto = document.querySelector("#megaCaValor");
@@ -5865,6 +5844,97 @@ atualizarEditorMega();
 atualizarListaTokensMega();
 }
 
+const CHAVE_COPIA_FICHA_POKEMON = `${PREFIX}/ficha-pokemon-copiada-v1`;
+let fichaPokemonCopiadaMemoria = null;
+const METADATA_NAO_COPIAR_FICHA_POKEMON = new Set([
+  META_INICIATIVA_TRACKER,
+  META_TURNO_INICIATIVA,
+  META_PAINEL_INICIATIVA,
+  META_PAINEL_INICIATIVA_FILHO,
+  META_TREINADOR_POKEMONS,
+  META_POKEMON_DONO_TREINADOR,
+  META_POKEMON_SLOT_TREINADOR,
+  META_MEGA_CONFIG,
+  META_MEGA_ATIVA,
+  `${PREFIX}/statusToken`,
+  `${PREFIX}/tipoVisual`,
+  `${PREFIX}/debuffId`,
+  `${PREFIX}/roll-result`,
+  `${PREFIX}/roll-error`
+]);
+
+function metadataEhDaFichaPokemon(chave) {
+  if (!String(chave || '').startsWith(`${PREFIX}/`)) return false;
+  if (METADATA_NAO_COPIAR_FICHA_POKEMON.has(chave)) return false;
+  if (String(chave).startsWith(`${PREFIX}/treinador-`)) return false;
+  return true;
+}
+
+function criarPacoteCopiaFichaPokemon(token) {
+  const metadata = {};
+  for (const [chave, valor] of Object.entries(token?.metadata || {})) {
+    if (!metadataEhDaFichaPokemon(chave)) continue;
+    metadata[chave] = clonarDadosSimples(valor);
+  }
+  metadata[`${PREFIX}/tipoFicha`] = 'pokemon';
+  return {
+    versao: 1,
+    nomeOrigem: String(token?.name || 'Pokémon'),
+    copiadoEm: Date.now(),
+    metadata
+  };
+}
+
+function guardarCopiaFichaPokemon(token) {
+  const pacote = criarPacoteCopiaFichaPokemon(token);
+  fichaPokemonCopiadaMemoria = pacote;
+  try { localStorage.setItem(CHAVE_COPIA_FICHA_POKEMON, JSON.stringify(pacote)); } catch (_) {}
+  return pacote;
+}
+
+function lerCopiaFichaPokemon() {
+  if (fichaPokemonCopiadaMemoria?.metadata) return fichaPokemonCopiadaMemoria;
+  try {
+    const bruto = localStorage.getItem(CHAVE_COPIA_FICHA_POKEMON);
+    if (!bruto) return null;
+    const pacote = JSON.parse(bruto);
+    if (pacote?.metadata && typeof pacote.metadata === 'object') {
+      fichaPokemonCopiadaMemoria = pacote;
+      return pacote;
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function colarCopiaFichaPokemonNoToken(token, pacote) {
+  if (!token?.id || !pacote?.metadata) throw new Error('Nenhuma ficha de Pokémon foi copiada.');
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      // Limpa somente os dados da ficha antiga. Vínculo com treinador, imagem,
+      // posição e configuração visual/Mega do token de evolução são preservados.
+      for (const chave of Object.keys(item.metadata || {})) {
+        if (metadataEhDaFichaPokemon(chave)) delete item.metadata[chave];
+      }
+      for (const [chave, valor] of Object.entries(pacote.metadata)) {
+        if (!metadataEhDaFichaPokemon(chave) && chave !== `${PREFIX}/tipoFicha`) continue;
+        item.metadata[chave] = clonarDadosSimples(valor);
+      }
+      item.metadata[`${PREFIX}/tipoFicha`] = 'pokemon';
+      item.metadata[META_MEGA_ATIVA] = false;
+    }
+  });
+
+  const atualizado = await pegarTokenAtualizado(token.id);
+  if (atualizado) {
+    const hpAtual = Number(atualizado.metadata?.[`${PREFIX}/hpAtual`] ?? 100) || 0;
+    const hpMax = Math.max(1, Number(atualizado.metadata?.[`${PREFIX}/hpMax`] ?? 100) || 1);
+    const caBase = Number(atualizado.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+    const evasao = Number(atualizado.metadata?.[`${PREFIX}/buff-evas`] ?? 0) || 0;
+    await criarStatusNoToken(atualizado, hpAtual, hpMax, caBase + evasao);
+  }
+  return atualizado || token;
+}
+
 function mostrarFichaPokemonPericias( token ) { const app = document.querySelector("#app");
 const valoresPericias = {};
 PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = token.metadata[
@@ -5975,6 +6045,12 @@ app.innerHTML = `
       >
         Salvar Perícias
       </button>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;">
+        <button id="copiarFichaPokemon" type="button" style="min-height:38px!important;padding:7px!important;font-size:9px;font-weight:900;cursor:pointer;">COPIAR FICHA</button>
+        <button id="colarFichaPokemon" type="button" style="min-height:38px!important;padding:7px!important;font-size:9px;font-weight:900;cursor:pointer;">COLAR FICHA</button>
+      </div>
+      <div id="mensagemCopiaFichaPokemon" style="min-height:15px;margin-top:5px;text-align:center;font-size:8px;font-weight:800;color:#6a7f99;">Use isso para passar a ficha para o token de uma evolução.</div>
     `;
 ativarCabecalhoPokemon(token);
 ativarRolagensPericiasPokemon();
@@ -5998,11 +6074,62 @@ botao.style.setProperty( "background", status.cor, "important" ); botao.style.se
 botao.style.removeProperty( "background" ); botao.style.removeProperty( "color" ); botao.style.removeProperty( "border-color" ); } await atualizarHudDebuffs(); } catch (erro) { console.error(
 `Erro ao alternar ${status.nome}:`,
 erro ); } finally { botao.disabled = false; } } ); } );
-document .querySelector( "#salvarPokemonPericias" ) .addEventListener( "click", async () => { const novasPericias = {}; PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { novasPericias[ pericia.id ] = document .querySelector(
-`#pokemon-pericia-${pericia.id}`
-) .value .trim(); } ); } ); await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { item.metadata[
-`${PREFIX}/pokemon-pericia-${pericia.id}`
-] = novasPericias[ pericia.id ]; } ); } ); } } ); } ); }
+const salvarPericiasPokemonDaTela = async () => {
+  const novasPericias = {};
+  PERICIAS.forEach((grupo) => {
+    grupo.pericias.forEach((pericia) => {
+      novasPericias[pericia.id] = document.querySelector(`#pokemon-pericia-${pericia.id}`)?.value?.trim() || '';
+    });
+  });
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      PERICIAS.forEach((grupo) => {
+        grupo.pericias.forEach((pericia) => {
+          item.metadata[`${PREFIX}/pokemon-pericia-${pericia.id}`] = novasPericias[pericia.id];
+        });
+      });
+    }
+  });
+};
+
+document.querySelector('#salvarPokemonPericias')?.addEventListener('click', async () => {
+  await salvarPericiasPokemonDaTela();
+  const mensagem = document.querySelector('#mensagemCopiaFichaPokemon');
+  if (mensagem) mensagem.textContent = '✓ Perícias salvas.';
+});
+
+document.querySelector('#copiarFichaPokemon')?.addEventListener('click', async () => {
+  const mensagem = document.querySelector('#mensagemCopiaFichaPokemon');
+  try {
+    await salvarPericiasPokemonDaTela();
+    const atualizado = await pegarTokenAtualizado(token.id) || token;
+    const pacote = guardarCopiaFichaPokemon(atualizado);
+    if (mensagem) mensagem.textContent = `✓ Ficha de ${pacote.nomeOrigem} copiada.`;
+  } catch (erro) {
+    console.error('Erro ao copiar ficha do Pokémon:', erro);
+    if (mensagem) mensagem.textContent = erro?.message || 'Não foi possível copiar a ficha.';
+  }
+});
+
+document.querySelector('#colarFichaPokemon')?.addEventListener('click', async () => {
+  const mensagem = document.querySelector('#mensagemCopiaFichaPokemon');
+  const pacote = lerCopiaFichaPokemon();
+  if (!pacote) {
+    if (mensagem) mensagem.textContent = 'Nenhuma ficha foi copiada ainda.';
+    return;
+  }
+  if (!confirm(`Colar a ficha de ${pacote.nomeOrigem || 'Pokémon'} neste token? Os dados atuais da ficha serão substituídos.`)) return;
+  try {
+    const atualizado = await colarCopiaFichaPokemonNoToken(token, pacote);
+    mostrarFichaPokemonPericias(atualizado);
+    const mensagemNova = document.querySelector('#mensagemCopiaFichaPokemon');
+    if (mensagemNova) mensagemNova.textContent = `✓ Ficha de ${pacote.nomeOrigem || 'Pokémon'} colada neste token.`;
+  } catch (erro) {
+    console.error('Erro ao colar ficha do Pokémon:', erro);
+    if (mensagem) mensagem.textContent = erro?.message || 'Não foi possível colar a ficha.';
+  }
+});
+}
 function mostrarFichaPokemonTalentos( token ) { const app = document.querySelector("#app");
 const talentos = [];
 for ( let i = 1; i <= 5; i++ ) { talentos.push({ titulo: token.metadata[
