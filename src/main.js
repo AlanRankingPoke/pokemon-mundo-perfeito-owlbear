@@ -1992,26 +1992,62 @@ function htmlSlotPokemonTreinador(slot, grupo, indice, compacto = false) {
     </div>`;
 }
 
+function tokenEstaDisponivelNaMesa(item) {
+  if (!item || item.type !== "IMAGE") return false;
+  if (item.layer !== "CHARACTER") return false;
+  // Tokens ocultos/retirados da mesa não entram no seletor.
+  if (item.visible === false) return false;
+  if (!item.image?.url) return false;
+  return true;
+}
+
 async function pokemonsDisponiveisParaRoster(token) {
-  return OBR.scene.items.getItems((item) => {
-    if (item.type !== "IMAGE") return false;
-    if (item.layer !== "CHARACTER") return false;
+  // Busca a cena de novo TODA VEZ que o seletor é aberto.
+  // Assim não sobra Pokémon antigo/fantasma em cache.
+  const itensAtuais = await OBR.scene.items.getItems();
+  return itensAtuais.filter((item) => {
+    if (!tokenEstaDisponivelNaMesa(item)) return false;
     if (item.id === token.id) return false;
 
-    // A lista do treinador mostra SOMENTE tokens que já foram
-    // definidos como POKÉMON na ficha do plugin.
-    // Assim treinadores, NPCs humanos e outros CHARACTER não aparecem.
+    // Só fichas realmente marcadas como POKÉMON.
     const tipoFicha = item.metadata?.[`${PREFIX}/tipoFicha`];
     if (tipoFicha !== "pokemon") return false;
 
-    // Pokémon que já pertence a um slot não deve aparecer como disponível.
+    // Pokémon já vinculado a um slot não volta à lista de disponíveis.
     if (item.metadata?.[META_POKEMON_DONO_TREINADOR]) return false;
 
-    // Tokens de referência de Mega continuam fora da lista.
+    // Token de referência Mega não é Pokémon disponível para o treinador.
     if (String(item.name || "").trim().toLowerCase().startsWith("mega")) return false;
 
     return true;
   });
+}
+
+async function tokensSemFichaParaRegistrarComoPokemon(token) {
+  // Também usa somente os itens que existem e estão visíveis AGORA na cena.
+  const itensAtuais = await OBR.scene.items.getItems();
+  return itensAtuais.filter((item) => {
+    if (!tokenEstaDisponivelNaMesa(item)) return false;
+    if (item.id === token.id) return false;
+    if (item.metadata?.[META_POKEMON_DONO_TREINADOR]) return false;
+    if (String(item.name || "").trim().toLowerCase().startsWith("mega")) return false;
+
+    // Só tokens ainda não classificados podem ser registrados como novos Pokémon.
+    const tipoFicha = item.metadata?.[`${PREFIX}/tipoFicha`];
+    return !tipoFicha;
+  });
+}
+
+async function marcarTokenComoPokemon(item) {
+  if (!item?.id) return null;
+  await OBR.scene.items.updateItems([item.id], (items) => {
+    for (const alvo of items) {
+      alvo.metadata[`${PREFIX}/tipoFicha`] = "pokemon";
+    }
+  });
+  item.metadata = item.metadata || {};
+  item.metadata[`${PREFIX}/tipoFicha`] = "pokemon";
+  return item;
 }
 
 async function mostrarFichaTreinadorPokemons(token) {
@@ -2042,6 +2078,8 @@ async function mostrarFichaTreinadorPokemons(token) {
       .seletorRosterPainel{width:min(390px,100%);max-height:86vh;overflow:auto;background:#f7fbff;border:1px solid #9bbbe2;border-radius:15px;padding:12px;box-shadow:0 18px 55px rgba(0,0,0,.34)}
       .seletorRosterTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;color:#284a75;font-size:13px;font-weight:900}.seletorRosterFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important}
       .seletorRosterGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.seletorRosterPokemon{display:grid!important;grid-template-columns:52px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;min-height:64px!important;padding:6px!important;text-align:left!important}.seletorRosterPokemon img{width:50px;height:50px;object-fit:contain;border-radius:9px;background:#fff;border:1px solid #d5e0ed}.seletorRosterPokemon span{overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:900}
+      .registrarPokemonNovo{width:100%;margin:9px 0 6px!important;min-height:38px!important;background:linear-gradient(135deg,#45a86c,#2c8b55)!important;color:#fff!important;border-color:#287d4d!important;font-size:10px!important;font-weight:900!important}
+      .registrarPokemonNovoLista{display:none;margin-top:7px;padding-top:8px;border-top:1px solid #d8e4f1}.registrarPokemonNovoLista.aberto{display:block}.registrarPokemonNovoTitulo{margin:0 0 7px!important;font-size:9px!important;color:#5a718d!important;text-align:center}.registrarPokemonBadge{display:inline-block;margin-left:5px;padding:2px 5px;border-radius:999px;background:#fff4cf;color:#8d6b12;font-size:7px;font-weight:900}
       @media(max-width:430px){.treinadorPokemonGradePc{grid-template-columns:repeat(4,minmax(0,1fr))}.treinadorPokemonGradeEquipe{grid-template-columns:repeat(3,minmax(0,1fr))}}
     </style>
     <div class="treinadorPokemonSecao">
@@ -2057,29 +2095,58 @@ async function mostrarFichaTreinadorPokemons(token) {
       <div class="seletorRosterPainel">
         <div class="seletorRosterTopo"><span>Escolher Pokémon da mesa</span><button id="fecharSeletorRoster" class="seletorRosterFechar" type="button">×</button></div>
         <div id="listaSeletorRoster" class="seletorRosterGrade"></div>
-        <p class="treinadorPokemonAjuda">Ao escolher, a ficha é salva neste treinador e o token é guardado/removido da mesa.</p>
+        <button id="registrarPokemonNovo" class="registrarPokemonNovo" type="button">＋ REGISTRAR NOVO POKÉMON</button>
+        <div id="registrarPokemonNovoLista" class="registrarPokemonNovoLista">
+          <p class="registrarPokemonNovoTitulo">Tokens CHARACTER sem ficha. Ao escolher, ele será marcado como POKÉMON e guardado no slot.</p>
+          <div id="listaTokensSemFicha" class="seletorRosterGrade"></div>
+        </div>
+        <p class="treinadorPokemonAjuda">A lista principal mostra somente fichas POKÉMON. Use “Registrar Novo Pokémon” para um token que acabou de entrar no mapa.</p>
       </div>
     </div>`;
 
   ativarCabecalhoTreinador(token);
   const seletor = document.querySelector('#seletorRoster');
   const lista = document.querySelector('#listaSeletorRoster');
+  const botaoRegistrarNovo = document.querySelector('#registrarPokemonNovo');
+  const areaRegistrarNovo = document.querySelector('#registrarPokemonNovoLista');
+  const listaTokensSemFicha = document.querySelector('#listaTokensSemFicha');
   let destino = null;
 
-  const fechar = () => { seletor.style.display = 'none'; destino = null; };
+  const fechar = () => {
+    seletor.style.display = 'none';
+    areaRegistrarNovo?.classList.remove('aberto');
+    destino = null;
+  };
   document.querySelector('#fecharSeletorRoster')?.addEventListener('click', fechar);
   seletor?.addEventListener('click', (evento) => { if (evento.target === seletor) fechar(); });
 
   const abrirSeletor = async (grupo, indice) => {
     destino = { grupo, indice };
+    areaRegistrarNovo?.classList.remove('aberto');
     const disponiveis = await pokemonsDisponiveisParaRoster(token);
     lista.innerHTML = disponiveis.length ? disponiveis.map((pokemon) => `
       <button type="button" class="seletorRosterPokemon" data-pokemon-id="${esc(pokemon.id)}">
         <img src="${esc(pokemon.image?.url || '')}" alt="${esc(pokemon.name || 'Pokémon')}">
         <span>${esc(pokemon.name || 'Pokémon')}</span>
-      </button>`).join('') : '<div style="grid-column:1/-1;padding:18px;text-align:center;color:#667d99;font-size:11px;font-weight:800">Nenhum Pokémon disponível na mesa.<br>Coloque o token na camada CHARACTER. Tokens novos também são reconhecidos automaticamente.</div>';
+      </button>`).join('') : '<div style="grid-column:1/-1;padding:12px;text-align:center;color:#667d99;font-size:10px;font-weight:800">Nenhuma ficha POKÉMON disponível.<br>Para um token novo, use o botão verde abaixo.</div>';
     seletor.style.display = 'flex';
   };
+
+  const atualizarListaSemFicha = async () => {
+    if (!listaTokensSemFicha) return;
+    const semFicha = await tokensSemFichaParaRegistrarComoPokemon(token);
+    listaTokensSemFicha.innerHTML = semFicha.length ? semFicha.map((item) => `
+      <button type="button" class="seletorRosterPokemon" data-registrar-pokemon-id="${esc(item.id)}">
+        <img src="${esc(item.image?.url || '')}" alt="${esc(item.name || 'Token')}">
+        <span>${esc(item.name || 'Token')}<span class="registrarPokemonBadge">SEM FICHA</span></span>
+      </button>`).join('') : '<div style="grid-column:1/-1;padding:12px;text-align:center;color:#667d99;font-size:10px;font-weight:800">Nenhum token CHARACTER sem ficha encontrado.</div>';
+  };
+
+  botaoRegistrarNovo?.addEventListener('click', async () => {
+    const abrir = !areaRegistrarNovo?.classList.contains('aberto');
+    areaRegistrarNovo?.classList.toggle('aberto', abrir);
+    if (abrir) await atualizarListaSemFicha();
+  });
 
   document.querySelectorAll('[data-slot-pokemon]').forEach((botao) => {
     botao.addEventListener('click', async () => {
@@ -2114,6 +2181,30 @@ async function mostrarFichaTreinadorPokemons(token) {
       const atualizado = await pegarTokenAtualizado(token.id) || trainerAtual;
       await mostrarFichaTreinadorPokemons(atualizado);
     });
+  });
+
+  listaTokensSemFicha?.addEventListener('click', async (evento) => {
+    const botao = evento.target.closest?.('[data-registrar-pokemon-id]');
+    if (!botao || !destino) return;
+    botao.disabled = true;
+    try {
+      const itens = await OBR.scene.items.getItems([botao.dataset.registrarPokemonId]);
+      const pokemon = itens[0];
+      if (!pokemon) throw new Error('Esse token não está mais na mesa.');
+      if (pokemon.metadata?.[`${PREFIX}/tipoFicha`] === 'treinador') {
+        throw new Error('Esse token já está marcado como TREINADOR.');
+      }
+      await marcarTokenComoPokemon(pokemon);
+      const trainerAtual = await pegarTokenAtualizado(token.id) || token;
+      await registrarPokemonDaCenaNoSlot(trainerAtual, destino.grupo, destino.indice, pokemon);
+      fechar();
+      const atualizado = await pegarTokenAtualizado(token.id) || trainerAtual;
+      await mostrarFichaTreinadorPokemons(atualizado);
+    } catch (erro) {
+      console.error('Erro ao registrar novo Pokémon:', erro);
+      alert(erro?.message || 'Não foi possível registrar este token como Pokémon.');
+      botao.disabled = false;
+    }
   });
 
   lista?.addEventListener('click', async (evento) => {
