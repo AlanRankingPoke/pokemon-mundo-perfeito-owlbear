@@ -4863,7 +4863,7 @@ htmlGolpes += `
               ">
                 <button
                   type="button"
-                  class="metadeDadosMove ${golpe.metadeDados ? "ativo" : ""}"
+                  class="metadeDadosMove"
                   data-golpe="${numero}"
                   title="Adiciona metade da quantidade de cada dado. Ímpares arredondam para baixo; 1 dado recebe +1."
                   style="
@@ -4874,10 +4874,10 @@ htmlGolpes += `
                     font-size:9px;
                     font-weight:900;
                     white-space:nowrap;
-                    border:${golpe.metadeDados ? "2px solid #6c4bd3" : "1px solid #9aa8ba"};
-                    background:${golpe.metadeDados ? "linear-gradient(180deg,#8064df 0%,#6547c7 100%)" : "#f7f9fc"};
-                    color:${golpe.metadeDados ? "#fff" : "#43546a"};
-                    opacity:${golpe.metadeDados ? "1" : "0.78"};
+                    border:1px solid #6c4bd3;
+                    background:#f7f4ff;
+                    color:#5d3fc0;
+                    opacity:1;
                   "
                 >
                   + METADE DOS DADOS
@@ -5024,7 +5024,7 @@ htmlGolpes += `
               <div style="display:flex;justify-content:flex-end;margin:0 0 7px;">
                 <button
                   type="button"
-                  class="metadeDadosMove ${golpe.metadeDados ? "ativo" : ""}"
+                  class="metadeDadosMove"
                   data-golpe="${numero}"
                   title="Adiciona metade da quantidade de cada dado. Ímpares arredondam para baixo; 1 dado recebe +1."
                   style="
@@ -5035,10 +5035,10 @@ htmlGolpes += `
                     font-size:9px;
                     font-weight:900;
                     white-space:nowrap;
-                    border:${golpe.metadeDados ? "2px solid #6c4bd3" : "1px solid #9aa8ba"};
-                    background:${golpe.metadeDados ? "linear-gradient(180deg,#8064df 0%,#6547c7 100%)" : "#f7f9fc"};
-                    color:${golpe.metadeDados ? "#fff" : "#43546a"};
-                    opacity:${golpe.metadeDados ? "1" : "0.78"};
+                    border:1px solid #6c4bd3;
+                    background:#f7f4ff;
+                    color:#5d3fc0;
+                    opacity:1;
                   "
                 >
                   + METADE DOS DADOS
@@ -5124,7 +5124,7 @@ htmlGolpes += `
                 </div>
                 <button
                   type="button"
-                  class="metadeDadosMove ${golpe.metadeDados ? "ativo" : ""}"
+                  class="metadeDadosMove"
                   data-golpe="${numero}"
                   title="Adiciona metade da quantidade de cada dado. Ímpares arredondam para baixo; 1 dado recebe +1."
                   style="
@@ -5135,10 +5135,10 @@ htmlGolpes += `
                     font-size:9px;
                     font-weight:900;
                     white-space:nowrap;
-                    border:${golpe.metadeDados ? "2px solid #6c4bd3" : "1px solid #9aa8ba"};
-                    background:${golpe.metadeDados ? "linear-gradient(180deg,#8064df 0%,#6547c7 100%)" : "#f7f9fc"};
-                    color:${golpe.metadeDados ? "#fff" : "#43546a"};
-                    opacity:${golpe.metadeDados ? "1" : "0.78"};
+                    border:1px solid #6c4bd3;
+                    background:#f7f4ff;
+                    color:#5d3fc0;
+                    opacity:1;
                   "
                 >
                   + METADE DOS DADOS
@@ -5523,42 +5523,111 @@ return base.replace( /(^|[^A-Za-z0-9_])(\d*)d(\d+)/gi, (match, prefixo, quantida
 const acrescimo = qtdOriginal <= 1 ? 1 : Math.floor(qtdOriginal / 2);
 return `${prefixo}${qtdOriginal + acrescimo}d${faces}`;
 } ); }
-function metadeDadosAtiva(numero) { return document.querySelector(`#golpe${numero}MetadeDados`)?.value === "1"; }
-function aplicarMetadeDadosSeAtivo(numero, formula) { return metadeDadosAtiva(numero) ? adicionarMetadeDosDadosFormula(formula) : formula; }
-function atualizarVisualMetadeDados(numero) { const ativo = metadeDadosAtiva(numero); document.querySelectorAll(`.metadeDadosMove[data-golpe="${numero}"]`).forEach((botao) => { botao.classList.toggle("ativo", ativo); botao.style.border = ativo ? "2px solid #6c4bd3" : "1px solid #9aa8ba"; botao.style.background = ativo ? "linear-gradient(180deg,#8064df 0%,#6547c7 100%)" : "#f7f9fc"; botao.style.color = ativo ? "#fff" : "#43546a"; botao.style.opacity = ativo ? "1" : "0.78"; botao.textContent = ativo ? "✓ + METADE DOS DADOS" : "+ METADE DOS DADOS"; }); }
-document.querySelectorAll(".metadeDadosMove").forEach((botao) => { botao.addEventListener("click", () => { const numero = botao.dataset.golpe; const campo = document.querySelector(`#golpe${numero}MetadeDados`); if (!campo) { return; } campo.value = campo.value === "1" ? "0" : "1"; atualizarVisualMetadeDados(numero); document.querySelector("#salvarPokemonMoves")?.click(); }); });
-for (let numero = 1; numero <= 5; numero++) { atualizarVisualMetadeDados(numero); }
+document.querySelectorAll(".metadeDadosMove").forEach((botao) => {
+  botao.addEventListener("click", async () => {
+    const numero = botao.dataset.golpe;
+    const tipo = document.querySelector(`#golpe${numero}Tipo`)?.value || "";
+
+    botao.disabled = true;
+    try {
+      if (tipo === "macerto") {
+        const formulaOriginal = document.querySelector(`#golpe${numero}Dano`)?.value.trim();
+        if (!formulaOriginal) {
+          alert("A fórmula de dano está vazia.");
+          return;
+        }
+
+        const formulaMetade = adicionarMetadeDosDadosFormula(formulaOriginal);
+        const formulaFinal = formulaDanoComBuff(numero, formulaMetade);
+        if (!formulaFinal) return;
+
+        await rolarNoDicePlus(
+          formulaFinal,
+          nomeGolpe(numero),
+          "+ Metade dos Dados"
+        );
+        return;
+      }
+
+      if (tipo === "mcd") {
+        const formulaOriginal = document.querySelector(`#golpe${numero}DanoCD`)?.value.trim();
+        if (!formulaOriginal) {
+          alert("A fórmula de dano está vazia.");
+          return;
+        }
+
+        const formulaMetade = adicionarMetadeDosDadosFormula(formulaOriginal);
+        const formulaFinal = formulaDanoComBuff(numero, formulaMetade);
+        if (!formulaFinal) return;
+
+        await rolarNoDicePlus(
+          formulaFinal,
+          nomeGolpe(numero),
+          "+ Metade dos Dados"
+        );
+        return;
+      }
+
+      if (tipo === "cura") {
+        const formulaOriginal = document.querySelector(`#golpe${numero}Cura`)?.value.trim();
+        if (!formulaOriginal) {
+          alert("A fórmula de cura está vazia.");
+          return;
+        }
+
+        const formulaMetade = adicionarMetadeDosDadosFormula(formulaOriginal);
+        const resultado = await rolarNoDicePlusComResultado(
+          formulaMetade,
+          nomeGolpe(numero),
+          "+ Metade dos Dados"
+        );
+        if (resultado === null) return;
+
+        const dadosCura = await aplicarCuraNoHp(resultado);
+        const info = document.querySelector(`#golpe${numero}CuraInfo`);
+        if (info) {
+          info.textContent =
+            `Rolou ${dadosCura.curaRolada} · ` +
+            `Curou +${dadosCura.curaAplicada} · ` +
+            `HP ${dadosCura.hpAnterior} → ${dadosCura.hpAtual}/${dadosCura.hpMax}`;
+        }
+      }
+    } finally {
+      botao.disabled = false;
+    }
+  });
+});
 document .querySelectorAll(".rolarAcerto") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formula = document .querySelector(
 `#golpe${numero}Acerto`
 ) .value .trim(); if (!formula) { alert( "A fórmula de acerto está vazia." ); return; } const formulaFinal = formulaAcertoComTalentos( numero, formula ); await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Acerto" ); } ); } );
 document .querySelectorAll(".rolarDano") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
-) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaComMetade = aplicarMetadeDadosSeAtivo(numero, formulaOriginal); const formulaFinal = formulaDanoComBuff( numero, formulaComMetade ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Dano" ); } ); } );
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Dano" ); } ); } );
 document .querySelectorAll(".rolarDobrarDados") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const campoDobras = document.querySelector(
 `#golpe${numero}DobrarDadosVezes`
-); const vezes = Math.max( 1, Math.min( 10, Number(campoDobras?.value) || 1 ) ); const formulaComMetade = aplicarMetadeDadosSeAtivo(numero, formulaOriginal); const formulaDadosDobrados = dobrarDadosPorVezes( formulaComMetade, vezes ); const formulaFinal = formulaDanoComBuff( numero, formulaDadosDobrados ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero),
+); const vezes = Math.max( 1, Math.min( 10, Number(campoDobras?.value) || 1 ) ); const formulaDadosDobrados = dobrarDadosPorVezes( formulaOriginal, vezes ); const formulaFinal = formulaDanoComBuff( numero, formulaDadosDobrados ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero),
 `Dobrar Dados ${vezes}x`
 ); } ); } );
 document .querySelectorAll(".rolarCritico") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
 `#golpe${numero}Categoria`
-) ?.value || ""; if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico." ); return; } const formulaComMetade = aplicarMetadeDadosSeAtivo(numero, formulaOriginal); const formulaCritica = duplicarDadosFormula( formulaComMetade ); const formulaFinal = formulaDanoComBuff( numero, formulaCritica ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Crítico" ); } ); } );
+) ?.value || ""; if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico." ); return; } const formulaCritica = duplicarDadosFormula( formulaOriginal ); const formulaFinal = formulaDanoComBuff( numero, formulaCritica ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Crítico" ); } ); } );
 document .querySelectorAll(".rolarPassouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
-) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaComMetade = aplicarMetadeDadosSeAtivo(numero, formulaOriginal); const formulaComBuff = formulaDanoComBuff( numero, formulaComMetade, { incluirBonusMestres: false } ); if (!formulaComBuff) { return; } const formulaFinal =
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaComBuff = formulaDanoComBuff( numero, formulaOriginal, { incluirBonusMestres: false } ); if (!formulaComBuff) { return; } const formulaFinal =
 `(${formulaComBuff})/2`;
 await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Passou na CD" ); } ); } );
 document .querySelectorAll(".rolarReprovouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
-) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaComMetade = aplicarMetadeDadosSeAtivo(numero, formulaOriginal); const formulaFinal = formulaDanoComBuff( numero, formulaComMetade ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Reprovou CD" ); } ); } );
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Reprovou CD" ); } ); } );
 document .querySelectorAll(".rolarCriticoCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
 `#golpe${numero}Categoria`
-) ?.value || ""; if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico." ); return; } const formulaComMetade = aplicarMetadeDadosSeAtivo(numero, formulaOriginal); const formulaCritica = duplicarDadosFormula( formulaComMetade ); const formulaFinal = formulaDanoComBuff( numero, formulaCritica ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Golpe Crítico" ); } ); } );
+) ?.value || ""; if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico." ); return; } const formulaCritica = duplicarDadosFormula( formulaOriginal ); const formulaFinal = formulaDanoComBuff( numero, formulaCritica ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Golpe Crítico" ); } ); } );
 async function aplicarCuraNoHp(valorCura) { const cura = Math.max(0, Number(valorCura) || 0);
 const hpAtualAnterior = Number( token.metadata[
 `${PREFIX}/hpAtual`
@@ -5583,7 +5652,7 @@ await criarStatusNoToken( token, hpAtualNovo, hpMax, caBase + evasao );
 return { curaRolada: cura, curaAplicada: Math.max( 0, hpAtualNovo - hpAtualAnterior ), hpAnterior: hpAtualAnterior, hpAtual: hpAtualNovo, hpMax }; }
 document .querySelectorAll(".rolarCura") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formula = document .querySelector(
 `#golpe${numero}Cura`
-) ?.value .trim(); if (!formula) { alert( "A fórmula de cura está vazia." ); return; } botao.disabled = true; try { const formulaFinal = aplicarMetadeDadosSeAtivo(numero, formula); const resultado = await rolarNoDicePlusComResultado( formulaFinal, nomeGolpe(numero), "Cura" ); if (resultado === null) { return; } const dadosCura = await aplicarCuraNoHp( resultado ); const info = document.querySelector(
+) ?.value .trim(); if (!formula) { alert( "A fórmula de cura está vazia." ); return; } botao.disabled = true; try { const resultado = await rolarNoDicePlusComResultado( formula, nomeGolpe(numero), "Cura" ); if (resultado === null) { return; } const dadosCura = await aplicarCuraNoHp( resultado ); const info = document.querySelector(
 `#golpe${numero}CuraInfo`
 ); if (info) { info.textContent =
 `Rolou ${dadosCura.curaRolada} · ` +
