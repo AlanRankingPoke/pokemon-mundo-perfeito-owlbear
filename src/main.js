@@ -5925,8 +5925,64 @@ if (botaoDefinirMega && seletorMega) {
     if (!referencia || referencia.type !== "IMAGE" || referencia.layer !== "CHARACTER" || !nomeReferenciaEhMega) {
       if (mensagemMega) mensagemMega.textContent = "Esse token não está disponível ou o nome não começa com Mega.";
       await atualizarListaTokensMega();
+      return;
+    }
 
+    botaoDefinirMega.disabled = true;
+    try {
+      const config = await definirReferenciaMega(token, referencia);
+      if (textoReferenciaMega) {
+        textoReferenciaMega.textContent = `Mega definida: ${config.referenciaNome || referencia.name || "Personagem"}`;
+      }
+      distribuicaoMegaEdicao = normalizarDistribuicaoMega(config.distribuicao);
+      if (campoMegaHabilidade) campoMegaHabilidade.value = distribuicaoMegaEdicao.habilidade;
+      atualizarVisualMega(false);
+      atualizarEditorMega();
+      if (mensagemMega) mensagemMega.textContent = "Token da mesa salvo como forma Mega.";
+    } catch (erro) {
+      console.error("Erro ao definir token da mesa como Mega:", erro);
+      if (mensagemMega) mensagemMega.textContent = erro?.message || "Não foi possível definir a forma Mega.";
+    } finally {
+      botaoDefinirMega.disabled = false;
+    }
+  });
 }
+
+if (botaoMega) {
+  botaoMega.addEventListener("click", async () => {
+    botaoMega.disabled = true;
+    try {
+      await ativarMegaEvolucao(token);
+      atualizarVisualMega(true);
+      if (mensagemMega) mensagemMega.textContent = "Mega Evolução ativada.";
+    } catch (erro) {
+      console.error("Erro ao ativar Mega Evolução:", erro);
+      if (mensagemMega) mensagemMega.textContent = erro?.message || "Não foi possível ativar a Mega.";
+      atualizarVisualMega(megaAtivaNoToken(token));
+    }
+  });
+}
+
+if (botaoRetirarMega) {
+  botaoRetirarMega.addEventListener("click", async () => {
+    botaoRetirarMega.disabled = true;
+    try {
+      await retirarMegaEvolucao(token);
+      atualizarVisualMega(false);
+      if (mensagemMega) mensagemMega.textContent = "Evolução retirada. O token original foi restaurado.";
+    } catch (erro) {
+      console.error("Erro ao retirar Mega Evolução:", erro);
+      if (mensagemMega) mensagemMega.textContent = erro?.message || "Não foi possível restaurar o token original.";
+      atualizarVisualMega(megaAtivaNoToken(token));
+    }
+  });
+}
+
+atualizarVisualMega(megaAtivaNoToken(token));
+atualizarEditorMega();
+atualizarListaTokensMega();
+}
+
 function mostrarFichaPokemonPericias( token ) { const app = document.querySelector("#app");
 const valoresPericias = {};
 PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = token.metadata[
