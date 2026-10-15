@@ -25,6 +25,12 @@ const META_MENTOR_INSPIRACAO_USADA = `${PREFIX}/classe-mentor-inspiracao-usada`;
 const META_MENTOR_INSPIRACAO_TIPO = `${PREFIX}/classe-mentor-inspiracao-tipo`;
 const META_MENTOR_POKECHEF_USOS = `${PREFIX}/classe-mentor-pokechef-usos`;
 const META_MENTOR_TUTOR_MESTRE_USOS = `${PREFIX}/classe-mentor-tutor-mestre-usos`;
+const META_ENFERMEIRO_CORACAO_RESERVA = `${PREFIX}/classe-enfermeiro-coracao-reserva`;
+const META_ENFERMEIRO_ESPIRITO_USOS = `${PREFIX}/classe-enfermeiro-espirito-usos`;
+const META_ENFERMEIRO_ALEGRIA_USOS = `${PREFIX}/classe-enfermeiro-alegria-usos`;
+const META_PESQUISADOR_PERICIA = `${PREFIX}/classe-pesquisador-pericia`;
+const META_PESQUISADOR_ANALISTA_USOS = `${PREFIX}/classe-pesquisador-analista-usos`;
+const META_PESQUISADOR_APRENDIZADO_USOS = `${PREFIX}/classe-pesquisador-aprendizado-usos`;
 const META_RIVAL_LICAO = `${PREFIX}/origem-rival-licao`;
 const META_RIVAL_REVANCHE = `${PREFIX}/origem-rival-revanche`;
 const META_RIVAL_SEQUENCIA = `${PREFIX}/origem-rival-sequencia`;
@@ -3409,6 +3415,16 @@ const CLASSES_TREINADOR = [
     id: "mentor-pokemon",
     nome: "MENTOR POKÉMON",
     resumo: "Um treinador focado em inspirar, cuidar e ensinar novas estratégias aos seus Pokémon."
+  },
+  {
+    id: "enfermeiro",
+    nome: "ENFERMEIRO",
+    resumo: "Um cuidador especializado em Medicina, reservas de cura e recuperação de Pokémon."
+  },
+  {
+    id: "pesquisador",
+    nome: "PESQUISADOR",
+    resumo: "Um estudioso de Pokémon que analisa adversários, aprimora aprendizado e prepara estratégias."
   }
 ];
 
@@ -3463,6 +3479,49 @@ function formulaGuloseimaMentor(nivel) {
   if (nivel >= 15) return "4d6+6";
   if (nivel >= 9) return "2d8+4";
   return "2d4+2";
+}
+
+function maxUsosInteligenciaClasse(token) {
+  const modInt = Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-int`] ?? "0").replace(",", ".")) || 0);
+  return Math.max(1, 1 + modInt);
+}
+
+function maxReservaCoracaoPuro(nivel) {
+  return Math.max(0, Math.trunc(Number(nivel) || 0) * 5);
+}
+
+function reservaCoracaoPuro(token, nivel) {
+  const max = maxReservaCoracaoPuro(nivel);
+  const salvo = token?.metadata?.[META_ENFERMEIRO_CORACAO_RESERVA];
+  if (salvo === undefined || salvo === null || salvo === "") return max;
+  return Math.max(0, Math.min(max, Math.trunc(Number(salvo) || 0)));
+}
+
+function periciaPesquisadorValida(id) {
+  return ["arcanismo", "historia", "investigacao", "natureza", "religiao"].includes(String(id || ""));
+}
+
+async function rolarInvestigacaoPesquisador(token, titulo, cd = null) {
+  const atualizado = await pegarTokenAtualizado(token.id);
+  if (!atualizado) {
+    alert("O treinador não foi encontrado na cena.");
+    return null;
+  }
+  const valor = atualizado.metadata[`${PREFIX}/pericia-investigacao`] ?? "";
+  const formula = formulaSalvaguarda(valor);
+  if (!formula) {
+    alert("Defina primeiro o valor de Investigação na aba PER/NOT.");
+    return null;
+  }
+  const subtitulo = cd === null ? titulo : `${titulo} • CD ${cd}`;
+  const resultado = await rolarNoDicePlusComResultado(formula, "Investigação", subtitulo);
+  if (resultado === null) return null;
+  if (cd !== null) {
+    alert(resultado >= cd
+      ? `ANÁLISE BEM-SUCEDIDA\nResultado: ${resultado}\nCD: ${cd}`
+      : `ANÁLISE NÃO CONCLUÍDA\nResultado: ${resultado}\nCD: ${cd}`);
+  }
+  return resultado;
 }
 
 function blocoClasseAs({ titulo, nivel, liberado, texto, extra = "" }) {
@@ -3619,6 +3678,14 @@ function mostrarFichaTreinadorClasOri(token) {
   const mentorBonusCar = bonusCarismaMentor(token);
   const mentorPokechefUsos = usosClasseAs(token, META_MENTOR_POKECHEF_USOS);
   const mentorTutorMestreUsos = usosClasseFixo(token, META_MENTOR_TUTOR_MESTRE_USOS, 2);
+  const enfermeiroReservaMax = maxReservaCoracaoPuro(nivelTreinador);
+  const enfermeiroReservaAtual = reservaCoracaoPuro(token, nivelTreinador);
+  const enfermeiroEspiritoUsos = usosClasseFixo(token, META_ENFERMEIRO_ESPIRITO_USOS, 2);
+  const enfermeiroAlegriaUsos = usosClasseFixo(token, META_ENFERMEIRO_ALEGRIA_USOS, 1);
+  const pesquisadorPericia = periciaPesquisadorValida(token.metadata[META_PESQUISADOR_PERICIA]) ? String(token.metadata[META_PESQUISADOR_PERICIA]) : "";
+  const pesquisadorAnalistaUsos = usosClasseFixo(token, META_PESQUISADOR_ANALISTA_USOS, 1);
+  const pesquisadorAprendizadoMax = maxUsosInteligenciaClasse(token);
+  const pesquisadorAprendizadoUsos = usosClasseFixo(token, META_PESQUISADOR_APRENDIZADO_USOS, pesquisadorAprendizadoMax);
   const origem = origemTreinadorPorId(token.metadata[META_TREINADOR_ORIGEM]);
   const rivalLicao = token.metadata[META_RIVAL_LICAO] === true;
   const rivalRevanche = token.metadata[META_RIVAL_REVANCHE] === true;
@@ -3797,6 +3864,137 @@ function mostrarFichaTreinadorClasOri(token) {
                 <button type="button" class="classeAcao" id="usarMentorAprimorarMove" ${mentorTutorMestreUsos > 0 ? "" : "disabled"}>APRIMORAR MOVE</button>
               </div>
               <button type="button" class="classeRestaurar classeAcaoCheia" id="restaurarMentorTutorMestre">RESTAURAR</button>
+            </div>`
+        })}
+      `;
+    }
+
+
+    if (classe.id === "enfermeiro") {
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "ENFERMEIRO",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Ao escolher este caminho, você ganha proficiência em Medicina; se já for proficiente, torna-se especialista. A cada descanso longo ou visita ao Centro Pokémon, escolha até 6 Pokémon para receber PV temporários iguais ao seu nível de Treinador.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>PV TEMPORÁRIOS POR POKÉMON</span><strong>${nivelTreinador}</strong></div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "CORAÇÃO PURO",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Você possui uma reserva de cura igual ao seu nível de Treinador × 5. Com uma ação, pode tocar uma criatura voluntária que não esteja incapacitada e restaurar qualquer quantidade de PV dessa reserva.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>RESERVA DE CURA</span><strong>${enfermeiroReservaAtual}/${enfermeiroReservaMax} PV</strong></div>
+              <div class="classeAcoes">
+                <input id="enfermeiroCoracaoGasto" type="number" min="1" step="1" value="1" style="width:100%;min-height:32px;padding:6px 8px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:9px;font-weight:900;box-sizing:border-box">
+                <button type="button" class="classeAcao" id="usarEnfermeiroCoracao" ${enfermeiroReservaAtual > 0 ? "" : "disabled"}>GASTAR PV</button>
+              </div>
+              <button type="button" class="classeRestaurar classeAcaoCheia" id="restaurarEnfermeiroCoracao">RESTAURAR RESERVA</button>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "ESPÍRITO DE CURA",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Quando você usar um consumível que cure um Pokémon ou seu Pokémon usar um Move de cura, role os dados duas vezes e use o maior resultado. Fora de combate, até duas vezes por descanso longo, você pode curar 1 PV de um Pokémon Incapacitado.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>CURA DE INCAPACITADO</span><strong>${enfermeiroEspiritoUsos}/2</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarEnfermeiroEspirito" ${enfermeiroEspiritoUsos > 0 ? "" : "disabled"}>USAR 1 PV</button>
+                <button type="button" class="classeRestaurar" id="restaurarEnfermeiroEspirito">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "ALEGRIA",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "Uma vez por descanso longo, você pode gastar 1 hora para obter um efeito semelhante a visitar um Centro Pokémon: até 6 Pokémon à sua escolha são totalmente curados de seus ferimentos e de todas as Condições de Status.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>ALEGRIA</span><strong>${enfermeiroAlegriaUsos > 0 ? "DISPONÍVEL" : "USADA"}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarEnfermeiroAlegria" ${enfermeiroAlegriaUsos > 0 ? "" : "disabled"}>USAR</button>
+                <button type="button" class="classeRestaurar" id="restaurarEnfermeiroAlegria">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+      `;
+    }
+
+    if (classe.id === "pesquisador") {
+      const periciasPesquisador = [
+        ["arcanismo", "Arcanismo"],
+        ["historia", "História"],
+        ["investigacao", "Investigação"],
+        ["natureza", "Natureza"],
+        ["religiao", "Religião"]
+      ];
+      const opcoesPesquisador = periciasPesquisador.map(([id, nome]) =>
+        `<option value="${id}" ${pesquisadorPericia === id ? "selected" : ""}>${nome}</option>`
+      ).join("");
+
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "PESQUISADOR",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Escolha Arcanismo, História, Investigação, Natureza ou Religião para ganhar proficiência; se já for proficiente, torna-se especialista. Você sabe onde encontrar uma espécie registrada como vista em sua Pokédex e seu Pokémon inicial pode aprender pelo menos um Move do próximo nível em que receberia novos Moves.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>PERÍCIA ESCOLHIDA</span><strong>${pesquisadorPericia ? esc(periciasPesquisador.find(([id]) => id === pesquisadorPericia)?.[1] || pesquisadorPericia) : "NENHUMA"}</strong></div>
+              <select class="classeSelect" id="pesquisadorPericiaEscolhida">
+                <option value="">— ESCOLHER PERÍCIA —</option>
+                ${opcoesPesquisador}
+              </select>
+              <button type="button" class="classeAcao classeAcaoCheia" id="salvarPesquisadorPericia">SALVAR PERÍCIA</button>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "ANALISTA",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Como ação bônus, faça um teste de Investigação CD 12 para analisar um Pokémon e obter seu nível, habilidade passiva e Natureza conforme o Mestre definir. Pokémon aliados recebem +2 na CA e nos testes de resistência contra o alvo analisado até o fim do combate.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>ANÁLISE</span><strong>${pesquisadorAnalistaUsos}/1</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarPesquisadorAnalista" ${pesquisadorAnalistaUsos > 0 ? "" : "disabled"}>🔎 INVESTIGAÇÃO CD 12</button>
+                <button type="button" class="classeRestaurar" id="restaurarPesquisadorAnalista">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "ESPECIALISTA EM APRENDIZADO",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Todos os seus Pokémon recebem um Talento extra ao chegarem ao nível 10. Além disso, quando um Pokémon aliado sofrer dano de um Move, você pode orientá-lo: se falhou numa resistência, terá vantagem na próxima contra o mesmo Move; se foi atingido por jogada de acerto, o próximo ataque desse Move será feito com desvantagem. O efeito termina após esse próximo uso.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>ORIENTAÇÕES</span><strong>${pesquisadorAprendizadoUsos}/${pesquisadorAprendizadoMax}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarPesquisadorAprendizado" ${pesquisadorAprendizadoUsos > 0 ? "" : "disabled"}>USAR ORIENTAÇÃO</button>
+                <button type="button" class="classeRestaurar" id="restaurarPesquisadorAprendizado">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "PREPARAÇÃO ESTRATÉGICA",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "Após pelo menos 1 hora pesquisando um Treinador, organização ou inimigo importante, faça um teste de Investigação. CD 10 revela alguns Pokémon já usados; CD 15 confirma até 2 Pokémon atuais; CD 20 revela o time atual e o Move mais perigoso de cada Pokémon; CD 25 revela o time atual e todos os Moves conhecidos. Com resultado 15 ou maior, Pokémon aliados recebem +2 em ataque, dano e margem de crítico contra esse alvo até o fim do combate.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>PESQUISA DO ADVERSÁRIO</span><strong>CD 10 / 15 / 20 / 25</strong></div>
+              <button type="button" class="classeAcao classeAcaoCheia" id="usarPesquisadorPreparacao">🔎 ROLAR INVESTIGAÇÃO</button>
             </div>`
         })}
       `;
@@ -4125,6 +4323,89 @@ function mostrarFichaTreinadorClasOri(token) {
   document.querySelector("#usarMentorAprimorarMove")?.addEventListener("click", usarTutorMestre);
   document.querySelector("#restaurarMentorTutorMestre")?.addEventListener("click", async () => {
     await salvarEstadoClasse(token, { [META_MENTOR_TUTOR_MESTRE_USOS]: 2 });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarEnfermeiroCoracao")?.addEventListener("click", async () => {
+    const atual = reservaCoracaoPuro(token, nivelTreinador);
+    if (atual <= 0) return;
+    const campo = document.querySelector("#enfermeiroCoracaoGasto");
+    const gasto = Math.max(1, Math.trunc(Number(campo?.value) || 1));
+    if (gasto > atual) {
+      alert(`A reserva possui apenas ${atual} PV.`);
+      return;
+    }
+    await salvarEstadoClasse(token, { [META_ENFERMEIRO_CORACAO_RESERVA]: atual - gasto });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarEnfermeiroCoracao")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_ENFERMEIRO_CORACAO_RESERVA]: maxReservaCoracaoPuro(nivelTreinador) });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarEnfermeiroEspirito")?.addEventListener("click", async () => {
+    const atual = usosClasseFixo(token, META_ENFERMEIRO_ESPIRITO_USOS, 2);
+    if (atual <= 0) return;
+    await salvarEstadoClasse(token, { [META_ENFERMEIRO_ESPIRITO_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarEnfermeiroEspirito")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_ENFERMEIRO_ESPIRITO_USOS]: 2 });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarEnfermeiroAlegria")?.addEventListener("click", async () => {
+    const atual = usosClasseFixo(token, META_ENFERMEIRO_ALEGRIA_USOS, 1);
+    if (atual <= 0) return;
+    await salvarEstadoClasse(token, { [META_ENFERMEIRO_ALEGRIA_USOS]: 0 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarEnfermeiroAlegria")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_ENFERMEIRO_ALEGRIA_USOS]: 1 });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#salvarPesquisadorPericia")?.addEventListener("click", async () => {
+    const seletor = document.querySelector("#pesquisadorPericiaEscolhida");
+    const periciaId = periciaPesquisadorValida(seletor?.value) ? seletor.value : "";
+    await salvarEstadoClasse(token, { [META_PESQUISADOR_PERICIA]: periciaId });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarPesquisadorAnalista")?.addEventListener("click", async () => {
+    const atual = usosClasseFixo(token, META_PESQUISADOR_ANALISTA_USOS, 1);
+    if (atual <= 0) return;
+    const resultado = await rolarInvestigacaoPesquisador(token, "Analista", 12);
+    if (resultado === null) return;
+    await salvarEstadoClasse(token, { [META_PESQUISADOR_ANALISTA_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarPesquisadorAnalista")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_PESQUISADOR_ANALISTA_USOS]: 1 });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarPesquisadorAprendizado")?.addEventListener("click", async () => {
+    const max = maxUsosInteligenciaClasse(token);
+    const atual = usosClasseFixo(token, META_PESQUISADOR_APRENDIZADO_USOS, max);
+    if (atual <= 0) return;
+    await salvarEstadoClasse(token, { [META_PESQUISADOR_APRENDIZADO_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarPesquisadorAprendizado")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_PESQUISADOR_APRENDIZADO_USOS]: maxUsosInteligenciaClasse(token) });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarPesquisadorPreparacao")?.addEventListener("click", async () => {
+    const resultado = await rolarInvestigacaoPesquisador(token, "Preparação Estratégica");
+    if (resultado === null) return;
+    let faixa = "Abaixo de CD 10: nenhuma informação garantida.";
+    if (resultado >= 25) faixa = "CD 25: time atual e todos os Moves conhecidos de cada Pokémon.";
+    else if (resultado >= 20) faixa = "CD 20: time atual e o Move mais perigoso de cada Pokémon.";
+    else if (resultado >= 15) faixa = "CD 15: até 2 Pokémon do grupo atual; também ativa o bônus de preparação dos aliados.";
+    else if (resultado >= 10) faixa = "CD 10: alguns Pokémon que o adversário já possuiu ou utilizou.";
+    alert(`PREPARAÇÃO ESTRATÉGICA\nResultado: ${resultado}\n${faixa}`);
     await redesenharClasseAberta();
   });
 
