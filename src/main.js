@@ -5260,7 +5260,9 @@ function normalizarMochilaTreinador(valor) {
         nome,
         tipo,
         quantidade: quantidadeBruta,
-        ultimoPreco
+        ultimoPreco,
+        rolagem: String(item.rolagem || "").trim().slice(0, 80),
+        bonusCaptura: Math.trunc(Number(item.bonusCaptura) || 0)
       };
     })
     .filter(Boolean);
@@ -5346,7 +5348,9 @@ async function comprarItemVendinha(token, dados) {
           nome,
           tipo,
           quantidade,
-          ultimoPreco: precoUnitario
+          ultimoPreco: precoUnitario,
+          rolagem: "",
+          bonusCaptura: 0
         });
       }
 
@@ -5398,6 +5402,141 @@ async function gastarItemMochila(token, itemId) {
   });
 
   return resultado;
+}
+
+
+async function atualizarDetalhesItemMochila(token, itemId, alteracoes) {
+  const id = String(itemId || "").trim();
+  if (!id || !alteracoes || typeof alteracoes !== "object") return false;
+
+  let encontrou = false;
+  await OBR.scene.items.updateItems([token.id], (itens) => {
+    for (const item of itens) {
+      item.metadata ||= {};
+      const mochila = normalizarMochilaTreinador(item.metadata[META_TREINADOR_MOCHILA]);
+      const entrada = mochila.find((registro) => registro.id === id);
+      if (!entrada) continue;
+
+      if (Object.prototype.hasOwnProperty.call(alteracoes, "rolagem")) {
+        entrada.rolagem = String(alteracoes.rolagem || "").trim().slice(0, 80);
+      }
+      if (Object.prototype.hasOwnProperty.call(alteracoes, "bonusCaptura")) {
+        entrada.bonusCaptura = Math.trunc(Number(alteracoes.bonusCaptura) || 0);
+      }
+
+      item.metadata[META_TREINADOR_MOCHILA] = mochila;
+      encontrou = true;
+    }
+  });
+  return encontrou;
+}
+
+function formulaItemMochilaValida(valor) {
+  const formula = String(valor || "").trim();
+  if (!formula || formula.length > 80) return false;
+  return /^[0-9dD+\-*/().\s]+$/.test(formula);
+}
+
+function htmlDetalheEspecialItemMochila(item) {
+  if (item.tipo === "medicina") {
+    return `
+      <div style="
+        display:grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        gap:6px;
+        align-items:end;
+        padding-top:7px;
+        margin-top:7px;
+        border-top:1px dashed #dbe5ef;
+      ">
+        <label style="min-width:0;font-size:7.5px;font-weight:1000;color:#6d8299;letter-spacing:.3px;">
+          ROLAGEM
+          <input
+            class="formulaMedicamentoMochila"
+            data-item-id="${esc(item.id)}"
+            data-item-nome="${esc(item.nome)}"
+            type="text"
+            maxlength="80"
+            value="${esc(item.rolagem || "")}"
+            placeholder="Ex.: 2d6+4"
+            style="
+              display:block;width:100%;box-sizing:border-box;margin-top:3px;padding:7px 8px;
+              border:1px solid #cfdbe8;border-radius:8px;background:#fbfdff;color:#294761;
+              font-size:9px;font-weight:900;outline:none;
+            "
+          >
+        </label>
+        <button
+          class="rolarMedicinaMochila"
+          data-item-id="${esc(item.id)}"
+          data-item-nome="${esc(item.nome)}"
+          style="
+            min-height:31px;padding:7px 9px;border:1px solid #75a7df;border-radius:8px;
+            background:#edf6ff;color:#2d6da9;font-size:8px;font-weight:1000;cursor:pointer;white-space:nowrap;
+          "
+        >🎲 ROLAR</button>
+      </div>`;
+  }
+
+  if (item.tipo === "pokebolas") {
+    return `
+      <div style="
+        display:flex;align-items:end;gap:6px;padding-top:7px;margin-top:7px;border-top:1px dashed #dbe5ef;
+      ">
+        <label style="width:112px;max-width:100%;font-size:7.5px;font-weight:1000;color:#6d8299;letter-spacing:.3px;">
+          BÔNUS DE CAPTURA
+          <input
+            class="bonusCapturaMochila"
+            data-item-id="${esc(item.id)}"
+            type="number"
+            step="1"
+            value="${Math.trunc(Number(item.bonusCaptura) || 0)}"
+            placeholder="0"
+            style="
+              display:block;width:100%;box-sizing:border-box;margin-top:3px;padding:7px 8px;
+              border:1px solid #cfdbe8;border-radius:8px;background:#fbfdff;color:#294761;
+              font-size:9px;font-weight:1000;text-align:center;outline:none;
+            "
+          >
+        </label>
+        <span style="padding-bottom:8px;color:#8a9caf;font-size:7.5px;font-weight:900;">sem rolagem</span>
+      </div>`;
+  }
+
+  return "";
+}
+
+function htmlCardItemMochila(item) {
+  return `
+    <div style="
+      padding:8px;
+      border:1px solid #dce5ef;
+      border-radius:10px;
+      background:#fff;
+      box-shadow:0 2px 5px rgba(38,67,99,.035);
+    ">
+      <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;">
+        <div style="
+          min-width:34px;padding:5px 7px;border-radius:8px;background:#edf5ff;color:#2869ad;
+          font-size:10px;line-height:1;font-weight:1000;text-align:center;white-space:nowrap;
+        ">${item.quantidade}x</div>
+
+        <div title="${esc(item.nome)}" style="
+          min-width:0;color:#263f5c;font-size:10px;line-height:1.25;font-weight:900;overflow-wrap:anywhere;
+        ">${esc(item.nome)}</div>
+
+        <button
+          class="gastarItemMochila"
+          data-item-id="${esc(item.id)}"
+          title="Usar 1 ${esc(item.nome)}"
+          style="
+            padding:6px 8px;border:1px solid #e4a8ad;border-radius:8px;background:#fff5f5;color:#a74952;
+            font-size:8px;font-weight:1000;cursor:pointer;white-space:nowrap;
+          "
+        >USAR −1</button>
+      </div>
+      ${htmlDetalheEspecialItemMochila(item)}
+    </div>`;
 }
 
 function htmlItensMochila(mochila) {
@@ -5469,57 +5608,7 @@ function htmlItensMochila(mochila) {
             gap:6px;
             margin-top:8px;
           ">
-            ${destaCategoria.map((item) => `
-              <div style="
-                display:grid;
-                grid-template-columns:auto minmax(0,1fr) auto;
-                align-items:center;
-                gap:8px;
-                padding:8px;
-                border:1px solid #dce5ef;
-                border-radius:10px;
-                background:#fff;
-              ">
-                <div style="
-                  min-width:34px;
-                  padding:5px 7px;
-                  border-radius:8px;
-                  background:#edf5ff;
-                  color:#2869ad;
-                  font-size:10px;
-                  line-height:1;
-                  font-weight:1000;
-                  text-align:center;
-                  white-space:nowrap;
-                ">${item.quantidade}x</div>
-
-                <div title="${esc(item.nome)}" style="
-                  min-width:0;
-                  color:#263f5c;
-                  font-size:10px;
-                  line-height:1.25;
-                  font-weight:900;
-                  overflow-wrap:anywhere;
-                ">${esc(item.nome)}</div>
-
-                <button
-                  class="gastarItemMochila"
-                  data-item-id="${esc(item.id)}"
-                  title="Usar 1 ${esc(item.nome)}"
-                  style="
-                    padding:6px 8px;
-                    border:1px solid #e4a8ad;
-                    border-radius:8px;
-                    background:#fff5f5;
-                    color:#a74952;
-                    font-size:8px;
-                    font-weight:1000;
-                    cursor:pointer;
-                    white-space:nowrap;
-                  "
-                >USAR −1</button>
-              </div>
-            `).join("")}
+            ${destaCategoria.map((item) => htmlCardItemMochila(item)).join("")}
           </div>
         ` : ""}
       </div>`;
@@ -5830,6 +5919,63 @@ async function ativarMocDinTreinador(token) {
   document.querySelector("#precoItemVendinha")?.addEventListener("input", atualizarTotalCompra);
   document.querySelector("#quantidadeItemVendinha")?.addEventListener("input", atualizarTotalCompra);
   atualizarTotalCompra();
+
+
+  document.querySelectorAll(".formulaMedicamentoMochila").forEach((campo) => {
+    campo.addEventListener("change", async () => {
+      await atualizarDetalhesItemMochila(token, campo.dataset.itemId || "", {
+        rolagem: campo.value
+      });
+    });
+    campo.addEventListener("keydown", (evento) => {
+      if (evento.key === "Enter") {
+        evento.preventDefault();
+        campo.blur();
+      }
+    });
+  });
+
+  document.querySelectorAll(".bonusCapturaMochila").forEach((campo) => {
+    campo.addEventListener("change", async () => {
+      const valor = Math.trunc(Number(campo.value) || 0);
+      campo.value = String(valor);
+      await atualizarDetalhesItemMochila(token, campo.dataset.itemId || "", {
+        bonusCaptura: valor
+      });
+    });
+  });
+
+  document.querySelectorAll(".rolarMedicinaMochila").forEach((botao) => {
+    botao.addEventListener("click", async () => {
+      const itemId = botao.dataset.itemId || "";
+      const nome = botao.dataset.itemNome || "Medicina";
+      const campo = Array.from(document.querySelectorAll(".formulaMedicamentoMochila"))
+        .find((entrada) => entrada.dataset.itemId === itemId);
+      const formula = String(campo?.value || "").trim();
+
+      if (!formula) {
+        alert("Escreva a rolagem deste item de Medicina primeiro. Ex.: 2d6+4.");
+        campo?.focus();
+        return;
+      }
+      if (!formulaItemMochilaValida(formula)) {
+        alert("Rolagem inválida. Use uma fórmula como 2d6+4, 1d8 ou 3d4+2.");
+        campo?.focus();
+        return;
+      }
+
+      botao.disabled = true;
+      const textoOriginal = botao.textContent;
+      botao.textContent = "...";
+      try {
+        await atualizarDetalhesItemMochila(token, itemId, { rolagem: formula });
+        await rolarNoDicePlus(formula, nome, "Medicina");
+      } finally {
+        botao.disabled = false;
+        botao.textContent = textoOriginal;
+      }
+    });
+  });
 
   const redesenhar = async () => {
     const atualizado = await pegarTokenAtualizado(token.id);
