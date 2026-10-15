@@ -5252,14 +5252,14 @@ function normalizarMochilaTreinador(valor) {
       if (!item || typeof item !== "object") return null;
       const nome = String(item.nome || "").trim();
       const tipo = tiposValidos.has(item.tipo) ? item.tipo : "extras";
-      const quantidade = Math.max(1, Math.trunc(Number(item.quantidade) || 1));
+      const quantidadeBruta = item.quantidade == null ? 1 : Math.trunc(Number(item.quantidade) || 0);
       const ultimoPreco = Math.max(0, Math.trunc(Number(item.ultimoPreco) || 0));
-      if (!nome) return null;
+      if (!nome || quantidadeBruta <= 0) return null;
       return {
         id: String(item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
         nome,
         tipo,
-        quantidade,
+        quantidade: quantidadeBruta,
         ultimoPreco
       };
     })
@@ -5367,46 +5367,164 @@ async function comprarItemVendinha(token, dados) {
   return resultado;
 }
 
+async function gastarItemMochila(token, itemId) {
+  const id = String(itemId || "").trim();
+  if (!id) return { ok: false, mensagem: "Item inválido." };
+
+  let resultado = { ok: false, mensagem: "Item não encontrado na mochila." };
+
+  await OBR.scene.items.updateItems([token.id], (itens) => {
+    for (const item of itens) {
+      const mochila = normalizarMochilaTreinador(item.metadata[META_TREINADOR_MOCHILA]);
+      const indice = mochila.findIndex((entrada) => entrada.id === id);
+      if (indice < 0) continue;
+
+      const entrada = mochila[indice];
+      const nome = entrada.nome;
+      entrada.quantidade -= 1;
+
+      if (entrada.quantidade <= 0) {
+        mochila.splice(indice, 1);
+        resultado = { ok: true, mensagem: `${nome} foi usado e acabou.` };
+      } else {
+        resultado = {
+          ok: true,
+          mensagem: `${nome} usado. Restam ${entrada.quantidade}.`
+        };
+      }
+
+      item.metadata[META_TREINADOR_MOCHILA] = mochila;
+    }
+  });
+
+  return resultado;
+}
+
 function htmlItensMochila(mochila) {
   const itens = normalizarMochilaTreinador(mochila);
 
+  const icones = {
+    medicina: "✚",
+    tms: "◆",
+    itens: "⚔",
+    pokebolas: "◉",
+    extras: "✦"
+  };
+
   return TIPOS_ITEM_MOCHILA.map((tipo) => {
     const destaCategoria = itens.filter((item) => item.tipo === tipo.id);
+    const temItens = destaCategoria.length > 0;
+
     return `
-      <div style="margin-top:10px;">
+      <div style="
+        margin-top:9px;
+        padding:${temItens ? "10px" : "8px 10px"};
+        border:1px solid ${temItens ? "#d6e1ee" : "#e3eaf2"};
+        border-radius:12px;
+        background:${temItens ? "linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)" : "#fbfcfe"};
+        box-shadow:${temItens ? "0 3px 8px rgba(32,67,108,.055)" : "none"};
+      ">
         <div style="
-          font-size:10px;
-          font-weight:1000;
-          color:#43658c;
-          letter-spacing:.4px;
-          margin-bottom:${destaCategoria.length ? "5px" : "0"};
-        ">${tipo.nome}</div>
-        ${destaCategoria.length ? `
-          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;">
+          display:flex;
+          align-items:center;
+          gap:7px;
+          min-height:20px;
+        ">
+          <span style="
+            width:21px;
+            height:21px;
+            flex:0 0 21px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:7px;
+            background:${temItens ? "#eaf3ff" : "#f1f4f8"};
+            color:${temItens ? "#3474bd" : "#94a3b4"};
+            font-size:10px;
+            font-weight:1000;
+          ">${icones[tipo.id] || "•"}</span>
+          <span style="
+            font-size:10px;
+            font-weight:1000;
+            color:${temItens ? "#315d8e" : "#7f91a6"};
+            letter-spacing:.45px;
+          ">${tipo.nome}</span>
+          ${temItens ? `<span style="
+            margin-left:auto;
+            min-width:21px;
+            padding:2px 6px;
+            border-radius:999px;
+            background:#edf4fc;
+            color:#6280a1;
+            font-size:8px;
+            font-weight:1000;
+            text-align:center;
+          ">${destaCategoria.length}</span>` : ""}
+        </div>
+
+        ${temItens ? `
+          <div style="
+            display:flex;
+            flex-direction:column;
+            gap:6px;
+            margin-top:8px;
+          ">
             ${destaCategoria.map((item) => `
               <div style="
-                min-width:0;
-                padding:9px 10px;
-                border:1px solid #d8e2ee;
+                display:grid;
+                grid-template-columns:auto minmax(0,1fr) auto;
+                align-items:center;
+                gap:8px;
+                padding:8px;
+                border:1px solid #dce5ef;
                 border-radius:10px;
-                background:#ffffff;
-                box-shadow:0 2px 5px rgba(37,67,102,.04);
+                background:#fff;
               ">
                 <div style="
+                  min-width:34px;
+                  padding:5px 7px;
+                  border-radius:8px;
+                  background:#edf5ff;
+                  color:#2869ad;
                   font-size:10px;
+                  line-height:1;
                   font-weight:1000;
-                  color:#263d59;
-                  overflow:hidden;
-                  text-overflow:ellipsis;
+                  text-align:center;
                   white-space:nowrap;
-                ">${item.quantidade}x ${esc(item.nome)}</div>
+                ">${item.quantidade}x</div>
+
+                <div title="${esc(item.nome)}" style="
+                  min-width:0;
+                  color:#263f5c;
+                  font-size:10px;
+                  line-height:1.25;
+                  font-weight:900;
+                  overflow-wrap:anywhere;
+                ">${esc(item.nome)}</div>
+
+                <button
+                  class="gastarItemMochila"
+                  data-item-id="${esc(item.id)}"
+                  title="Usar 1 ${esc(item.nome)}"
+                  style="
+                    padding:6px 8px;
+                    border:1px solid #e4a8ad;
+                    border-radius:8px;
+                    background:#fff5f5;
+                    color:#a74952;
+                    font-size:8px;
+                    font-weight:1000;
+                    cursor:pointer;
+                    white-space:nowrap;
+                  "
+                >USAR −1</button>
               </div>
             `).join("")}
-          </div>` : ""}
+          </div>
+        ` : ""}
       </div>`;
   }).join("");
 }
-
 function mostrarFichaTreinadorMocDin(token) {
   const app = document.querySelector("#app");
   const saldo = normalizarPokedols(token.metadata?.[META_TREINADOR_POKEDOLS]);
@@ -5650,11 +5768,33 @@ function mostrarFichaTreinadorMocDin(token) {
       <section style="
         padding:14px;
         border:1px solid #cfdceb;
-        border-radius:14px;
-        background:#f9fbfe;
+        border-radius:16px;
+        background:linear-gradient(180deg,#f8fbff 0%,#f3f7fc 100%);
+        box-shadow:0 4px 11px rgba(35,66,103,.06);
       ">
-        <div style="font-size:12px;font-weight:1000;color:#375f8d;text-align:center;">MOCHILA</div>
-        <div style="margin-top:9px;">
+        <div style="
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          gap:7px;
+          padding-bottom:7px;
+          border-bottom:1px solid #dde6f0;
+        ">
+          <span style="
+            width:25px;
+            height:25px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:9px;
+            background:#e8f2ff;
+            color:#2f72bb;
+            font-size:12px;
+            font-weight:1000;
+          ">▣</span>
+          <div style="font-size:13px;font-weight:1000;color:#315f93;letter-spacing:.3px;">MOCHILA</div>
+        </div>
+        <div style="margin-top:4px;">
           ${htmlItensMochila(mochila)}
         </div>
       </section>
@@ -5714,6 +5854,29 @@ async function ativarMocDinTreinador(token) {
       return;
     }
     if (await alterarPokedolsTreinador(token, -quantidade)) await redesenhar();
+  });
+
+  document.querySelectorAll(".gastarItemMochila").forEach((botao) => {
+    botao.addEventListener("click", async () => {
+      const itemId = botao.dataset.itemId || "";
+      if (!itemId || botao.disabled) return;
+
+      botao.disabled = true;
+      const textoOriginal = botao.textContent;
+      botao.textContent = "...";
+
+      try {
+        const resultado = await gastarItemMochila(token, itemId);
+        if (!resultado.ok) {
+          alert(resultado.mensagem);
+          return;
+        }
+        await redesenhar();
+      } finally {
+        botao.disabled = false;
+        botao.textContent = textoOriginal;
+      }
+    });
   });
 
   document.querySelector("#comprarItemVendinha")?.addEventListener("click", async () => {
