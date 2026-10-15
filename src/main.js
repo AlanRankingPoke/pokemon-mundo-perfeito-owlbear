@@ -3291,30 +3291,65 @@ function ativarRolagensPericiasTreinador() { document .querySelectorAll( ".rolar
 ); const formula = formulaSalvaguarda( campo?.value ); if (!formula) { alert( "Valor da perícia inválido." ); return; } await rolarNoDicePlus( formula,
 `Perícia ${nome}`
 ); } ); } ); }
+function numeroTreinador(valor) {
+  const numero = Number(String(valor ?? "").trim().replace(",", "."));
+  return Number.isFinite(numero) ? numero : 0;
+}
+function nivelTreinadorNormalizado(valor) {
+  return Math.max(1, Math.trunc(numeroTreinador(valor) || 1));
+}
+function calcularHpMaxTreinador(nivel, modificadorConstituicao) {
+  const lvl = nivelTreinadorNormalizado(nivel);
+  const con = Math.trunc(numeroTreinador(modificadorConstituicao));
+  const hp = 10 + con + ((lvl - 1) * (2 + con));
+  return Math.max(1, hp);
+}
+function calcularCaTreinador(modificadorDestreza, bonusManual = 0) {
+  const des = Math.trunc(numeroTreinador(modificadorDestreza));
+  const bonus = Math.trunc(numeroTreinador(bonusManual));
+  return Math.max(0, 10 + des + bonus);
+}
+function formatarBonusFormula(valor) {
+  const numero = numeroTreinador(valor);
+  if (numero === 0) return "+ 0";
+  return numero > 0 ? `+ ${numero}` : `- ${Math.abs(numero)}`;
+}
 function mostrarFichaTreinadorPagina1(token) {
   const app = document.querySelector("#app");
-  const hpAtual = token.metadata[`${PREFIX}/hpAtual`] ?? 100;
-  const hpMax = token.metadata[`${PREFIX}/hpMax`] ?? 100;
-  const caBase = Number(token.metadata[`${PREFIX}/ca`] ?? 10) || 0;
-  const estagioEvasao = normalizarEstagioBuff(token.metadata[`${PREFIX}/buff-evas`] ?? 0, "evas");
-  const ca = caBase + estagioEvasao;
-  const proficiencia = token.metadata[`${PREFIX}/treinador-proficiencia`] ?? 0;
-  const bonusCaptura = token.metadata[`${PREFIX}/treinador-captura-bonus`] ?? "";
+
   const modificadores = {};
   const salvaguardas = {};
   ATRIBUTOS.forEach((atributo) => {
     modificadores[atributo] = token.metadata[`${PREFIX}/treinador-mod-${atributo}`] ?? "";
     salvaguardas[atributo] = token.metadata[`${PREFIX}/treinador-save-${atributo}`] ?? "";
   });
-  // Treinadores usam somente o valor puro de DES na iniciativa.
-  const iniciativa = Number(String(modificadores.des ?? "").replace(",", ".")) || 0;
+
+  const nivelTreinador = nivelTreinadorNormalizado(token.metadata[`${PREFIX}/treinador-nivel`] ?? 1);
+  const modCon = numeroTreinador(modificadores.con);
+  const modDes = numeroTreinador(modificadores.des);
+  const hpMax = calcularHpMaxTreinador(nivelTreinador, modCon);
+  const hpAtualSalvo = Number(token.metadata[`${PREFIX}/hpAtual`] ?? hpMax);
+  const hpAtual = Math.max(0, Math.min(Number.isFinite(hpAtualSalvo) ? hpAtualSalvo : hpMax, hpMax));
+  const bonusCaManual = Math.trunc(numeroTreinador(token.metadata[`${PREFIX}/treinador-ca-bonus`] ?? 0));
+  const ca = calcularCaTreinador(modDes, bonusCaManual);
+  const proficiencia = token.metadata[`${PREFIX}/treinador-proficiencia`] ?? 0;
+  const bonusCaptura = token.metadata[`${PREFIX}/treinador-captura-bonus`] ?? 0;
+  const iniciativa = modDes;
 
   app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(token, 1)}
     <style>
+      .treinadorStatusTopo{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+      .treinadorStatusTopo .pokemonStatusCampo:nth-child(1),
+      .treinadorStatusTopo .pokemonStatusCampo:nth-child(2){grid-column:span 3!important}
       .treinadorStatusTopo .pokemonStatusCampo:nth-child(3),
-      .treinadorStatusTopo .pokemonStatusCampo:nth-child(4){grid-column:span 3!important}
+      .treinadorStatusTopo .pokemonStatusCampo:nth-child(4),
+      .treinadorStatusTopo .pokemonStatusCampo:nth-child(5){grid-column:span 2!important}
+      .treinadorStatusTopo input[readonly]{background:#f4f7fb!important;color:#23364d!important;font-weight:900!important}
+      .treinadorCaAjuste{display:grid;grid-template-columns:28px minmax(0,1fr) 28px;gap:4px;align-items:center}
+      .treinadorCaAjuste button{min-width:28px;height:30px;padding:0;border-radius:7px;font-weight:1000;font-size:17px;cursor:pointer}
+      .treinadorFormulaMini{display:block;margin-top:3px;font-size:8px;line-height:1.15;color:#718096;font-weight:800;text-align:center}
       .treinadorFerramentasStatus{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;align-items:stretch}
       .treinadorFerramentasStatus .pokemonCalculadoraCard{margin-top:0!important;height:100%;box-sizing:border-box}
       .treinadorFerramentasStatus .iniciativaBloco{width:auto!important;margin-top:0!important;padding:8px!important;border:1px solid #d7e3f2!important;border-radius:11px!important;background:#fff!important;box-sizing:border-box}
@@ -3322,17 +3357,54 @@ function mostrarFichaTreinadorPagina1(token) {
       .treinadorFerramentasStatus .iniciativaLinha{flex-wrap:nowrap!important;gap:4px!important;justify-content:stretch!important}
       .treinadorFerramentasStatus #iniciativa{width:auto!important;min-width:42px!important;flex:1 1 52px!important}
       .treinadorFerramentasStatus #rolarIniciativa{flex:0 0 34px!important;width:34px!important;min-height:34px!important}
-      @media(max-width:430px){.treinadorFerramentasStatus{grid-template-columns:1fr}}
+      .capturaTreinadorCard{margin-top:10px;padding:9px;border:1px solid #d7e3f2;border-radius:11px;background:#fff}
+      .capturaTreinadorLinha{display:grid;grid-template-columns:90px minmax(0,1fr);gap:7px;align-items:end}
+      .capturaFormula{margin:6px 0 0;padding:5px 7px;border-radius:7px;background:#f4f7fb;color:#365a86;font-size:9px;font-weight:900;text-align:center}
+      @media(max-width:430px){
+        .treinadorFerramentasStatus{grid-template-columns:1fr}
+        .capturaTreinadorLinha{grid-template-columns:1fr}
+      }
     </style>
     <div class="statusGrid statusGridPokemon" style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
       <div class="statusCard pokemonStatusPrincipal" style="flex:1;min-width:120px;">
         <div class="pokemonStatusTopo treinadorStatusTopo">
-          <div class="pokemonStatusCampo"><p>HP Atual</p><input id="hpAtual" type="number" value="${hpAtual}"></div>
-          <div class="pokemonStatusCampo"><p>HP Máx.</p><input id="hpMax" type="number" value="${hpMax}"></div>
-          <div class="pokemonStatusCampo"><p>CA</p><input id="ca" type="number" value="${ca}"></div>
-          <div class="pokemonStatusCampo"><p>Prof</p><input id="treinadorProficiencia" type="number" min="0" step="1" value="${proficiencia}"></div>
+          <div class="pokemonStatusCampo">
+            <p>HP Atual</p>
+            <input id="hpAtual" type="number" value="${hpAtual}">
+          </div>
+          <div class="pokemonStatusCampo">
+            <p>HP Máx.</p>
+            <input id="hpMax" type="number" value="${hpMax}" readonly>
+            <span class="treinadorFormulaMini" id="formulaHpTreinador">Automático por Nível + CON</span>
+          </div>
+          <div class="pokemonStatusCampo">
+            <p>Lv.</p>
+            <input
+              id="treinadorNivel"
+              type="number"
+              min="1"
+              step="1"
+              value="${nivelTreinador}"
+              placeholder="1"
+              title="Level do Treinador"
+            >
+          </div>
+          <div class="pokemonStatusCampo">
+            <p>CA</p>
+            <div class="treinadorCaAjuste">
+              <button id="diminuirCaTreinador" type="button" title="Diminuir bônus manual de CA">−</button>
+              <input id="ca" type="number" value="${ca}" readonly>
+              <button id="aumentarCaTreinador" type="button" title="Aumentar bônus manual de CA">+</button>
+            </div>
+            <input id="bonusCaTreinador" type="hidden" value="${bonusCaManual}">
+            <span class="treinadorFormulaMini" id="formulaCaTreinador">10 + DES + bônus</span>
+          </div>
+          <div class="pokemonStatusCampo">
+            <p>Prof</p>
+            <input id="treinadorProficiencia" type="number" min="0" step="1" value="${proficiencia}">
+          </div>
         </div>
-        <input id="bonusEvasaoCa" type="hidden" value="${estagioEvasao}">
+        <input id="bonusEvasaoCa" type="hidden" value="0">
 
         <div class="treinadorFerramentasStatus">
           <div class="calculadoraHpLinha pokemonCalculadoraCard" style="margin:0;min-width:0;padding:8px;">
@@ -3350,7 +3422,7 @@ function mostrarFichaTreinadorPagina1(token) {
           <div class="iniciativaBloco treinadorIniciativaCompacta" style="margin:0;min-width:0;padding:8px;">
             <p class="iniciativaTitulo" style="margin-bottom:5px;">Iniciativa</p>
             <div class="iniciativaLinha" style="display:grid;grid-template-columns:minmax(0,1fr) repeat(3,34px);gap:4px;align-items:center;">
-              <input id="iniciativa" type="text" value="${esc(iniciativa)}" readonly title="Treinador: iniciativa = DES. Sem Alerta, Habilidade, Dobrar ou bônus de Velocidade.">
+              <input id="iniciativa" type="text" value="${esc(iniciativa)}" readonly title="Treinador: iniciativa = modificador de DES.">
               <button id="rolarIniciativa" type="button" title="Rolar iniciativa" style="min-width:34px;min-height:34px;padding:4px;">🎲</button>
               <button id="abrirApresentadorIniciativa" type="button" title="Abrir apresentador" style="min-width:34px;min-height:34px;padding:4px;">📋</button>
               <button id="removerDaIniciativa" type="button" title="Remover da iniciativa" style="min-width:34px;min-height:34px;padding:4px;">✕</button>
@@ -3358,13 +3430,15 @@ function mostrarFichaTreinadorPagina1(token) {
           </div>
         </div>
 
-        <hr style="margin:12px 0;">
-        <div style="display:flex;align-items:flex-end;gap:8px;">
-          <div style="width:92px;flex:0 0 92px;">
-            <p style="margin:0 0 4px;font-size:10px;font-weight:900;">Captura</p>
-            <input id="treinadorCapturaBonus" type="text" value="${esc(bonusCaptura)}" placeholder="+0" style="width:100%;box-sizing:border-box;text-align:center;">
+        <div class="capturaTreinadorCard">
+          <div class="capturaTreinadorLinha">
+            <div>
+              <p style="margin:0 0 4px;font-size:10px;font-weight:900;">Bônus Pokébola</p>
+              <input id="treinadorCapturaBonus" type="number" step="1" value="${esc(bonusCaptura)}" style="width:100%;box-sizing:border-box;text-align:center;">
+            </div>
+            <button id="rolarCaptura" type="button" style="min-height:36px;font-weight:bold;cursor:pointer;">🎲 Rolar Captura</button>
           </div>
-          <button id="rolarCaptura" type="button" style="flex:1;min-height:36px;font-weight:bold;cursor:pointer;">🎲 Rolar Captura</button>
+          <div class="capturaFormula" id="formulaCapturaTreinador">1d20 + 2×Prof + Bônus da Pokébola</div>
         </div>
       </div>
     </div>
@@ -3380,22 +3454,102 @@ function mostrarFichaTreinadorPagina1(token) {
   ativarRolagemIniciativaTreinador(token);
   ativarCalculadoraHpTreinador();
 
+  const campoNivel = document.querySelector("#treinadorNivel");
+  const campoCon = document.querySelector("#treinador-mod-con");
+  const campoDes = document.querySelector("#treinador-mod-des");
+  const campoHpAtual = document.querySelector("#hpAtual");
+  const campoHpMax = document.querySelector("#hpMax");
+  const campoCa = document.querySelector("#ca");
+  const campoBonusCa = document.querySelector("#bonusCaTreinador");
+  const campoProf = document.querySelector("#treinadorProficiencia");
+  const campoBonusPokebola = document.querySelector("#treinadorCapturaBonus");
+  const textoFormulaHp = document.querySelector("#formulaHpTreinador");
+  const textoFormulaCa = document.querySelector("#formulaCaTreinador");
+  const textoFormulaCaptura = document.querySelector("#formulaCapturaTreinador");
+
+  const atualizarHpAutomatico = () => {
+    const nivel = nivelTreinadorNormalizado(campoNivel?.value);
+    const con = Math.trunc(numeroTreinador(campoCon?.value));
+    const novoHpMax = calcularHpMaxTreinador(nivel, con);
+    if (campoHpMax) campoHpMax.value = String(novoHpMax);
+    if (campoHpAtual) {
+      const atual = numeroTreinador(campoHpAtual.value);
+      campoHpAtual.value = String(Math.max(0, Math.min(atual, novoHpMax)));
+    }
+    if (textoFormulaHp) {
+      const ganho = 2 + con;
+      textoFormulaHp.textContent = `Nv.1: 10 ${formatarBonusFormula(con)} CON • +${ganho} HP/nível seguinte`;
+    }
+  };
+
+  const atualizarCaAutomatica = () => {
+    const des = Math.trunc(numeroTreinador(campoDes?.value));
+    const bonus = Math.trunc(numeroTreinador(campoBonusCa?.value));
+    const novaCa = calcularCaTreinador(des, bonus);
+    if (campoCa) campoCa.value = String(novaCa);
+    if (textoFormulaCa) textoFormulaCa.textContent = `10 ${formatarBonusFormula(des)} DES ${formatarBonusFormula(bonus)} bônus = ${novaCa}`;
+  };
+
+  const atualizarFormulaCaptura = () => {
+    const prof = Math.trunc(numeroTreinador(campoProf?.value));
+    const bonusBola = Math.trunc(numeroTreinador(campoBonusPokebola?.value));
+    const bonusProf = prof * 2;
+    const total = bonusProf + bonusBola;
+    if (textoFormulaCaptura) {
+      textoFormulaCaptura.textContent = `1d20 ${formatarBonusFormula(bonusProf)} (2×Prof) ${formatarBonusFormula(bonusBola)} Pokébola = 1d20 ${formatarBonusFormula(total)}`;
+    }
+  };
+
+  campoNivel?.addEventListener("input", atualizarHpAutomatico);
+  campoNivel?.addEventListener("change", atualizarHpAutomatico);
+  campoCon?.addEventListener("input", atualizarHpAutomatico);
+  campoCon?.addEventListener("change", atualizarHpAutomatico);
+  campoDes?.addEventListener("input", atualizarCaAutomatica);
+  campoDes?.addEventListener("change", atualizarCaAutomatica);
+  campoProf?.addEventListener("input", atualizarFormulaCaptura);
+  campoProf?.addEventListener("change", atualizarFormulaCaptura);
+  campoBonusPokebola?.addEventListener("input", atualizarFormulaCaptura);
+  campoBonusPokebola?.addEventListener("change", atualizarFormulaCaptura);
+
+  document.querySelector("#aumentarCaTreinador")?.addEventListener("click", () => {
+    if (!campoBonusCa) return;
+    campoBonusCa.value = String(Math.trunc(numeroTreinador(campoBonusCa.value)) + 1);
+    atualizarCaAutomatica();
+  });
+  document.querySelector("#diminuirCaTreinador")?.addEventListener("click", () => {
+    if (!campoBonusCa) return;
+    campoBonusCa.value = String(Math.trunc(numeroTreinador(campoBonusCa.value)) - 1);
+    atualizarCaAutomatica();
+  });
+
+  atualizarHpAutomatico();
+  atualizarCaAutomatica();
+  atualizarFormulaCaptura();
+
   document.querySelector("#rolarCaptura")?.addEventListener("click", async () => {
-    const valor = document.querySelector("#treinadorCapturaBonus")?.value;
-    const formula = formulaSalvaguarda(valor);
-    if (!formula) { alert("Bônus de captura inválido."); return; }
-    await rolarNoDicePlus(formula, "Captura");
+    const prof = Math.trunc(numeroTreinador(campoProf?.value));
+    const bonusBola = Math.trunc(numeroTreinador(campoBonusPokebola?.value));
+    const bonusTotal = (prof * 2) + bonusBola;
+    const formula = formulaSalvaguarda(bonusTotal);
+    if (!formula) { alert("Não foi possível calcular a captura."); return; }
+    await rolarNoDicePlus(formula, `Captura • 2×Prof ${formatarBonusFormula(prof * 2)} • Pokébola ${formatarBonusFormula(bonusBola)}`);
   });
 
   document.querySelector("#salvarTreinadorStatus")?.addEventListener("click", async () => {
+    atualizarHpAutomatico();
+    atualizarCaAutomatica();
+    atualizarFormulaCaptura();
+
     const botaoSalvarStatus = document.querySelector("#salvarTreinadorStatus");
     const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1";
     if (botaoSalvarStatus) botaoSalvarStatus.dataset.aplicarCalculadora = "0";
     const dados = await pegarHpCaDaTela(aplicarCalculadora);
     if (!dados) return;
 
-    const novaProficiencia = Number(document.querySelector("#treinadorProficiencia")?.value) || 0;
-    const novoBonusCaptura = document.querySelector("#treinadorCapturaBonus")?.value.trim() || "";
+    const novoNivel = nivelTreinadorNormalizado(campoNivel?.value);
+    const novaProficiencia = Math.trunc(numeroTreinador(campoProf?.value));
+    const novoBonusCaptura = Math.trunc(numeroTreinador(campoBonusPokebola?.value));
+    const novoBonusCa = Math.trunc(numeroTreinador(campoBonusCa?.value));
     const novosModificadores = {};
     const novasSalvaguardas = {};
     ATRIBUTOS.forEach((atributo) => {
@@ -3403,14 +3557,20 @@ function mostrarFichaTreinadorPagina1(token) {
       novasSalvaguardas[atributo] = document.querySelector(`#treinador-save-${atributo}`)?.value.trim() || "";
     });
 
+    const hpMaxAutomatico = calcularHpMaxTreinador(novoNivel, novosModificadores.con);
+    const caAutomatica = calcularCaTreinador(novosModificadores.des, novoBonusCa);
+    const hpAtualFinal = Math.max(0, Math.min(dados.hpAtual, hpMaxAutomatico));
+
     await OBR.scene.items.updateItems([token.id], (items) => {
       for (const item of items) {
-        item.metadata[`${PREFIX}/hpAtual`] = dados.hpAtual;
-        item.metadata[`${PREFIX}/hpMax`] = dados.hpMax;
-        item.metadata[`${PREFIX}/ca`] = dados.caBase;
+        item.metadata[`${PREFIX}/hpAtual`] = hpAtualFinal;
+        item.metadata[`${PREFIX}/hpMax`] = hpMaxAutomatico;
+        // Mantemos /ca como CA efetiva para compatibilidade com o HUD e os demais sistemas.
+        item.metadata[`${PREFIX}/ca`] = caAutomatica;
+        item.metadata[`${PREFIX}/treinador-ca-bonus`] = novoBonusCa;
+        item.metadata[`${PREFIX}/treinador-nivel`] = novoNivel;
         item.metadata[`${PREFIX}/treinador-proficiencia`] = novaProficiencia;
-        item.metadata[`${PREFIX}/treinador-iniciativa`] = Number(String(novosModificadores.des ?? "").replace(",", ".")) || 0;
-        // Remove de vez os antigos modificadores especiais de iniciativa do treinador.
+        item.metadata[`${PREFIX}/treinador-iniciativa`] = Math.trunc(numeroTreinador(novosModificadores.des));
         delete item.metadata[`${PREFIX}/treinador-iniciativa-alerta`];
         delete item.metadata[`${PREFIX}/treinador-iniciativa-habilidade`];
         delete item.metadata[`${PREFIX}/treinador-iniciativa-dobrar`];
@@ -3422,11 +3582,13 @@ function mostrarFichaTreinadorPagina1(token) {
       }
     });
 
-    document.querySelector("#hpAtual").value = dados.hpAtual;
-    document.querySelector("#hpMax").value = dados.hpMax;
-    document.querySelector("#iniciativa").value = String(Number(String(novosModificadores.des ?? "").replace(",", ".")) || 0);
+    if (campoHpAtual) campoHpAtual.value = String(hpAtualFinal);
+    if (campoHpMax) campoHpMax.value = String(hpMaxAutomatico);
+    if (campoCa) campoCa.value = String(caAutomatica);
+    const campoIniciativa = document.querySelector("#iniciativa");
+    if (campoIniciativa) campoIniciativa.value = String(Math.trunc(numeroTreinador(novosModificadores.des)));
     if (dados.calculadoraAplicada) document.querySelector("#alterarHp").value = "";
-    await criarStatusNoToken(token, dados.hpAtual, dados.hpMax, dados.ca);
+    await criarStatusNoToken(token, hpAtualFinal, hpMaxAutomatico, caAutomatica);
   });
 }
 function mostrarFichaTreinadorPerNot(token) {
