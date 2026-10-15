@@ -11,6 +11,7 @@ const META_TURNO_INICIATIVA =
 const META_PAINEL_INICIATIVA = `${PREFIX}/painel-iniciativa`;
 const META_PAINEL_INICIATIVA_FILHO = `${PREFIX}/painel-iniciativa-filho`;
 const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
+const META_TREINADOR_ESPECIALIZACOES = `${PREFIX}/treinador-especializacoes`;
 const META_POKEMON_DONO_TREINADOR = `${PREFIX}/treinador-pokemon-dono`;
 const META_POKEMON_SLOT_TREINADOR = `${PREFIX}/treinador-pokemon-slot`;
 const META_TREINADOR_CAPTURA_ALVO = `${PREFIX}/treinador-captura-alvo`;
@@ -510,7 +511,8 @@ const ESTILO_FICHA = `
   #paginaPokemon4,
   #paginaTreinador1,
   #paginaTreinador2,
-  #paginaTreinador3 {
+  #paginaTreinador3,
+  #paginaTreinador4 {
     flex:1 !important;
     min-height:52px !important;
     padding:8px 5px !important;
@@ -527,7 +529,8 @@ const ESTILO_FICHA = `
   #paginaPokemon4[style*="opacity:1"],
   #paginaTreinador1[style*="opacity:1"],
   #paginaTreinador2[style*="opacity:1"],
-  #paginaTreinador3[style*="opacity:1"] {
+  #paginaTreinador3[style*="opacity:1"],
+  #paginaTreinador4[style*="opacity:1"] {
     background: linear-gradient(135deg, #4c8dff 0%, #2f73dc 100%) !important;
     color:#ffffff !important;
     border-color:#2f73dc !important;
@@ -3274,18 +3277,67 @@ async function trocarTipoFicha( token ) { await OBR.scene.items.updateItems( [to
 `${PREFIX}/tipoFicha`
 ]; } } );
 mostrarEscolhaFicha( token ); }
+
+const ESPECIALIZACOES_TREINADOR = [
+  { id: "guardiao-passaros", nome: "Guardião dos Pássaros", tipo: "VOADOR", texto: "Proficiência em Percepção; Pokémon Voadores recebem +1 em perícias; +1d4 em Percepção ligada à visão; enxerga detalhes com clareza a até 30 m." },
+  { id: "maniaco-insetos", nome: "Maníaco por Insetos", tipo: "INSETO", texto: "Proficiência em Natureza; Pokémon Insetos recebem +1 em perícias; +1d4 em Natureza ou Investigação ao examinar vestígios de Insetos; após 1 minuto, estima quando foram deixados e a direção seguida." },
+  { id: "campista", nome: "Campista", tipo: "TERRA", texto: "Proficiência em Sobrevivência; Pokémon Terrestres recebem +1 em perícias; prepara acampamento adequado em 10 minutos com materiais disponíveis; quem descansar nele recebe +1d4 em resistências contra efeitos naturais do clima." },
+  { id: "domador-dragoes", nome: "Domador de Dragões", tipo: "DRAGÃO", texto: "Sabedoria +1; Pokémon Dragões recebem +1 em perícias; sente Dragões em até 60 m sem saber a direção; +1d4 em Carisma para acalmar, impressionar ou intimidar Dragões e em resistências contra medo causado por eles." },
+  { id: "engenheiro", nome: "Engenheiro", tipo: "ELÉTRICO", texto: "Inteligência +1; Pokémon Elétricos recebem +1 em perícias; +1d4 em testes para compreender ou consertar máquinas e mecanismos." },
+  { id: "piromaniaco", nome: "Piromaníaco", tipo: "FOGO", texto: "Constituição +1; Pokémon de Fogo recebem +1 em perícias; sempre possui meios de produzir uma pequena chama; +1d4 para iniciar, controlar, extinguir ou identificar incêndios; como reação, reduz dano de Fogo em 1d4 + Prof." },
+  { id: "jardineiro", nome: "Jardineiro", tipo: "GRAMA", texto: "Proficiência em Natureza; Pokémon de Grama recebem +1 em perícias; +1d4 em Natureza para identificar plantas e seus efeitos, incluindo plantas úteis e venenosas." },
+  { id: "artista-marcial", nome: "Artista Marcial", tipo: "LUTADOR", texto: "Força, Destreza ou Constituição +1; Pokémon Lutadores recebem +1 em perícias; +1d4 em Acrobacia para escapar de agarrões; 1/Descanso Longo, refaz um teste falho que o deixaria Caído, Agarrado ou movido contra sua vontade, usando o novo resultado." },
+  { id: "alpinista", nome: "Alpinista", tipo: "PEDRA", texto: "Força, Destreza ou Constituição +1; Pokémon de Pedra recebem +1 em perícias; +1d4 em Atletismo ou Acrobacia ao escalar ou atravessar terrenos acidentados." },
+  { id: "mistico", nome: "Místico", tipo: "FANTASMA", texto: "Proficiência em Arcanismo; Pokémon Fantasmas recebem +1 em perícias; após 1 minuto de concentração, detecta Fantasmas ou atividade sobrenatural em 15 m sem direção; +1d4 em Arcanismo para estudá-los e em resistências contra medo causado por Fantasmas." },
+  { id: "metalurgico", nome: "Metalúrgico", tipo: "AÇO", texto: "Força ou Constituição +1; Pokémon de Aço recebem +1 em perícias; +1d4 para avaliar, fabricar ou reparar objetos metálicos; após descanso curto ou longo, concede uma proteção que reduz um ataque em 1d4 + metade da Prof, arredondada para baixo, e então desaparece." },
+  { id: "psiquico", nome: "Psíquico", tipo: "PSÍQUICO", texto: "Inteligência +1; Pokémon Psíquicos recebem +1 em perícias; +1d4 em resistências contra efeitos psíquicos de Pokémon; mantém comunicação telepática sem limite de distância com um Pokémon e pode comandá-lo fora do alcance da voz; troca o conectado após Descanso Longo." },
+  { id: "nadador", nome: "Nadador", tipo: "ÁGUA", texto: "Constituição +1; Pokémon de Água recebem +1 em perícias; ganha deslocamento de natação igual ao de caminhada; +1d4 em Atletismo para nadar contra correntezas, ondas fortes ou obstáculos aquáticos." },
+  { id: "encantador", nome: "Encantador", tipo: "FADA", texto: "Carisma +1; Pokémon Fadas recebem +1 em perícias; +1d4 em Persuasão com pessoas ou Pokémon amigáveis; após 1 minuto de interação com uma criatura, recebe +1d4 no próximo teste de Carisma contra ela nos próximos 10 minutos." },
+  { id: "sombrio", nome: "Sombrio", tipo: "SOMBRIO", texto: "Proficiência em Enganação ou Furtividade; Pokémon Sombrios recebem +1 em perícias; +1d4 em Furtividade com pouca luz; +1d4 em Enganação para sustentar disfarces, fingir outra identidade ou ocultar informações, intenções e envolvimento." },
+  { id: "alquimista", nome: "Alquimista", tipo: "VENENOSO", texto: "Proficiência em Medicina ou Investigação; Pokémon Venenosos recebem +1 em perícias; +1d4 em resistências contra venenos ou efeitos venenosos causados por Pokémon; 1/Descanso Longo, cria uma Poção que deve ser usada em até 24 horas." },
+  { id: "jogador-equipe", nome: "Jogador de Equipe", tipo: "NORMAL", texto: "Qualquer atributo +1; Pokémon Normais recebem +1 em perícias; 1/Descanso Curto, concede +1d4 ao próximo teste de perícia ou ataque de um aliado até o início do próximo turno; também pode usar a reação para conceder o bônus antes da rolagem." },
+  { id: "esquiador", nome: "Esquiador", tipo: "GELO", texto: "Proficiência em Acrobacia ou Atletismo; Pokémon de Gelo recebem +1 em perícias; +1d4 em Acrobacia ou Atletismo para atravessar gelo, neve e terreno escorregadio; como reação, reduz dano de Gelo em 1d4 + Prof." }
+];
+
+function especializacoesTreinadorPadrao() {
+  return Array.from({ length: 6 }, () => null);
+}
+
+function normalizarEspecializacoesTreinador(valor) {
+  const lista = Array.isArray(valor) ? valor : [];
+  const validos = new Set(ESPECIALIZACOES_TREINADOR.map((e) => e.id));
+  return Array.from({ length: 6 }, (_, i) => {
+    const id = typeof lista[i] === "string" ? lista[i] : null;
+    return id && validos.has(id) ? id : null;
+  });
+}
+
+function especializacaoPorId(id) {
+  return ESPECIALIZACOES_TREINADOR.find((e) => e.id === id) || null;
+}
+
+async function salvarEspecializacoesTreinador(token, lista) {
+  const normalizada = normalizarEspecializacoesTreinador(lista);
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) item.metadata[META_TREINADOR_ESPECIALIZACOES] = normalizada;
+  });
+  token.metadata[META_TREINADOR_ESPECIALIZACOES] = normalizada;
+  return normalizada;
+}
+
 function menuTreinador(paginaAtual) {
 return `
     <div class="fichaAbas" style="
       display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
+      grid-template-columns:repeat(4,minmax(0,1fr));
       gap:6px;
       margin-bottom:15px;
       width:100%;
     ">
-      <button id="paginaTreinador1" style="min-width:0;width:100%;padding:8px 4px;font-size:11px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 1 ? "1" : "0.65"};">STATUS</button>
-      <button id="paginaTreinador2" style="min-width:0;width:100%;padding:8px 4px;font-size:11px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 2 ? "1" : "0.65"};">PKM</button>
-      <button id="paginaTreinador3" style="min-width:0;width:100%;padding:8px 4px;font-size:11px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 3 ? "1" : "0.65"};">PER/NOT</button>
+      <button id="paginaTreinador1" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 1 ? "1" : "0.65"};">STATUS</button>
+      <button id="paginaTreinador2" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 2 ? "1" : "0.65"};">PKM</button>
+      <button id="paginaTreinador3" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 3 ? "1" : "0.65"};">PER/NOT</button>
+      <button id="paginaTreinador4" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 4 ? "1" : "0.65"};">Tal/Esp</button>
     </div>
   `;
 }
@@ -3389,6 +3441,7 @@ function ativarMenuTreinador(token) {
   const status = document.querySelector("#paginaTreinador1");
   const pkm = document.querySelector("#paginaTreinador2");
   const perNot = document.querySelector("#paginaTreinador3");
+  const talEsp = document.querySelector("#paginaTreinador4");
   status?.addEventListener("click", async () => {
     const tokenAtualizado = await pegarTokenAtualizado(token.id);
     if (tokenAtualizado) mostrarFichaTreinadorPagina1(tokenAtualizado);
@@ -3400,6 +3453,10 @@ function ativarMenuTreinador(token) {
   perNot?.addEventListener("click", async () => {
     const tokenAtualizado = await pegarTokenAtualizado(token.id);
     if (tokenAtualizado) mostrarFichaTreinadorPerNot(tokenAtualizado);
+  });
+  talEsp?.addEventListener("click", async () => {
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaTreinadorTalEsp(tokenAtualizado);
   });
 }
 function criarPericiasTreinador(valores) {
@@ -3548,6 +3605,8 @@ function mostrarFichaTreinadorPagina1(token) {
       .treinadorStatusTopo input[readonly]{background:#f4f7fb!important;color:#23364d!important;font-weight:900!important}
       .treinadorCaAjuste{display:grid;grid-template-columns:28px minmax(0,1fr) 28px;gap:4px;align-items:center}
       .treinadorCaAjuste button{min-width:28px;height:30px;padding:0;border-radius:7px;font-weight:1000;font-size:17px;cursor:pointer}
+      .treinadorCaAjuste #ca{display:none!important}
+      #caTreinadorVisivel{box-sizing:border-box!important;user-select:none!important}
       .treinadorFormulaMini{display:block;margin-top:3px;font-size:8px;line-height:1.15;color:#718096;font-weight:800;text-align:center}
       .treinadorFerramentasStatus{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;align-items:stretch}
       .treinadorFerramentasStatus .pokemonCalculadoraCard{margin-top:0!important;height:100%;box-sizing:border-box}
@@ -3603,8 +3662,9 @@ function mostrarFichaTreinadorPagina1(token) {
             <p>CA</p>
             <div class="treinadorCaAjuste">
               <button id="diminuirCaTreinador" type="button" title="Diminuir bônus manual de CA">−</button>
-              <input id="ca" type="number" value="${ca}" readonly>
+              <div id="caTreinadorVisivel" aria-label="CA do Treinador" style="min-height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #a9c4e7;border-left:4px solid #4c8dff;border-radius:9px;background:#f7fbff;color:#18385f;font-size:16px;font-weight:1000;line-height:1;opacity:1;-webkit-text-fill-color:#18385f;">${ca}</div>
               <button id="aumentarCaTreinador" type="button" title="Aumentar bônus manual de CA">+</button>
+              <input id="ca" type="hidden" value="${ca}">
             </div>
             <input id="bonusCaTreinador" type="hidden" value="${bonusCaManual}">
             <span class="treinadorFormulaMini" id="formulaCaTreinador">10 + DES + bônus</span>
@@ -3701,6 +3761,7 @@ function mostrarFichaTreinadorPagina1(token) {
   const campoHpAtual = document.querySelector("#hpAtual");
   const campoHpMax = document.querySelector("#hpMax");
   const campoCa = document.querySelector("#ca");
+  const campoCaVisivel = document.querySelector("#caTreinadorVisivel");
   const campoBonusCa = document.querySelector("#bonusCaTreinador");
   const campoProf = document.querySelector("#treinadorProficiencia");
   const campoCdCaptura = document.querySelector("#treinadorCapturaCd");
@@ -3763,6 +3824,7 @@ function mostrarFichaTreinadorPagina1(token) {
     const bonus = Math.trunc(numeroTreinador(campoBonusCa?.value));
     const novaCa = calcularCaTreinador(des, bonus);
     if (campoCa) campoCa.value = String(novaCa);
+    if (campoCaVisivel) campoCaVisivel.textContent = String(novaCa);
     if (textoFormulaCa) textoFormulaCa.textContent = `10 ${formatarBonusFormula(des)} DES ${formatarBonusFormula(bonus)} bônus = ${novaCa}`;
     if (sincronizarHud) sincronizarCaTreinadorComHud();
   };
@@ -4000,6 +4062,7 @@ function mostrarFichaTreinadorPagina1(token) {
     if (campoHpAtual) campoHpAtual.value = String(hpAtualFinal);
     if (campoHpMax) campoHpMax.value = String(hpMaxAutomatico);
     if (campoCa) campoCa.value = String(caAutomatica);
+    if (campoCaVisivel) campoCaVisivel.textContent = String(caAutomatica);
     const campoIniciativa = document.querySelector("#iniciativa");
     if (campoIniciativa) campoIniciativa.value = String(Math.trunc(numeroTreinador(novosModificadores.des)));
     if (dados.calculadoraAplicada) document.querySelector("#alterarHp").value = "";
@@ -4054,6 +4117,173 @@ function mostrarFichaTreinadorPerNot(token) {
     });
   });
 }
+
+function mostrarFichaTreinadorTalEsp(token) {
+  const app = document.querySelector("#app");
+  let selecionadas = normalizarEspecializacoesTreinador(token.metadata[META_TREINADOR_ESPECIALIZACOES]);
+
+  const renderSlot = (id, indice) => {
+    const esp = especializacaoPorId(id);
+    if (!esp) {
+      return `
+        <button type="button" class="slotEspecializacao vazio" data-slot-especializacao="${indice}">
+          <span class="slotEspNumero">${indice + 1}</span>
+          <span class="slotEspMais">＋</span>
+          <span class="slotEspVazioTexto">Escolher especialização</span>
+        </button>`;
+    }
+    return `
+      <div class="slotEspecializacao preenchido" data-slot-especializacao="${indice}" role="button" tabindex="0">
+        <span class="slotEspNumero">${indice + 1}</span>
+        <button type="button" class="slotEspRemover" data-remover-especializacao="${indice}" title="Remover especialização">×</button>
+        <div class="slotEspCabecalho">
+          <strong>${esc(esp.nome)}</strong>
+          <span>${esc(esp.tipo)}</span>
+        </div>
+        <p>${esc(esp.texto)}</p>
+        <small>Clique para trocar</small>
+      </div>`;
+  };
+
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoTreinador(token, 4)}
+    <style>
+      .talEspCabecalho{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:10px}
+      .talEspCabecalho h3{margin:0;color:#263f60;font-size:15px}
+      .talEspCabecalho p{margin:3px 0 0;font-size:9px;color:#7a8da5;font-weight:700;line-height:1.3}
+      .talEspContador{flex:0 0 auto;padding:5px 8px;border-radius:999px;background:#eaf3ff;color:#2f6cb8;font-size:9px;font-weight:1000;border:1px solid #c8dcf4}
+      .gradeEspecializacoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      .slotEspecializacao{position:relative;min-width:0;min-height:112px;border:1px solid #d3dfed;border-radius:12px;background:linear-gradient(180deg,#fff 0%,#f7faff 100%);box-shadow:0 3px 9px rgba(39,72,110,.06);box-sizing:border-box}
+      button.slotEspecializacao{width:100%;padding:12px 9px;cursor:pointer;color:#647b98}
+      .slotEspecializacao.vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border-style:dashed;background:#fbfdff}
+      .slotEspecializacao.vazio:hover{border-color:#79a8e6;background:#f2f8ff}
+      .slotEspecializacao.preenchido{padding:10px 9px 8px;cursor:pointer;overflow:hidden}
+      .slotEspecializacao.preenchido:hover{border-color:#8db3e2;background:#f8fbff}
+      .slotEspNumero{position:absolute;left:7px;top:7px;width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#edf4fc;color:#5e7898;font-size:9px;font-weight:1000}
+      .slotEspMais{font-size:25px;line-height:1;color:#4c8dff;font-weight:800}
+      .slotEspVazioTexto{font-size:10px;font-weight:900}
+      .slotEspCabecalho{padding:1px 24px 6px 22px;border-bottom:1px solid #e6edf5;margin-bottom:6px;min-width:0}
+      .slotEspCabecalho strong{display:block;color:#233d5e;font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
+      .slotEspCabecalho span{display:inline-block;margin-top:3px;padding:2px 5px;border-radius:999px;background:#eaf3ff;color:#3471bc;font-size:7px;font-weight:1000;letter-spacing:.3px}
+      .slotEspecializacao p{margin:0;color:#52677f;font-size:8.5px;line-height:1.32;font-weight:700}
+      .slotEspecializacao small{display:block;margin-top:6px;color:#8ba0b8;font-size:7px;font-weight:900;text-align:right}
+      .slotEspRemover{position:absolute;right:6px;top:6px;width:20px!important;height:20px!important;min-height:20px!important;padding:0!important;border-radius:50%!important;background:#fff1f1!important;color:#b44747!important;border:1px solid #e7bcbc!important;font-size:13px!important;line-height:18px!important;z-index:2;cursor:pointer}
+      .guiaEspecializacoesOverlay{display:none;position:fixed;inset:7px;z-index:99999;background:rgba(245,249,254,.985);border:1px solid #bcd0e6;border-radius:14px;box-shadow:0 14px 36px rgba(20,43,70,.24);overflow:hidden;flex-direction:column}
+      .guiaEspecializacoesOverlay.aberto{display:flex}
+      .guiaEspTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#fff;border-bottom:1px solid #dce6f1}
+      .guiaEspTopo h3{margin:0;color:#263f60;font-size:13px}
+      .guiaEspTopo p{margin:2px 0 0;color:#7b90aa;font-size:8px;font-weight:700}
+      .guiaEspFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:17px!important;cursor:pointer}
+      .guiaEspLista{padding:9px;overflow:auto;display:grid;grid-template-columns:1fr;gap:6px}
+      .guiaEspOpcao{width:100%;text-align:left;padding:8px 9px;border:1px solid #d6e2ef;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
+      .guiaEspOpcao:hover{border-color:#78a8e2;background:#f5f9ff}
+      .guiaEspOpcao:disabled{opacity:.42;cursor:not-allowed;background:#f2f4f7}
+      .guiaEspNome{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#263f60;font-size:9px;font-weight:1000;text-transform:uppercase}
+      .guiaEspTipo{flex:0 0 auto;padding:2px 5px;border-radius:999px;background:#eaf3ff;color:#3572bd;font-size:7px}
+      .guiaEspTexto{display:block;margin-top:4px;color:#5b6f87;font-size:8px;line-height:1.28;font-weight:700;text-transform:none}
+      .talentosFuturo{margin-top:12px;padding:8px 9px;border:1px dashed #d8e2ed;border-radius:10px;color:#8a9cb0;font-size:8px;font-weight:800;text-align:center;background:#fafcff}
+      @media(max-width:410px){.gradeEspecializacoes{grid-template-columns:1fr}.slotEspecializacao{min-height:96px}}
+    </style>
+
+    <div class="talEspCabecalho">
+      <div>
+        <h3>Especializações</h3>
+        <p>Escolha até 6 especializações. Clique em qualquer caixa para abrir o guia.</p>
+      </div>
+      <span class="talEspContador" id="contadorEspecializacoes">${selecionadas.filter(Boolean).length}/6</span>
+    </div>
+    <div class="gradeEspecializacoes" id="gradeEspecializacoes">
+      ${selecionadas.map((id, indice) => renderSlot(id, indice)).join("")}
+    </div>
+    <div class="talentosFuturo">TALENTOS • área reservada para a próxima etapa da ficha.</div>
+
+    <div class="guiaEspecializacoesOverlay" id="guiaEspecializacoes">
+      <div class="guiaEspTopo">
+        <div>
+          <h3>Guia de Especializações</h3>
+          <p id="guiaEspSubtitulo">Escolha uma especialização para o slot.</p>
+        </div>
+        <button type="button" class="guiaEspFechar" id="fecharGuiaEspecializacoes">×</button>
+      </div>
+      <div class="guiaEspLista" id="listaGuiaEspecializacoes"></div>
+    </div>
+  `;
+
+  ativarCabecalhoTreinador(token);
+
+  const overlay = document.querySelector("#guiaEspecializacoes");
+  const listaGuia = document.querySelector("#listaGuiaEspecializacoes");
+  const subtitulo = document.querySelector("#guiaEspSubtitulo");
+  let slotAberto = null;
+
+  const fecharGuia = () => {
+    overlay?.classList.remove("aberto");
+    slotAberto = null;
+  };
+
+  const abrirGuia = (indice) => {
+    slotAberto = indice;
+    const atualId = selecionadas[indice];
+    const usadosOutros = new Set(selecionadas.filter((id, i) => id && i !== indice));
+    if (subtitulo) subtitulo.textContent = `Slot ${indice + 1} • escolha uma especialização`;
+    if (listaGuia) {
+      listaGuia.innerHTML = ESPECIALIZACOES_TREINADOR.map((esp) => {
+        const indisponivel = usadosOutros.has(esp.id);
+        const atual = atualId === esp.id;
+        return `
+          <button type="button" class="guiaEspOpcao" data-especializacao="${esp.id}" ${indisponivel ? "disabled" : ""}>
+            <span class="guiaEspNome">
+              <span>${esc(esp.nome)}${atual ? " ✓" : ""}</span>
+              <span class="guiaEspTipo">${esc(esp.tipo)}</span>
+            </span>
+            <span class="guiaEspTexto">${esc(esp.texto)}</span>
+          </button>`;
+      }).join("");
+      listaGuia.querySelectorAll("[data-especializacao]").forEach((botao) => {
+        botao.addEventListener("click", async () => {
+          if (slotAberto === null || botao.disabled) return;
+          const id = botao.dataset.especializacao;
+          const novaLista = [...selecionadas];
+          novaLista[slotAberto] = id;
+          await salvarEspecializacoesTreinador(token, novaLista);
+          const tokenAtualizado = await pegarTokenAtualizado(token.id);
+          if (tokenAtualizado) mostrarFichaTreinadorTalEsp(tokenAtualizado);
+        });
+      });
+    }
+    overlay?.classList.add("aberto");
+  };
+
+  document.querySelector("#fecharGuiaEspecializacoes")?.addEventListener("click", fecharGuia);
+  overlay?.addEventListener("click", (evento) => { if (evento.target === overlay) fecharGuia(); });
+
+  document.querySelectorAll("[data-slot-especializacao]").forEach((slot) => {
+    const abrir = (evento) => {
+      if (evento.target?.closest?.("[data-remover-especializacao]")) return;
+      const indice = Number(slot.dataset.slotEspecializacao);
+      if (Number.isInteger(indice)) abrirGuia(indice);
+    };
+    slot.addEventListener("click", abrir);
+    slot.addEventListener("keydown", (evento) => {
+      if (evento.key === "Enter" || evento.key === " ") { evento.preventDefault(); abrir(evento); }
+    });
+  });
+
+  document.querySelectorAll("[data-remover-especializacao]").forEach((botao) => {
+    botao.addEventListener("click", async (evento) => {
+      evento.stopPropagation();
+      const indice = Number(botao.dataset.removerEspecializacao);
+      if (!Number.isInteger(indice)) return;
+      const novaLista = [...selecionadas];
+      novaLista[indice] = null;
+      await salvarEspecializacoesTreinador(token, novaLista);
+      const tokenAtualizado = await pegarTokenAtualizado(token.id);
+      if (tokenAtualizado) mostrarFichaTreinadorTalEsp(tokenAtualizado);
+    });
+  });
+}
+
 function menuPokemon(paginaAtual) {
 return `
     <div class="fichaAbas" style="
