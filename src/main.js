@@ -15,6 +15,8 @@ const META_TREINADOR_ESPECIALIZACOES = `${PREFIX}/treinador-especializacoes`;
 const META_TREINADOR_TALENTOS = `${PREFIX}/treinador-talentos`;
 const META_TREINADOR_ORIGEM = `${PREFIX}/treinador-origem`;
 const META_TREINADOR_CLASSE = `${PREFIX}/treinador-classe`;
+const META_TREINADOR_POKEDOLS = `${PREFIX}/treinador-pokedols`;
+const META_TREINADOR_MOCHILA = `${PREFIX}/treinador-mochila`;
 const META_AS_MESTRE_BATALHA_USOS = `${PREFIX}/classe-as-mestre-batalha-usos`;
 const META_AS_RITMO_COMBATE_USOS = `${PREFIX}/classe-as-ritmo-combate-usos`;
 const META_AS_TROCA_RAPIDA_USOS = `${PREFIX}/classe-as-troca-rapida-usos`;
@@ -5228,16 +5230,509 @@ function mostrarFichaTreinadorClasOri(token) {
   });
 }
 
+
+const TIPOS_ITEM_MOCHILA = [
+  { id: "medicina", nome: "MEDICINA", detalhe: "Poções e itens que curam HP ou condições de status." },
+  { id: "tms", nome: "TMs", detalhe: "Máquinas Técnicas e itens relacionados a Moves." },
+  { id: "itens", nome: "ITENS", detalhe: "Itens de combate e equipamentos para Pokémon." },
+  { id: "extras", nome: "EXTRAS", detalhe: "Cordas, ferramentas e outros itens de aventura." }
+];
+
+function normalizarPokedols(valor) {
+  const numero = Math.trunc(Number(String(valor ?? 0).trim().replace(",", ".")) || 0);
+  return Math.max(0, numero);
+}
+
+function normalizarMochilaTreinador(valor) {
+  if (!Array.isArray(valor)) return [];
+  const tiposValidos = new Set(TIPOS_ITEM_MOCHILA.map((tipo) => tipo.id));
+  return valor
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const nome = String(item.nome || "").trim();
+      const tipo = tiposValidos.has(item.tipo) ? item.tipo : "extras";
+      const quantidade = Math.max(1, Math.trunc(Number(item.quantidade) || 1));
+      const ultimoPreco = Math.max(0, Math.trunc(Number(item.ultimoPreco) || 0));
+      if (!nome) return null;
+      return {
+        id: String(item.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        nome,
+        tipo,
+        quantidade,
+        ultimoPreco
+      };
+    })
+    .filter(Boolean);
+}
+
+function formatarPokedols(valor) {
+  return normalizarPokedols(valor).toLocaleString("pt-BR");
+}
+
+function nomeTipoMochila(id) {
+  return TIPOS_ITEM_MOCHILA.find((tipo) => tipo.id === id)?.nome || "EXTRAS";
+}
+
+async function usuarioAtualEhGm() {
+  try {
+    return (await OBR.player.getRole()) === "GM";
+  } catch (_) {
+    return false;
+  }
+}
+
+async function alterarPokedolsTreinador(token, delta) {
+  if (!(await usuarioAtualEhGm())) {
+    alert("Somente o GM da mesa pode alterar os Pokédols diretamente.");
+    return false;
+  }
+
+  const ajuste = Math.trunc(Number(delta) || 0);
+  if (!ajuste) return false;
+
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      item.metadata ||= {};
+      const atual = normalizarPokedols(item.metadata[META_TREINADOR_POKEDOLS]);
+      item.metadata[META_TREINADOR_POKEDOLS] = Math.max(0, atual + ajuste);
+    }
+  });
+  return true;
+}
+
+async function comprarItemVendinha(token, dados) {
+  const nome = String(dados?.nome || "").trim();
+  const tipo = String(dados?.tipo || "");
+  const preco = Math.max(0, Math.trunc(Number(dados?.preco) || 0));
+  const tipoValido = TIPOS_ITEM_MOCHILA.some((item) => item.id === tipo);
+
+  if (!nome) return { ok: false, mensagem: "Escreva o nome do item antes de comprar." };
+  if (!tipoValido) return { ok: false, mensagem: "Escolha um tipo de item válido." };
+  if (!Number.isFinite(preco) || preco < 0) return { ok: false, mensagem: "Informe um preço válido." };
+
+  let resultado = { ok: false, mensagem: "Não foi possível concluir a compra." };
+  const idNovo = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      item.metadata ||= {};
+      const saldo = normalizarPokedols(item.metadata[META_TREINADOR_POKEDOLS]);
+
+      if (saldo < preco) {
+        resultado = {
+          ok: false,
+          mensagem: `Pokédols insuficientes. Saldo atual: ₱${formatarPokedols(saldo)}.`
+        };
+        continue;
+      }
+
+      const mochila = normalizarMochilaTreinador(item.metadata[META_TREINADOR_MOCHILA]);
+      const existente = mochila.find(
+        (registro) =>
+          registro.tipo === tipo &&
+          registro.nome.localeCompare(nome, "pt-BR", { sensitivity: "base" }) === 0
+      );
+
+      if (existente) {
+        existente.quantidade += 1;
+        existente.ultimoPreco = preco;
+      } else {
+        mochila.push({
+          id: idNovo,
+          nome,
+          tipo,
+          quantidade: 1,
+          ultimoPreco: preco
+        });
+      }
+
+      const novoSaldo = saldo - preco;
+      item.metadata[META_TREINADOR_POKEDOLS] = novoSaldo;
+      item.metadata[META_TREINADOR_MOCHILA] = mochila;
+      resultado = {
+        ok: true,
+        mensagem: `${nome} comprado por ₱${formatarPokedols(preco)}.`,
+        saldo: novoSaldo
+      };
+    }
+  });
+
+  return resultado;
+}
+
+function htmlItensMochila(mochila) {
+  const itens = normalizarMochilaTreinador(mochila);
+  if (!itens.length) {
+    return `
+      <div style="
+        padding:18px 12px;
+        border:1px dashed #cbd8e6;
+        border-radius:12px;
+        text-align:center;
+        color:#8b9caf;
+        font-size:10px;
+        font-weight:800;
+        background:#fbfdff;
+      ">
+        A mochila ainda está vazia.
+      </div>`;
+  }
+
+  return TIPOS_ITEM_MOCHILA.map((tipo) => {
+    const destaCategoria = itens.filter((item) => item.tipo === tipo.id);
+    if (!destaCategoria.length) return "";
+    return `
+      <div style="margin-top:10px;">
+        <div style="
+          font-size:10px;
+          font-weight:1000;
+          color:#43658c;
+          letter-spacing:.4px;
+          margin-bottom:5px;
+        ">${tipo.nome}</div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;">
+          ${destaCategoria.map((item) => `
+            <div style="
+              min-width:0;
+              padding:9px 10px;
+              border:1px solid #d8e2ee;
+              border-radius:10px;
+              background:#ffffff;
+              box-shadow:0 2px 5px rgba(37,67,102,.04);
+            ">
+              <div style="
+                font-size:10px;
+                font-weight:1000;
+                color:#263d59;
+                overflow:hidden;
+                text-overflow:ellipsis;
+                white-space:nowrap;
+              ">${esc(item.nome)}</div>
+              <div style="margin-top:3px;font-size:9px;font-weight:800;color:#8294a9;">
+                Qtd. ${item.quantidade}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>`;
+  }).join("");
+}
+
 function mostrarFichaTreinadorMocDin(token) {
   const app = document.querySelector("#app");
+  const saldo = normalizarPokedols(token.metadata?.[META_TREINADOR_POKEDOLS]);
+  const mochila = normalizarMochilaTreinador(token.metadata?.[META_TREINADOR_MOCHILA]);
+
   app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(token, 6)}
-    <div style="padding:28px 14px;border:1px dashed #c6d7e8;border-radius:12px;background:#fbfdff;text-align:center;">
-      <div style="font-size:14px;font-weight:1000;color:#395d87;">MOC/DIN</div>
-      <div style="margin-top:5px;font-size:9px;font-weight:800;color:#8a9caf;">Aba reservada para a próxima etapa da ficha do treinador.</div>
+
+    <div style="
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      width:100%;
+    ">
+      <section style="
+        padding:14px;
+        border:1px solid #cfdceb;
+        border-radius:14px;
+        background:linear-gradient(180deg,#ffffff 0%,#f7faff 100%);
+        box-shadow:0 3px 8px rgba(39,72,110,.06);
+      ">
+        <div style="
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:10px;
+          flex-wrap:wrap;
+        ">
+          <div>
+            <div style="font-size:11px;font-weight:1000;color:#4a6b92;letter-spacing:.45px;">POKÉDOLS</div>
+            <div id="saldoPokedolsTreinador" style="
+              margin-top:2px;
+              font-size:27px;
+              line-height:1;
+              font-weight:1000;
+              color:#173f76;
+            ">₱${formatarPokedols(saldo)}</div>
+          </div>
+          <div style="
+            padding:7px 9px;
+            border-radius:999px;
+            background:#eef5ff;
+            color:#52739a;
+            font-size:8.5px;
+            font-weight:900;
+            text-align:center;
+          ">SALDO DO TREINADOR</div>
+        </div>
+
+        <div id="controlesPokedolsGm" style="display:none;margin-top:12px;">
+          <div style="
+            padding:10px;
+            border:1px solid #d8e3ef;
+            border-radius:11px;
+            background:#f8fbff;
+          ">
+            <div style="font-size:9px;font-weight:1000;color:#5e7692;margin-bottom:6px;">
+              CONTROLE DO GM
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;">
+              <input id="valorAlterarPokedols" type="number" min="1" step="1" placeholder="Quantidade" style="
+                min-width:0;
+                width:100%;
+                padding:9px;
+                border:1px solid #cbd7e5;
+                border-radius:9px;
+                font-size:10px;
+                font-weight:800;
+                background:#fff;
+              ">
+              <button id="darPokedols" style="
+                padding:8px 10px;
+                border-radius:9px;
+                border:1px solid #2f9a62;
+                background:#eaf8f0;
+                color:#24764c;
+                font-size:9px;
+                font-weight:1000;
+                cursor:pointer;
+                white-space:nowrap;
+              ">+ DAR</button>
+              <button id="reduzirPokedols" style="
+                padding:8px 10px;
+                border-radius:9px;
+                border:1px solid #cf6670;
+                background:#fff0f1;
+                color:#9a3d47;
+                font-size:9px;
+                font-weight:1000;
+                cursor:pointer;
+                white-space:nowrap;
+              ">− REDUZIR</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="avisoPokedolsJogador" style="
+          display:none;
+          margin-top:9px;
+          font-size:8.5px;
+          line-height:1.35;
+          font-weight:800;
+          color:#8797aa;
+        ">
+          Apenas o GM pode dar ou reduzir Pokédols. Compras estão liberadas normalmente.
+        </div>
+      </section>
+
+      <section style="
+        padding:14px;
+        border:1px solid #cfdceb;
+        border-radius:14px;
+        background:#ffffff;
+      ">
+        <div style="text-align:center;">
+          <div style="font-size:17px;font-weight:1000;color:#285f9e;">VENDINHA</div>
+          <div style="margin-top:3px;font-size:9px;line-height:1.35;font-weight:800;color:#8496aa;">
+            Escreva o item, escolha a categoria e informe o preço.
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px;">
+          <label style="font-size:9px;font-weight:1000;color:#58708c;">
+            ITEM
+            <input id="nomeItemVendinha" type="text" maxlength="80" placeholder="Ex.: Leftovers" style="
+              display:block;
+              width:100%;
+              margin-top:4px;
+              padding:10px;
+              border:1px solid #cbd7e5;
+              border-radius:10px;
+              font-size:11px;
+              font-weight:800;
+              color:#253c58;
+              background:#fff;
+              box-sizing:border-box;
+            ">
+          </label>
+
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,.7fr);gap:8px;">
+            <label style="font-size:9px;font-weight:1000;color:#58708c;">
+              TIPO
+              <select id="tipoItemVendinha" style="
+                display:block;
+                width:100%;
+                margin-top:4px;
+                padding:10px;
+                border:1px solid #cbd7e5;
+                border-radius:10px;
+                font-size:10px;
+                font-weight:900;
+                color:#304963;
+                background:#fff;
+              ">
+                ${TIPOS_ITEM_MOCHILA.map((tipo) => `<option value="${tipo.id}">${tipo.nome}</option>`).join("")}
+              </select>
+            </label>
+
+            <label style="font-size:9px;font-weight:1000;color:#58708c;">
+              PREÇO
+              <input id="precoItemVendinha" type="number" min="0" step="1" placeholder="0" style="
+                display:block;
+                width:100%;
+                margin-top:4px;
+                padding:10px;
+                border:1px solid #cbd7e5;
+                border-radius:10px;
+                font-size:11px;
+                font-weight:900;
+                color:#304963;
+                background:#fff;
+                box-sizing:border-box;
+              ">
+            </label>
+          </div>
+
+          <div id="descricaoTipoVendinha" style="
+            min-height:28px;
+            padding:8px 9px;
+            border-radius:9px;
+            background:#f5f8fc;
+            color:#72869e;
+            font-size:8.5px;
+            line-height:1.35;
+            font-weight:800;
+          "></div>
+
+          <button id="comprarItemVendinha" style="
+            width:100%;
+            padding:11px 12px;
+            border:1px solid #287a50;
+            border-radius:10px;
+            background:linear-gradient(135deg,#48ba79 0%,#329761 100%);
+            color:#fff;
+            font-size:11px;
+            font-weight:1000;
+            cursor:pointer;
+            box-shadow:0 4px 9px rgba(50,151,97,.18);
+          ">COMPRAR</button>
+
+          <div id="mensagemVendinha" style="
+            min-height:14px;
+            text-align:center;
+            font-size:9px;
+            font-weight:900;
+            color:#68809a;
+          "></div>
+        </div>
+      </section>
+
+      <section style="
+        padding:14px;
+        border:1px solid #cfdceb;
+        border-radius:14px;
+        background:#f9fbfe;
+      ">
+        <div style="font-size:12px;font-weight:1000;color:#375f8d;text-align:center;">MOCHILA</div>
+        <div style="margin-top:9px;">
+          ${htmlItensMochila(mochila)}
+        </div>
+      </section>
     </div>`;
+
   ativarCabecalhoTreinador(token);
+  ativarMocDinTreinador(token);
+}
+
+async function ativarMocDinTreinador(token) {
+  const controlesGm = document.querySelector("#controlesPokedolsGm");
+  const avisoJogador = document.querySelector("#avisoPokedolsJogador");
+  const ehGm = await usuarioAtualEhGm();
+
+  if (controlesGm) controlesGm.style.display = ehGm ? "block" : "none";
+  if (avisoJogador) avisoJogador.style.display = ehGm ? "none" : "block";
+
+  const atualizarDescricaoTipo = () => {
+    const seletor = document.querySelector("#tipoItemVendinha");
+    const alvo = document.querySelector("#descricaoTipoVendinha");
+    const tipo = TIPOS_ITEM_MOCHILA.find((item) => item.id === seletor?.value) || TIPOS_ITEM_MOCHILA[0];
+    if (alvo) alvo.textContent = tipo.detalhe;
+  };
+  atualizarDescricaoTipo();
+  document.querySelector("#tipoItemVendinha")?.addEventListener("change", atualizarDescricaoTipo);
+
+  const redesenhar = async () => {
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaTreinadorMocDin(atualizado);
+  };
+
+  document.querySelector("#darPokedols")?.addEventListener("click", async () => {
+    const campo = document.querySelector("#valorAlterarPokedols");
+    const quantidade = Math.max(0, Math.trunc(Number(campo?.value) || 0));
+    if (!quantidade) {
+      alert("Informe uma quantidade de Pokédols.");
+      return;
+    }
+    if (await alterarPokedolsTreinador(token, quantidade)) await redesenhar();
+  });
+
+  document.querySelector("#reduzirPokedols")?.addEventListener("click", async () => {
+    const campo = document.querySelector("#valorAlterarPokedols");
+    const quantidade = Math.max(0, Math.trunc(Number(campo?.value) || 0));
+    if (!quantidade) {
+      alert("Informe uma quantidade de Pokédols.");
+      return;
+    }
+    if (await alterarPokedolsTreinador(token, -quantidade)) await redesenhar();
+  });
+
+  document.querySelector("#comprarItemVendinha")?.addEventListener("click", async () => {
+    const botao = document.querySelector("#comprarItemVendinha");
+    const mensagem = document.querySelector("#mensagemVendinha");
+    const nome = document.querySelector("#nomeItemVendinha")?.value || "";
+    const tipo = document.querySelector("#tipoItemVendinha")?.value || "";
+    const precoCampo = document.querySelector("#precoItemVendinha");
+    const precoBruto = String(precoCampo?.value ?? "").trim();
+
+    if (!precoBruto) {
+      if (mensagem) {
+        mensagem.style.color = "#a34b54";
+        mensagem.textContent = "Informe o preço do item.";
+      }
+      return;
+    }
+
+    const preco = Math.trunc(Number(precoBruto));
+    if (!Number.isFinite(preco) || preco < 0) {
+      if (mensagem) {
+        mensagem.style.color = "#a34b54";
+        mensagem.textContent = "Preço inválido.";
+      }
+      return;
+    }
+
+    if (botao) botao.disabled = true;
+    try {
+      const resultado = await comprarItemVendinha(token, { nome, tipo, preco });
+      if (!resultado.ok) {
+        if (mensagem) {
+          mensagem.style.color = "#a34b54";
+          mensagem.textContent = resultado.mensagem;
+        }
+        return;
+      }
+      if (mensagem) {
+        mensagem.style.color = "#2d8558";
+        mensagem.textContent = resultado.mensagem;
+      }
+      await esperar(350);
+      await redesenhar();
+    } finally {
+      if (botao) botao.disabled = false;
+    }
+  });
 }
 
 function menuTreinador(paginaAtual) {
