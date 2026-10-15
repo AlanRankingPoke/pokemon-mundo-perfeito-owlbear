@@ -12,6 +12,7 @@ const META_PAINEL_INICIATIVA = `${PREFIX}/painel-iniciativa`;
 const META_PAINEL_INICIATIVA_FILHO = `${PREFIX}/painel-iniciativa-filho`;
 const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
 const META_TREINADOR_ESPECIALIZACOES = `${PREFIX}/treinador-especializacoes`;
+const META_TREINADOR_TALENTOS = `${PREFIX}/treinador-talentos`;
 const META_POKEMON_DONO_TREINADOR = `${PREFIX}/treinador-pokemon-dono`;
 const META_POKEMON_SLOT_TREINADOR = `${PREFIX}/treinador-pokemon-slot`;
 const META_TREINADOR_CAPTURA_ALVO = `${PREFIX}/treinador-captura-alvo`;
@@ -3278,6 +3279,57 @@ async function trocarTipoFicha( token ) { await OBR.scene.items.updateItems( [to
 ]; } } );
 mostrarEscolhaFicha( token ); }
 
+const TALENTOS_TREINADOR = [
+  { id: "acrobata", nome: "Acrobata", texto: "Destreza +1; ganha proficiência em Acrobacia e, se já for proficiente, torna-se especialista; como Ação Bônus, pode fazer Destreza (Acrobacia) CD 15 e, em sucesso, terreno difícil não custa movimento extra até o fim do turno." },
+  { id: "atleta", nome: "Atleta", texto: "Força ou Destreza +1; levantar-se quando Caído custa apenas 1,5 m; escalar não custa movimento adicional; saltos correndo exigem apenas 1,5 m de corrida prévia em vez de 3 m." },
+  { id: "ator", nome: "Ator", texto: "Carisma +1; vantagem em Carisma (Atuação) e Carisma (Enganação) ao se passar por outra pessoa; pode imitar fala ou sons ouvidos por pelo menos 1 minuto, sendo descoberto por Sabedoria (Intuição) resistida por sua Carisma (Enganação)." },
+  { id: "curandeiro", nome: "Curandeiro", texto: "Ao usar kit de primeiros-socorros para estabilizar uma criatura, ela recupera 1 PV; com uma ação e um uso do kit, cura 1d6 + 4 + o total de Dados de Vida da criatura, que só pode receber essa cura novamente após descanso curto ou longo." },
+  { id: "dedos-rapidos", nome: "Dedos Rápidos", texto: "Destreza +1; ganha proficiência em Prestidigitação e, se já for proficiente, torna-se especialista; como Ação Bônus, pode fazer Destreza (Prestidigitação) para plantar algo em alguém, esconder um objeto, levantar uma bolsa ou tirar algo de um bolso." },
+  { id: "disputador", nome: "Disputador", texto: "Ataques contra criatura agarrada por você têm vantagem em vez da desvantagem normal, exceto enquanto você estiver Impedido; pode usar sua ação para tentar imobilizar criatura já agarrada, deixando ambos Impedidos em sucesso; pode usar reação para tentar agarrar quem sair do seu alcance sem Desengajar; vantagem para escapar de agarrões que não venham de Moves." },
+  { id: "esquivo", nome: "Esquivo", texto: "Pré-requisito: Destreza 13 ou maior; pode tentar se esconder quando estiver levemente obscurecido; errar um ataque à distância enquanto escondido não revela sua posição; penumbra não impõe desvantagem em Percepção relacionada à visão." },
+  { id: "aumento-ca", nome: "Aumento de CA", texto: "Pokémon: CA +1, mantido após evoluir e considerado nas evoluções. Treinador: o cálculo de CA passa a incluir, além de Destreza, um modificador definido pela Classe de Treinador; Sabedoria para Ás, Versátil, Enfermeiro, Patrulheiro e Guru; Inteligência para Pesquisador, Tático e Criador; Carisma para Mentor, Colecionador, Comandante e Capanga; sem Classe, use Constituição." },
+  { id: "explorador-cavernas", nome: "Explorador de Cavernas", texto: "Vantagem em Percepção e Investigação para detectar passagens ocultas, estruturas instáveis, formações frágeis ou entradas escondidas em cavernas, ruínas ou montanhas; vantagem em resistências contra perigos ambientais subterrâneos; resistência a danos de quedas de rochas e desabamentos; pode mapear e explorar ambientes rochosos ou subterrâneos sem reduzir o ritmo de viagem." },
+  { id: "mestre-tipo", nome: "Mestre do Tipo", texto: "Escolha um tipo entre suas Especializações; adiciona Sabedoria ou Carisma à captura desse tipo; vantagem para localizar ou rastrear Pokémon desse tipo; seus Pokémon do tipo recebem +1d4 em perícias em que sejam proficientes e +2 em acerto, dano e STAB; 1/combate, cada Pokémon desse tipo pode aumentar em 1 a quantidade de dados de dano de um Move do mesmo tipo antes da rolagem, após outros aumentos e antes do crítico." },
+  { id: "mobilidade", nome: "Mobilidade", texto: "Deslocamento +3 m; ao usar Disparada, terreno difícil não custa movimento extra no turno; Pokémon não provoca ataques de oportunidade da criatura após usar Move danoso corpo a corpo contra ela; Treinador não provoca ataques de oportunidade pelo restante do turno ao usar um item em um de seus Pokémon." },
+  { id: "mente-afiada", nome: "Mente Afiada", texto: "Inteligência +1; sempre sabe a direção do norte; sempre sabe quantas horas faltam para o próximo nascer ou pôr do sol; pode relembrar com precisão qualquer coisa vista ou ouvida no último mês." },
+  { id: "musculoso", nome: "Musculoso", texto: "Força +1; ganha proficiência em Atletismo e, se já for proficiente, torna-se especialista; conta como se fosse um tamanho maior para determinar capacidade de carga." },
+  { id: "observador", nome: "Observador", texto: "Inteligência ou Sabedoria +1; pode ler os lábios de uma criatura que fale um idioma que você compreenda; recebe +5 nos valores passivos de Sabedoria (Percepção) e Inteligência (Investigação)." },
+  { id: "resistente", nome: "Resistente", texto: "Constituição +1; quando rolar um Dado de Vida para recuperar PV, o valor mínimo recuperado nessa rolagem é igual a duas vezes seu modificador de Constituição, com mínimo de 2." },
+  { id: "robusto", nome: "Robusto", texto: "Ao adquirir este talento, seu máximo de PV aumenta em 2 × seu nível; a cada nível ganho depois disso, seu máximo de PV aumenta em +2 adicionais." },
+  { id: "pequeno-grande", nome: "Pequeno Grande", texto: "Pré-requisito: Treinador nível 8+; Pokémon que ainda possam evoluir, ao atingir o nível mínimo da próxima evolução, podem usar a tabela de Moves da forma final respeitando níveis, recebem +1 em ataques e CD, bônus de dano igual à metade da Prof do Pokémon arredondada para cima, e ganham PV/CA conforme estágios restantes: 1 estágio = +nível em PV e +1 CA; 2+ estágios = +2×nível em PV e +2 CA; bônus são recalculados ao evoluir e desaparecem ao alcançar a forma final." },
+  { id: "sorrateiro", nome: "Sorrateiro", texto: "Destreza +1; ganha proficiência em Furtividade e, se já for proficiente, torna-se especialista; se estiver escondido, pode se mover até 3 m ao ar livre sem se revelar se terminar em uma posição onde não esteja claramente visível." },
+  { id: "sortudo", nome: "Sortudo", texto: "Possui 3 pontos de sorte; pode gastar 1 para rolar um d20 adicional em teste de perícia ou resistência e escolher qual usar, inclusive após rolar antes de saber o resultado; também pode gastar 1 quando um ataque for feito contra você para rolar um d20 e escolher entre a rolagem do atacante ou a sua; múltiplos pontos de sorte na mesma jogada se anulam; recupera todos após descanso longo." },
+  { id: "perceptivo", nome: "Perceptivo", texto: "Sabedoria +1; ganha proficiência em Percepção e, se já for proficiente, torna-se especialista; estar em área levemente obscurecida não impõe desvantagem em Sabedoria (Percepção) se você puder ver e ouvir." },
+  { id: "perito", nome: "Perito", texto: "Ganha proficiência em qualquer combinação de três perícias à sua escolha." },
+  { id: "resiliente", nome: "Resiliente", texto: "Escolha um atributo; o atributo escolhido aumenta em +1 e você ganha proficiência em testes de resistência usando esse atributo; se já for proficiente, o bônus não se acumula." }
+];
+
+function talentosTreinadorPadrao() {
+  return Array.from({ length: 8 }, () => null);
+}
+
+function normalizarTalentosTreinador(valor) {
+  const lista = Array.isArray(valor) ? valor : [];
+  const validos = new Set(TALENTOS_TREINADOR.map((t) => t.id));
+  return Array.from({ length: 8 }, (_, i) => {
+    const id = typeof lista[i] === "string" ? lista[i] : null;
+    return id && validos.has(id) ? id : null;
+  });
+}
+
+function talentoTreinadorPorId(id) {
+  return TALENTOS_TREINADOR.find((t) => t.id === id) || null;
+}
+
+async function salvarTalentosTreinador(token, lista) {
+  const normalizada = normalizarTalentosTreinador(lista);
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) item.metadata[META_TREINADOR_TALENTOS] = normalizada;
+  });
+  token.metadata[META_TREINADOR_TALENTOS] = normalizada;
+  return normalizada;
+}
+
 const ESPECIALIZACOES_TREINADOR = [
   { id: "guardiao-passaros", nome: "Guardião dos Pássaros", tipo: "VOADOR", texto: "Proficiência em Percepção; Pokémon Voadores recebem +1 em perícias; +1d4 em Percepção ligada à visão; enxerga detalhes com clareza a até 30 m." },
   { id: "maniaco-insetos", nome: "Maníaco por Insetos", tipo: "INSETO", texto: "Proficiência em Natureza; Pokémon Insetos recebem +1 em perícias; +1d4 em Natureza ou Investigação ao examinar vestígios de Insetos; após 1 minuto, estima quando foram deixados e a direção seguida." },
@@ -4120,39 +4172,58 @@ function mostrarFichaTreinadorPerNot(token) {
 
 function mostrarFichaTreinadorTalEsp(token) {
   const app = document.querySelector("#app");
-  let selecionadas = normalizarEspecializacoesTreinador(token.metadata[META_TREINADOR_ESPECIALIZACOES]);
+  let talentosSelecionados = normalizarTalentosTreinador(token.metadata[META_TREINADOR_TALENTOS]);
+  let especializacoesSelecionadas = normalizarEspecializacoesTreinador(token.metadata[META_TREINADOR_ESPECIALIZACOES]);
 
   const rotuloTipo = (tipo) => {
     const texto = String(tipo || "").toLocaleLowerCase("pt-BR");
     return texto ? texto.charAt(0).toLocaleUpperCase("pt-BR") + texto.slice(1) : "";
   };
 
-  const renderSlot = (id, indice) => {
+  const renderSlotTalento = (id, indice) => {
+    const talento = talentoTreinadorPorId(id);
+    if (!talento) {
+      return `
+        <button type="button" class="slotTalEsp vazio" data-slot-talento="${indice}">
+          <span class="slotTalEspNumero">${indice + 1}</span>
+          <span class="slotTalEspMais">＋</span>
+          <span class="slotTalEspVazioTexto">Escolher talento</span>
+        </button>`;
+    }
+    return `
+      <div class="slotTalEsp preenchido">
+        <span class="slotTalEspNumero">${indice + 1}</span>
+        <button type="button" class="slotTalEspRemover" data-remover-talento="${indice}" title="Remover talento">×</button>
+        <div class="slotTalEspLinhaPrincipal"><strong>${esc(talento.nome)}</strong></div>
+        <div class="slotTalEspAcoes">
+          <span class="slotTalEspFixo">REMOVA COM × PARA TROCAR</span>
+          <button type="button" class="slotTalEspExpandir" data-expandir-talento="${indice}" aria-expanded="false">VER EFEITO ▾</button>
+        </div>
+        <div class="slotTalEspDetalhes" data-detalhes-talento="${indice}"><p>${esc(talento.texto)}</p></div>
+      </div>`;
+  };
+
+  const renderSlotEspecializacao = (id, indice) => {
     const esp = especializacaoPorId(id);
     if (!esp) {
       return `
-        <button type="button" class="slotEspecializacao vazio" data-slot-especializacao="${indice}">
-          <span class="slotEspNumero">${indice + 1}</span>
-          <span class="slotEspMais">＋</span>
-          <span class="slotEspVazioTexto">Escolher especialização</span>
+        <button type="button" class="slotTalEsp vazio" data-slot-especializacao="${indice}">
+          <span class="slotTalEspNumero">${indice + 1}</span>
+          <span class="slotTalEspMais">＋</span>
+          <span class="slotTalEspVazioTexto">Escolher especialização</span>
         </button>`;
     }
-
     const nomeCurto = `${esp.nome} ${rotuloTipo(esp.tipo)}`;
     return `
-      <div class="slotEspecializacao preenchido" data-slot-especializacao="${indice}" role="button" tabindex="0">
-        <span class="slotEspNumero">${indice + 1}</span>
-        <button type="button" class="slotEspRemover" data-remover-especializacao="${indice}" title="Remover especialização">×</button>
-        <div class="slotEspLinhaPrincipal" title="Clique para trocar a especialização">
-          <strong>${esc(nomeCurto)}</strong>
+      <div class="slotTalEsp preenchido">
+        <span class="slotTalEspNumero">${indice + 1}</span>
+        <button type="button" class="slotTalEspRemover" data-remover-especializacao="${indice}" title="Remover especialização">×</button>
+        <div class="slotTalEspLinhaPrincipal"><strong>${esc(nomeCurto)}</strong></div>
+        <div class="slotTalEspAcoes">
+          <span class="slotTalEspFixo">REMOVA COM × PARA TROCAR</span>
+          <button type="button" class="slotTalEspExpandir" data-expandir-especializacao="${indice}" aria-expanded="false">VER EFEITO ▾</button>
         </div>
-        <div class="slotEspAcoes">
-          <span class="slotEspTrocar">CLIQUE NO NOME PARA TROCAR</span>
-          <button type="button" class="slotEspExpandir" data-expandir-especializacao="${indice}" aria-expanded="false">VER EFEITO ▾</button>
-        </div>
-        <div class="slotEspDetalhes" data-detalhes-especializacao="${indice}">
-          <p>${esc(esp.texto)}</p>
-        </div>
+        <div class="slotTalEspDetalhes" data-detalhes-especializacao="${indice}"><p>${esc(esp.texto)}</p></div>
       </div>`;
   };
 
@@ -4160,128 +4231,184 @@ function mostrarFichaTreinadorTalEsp(token) {
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(token, 4)}
     <style>
-      .talEspCabecalho{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:10px}
-      .talEspCabecalho h3{margin:0;color:#263f60;font-size:15px}
-      .talEspCabecalho p{margin:3px 0 0;font-size:9px;color:#7a8da5;font-weight:700;line-height:1.3}
+      .talEspSecao{margin-bottom:15px}
+      .talEspCabecalho{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:9px}
+      .talEspCabecalho h3{margin:0;color:#263f60;font-size:14px;font-weight:1000;text-transform:uppercase}
+      .talEspCabecalho p{margin:3px 0 0;font-size:8.3px;color:#7a8da5;font-weight:700;line-height:1.3}
       .talEspContador{flex:0 0 auto;padding:5px 8px;border-radius:999px;background:#eaf3ff;color:#2f6cb8;font-size:9px;font-weight:1000;border:1px solid #c8dcf4}
-      .gradeEspecializacoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-      .slotEspecializacao{position:relative;min-width:0;border:1px solid #d3dfed;border-radius:11px;background:linear-gradient(180deg,#fff 0%,#f7faff 100%);box-shadow:0 3px 9px rgba(39,72,110,.06);box-sizing:border-box}
-      button.slotEspecializacao{width:100%;min-height:68px;padding:10px 8px;cursor:pointer;color:#647b98}
-      .slotEspecializacao.vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-style:dashed;background:#fbfdff}
-      .slotEspecializacao.vazio:hover{border-color:#79a8e6;background:#f2f8ff}
-      .slotEspecializacao.preenchido{min-height:68px;padding:9px 8px 7px;cursor:pointer;overflow:hidden}
-      .slotEspecializacao.preenchido:hover{border-color:#8db3e2;background:#f8fbff}
-      .slotEspNumero{position:absolute;left:6px;top:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#edf4fc;color:#5e7898;font-size:8px;font-weight:1000}
-      .slotEspMais{font-size:21px;line-height:1;color:#4c8dff;font-weight:800}
-      .slotEspVazioTexto{font-size:9px;font-weight:900}
-      .slotEspLinhaPrincipal{padding:2px 23px 6px 22px;border-bottom:1px solid #e7eef6;min-width:0}
-      .slotEspLinhaPrincipal strong{display:block;color:#233d5e;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .slotEspAcoes{display:flex;align-items:center;justify-content:space-between;gap:5px;padding-top:6px}
-      .slotEspTrocar{min-width:0;color:#99a9ba;font-size:6.6px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .slotEspExpandir{flex:0 0 auto;width:auto!important;min-height:22px!important;padding:3px 6px!important;border-radius:7px!important;background:#edf5ff!important;color:#3973bb!important;border:1px solid #c9ddf4!important;font-size:7px!important;font-weight:1000!important;box-shadow:none!important;cursor:pointer}
-      .slotEspExpandir:hover{background:#e2efff!important}
-      .slotEspDetalhes{display:none;margin-top:6px;padding:7px 7px 6px;border-top:1px solid #e7eef6;background:#f9fbfe;border-radius:0 0 8px 8px}
-      .slotEspDetalhes.aberto{display:block}
-      .slotEspDetalhes p{margin:0;color:#52677f;font-size:8.3px;line-height:1.34;font-weight:700}
-      .slotEspRemover{position:absolute;right:5px;top:5px;width:19px!important;height:19px!important;min-height:19px!important;padding:0!important;border-radius:50%!important;background:#fff1f1!important;color:#b44747!important;border:1px solid #e7bcbc!important;font-size:12px!important;line-height:17px!important;z-index:2;cursor:pointer}
-      .guiaEspecializacoesOverlay{display:none;position:fixed;inset:7px;z-index:99999;background:rgba(245,249,254,.985);border:1px solid #bcd0e6;border-radius:14px;box-shadow:0 14px 36px rgba(20,43,70,.24);overflow:hidden;flex-direction:column}
-      .guiaEspecializacoesOverlay.aberto{display:flex}
-      .guiaEspTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#fff;border-bottom:1px solid #dce6f1}
-      .guiaEspTopo h3{margin:0;color:#263f60;font-size:13px}
-      .guiaEspTopo p{margin:2px 0 0;color:#7b90aa;font-size:8px;font-weight:700}
-      .guiaEspFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:17px!important;cursor:pointer}
-      .guiaEspLista{padding:9px;overflow:auto;display:grid;grid-template-columns:1fr;gap:6px}
-      .guiaEspOpcao{width:100%;text-align:left;padding:8px 9px;border:1px solid #d6e2ef;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
-      .guiaEspOpcao:hover{border-color:#78a8e2;background:#f5f9ff}
-      .guiaEspNome{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#263f60;font-size:9px;font-weight:1000;text-transform:uppercase}
-      .guiaEspTipo{flex:0 0 auto;padding:2px 5px;border-radius:999px;background:#eaf3ff;color:#3572bd;font-size:7px}
-      .guiaEspTexto{display:block;margin-top:4px;color:#5b6f87;font-size:8px;line-height:1.28;font-weight:700;text-transform:none}
-      .talentosFuturo{margin-top:12px;padding:8px 9px;border:1px dashed #d8e2ed;border-radius:10px;color:#8a9cb0;font-size:8px;font-weight:800;text-align:center;background:#fafcff}
-      @media(max-width:410px){.gradeEspecializacoes{grid-template-columns:1fr}}
+      .gradeTalEsp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+      .slotTalEsp{position:relative;min-width:0;border:1px solid #d3dfed;border-radius:11px;background:linear-gradient(180deg,#fff 0%,#f7faff 100%);box-shadow:0 3px 9px rgba(39,72,110,.06);box-sizing:border-box}
+      button.slotTalEsp{width:100%;min-height:64px;padding:10px 8px;cursor:pointer;color:#647b98}
+      .slotTalEsp.vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-style:dashed;background:#fbfdff}
+      .slotTalEsp.vazio:hover{border-color:#79a8e6;background:#f2f8ff}
+      .slotTalEsp.preenchido{min-height:64px;padding:9px 8px 7px;overflow:hidden}
+      .slotTalEspNumero{position:absolute;left:6px;top:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#edf4fc;color:#5e7898;font-size:8px;font-weight:1000}
+      .slotTalEspMais{font-size:21px;line-height:1;color:#4c8dff;font-weight:800}
+      .slotTalEspVazioTexto{font-size:8.5px;font-weight:900}
+      .slotTalEspLinhaPrincipal{padding:2px 23px 6px 22px;border-bottom:1px solid #e7eef6;min-width:0}
+      .slotTalEspLinhaPrincipal strong{display:block;color:#233d5e;font-size:9.8px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .slotTalEspAcoes{display:flex;align-items:center;justify-content:space-between;gap:5px;padding-top:6px}
+      .slotTalEspFixo{min-width:0;color:#a4b0be;font-size:6.2px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .slotTalEspExpandir{flex:0 0 auto;width:auto!important;min-height:22px!important;padding:3px 6px!important;border-radius:7px!important;background:#edf5ff!important;color:#3973bb!important;border:1px solid #c9ddf4!important;font-size:7px!important;font-weight:1000!important;box-shadow:none!important;cursor:pointer}
+      .slotTalEspExpandir:hover{background:#e2efff!important}
+      .slotTalEspDetalhes{display:none;margin-top:6px;padding:7px 7px 6px;border-top:1px solid #e7eef6;background:#f9fbfe;border-radius:0 0 8px 8px}
+      .slotTalEspDetalhes.aberto{display:block}
+      .slotTalEspDetalhes p{margin:0;color:#52677f;font-size:8.15px;line-height:1.34;font-weight:700}
+      .slotTalEspRemover{position:absolute;right:5px;top:5px;width:19px!important;height:19px!important;min-height:19px!important;padding:0!important;border-radius:50%!important;background:#fff1f1!important;color:#b44747!important;border:1px solid #e7bcbc!important;font-size:12px!important;line-height:17px!important;z-index:2;cursor:pointer}
+      .talEspDivisor{height:1px;background:linear-gradient(90deg,transparent,#d5e2f0 18%,#d5e2f0 82%,transparent);margin:13px 0}
+      .guiaTalEspOverlay{display:none;position:fixed;inset:7px;z-index:99999;background:rgba(245,249,254,.985);border:1px solid #bcd0e6;border-radius:14px;box-shadow:0 14px 36px rgba(20,43,70,.24);overflow:hidden;flex-direction:column}
+      .guiaTalEspOverlay.aberto{display:flex}
+      .guiaTalEspTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#fff;border-bottom:1px solid #dce6f1}
+      .guiaTalEspTopo h3{margin:0;color:#263f60;font-size:13px}
+      .guiaTalEspTopo p{margin:2px 0 0;color:#7b90aa;font-size:8px;font-weight:700}
+      .guiaTalEspFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:17px!important;cursor:pointer}
+      .guiaTalEspLista{padding:9px;overflow:auto;display:grid;grid-template-columns:1fr;gap:6px}
+      .guiaTalEspOpcao{width:100%;text-align:left;padding:8px 9px;border:1px solid #d6e2ef;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
+      .guiaTalEspOpcao:hover{border-color:#78a8e2;background:#f5f9ff}
+      .guiaTalEspNome{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#263f60;font-size:9px;font-weight:1000;text-transform:uppercase}
+      .guiaTalEspTipo{flex:0 0 auto;padding:2px 5px;border-radius:999px;background:#eaf3ff;color:#3572bd;font-size:7px}
+      .guiaTalEspTexto{display:block;margin-top:4px;color:#5b6f87;font-size:8px;line-height:1.3;font-weight:700;text-transform:none}
+      @media(max-width:410px){.gradeTalEsp{grid-template-columns:1fr}}
     </style>
 
-    <div class="talEspCabecalho">
-      <div>
-        <h3>Especializações</h3>
-        <p>Escolha até 6 especializações. Repetições são permitidas.</p>
+    <section class="talEspSecao">
+      <div class="talEspCabecalho">
+        <div><h3>TALENTOS</h3><p>Escolha até 8 talentos. Para trocar, remova primeiro com ×.</p></div>
+        <span class="talEspContador">${talentosSelecionados.filter(Boolean).length}/8</span>
       </div>
-      <span class="talEspContador" id="contadorEspecializacoes">${selecionadas.filter(Boolean).length}/6</span>
-    </div>
-    <div class="gradeEspecializacoes" id="gradeEspecializacoes">
-      ${selecionadas.map((id, indice) => renderSlot(id, indice)).join("")}
-    </div>
-    <div class="talentosFuturo">TALENTOS • área reservada para a próxima etapa da ficha.</div>
+      <div class="gradeTalEsp">${talentosSelecionados.map((id, indice) => renderSlotTalento(id, indice)).join("")}</div>
+    </section>
 
-    <div class="guiaEspecializacoesOverlay" id="guiaEspecializacoes">
-      <div class="guiaEspTopo">
-        <div>
-          <h3>Guia de Especializações</h3>
-          <p id="guiaEspSubtitulo">Escolha uma especialização para o slot.</p>
-        </div>
-        <button type="button" class="guiaEspFechar" id="fecharGuiaEspecializacoes">×</button>
+    <div class="talEspDivisor"></div>
+
+    <section class="talEspSecao">
+      <div class="talEspCabecalho">
+        <div><h3>ESPECIALIZAÇÕES</h3><p>Escolha até 6 especializações. Repetições são permitidas. Para trocar, remova primeiro com ×.</p></div>
+        <span class="talEspContador">${especializacoesSelecionadas.filter(Boolean).length}/6</span>
       </div>
-      <div class="guiaEspLista" id="listaGuiaEspecializacoes"></div>
+      <div class="gradeTalEsp">${especializacoesSelecionadas.map((id, indice) => renderSlotEspecializacao(id, indice)).join("")}</div>
+    </section>
+
+    <div class="guiaTalEspOverlay" id="guiaTalentos">
+      <div class="guiaTalEspTopo">
+        <div><h3>Guia de Talentos</h3><p id="guiaTalentoSubtitulo">Escolha um talento para o slot.</p></div>
+        <button type="button" class="guiaTalEspFechar" id="fecharGuiaTalentos">×</button>
+      </div>
+      <div class="guiaTalEspLista" id="listaGuiaTalentos"></div>
+    </div>
+
+    <div class="guiaTalEspOverlay" id="guiaEspecializacoes">
+      <div class="guiaTalEspTopo">
+        <div><h3>Guia de Especializações</h3><p id="guiaEspSubtitulo">Escolha uma especialização para o slot.</p></div>
+        <button type="button" class="guiaTalEspFechar" id="fecharGuiaEspecializacoes">×</button>
+      </div>
+      <div class="guiaTalEspLista" id="listaGuiaEspecializacoes"></div>
     </div>
   `;
 
   ativarCabecalhoTreinador(token);
 
-  const overlay = document.querySelector("#guiaEspecializacoes");
-  const listaGuia = document.querySelector("#listaGuiaEspecializacoes");
-  const subtitulo = document.querySelector("#guiaEspSubtitulo");
-  let slotAberto = null;
+  // TALENTOS: somente slots vazios abrem o guia. Slot preenchido só expande ou remove.
+  const overlayTal = document.querySelector("#guiaTalentos");
+  const listaTal = document.querySelector("#listaGuiaTalentos");
+  const subtituloTal = document.querySelector("#guiaTalentoSubtitulo");
+  let slotTalentoAberto = null;
 
-  const fecharGuia = () => {
-    overlay?.classList.remove("aberto");
-    slotAberto = null;
+  const fecharGuiaTalentos = () => { overlayTal?.classList.remove("aberto"); slotTalentoAberto = null; };
+  const abrirGuiaTalentos = (indice) => {
+    slotTalentoAberto = indice;
+    if (subtituloTal) subtituloTal.textContent = `Slot ${indice + 1} • escolha um talento`;
+    if (listaTal) {
+      listaTal.innerHTML = TALENTOS_TREINADOR.map((talento) => `
+        <button type="button" class="guiaTalEspOpcao" data-talento-escolha="${talento.id}">
+          <span class="guiaTalEspNome"><span>${esc(talento.nome)}</span></span>
+          <span class="guiaTalEspTexto">${esc(talento.texto)}</span>
+        </button>`).join("");
+      listaTal.querySelectorAll("[data-talento-escolha]").forEach((botao) => {
+        botao.addEventListener("click", async () => {
+          if (slotTalentoAberto === null) return;
+          const novaLista = [...talentosSelecionados];
+          novaLista[slotTalentoAberto] = botao.dataset.talentoEscolha;
+          await salvarTalentosTreinador(token, novaLista);
+          const tokenAtualizado = await pegarTokenAtualizado(token.id);
+          if (tokenAtualizado) mostrarFichaTreinadorTalEsp(tokenAtualizado);
+        });
+      });
+    }
+    overlayTal?.classList.add("aberto");
   };
 
-  const abrirGuia = (indice) => {
-    slotAberto = indice;
-    const atualId = selecionadas[indice];
-    if (subtitulo) subtitulo.textContent = `Slot ${indice + 1} • escolha uma especialização`;
-    if (listaGuia) {
-      listaGuia.innerHTML = ESPECIALIZACOES_TREINADOR.map((esp) => {
-        const atual = atualId === esp.id;
-        return `
-          <button type="button" class="guiaEspOpcao" data-especializacao="${esp.id}">
-            <span class="guiaEspNome">
-              <span>${esc(esp.nome)}${atual ? " ✓" : ""}</span>
-              <span class="guiaEspTipo">${esc(esp.tipo)}</span>
-            </span>
-            <span class="guiaEspTexto">${esc(esp.texto)}</span>
-          </button>`;
-      }).join("");
-      listaGuia.querySelectorAll("[data-especializacao]").forEach((botao) => {
+  document.querySelector("#fecharGuiaTalentos")?.addEventListener("click", fecharGuiaTalentos);
+  overlayTal?.addEventListener("click", (evento) => { if (evento.target === overlayTal) fecharGuiaTalentos(); });
+  document.querySelectorAll("button[data-slot-talento]").forEach((slot) => {
+    slot.addEventListener("click", () => {
+      const indice = Number(slot.dataset.slotTalento);
+      if (Number.isInteger(indice)) abrirGuiaTalentos(indice);
+    });
+  });
+  document.querySelectorAll("[data-expandir-talento]").forEach((botao) => {
+    botao.addEventListener("click", (evento) => {
+      evento.stopPropagation();
+      const indice = botao.dataset.expandirTalento;
+      const detalhes = document.querySelector(`[data-detalhes-talento="${indice}"]`);
+      if (!detalhes) return;
+      const abrindo = !detalhes.classList.contains("aberto");
+      detalhes.classList.toggle("aberto", abrindo);
+      botao.setAttribute("aria-expanded", abrindo ? "true" : "false");
+      botao.textContent = abrindo ? "RECOLHER ▴" : "VER EFEITO ▾";
+    });
+  });
+  document.querySelectorAll("[data-remover-talento]").forEach((botao) => {
+    botao.addEventListener("click", async (evento) => {
+      evento.stopPropagation();
+      const indice = Number(botao.dataset.removerTalento);
+      if (!Number.isInteger(indice)) return;
+      const novaLista = [...talentosSelecionados];
+      novaLista[indice] = null;
+      await salvarTalentosTreinador(token, novaLista);
+      const tokenAtualizado = await pegarTokenAtualizado(token.id);
+      if (tokenAtualizado) mostrarFichaTreinadorTalEsp(tokenAtualizado);
+    });
+  });
+
+  // ESPECIALIZAÇÕES: mesma regra; nome preenchido não troca. Remova com × primeiro.
+  const overlayEsp = document.querySelector("#guiaEspecializacoes");
+  const listaEsp = document.querySelector("#listaGuiaEspecializacoes");
+  const subtituloEsp = document.querySelector("#guiaEspSubtitulo");
+  let slotEspAberto = null;
+
+  const fecharGuiaEsp = () => { overlayEsp?.classList.remove("aberto"); slotEspAberto = null; };
+  const abrirGuiaEsp = (indice) => {
+    slotEspAberto = indice;
+    if (subtituloEsp) subtituloEsp.textContent = `Slot ${indice + 1} • escolha uma especialização`;
+    if (listaEsp) {
+      listaEsp.innerHTML = ESPECIALIZACOES_TREINADOR.map((esp) => `
+        <button type="button" class="guiaTalEspOpcao" data-especializacao-escolha="${esp.id}">
+          <span class="guiaTalEspNome"><span>${esc(esp.nome)}</span><span class="guiaTalEspTipo">${esc(esp.tipo)}</span></span>
+          <span class="guiaTalEspTexto">${esc(esp.texto)}</span>
+        </button>`).join("");
+      listaEsp.querySelectorAll("[data-especializacao-escolha]").forEach((botao) => {
         botao.addEventListener("click", async () => {
-          if (slotAberto === null) return;
-          const id = botao.dataset.especializacao;
-          const novaLista = [...selecionadas];
-          novaLista[slotAberto] = id;
+          if (slotEspAberto === null) return;
+          const novaLista = [...especializacoesSelecionadas];
+          novaLista[slotEspAberto] = botao.dataset.especializacaoEscolha;
           await salvarEspecializacoesTreinador(token, novaLista);
           const tokenAtualizado = await pegarTokenAtualizado(token.id);
           if (tokenAtualizado) mostrarFichaTreinadorTalEsp(tokenAtualizado);
         });
       });
     }
-    overlay?.classList.add("aberto");
+    overlayEsp?.classList.add("aberto");
   };
 
-  document.querySelector("#fecharGuiaEspecializacoes")?.addEventListener("click", fecharGuia);
-  overlay?.addEventListener("click", (evento) => { if (evento.target === overlay) fecharGuia(); });
-
-  document.querySelectorAll("[data-slot-especializacao]").forEach((slot) => {
-    const abrir = (evento) => {
-      if (evento.target?.closest?.("[data-remover-especializacao], [data-expandir-especializacao]")) return;
+  document.querySelector("#fecharGuiaEspecializacoes")?.addEventListener("click", fecharGuiaEsp);
+  overlayEsp?.addEventListener("click", (evento) => { if (evento.target === overlayEsp) fecharGuiaEsp(); });
+  document.querySelectorAll("button[data-slot-especializacao]").forEach((slot) => {
+    slot.addEventListener("click", () => {
       const indice = Number(slot.dataset.slotEspecializacao);
-      if (Number.isInteger(indice)) abrirGuia(indice);
-    };
-    slot.addEventListener("click", abrir);
-    slot.addEventListener("keydown", (evento) => {
-      if (evento.key === "Enter" || evento.key === " ") { evento.preventDefault(); abrir(evento); }
+      if (Number.isInteger(indice)) abrirGuiaEsp(indice);
     });
   });
-
   document.querySelectorAll("[data-expandir-especializacao]").forEach((botao) => {
     botao.addEventListener("click", (evento) => {
       evento.stopPropagation();
@@ -4294,13 +4421,12 @@ function mostrarFichaTreinadorTalEsp(token) {
       botao.textContent = abrindo ? "RECOLHER ▴" : "VER EFEITO ▾";
     });
   });
-
   document.querySelectorAll("[data-remover-especializacao]").forEach((botao) => {
     botao.addEventListener("click", async (evento) => {
       evento.stopPropagation();
       const indice = Number(botao.dataset.removerEspecializacao);
       if (!Number.isInteger(indice)) return;
-      const novaLista = [...selecionadas];
+      const novaLista = [...especializacoesSelecionadas];
       novaLista[indice] = null;
       await salvarEspecializacoesTreinador(token, novaLista);
       const tokenAtualizado = await pegarTokenAtualizado(token.id);
@@ -4308,6 +4434,7 @@ function mostrarFichaTreinadorTalEsp(token) {
     });
   });
 }
+
 function menuPokemon(paginaAtual) {
 return `
     <div class="fichaAbas" style="
