@@ -13,6 +13,8 @@ const META_PAINEL_INICIATIVA_FILHO = `${PREFIX}/painel-iniciativa-filho`;
 const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
 const META_TREINADOR_ESPECIALIZACOES = `${PREFIX}/treinador-especializacoes`;
 const META_TREINADOR_TALENTOS = `${PREFIX}/treinador-talentos`;
+const META_TREINADOR_ORIGEM = `${PREFIX}/treinador-origem`;
+const META_POKEMON_APELIDO = `${PREFIX}/pokemon-apelido`;
 const META_POKEMON_DONO_TREINADOR = `${PREFIX}/treinador-pokemon-dono`;
 const META_POKEMON_SLOT_TREINADOR = `${PREFIX}/treinador-pokemon-slot`;
 const META_TREINADOR_CAPTURA_ALVO = `${PREFIX}/treinador-captura-alvo`;
@@ -3377,11 +3379,180 @@ async function salvarEspecializacoesTreinador(token, lista) {
   return normalizada;
 }
 
+
+const ORIGENS_TREINADOR = [
+  {
+    id: "atleta",
+    nome: "ATLETA",
+    habilidade: "ESPÍRITO COMPETITIVO",
+    texto: "Você tem uma força de vontade inabalável e um físico treinado pela competição. Ao realizar um teste de Atletismo para correr, escalar ou nadar, você pode rolar duas vezes e escolher o melhor resultado (uma vez por descanso curto ou longo). Além disso, você ignora penalidades de terreno difícil causadas por superfícies naturais (lama, areia, neve) ao se deslocar. Caso seja de Galar, você se torna especialista em Atletismo."
+  }
+];
+
+function origemTreinadorPorId(id) {
+  return ORIGENS_TREINADOR.find((origem) => origem.id === id) || null;
+}
+
+async function salvarOrigemTreinador(token, origemId) {
+  const origemValida = origemTreinadorPorId(origemId) ? origemId : null;
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) item.metadata[META_TREINADOR_ORIGEM] = origemValida;
+  });
+  token.metadata[META_TREINADOR_ORIGEM] = origemValida;
+}
+
+async function rolarAtletismoOrigemComVantagem(token) {
+  const atualizado = await pegarTokenAtualizado(token.id);
+  if (!atualizado) {
+    alert("O treinador não foi encontrado na cena.");
+    return;
+  }
+
+  const valorAtletismo = atualizado.metadata[`${PREFIX}/pericia-atletismo`] ?? "";
+  const formula = formulaSalvaguarda(valorAtletismo);
+  if (!formula) {
+    alert("Defina primeiro o valor de Atletismo na aba PER/NOT.");
+    return;
+  }
+
+  const primeiro = await rolarNoDicePlusComResultado(formula, "Atletismo", "Espírito Competitivo 1/2");
+  if (primeiro === null) return;
+  const segundo = await rolarNoDicePlusComResultado(formula, "Atletismo", "Espírito Competitivo 2/2");
+  if (segundo === null) return;
+
+  const melhor = Math.max(primeiro, segundo);
+  alert(`ESPÍRITO COMPETITIVO\nAtletismo com vantagem: ${primeiro} e ${segundo}\nMelhor resultado: ${melhor}`);
+}
+
+function mostrarFichaTreinadorClasOri(token) {
+  const app = document.querySelector("#app");
+  const origem = origemTreinadorPorId(token.metadata[META_TREINADOR_ORIGEM]);
+
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoTreinador(token, 5)}
+    <style>
+      .clasOriSecao{margin-bottom:15px}
+      .clasOriTitulo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+      .clasOriTitulo h3{margin:0;color:#2d4767;font-size:13px;letter-spacing:.35px}
+      .clasOriTitulo p{margin:2px 0 0;color:#8192a7;font-size:8px;font-weight:700}
+      .origemVazia{width:100%;min-height:58px!important;border:1.5px dashed #a9bfd8!important;border-radius:11px!important;background:#f8fbff!important;color:#52749d!important;font-weight:900!important;font-size:10px!important;cursor:pointer}
+      .origemCard{border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(33,70,110,.06)}
+      .origemCardTopo{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;background:#f8fbff;border:0;cursor:pointer;text-align:left}
+      .origemNome{font-size:12px;font-weight:1000;color:#2e5f9d;letter-spacing:.4px}
+      .origemHabNome{margin-top:2px;font-size:8px;font-weight:900;color:#71859e}
+      .origemSeta{font-size:11px;color:#56779e;font-weight:1000}
+      .origemRemover{width:27px!important;height:27px!important;min-height:27px!important;padding:0!important;border-radius:50%!important;font-size:14px!important;flex:0 0 27px;cursor:pointer}
+      .origemDetalhes{display:none;padding:9px 10px 10px;border-top:1px solid #e0e8f1;background:#fff}
+      .origemDetalhes.aberto{display:block}
+      .origemHabilidade{font-size:9px;font-weight:1000;color:#2e5f9d;margin-bottom:5px}
+      .origemTexto{font-size:9px;line-height:1.42;color:#53677f;font-weight:700}
+      .origemRolar{width:100%;margin-top:9px;min-height:35px!important;padding:7px!important;background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important;font-size:9px!important;font-weight:1000!important;cursor:pointer}
+      .classePlaceholder{padding:10px;border:1px dashed #d5dfeb;border-radius:10px;background:#fafcff;color:#8a99aa;font-size:9px;font-weight:800;text-align:center}
+      .guiaOrigemOverlay{display:none;position:fixed;inset:7px;z-index:99999;background:rgba(245,249,254,.985);border:1px solid #bcd0e6;border-radius:14px;box-shadow:0 14px 36px rgba(20,43,70,.24);overflow:hidden;flex-direction:column}
+      .guiaOrigemOverlay.aberto{display:flex}
+      .guiaOrigemTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#fff;border-bottom:1px solid #dce6f1}
+      .guiaOrigemTopo h3{margin:0;color:#263f60;font-size:13px}
+      .guiaOrigemTopo p{margin:2px 0 0;color:#7b90aa;font-size:8px;font-weight:700}
+      .guiaOrigemFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:17px!important;cursor:pointer}
+      .guiaOrigemLista{padding:9px;overflow:auto;display:grid;grid-template-columns:1fr;gap:6px}
+      .guiaOrigemOpcao{width:100%;text-align:left;padding:9px;border:1px solid #d6e2ef;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
+      .guiaOrigemOpcao:hover{border-color:#78a8e2;background:#f5f9ff}
+      .guiaOrigemOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#2e5f9d}
+      .guiaOrigemOpcaoHab{display:block;margin-top:3px;font-size:8px;font-weight:900;color:#72869f}
+      .guiaOrigemOpcaoTexto{display:block;margin-top:5px;font-size:8px;line-height:1.35;font-weight:700;color:#5b6f87}
+    </style>
+
+    <section class="clasOriSecao">
+      <div class="clasOriTitulo"><div><h3>ORIGEM</h3><p>Escolha a origem do treinador e consulte sua habilidade.</p></div></div>
+      ${origem ? `
+        <div class="origemCard">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 31px;align-items:center;gap:5px;padding:5px;background:#f8fbff;">
+            <button type="button" class="origemCardTopo" id="abrirOrigemSelecionada">
+              <span><span class="origemNome">${esc(origem.nome)}</span><span class="origemHabNome">${esc(origem.habilidade)}</span></span>
+              <span class="origemSeta" id="setaOrigemSelecionada">VER ▾</span>
+            </button>
+            <button type="button" class="origemRemover" id="removerOrigemTreinador" title="Remover origem">×</button>
+          </div>
+          <div class="origemDetalhes" id="detalhesOrigemSelecionada">
+            <div class="origemHabilidade">HABILIDADE: ${esc(origem.habilidade)}</div>
+            <div class="origemTexto">${esc(origem.texto)}</div>
+            ${origem.id === "atleta" ? `<button type="button" class="origemRolar" id="rolarAtletismoOrigem">🎲 ROLAR ATLETISMO COM VANTAGEM</button>` : ""}
+          </div>
+        </div>
+      ` : `<button type="button" class="origemVazia" id="escolherOrigemTreinador">＋ ESCOLHER ORIGEM</button>`}
+    </section>
+
+    <section class="clasOriSecao">
+      <div class="clasOriTitulo"><div><h3>CLASSE</h3><p>A estrutura já está reservada; configuraremos as classes nesta mesma aba.</p></div></div>
+      <div class="classePlaceholder">CLASSE AINDA NÃO CONFIGURADA</div>
+    </section>
+
+    <div class="guiaOrigemOverlay" id="guiaOrigensTreinador">
+      <div class="guiaOrigemTopo">
+        <div><h3>Guia de Origens</h3><p>Escolha a origem do seu treinador.</p></div>
+        <button type="button" class="guiaOrigemFechar" id="fecharGuiaOrigens">×</button>
+      </div>
+      <div class="guiaOrigemLista">
+        ${ORIGENS_TREINADOR.map((item) => `
+          <button type="button" class="guiaOrigemOpcao" data-origem-escolha="${item.id}">
+            <span class="guiaOrigemOpcaoNome">${esc(item.nome)}</span>
+            <span class="guiaOrigemOpcaoHab">HABILIDADE: ${esc(item.habilidade)}</span>
+            <span class="guiaOrigemOpcaoTexto">${esc(item.texto)}</span>
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  ativarCabecalhoTreinador(token);
+
+  const overlay = document.querySelector("#guiaOrigensTreinador");
+  const abrirGuia = () => overlay?.classList.add("aberto");
+  const fecharGuia = () => overlay?.classList.remove("aberto");
+  document.querySelector("#escolherOrigemTreinador")?.addEventListener("click", abrirGuia);
+  document.querySelector("#fecharGuiaOrigens")?.addEventListener("click", fecharGuia);
+  overlay?.addEventListener("click", (evento) => { if (evento.target === overlay) fecharGuia(); });
+
+  document.querySelectorAll("[data-origem-escolha]").forEach((botao) => {
+    botao.addEventListener("click", async () => {
+      await salvarOrigemTreinador(token, botao.dataset.origemEscolha);
+      const atualizado = await pegarTokenAtualizado(token.id);
+      if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+    });
+  });
+
+  document.querySelector("#abrirOrigemSelecionada")?.addEventListener("click", () => {
+    const detalhes = document.querySelector("#detalhesOrigemSelecionada");
+    const seta = document.querySelector("#setaOrigemSelecionada");
+    if (!detalhes) return;
+    const abrindo = !detalhes.classList.contains("aberto");
+    detalhes.classList.toggle("aberto", abrindo);
+    if (seta) seta.textContent = abrindo ? "RECOLHER ▴" : "VER ▾";
+  });
+
+  document.querySelector("#removerOrigemTreinador")?.addEventListener("click", async () => {
+    await salvarOrigemTreinador(token, null);
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+  });
+
+  document.querySelector("#rolarAtletismoOrigem")?.addEventListener("click", async () => {
+    const botao = document.querySelector("#rolarAtletismoOrigem");
+    if (botao) botao.disabled = true;
+    try {
+      await rolarAtletismoOrigemComVantagem(token);
+    } finally {
+      if (botao) botao.disabled = false;
+    }
+  });
+}
+
 function menuTreinador(paginaAtual) {
 return `
     <div class="fichaAbas" style="
       display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
+      grid-template-columns:repeat(5,minmax(0,1fr));
       gap:6px;
       margin-bottom:15px;
       width:100%;
@@ -3390,6 +3561,7 @@ return `
       <button id="paginaTreinador2" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 2 ? "1" : "0.65"};">PKM</button>
       <button id="paginaTreinador3" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 3 ? "1" : "0.65"};">PER/NOT</button>
       <button id="paginaTreinador4" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 4 ? "1" : "0.65"};">TAL/ESP</button>
+      <button id="paginaTreinador5" style="min-width:0;width:100%;padding:8px 2px;font-size:9px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 5 ? "1" : "0.65"};">CLAS/ORI</button>
     </div>
   `;
 }
@@ -3494,6 +3666,7 @@ function ativarMenuTreinador(token) {
   const pkm = document.querySelector("#paginaTreinador2");
   const perNot = document.querySelector("#paginaTreinador3");
   const talEsp = document.querySelector("#paginaTreinador4");
+  const clasOri = document.querySelector("#paginaTreinador5");
   status?.addEventListener("click", async () => {
     const tokenAtualizado = await pegarTokenAtualizado(token.id);
     if (tokenAtualizado) mostrarFichaTreinadorPagina1(tokenAtualizado);
@@ -3509,6 +3682,10 @@ function ativarMenuTreinador(token) {
   talEsp?.addEventListener("click", async () => {
     const tokenAtualizado = await pegarTokenAtualizado(token.id);
     if (tokenAtualizado) mostrarFichaTreinadorTalEsp(tokenAtualizado);
+  });
+  clasOri?.addEventListener("click", async () => {
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaTreinadorClasOri(tokenAtualizado);
   });
 }
 function criarPericiasTreinador(valores) {
@@ -4509,6 +4686,20 @@ function ativarMenuPokemon(token) { document .querySelector("#paginaPokemon1") .
 document .querySelector("#paginaPokemon2") .addEventListener( "click", async () => { await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonMoves( tokenAtualizado ); } );
 document .querySelector("#paginaPokemon3") .addEventListener( "click", async () => { await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonPericias( tokenAtualizado ); } );
 document .querySelector("#paginaPokemon4") .addEventListener( "click", async () => { await salvamentoBuffPendente.catch(() => {}); await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonMega( tokenAtualizado ); } ); }
+
+function nomeFichaPokemon(token) {
+  const personalizado = String(token?.metadata?.[META_POKEMON_APELIDO] ?? "").trim();
+  return personalizado || String(token?.name || "Pokémon");
+}
+
+async function salvarApelidoPokemon(token, valor) {
+  const apelido = String(valor ?? "").trim();
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) item.metadata[META_POKEMON_APELIDO] = apelido;
+  });
+  token.metadata[META_POKEMON_APELIDO] = apelido;
+}
+
 function cabecalhoPokemon( token, paginaAtual ) { const imagemToken = token.type === "IMAGE" ? token.image?.url || "" : "";
 return `
     <div class="fichaCabecalho" style="
@@ -4570,22 +4761,37 @@ font-size:30px;
         <div style="
           min-width:0;
         ">
-          <h2 style="
-            margin:0;
-            line-height:1.1;
+          <input
+            id="nomeFichaPokemon"
+            type="text"
+            value="${esc(nomeFichaPokemon(token))}"
+            title="Nome do Pokémon na ficha"
+            style="
+              width:100%;
+              min-width:0;
+              height:auto;
+              padding:1px 3px 2px!important;
+              border:0!important;
+              border-bottom:1px dashed #b8c9dc!important;
+              border-radius:0!important;
+              background:transparent!important;
+              box-shadow:none!important;
+              font-size:22px;
+              font-weight:800;
+              line-height:1.1;
+              color:inherit;
+            "
+          >
+          <div style="
+            margin-top:4px;
+            font-size:10px;
+            opacity:0.65;
+            font-weight:bold;
             overflow:hidden;
             text-overflow:ellipsis;
             white-space:nowrap;
           ">
-            ${esc(token.name || "Pokemon")}
-          </h2>
-          <div style="
-            margin-top:5px;
-            font-size:11px;
-            opacity:0.65;
-            font-weight:bold;
-          ">
-            POKÉMON
+            ${esc(token.name || "Pokémon")} • POKÉMON
           </div>
         </div>
       </div>
@@ -4604,8 +4810,29 @@ font-size:30px;
     ${menuPokemon(paginaAtual)}
   `;
 }
-function ativarCabecalhoPokemon(token) { document .querySelector("#trocarTipo") .addEventListener( "click", () => trocarTipoFicha( token ) );
-ativarMenuPokemon(token); }
+function ativarCabecalhoPokemon(token) {
+  document.querySelector("#trocarTipo")?.addEventListener("click", () => trocarTipoFicha(token));
+  const campoNome = document.querySelector("#nomeFichaPokemon");
+  if (campoNome) {
+    const salvar = async () => {
+      const valor = String(campoNome.value ?? "").trim();
+      if (!valor) {
+        campoNome.value = token.name || "Pokémon";
+        await salvarApelidoPokemon(token, "");
+        return;
+      }
+      await salvarApelidoPokemon(token, valor);
+    };
+    campoNome.addEventListener("change", salvar);
+    campoNome.addEventListener("keydown", async (evento) => {
+      if (evento.key !== "Enter") return;
+      evento.preventDefault();
+      await salvar();
+      campoNome.blur();
+    });
+  }
+  ativarMenuPokemon(token);
+}
 function criarPericiasPokemon(valores) { const pericias = PERICIAS.flatMap( (grupo) => grupo.pericias.map( (pericia) => ({ ...pericia, atributo: grupo.atributo }) ) );
 return `
       <div
