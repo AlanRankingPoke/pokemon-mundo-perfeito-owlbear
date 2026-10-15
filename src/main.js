@@ -37,6 +37,10 @@ const META_COMANDANTE_MOVE_USOS = `${PREFIX}/classe-comandante-move-usos`;
 const META_COMANDANTE_EQUIPE_USOS = `${PREFIX}/classe-comandante-equipe-usos`;
 const META_COLECIONADOR_VANTAGEM_USOS = `${PREFIX}/classe-colecionador-vantagem-usos`;
 const META_COLECIONADOR_VANTAGEM_PREPARADA = `${PREFIX}/classe-colecionador-vantagem-preparada`;
+const META_GURU_ESPIRITO_USOS = `${PREFIX}/classe-guru-espirito-usos`;
+const META_CRIADOR_BOA_GENETICA_ESCOLHA = `${PREFIX}/classe-criador-boa-genetica-escolha`;
+const META_CRIADOR_MESTRE_TRACOS_NOTAS = `${PREFIX}/classe-criador-mestre-tracos-notas`;
+const META_TATICO_PONTOS = `${PREFIX}/classe-tatico-pontos`;
 const META_RIVAL_LICAO = `${PREFIX}/origem-rival-licao`;
 const META_RIVAL_REVANCHE = `${PREFIX}/origem-rival-revanche`;
 const META_RIVAL_SEQUENCIA = `${PREFIX}/origem-rival-sequencia`;
@@ -3458,6 +3462,21 @@ const CLASSES_TREINADOR = [
     id: "colecionador-pokemon",
     nome: "COLECIONADOR POKÉMON",
     resumo: "Um especialista em captura, coleta e preservação de Pokémon de todos os tipos."
+  },
+  {
+    id: "guru",
+    nome: "GURU",
+    resumo: "Um treinador profundamente conectado à mente, ao corpo e ao espírito de seus Pokémon."
+  },
+  {
+    id: "criador-pokemon",
+    nome: "CRIADOR DE POKÉMON",
+    resumo: "Especialista em ovos, herança, IVs, genética e desenvolvimento de novos Pokémon."
+  },
+  {
+    id: "tatico",
+    nome: "TÁTICO",
+    resumo: "Um estrategista que administra Pontos Táticos para cura, dano, defesa e controle de CD."
   }
 ];
 
@@ -3525,6 +3544,38 @@ function modificadorCarismaClasse(token) {
 
 function maxUsosCarismaClasse(token) {
   return Math.max(1, 1 + modificadorCarismaClasse(token));
+}
+
+function modificadorSabedoriaClasse(token) {
+  return Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-sab`] ?? "0").replace(",", ".")) || 0);
+}
+
+function maxUsosGuruEspirito(token) {
+  return Math.max(1, 1 + modificadorSabedoriaClasse(token));
+}
+
+function maxPontosTatico(nivel) {
+  return Math.max(1, nivelTreinadorNormalizado(nivel));
+}
+
+function pontosTaticoAtuais(token, nivel) {
+  const max = maxPontosTatico(nivel);
+  const salvo = token?.metadata?.[META_TATICO_PONTOS];
+  if (salvo === undefined || salvo === null || salvo === "") return max;
+  return Math.max(0, Math.min(max, Math.trunc(Number(salvo) || 0)));
+}
+
+function bonusIvCriador(resultado) {
+  const n = Math.max(1, Math.min(20, Math.trunc(Number(resultado) || 1)));
+  if (n === 1) return -2;
+  if (n <= 3) return -1;
+  if (n <= 17) return 0;
+  if (n <= 19) return 1;
+  return 2;
+}
+
+function nomeAtributoCriador(d6) {
+  return ["Força", "Destreza", "Constituição", "Inteligência", "Sabedoria", "Carisma"][Math.max(1, Math.min(6, Math.trunc(Number(d6) || 1))) - 1];
 }
 
 function classeAtivaNoNivel(token, classeId, nivelMinimo) {
@@ -3758,6 +3809,12 @@ function mostrarFichaTreinadorClasOri(token) {
   const comandanteTempHp = Math.max(0, nivelTreinador + modificadorCarismaClasse(token));
   const colecionadorVantagemUsos = usosClasseFixo(token, META_COLECIONADOR_VANTAGEM_USOS, 1);
   const colecionadorVantagemPreparada = token.metadata[META_COLECIONADOR_VANTAGEM_PREPARADA] === true && colecionadorVantagemUsos > 0;
+  const guruEspiritoMax = maxUsosGuruEspirito(token);
+  const guruEspiritoUsos = usosClasseFixo(token, META_GURU_ESPIRITO_USOS, guruEspiritoMax);
+  const criadorBoaGeneticaEscolha = String(token.metadata[META_CRIADOR_BOA_GENETICA_ESCOLHA] ?? "");
+  const criadorMestreTracosNotas = String(token.metadata[META_CRIADOR_MESTRE_TRACOS_NOTAS] ?? "");
+  const taticoPontosMax = maxPontosTatico(nivelTreinador);
+  const taticoPontos = pontosTaticoAtuais(token, nivelTreinador);
   const origem = origemTreinadorPorId(token.metadata[META_TREINADOR_ORIGEM]);
   const rivalLicao = token.metadata[META_RIVAL_LICAO] === true;
   const rivalRevanche = token.metadata[META_RIVAL_REVANCHE] === true;
@@ -4176,6 +4233,161 @@ function mostrarFichaTreinadorClasOri(token) {
       `;
     }
 
+    if (classe.id === "guru") {
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "GURU",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Você ganha proficiência em Persuasão; se já for proficiente, torna-se especialista. Pokémon que ainda não podem ser controlados por você passam a usar Lealdade Indiferente em vez de Desleal até a Atualização de Controle correspondente."
+        })}
+        ${blocoClasseAs({
+          titulo: "MENTE",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Quando um de seus Pokémon fizer um teste de resistência de Sabedoria, você pode adicionar seu modificador de Sabedoria à jogada. Ao rolar um d6 para resistir ao efeito Confusão, seus Pokémon rolam duas vezes e ficam com o melhor resultado.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>BÔNUS DE SABEDORIA</span><strong>${formatarBonus(modificadorSabedoriaClasse(token))}</strong></div>
+              <button type="button" class="classeAcao classeAcaoCheia" id="rolarGuruConfusao">🎲 RESISTIR CONFUSÃO — 2×1D6</button>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "CORPO",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Todos os seus Pokémon passam a ter acesso a duas Habilidades Passivas, desde que possuam mais de uma. Uma Habilidade Oculta substitui uma das passivas; caso o Pokémon possua apenas uma passiva não oculta, a Habilidade Oculta é adicionada como segunda. O talento Incansável pode ser aprendido por todos os seus Pokémon ao alcançarem o nível 10."
+        })}
+        ${blocoClasseAs({
+          titulo: "ESPÍRITO",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "No início do seu turno, escolha Ataque ou Dano. Até o início do seu próximo turno, adicione seu modificador de Sabedoria às rolagens escolhidas feitas pelos seus Pokémon. Esta característica possui 1 + modificador de Sabedoria usos, mínimo de 1. Seus Pokémon também conhecem sua forma de batalhar e podem agir de maneira autônoma conforme a narrativa do Mestre.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>USOS DE ESPÍRITO</span><strong>${guruEspiritoUsos}/${guruEspiritoMax}</strong></div>
+              <div class="classeAcoesDuas">
+                <button type="button" class="classeAcao" data-guru-espirito="ataque" ${guruEspiritoUsos > 0 ? "" : "disabled"}>USAR EM ATAQUE</button>
+                <button type="button" class="classeAcao" data-guru-espirito="dano" ${guruEspiritoUsos > 0 ? "" : "disabled"}>USAR EM DANO</button>
+              </div>
+              <button type="button" class="classeRestaurar classeAcaoCheia" id="restaurarGuruEspirito">RESTAURAR</button>
+            </div>`
+        })}
+      `;
+    }
+
+    if (classe.id === "criador-pokemon") {
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "CRIADOR DE POKÉMON",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Você domina incubação e IVs. Sempre que chocar um ovo, pode rolar 1d100 para determinar as horas de incubação e seis d20 para os IVs de Força, Destreza, Constituição, Inteligência, Sabedoria e Carisma. Cada d20 vale: 1 = -2; 2–3 = -1; 4–17 = +0; 18–19 = +1; 20 = +2.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeAcoesDuas">
+                <button type="button" class="classeAcao" id="rolarCriadorIncubacao">🎲 INCUBAÇÃO 1D100</button>
+                <button type="button" class="classeAcao" id="rolarCriadorIvs">🎲 ROLAR 6 IVs</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "CUIDADO E CARINHO",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Ao rolar a incubação, role 1d100 duas vezes e mantenha o maior resultado. Ao chocar um ovo, pode rolar 1d6 para definir qual atributo terá um IV herdado e decidir se usa o valor da mãe ou do pai. Também pode rolar a Natureza do filhote duas vezes e escolher o resultado desejado.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeAcoesDuas">
+                <button type="button" class="classeAcao" id="rolarCriadorIncubacaoVantagem">🎲 INCUBAÇÃO 2×1D100</button>
+                <button type="button" class="classeAcao" id="rolarCriadorAtributoHerdado">🧬 ATRIBUTO HERDADO 1D6</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "BOA GENÉTICA",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Ao chocar um ovo, você pode escolher 1 atributo para possuir IV máximo ou conceder um talento ao Pokémon. Ao tentar criar um Pokémon Brilhante, o d100 precisa ser 91+ se um dos pais for Brilhante ou 86+ se ambos forem Brilhantes.",
+          extra: `
+            <div class="classeRecurso">
+              <label class="classeCampoLabel" for="criadorBoaGeneticaEscolha">ESCOLHA DO OVO</label>
+              <input class="classeCampoTexto" id="criadorBoaGeneticaEscolha" type="text" maxlength="160" value="${esc(criadorBoaGeneticaEscolha)}" placeholder="Ex.: IV máximo em Destreza ou talento Perceptivo">
+              <div class="classeAcoes" style="margin-top:8px">
+                <select id="criadorPaisShiny"><option value="1">1 PAI/MÃE BRILHANTE — CD 91</option><option value="2">AMBOS BRILHANTES — CD 86</option></select>
+                <button type="button" class="classeAcao" id="rolarCriadorShiny">✨ ROLAR BRILHANTE</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "MESTRE DOS TRAÇOS",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "Ao chocar novos Pokémon, você pode definir a cor entre as opções, escolher a Natureza e a Habilidade Passiva não oculta, substituir Egg Moves herdados por Moves disponíveis e escolher livremente quais IVs serão herdados dos pais conforme as regras da classe.",
+          extra: `
+            <div class="classeRecurso">
+              <label class="classeCampoLabel" for="criadorMestreTracosNotas">TRAÇOS ESCOLHIDOS</label>
+              <textarea class="classeCampoTexto classeCampoArea" id="criadorMestreTracosNotas" maxlength="500" placeholder="Anote cor, Natureza, habilidade, Egg Moves, IVs herdados...">${esc(criadorMestreTracosNotas)}</textarea>
+            </div>`
+        })}
+      `;
+    }
+
+    if (classe.id === "tatico") {
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        <div class="classeRecurso classeRecursoDestaque">
+          <div class="classeRecursoTopo"><span>PONTOS TÁTICOS</span><strong>${taticoPontos}/${taticoPontosMax}</strong></div>
+          <div class="classeAcoes">
+            <button type="button" class="classeAcao" id="usarTaticoCura" ${taticoPontos > 0 ? "" : "disabled"}>🎲 -1 PT: +1D6 CURA</button>
+            <button type="button" class="classeRestaurar" id="restaurarTatico">RESTAURAR</button>
+          </div>
+        </div>
+        ${blocoClasseAs({
+          titulo: "TÁTICO",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Sua reserva de Pontos Táticos é igual ao seu nível de Treinador. Ao recuperar PV de um Pokémon através de item ou Move, você pode gastar Pontos Táticos para aumentar a cura em 1d6 para cada ponto gasto. A reserva é reiniciada após descanso longo."
+        })}
+        ${blocoClasseAs({
+          titulo: "GOLPE DIRECIONADO",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Você pode gastar 2 Pontos Táticos para rolar o dano de um ataque duas vezes e usar o maior total.",
+          extra: `
+            <button type="button" class="classeAcao classeAcaoCheia" id="usarTaticoGolpe" ${taticoPontos >= 2 ? "" : "disabled"}>🎯 GASTAR 2 PONTOS TÁTICOS</button>`
+        })}
+        ${blocoClasseAs({
+          titulo: "AUMENTE SUAS DEFESAS",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Quando seu Pokémon for alvo de um Move danoso, você pode usar uma reação para gastar Pontos Táticos e adicioná-los à CA ou a um teste de resistência, até fazer o ataque falhar ou passar na CD.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeAcoes">
+                <input id="taticoDefesaGasto" type="number" min="1" max="${taticoPontosMax}" step="1" value="1">
+                <button type="button" class="classeAcao" id="usarTaticoDefesa" ${taticoPontos > 0 ? "" : "disabled"}>🛡 GASTAR PONTOS</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "NÃO DESSA VEZ",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "Depois que um oponente fizer um teste de resistência contra um Move de seu Pokémon, você pode aumentar a CD em até 5. Cada +1 na CD custa 1 Ponto Tático.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeAcoes">
+                <input id="taticoCdGasto" type="number" min="1" max="5" step="1" value="1">
+                <button type="button" class="classeAcao" id="usarTaticoCd" ${taticoPontos > 0 ? "" : "disabled"}>⚡ AUMENTAR CD</button>
+              </div>
+            </div>`
+        })}
+      `;
+    }
+
     return "";
   };
 
@@ -4241,7 +4453,7 @@ function mostrarFichaTreinadorClasOri(token) {
       .classeResumoNivel{margin:0 0 8px;padding:7px 8px;border-radius:8px;background:#edf5ff;color:#5f7794;font-size:8px;font-weight:900;text-align:center}.classeResumoNivel strong{color:#2867b4;font-size:11px}
       .classeHab{margin-top:7px;padding:8px;border:1px solid #d7e3f0;border-radius:9px;background:#fbfdff}.classeHab:first-of-type{margin-top:0}
       .classeHab.bloqueada{opacity:.56;background:#f6f7f9}.classeHabTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}.classeHabTopo>div{display:flex;align-items:center;gap:6px;min-width:0}.classeHabTopo strong{font-size:9px;color:#2d5e98}.classeHabTopo>div span{font-size:7px;color:#8597aa;font-weight:1000}.classeHabEstado{padding:3px 6px;border-radius:999px;background:#dff3e6;color:#358151;font-size:7px;font-weight:1000;white-space:nowrap}.classeHab.bloqueada .classeHabEstado{background:#e9edf2;color:#8996a5}.classeHabTexto{font-size:8.5px;line-height:1.4;color:#566c84;font-weight:700}
-      .classeRecurso{margin-top:7px;padding:7px;border:1px solid #dbe7f3;border-radius:8px;background:#fff}.classeRecursoTopo{display:flex;justify-content:space-between;align-items:center;gap:7px;color:#6b7f96;font-size:7.5px;font-weight:1000}.classeRecursoTopo strong{font-size:10px;color:#2c67aa}.classeAcoes{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:6px;margin-top:6px}.classeAcoesTripla{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:6px}.classeSelect{width:100%;min-height:34px;margin-top:6px;padding:6px 8px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:8px;font-weight:900;box-sizing:border-box}.classeTextoLivre{width:100%;min-height:74px;margin-top:6px;padding:8px 9px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:8.5px;line-height:1.4;font-weight:800;box-sizing:border-box;resize:vertical;outline:none}.classeTextoLivre:focus{border-color:#6da4e5;box-shadow:0 0 0 2px rgba(72,133,205,.10)}.classeAcaoCheia{width:100%;margin-top:6px!important}.classeAcao,.classeRestaurar{min-height:32px!important;padding:6px!important;font-size:8px!important;font-weight:1000!important}.classeAcao{background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important}.classeRestaurar{background:#f7f9fc!important;border-color:#c7d4e3!important;color:#627991!important}
+      .classeRecurso{margin-top:7px;padding:7px;border:1px solid #dbe7f3;border-radius:8px;background:#fff}.classeRecursoTopo{display:flex;justify-content:space-between;align-items:center;gap:7px;color:#6b7f96;font-size:7.5px;font-weight:1000}.classeRecursoTopo strong{font-size:10px;color:#2c67aa}.classeAcoes{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:6px;margin-top:6px}.classeAcoesTripla{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:6px}.classeSelect{width:100%;min-height:34px;margin-top:6px;padding:6px 8px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:8px;font-weight:900;box-sizing:border-box}.classeTextoLivre{width:100%;min-height:74px;margin-top:6px;padding:8px 9px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:8.5px;line-height:1.4;font-weight:800;box-sizing:border-box;resize:vertical;outline:none}.classeTextoLivre:focus{border-color:#6da4e5;box-shadow:0 0 0 2px rgba(72,133,205,.10)}.classeAcaoCheia{width:100%;margin-top:6px!important}.classeAcao,.classeRestaurar{min-height:32px!important;padding:6px!important;font-size:8px!important;font-weight:1000!important}.classeAcao{background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important}.classeRestaurar{background:#f7f9fc!important;border-color:#c7d4e3!important;color:#627991!important}.classeAcoesDuas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}.classeCampoLabel{display:block;margin:0 0 5px;color:#6c8098;font-size:7.5px;font-weight:1000;letter-spacing:.3px;text-align:left}.classeCampoTexto{width:100%;box-sizing:border-box;border:1px solid #c8d9eb;border-radius:8px;background:#fff;color:#17385f;font-size:8.5px;font-weight:800;padding:8px;outline:none}.classeCampoArea{min-height:72px;resize:vertical;line-height:1.35}.classeRecursoDestaque{border-color:#8db6e8!important;background:#f2f7ff!important}.classeRecurso select,.classeRecurso input[type="number"]{width:100%;min-height:32px;box-sizing:border-box;border:1px solid #c8d9eb;border-radius:8px;background:#fff;color:#17385f;font-size:8px;font-weight:900;padding:6px;outline:none}
       .guiaClasseOverlay{display:none;position:fixed;z-index:5001;inset:0;background:rgba(13,26,43,.55);padding:16px;overflow:auto}.guiaClasseOverlay.aberto{display:block}.guiaClasseTopo{position:sticky;top:-16px;z-index:2;background:#fff;margin:-16px -16px 10px;padding:13px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #dce6f0}.guiaClasseTopo h3{margin:0;color:#274c79;font-size:14px}.guiaClasseTopo p{margin:2px 0 0;color:#8798aa;font-size:8px;font-weight:700}.guiaClasseFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:15px!important}.guiaClasseLista{display:grid;gap:7px}.guiaClasseOpcao{width:100%;padding:10px!important;border:1px solid #cfdeee!important;border-radius:10px!important;background:#fff!important;text-align:left!important;cursor:pointer}.guiaClasseOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#2e5f9d}.guiaClasseOpcaoTexto{display:block;margin-top:4px;font-size:8px;line-height:1.35;font-weight:700;color:#5b6f87}
       .origemVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #a9bfd8!important;border-radius:11px!important;background:#f8fbff!important;color:#52749d!important;font-weight:900!important;font-size:10px!important;text-align:center!important;cursor:pointer}
       .origemCard{width:100%;max-width:410px;margin:0 auto;border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(33,70,110,.06);text-align:left}
@@ -4647,6 +4859,119 @@ function mostrarFichaTreinadorClasOri(token) {
     const dado2 = await rolarNoDicePlusComResultado("1d6", "Colecionador Pokémon", "Recompensa • Dado 2");
     if (dado2 === null) return;
     alert(`RECOMPENSAS DO COLECIONADOR\nDado 1 (${dado1}): ${recompensaColecionadorPorD6(dado1)}\nDado 2 (${dado2}): ${recompensaColecionadorPorD6(dado2)}`);
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#rolarGuruConfusao")?.addEventListener("click", async () => {
+    const primeiro = await rolarNoDicePlusComResultado("1d6", "Guru", "Mente • Confusão 1/2");
+    if (primeiro === null) return;
+    const segundo = await rolarNoDicePlusComResultado("1d6", "Guru", "Mente • Confusão 2/2");
+    if (segundo === null) return;
+    alert(`MENTE — CONFUSÃO\nResultados: ${primeiro} e ${segundo}\nMelhor resultado: ${Math.max(primeiro, segundo)}`);
+    await redesenharClasseAberta();
+  });
+  document.querySelectorAll("[data-guru-espirito]").forEach((botao) => {
+    botao.addEventListener("click", async () => {
+      const max = maxUsosGuruEspirito(token);
+      const atual = usosClasseFixo(token, META_GURU_ESPIRITO_USOS, max);
+      if (atual <= 0) return;
+      await salvarEstadoClasse(token, { [META_GURU_ESPIRITO_USOS]: atual - 1 });
+      await redesenharClasseAberta();
+    });
+  });
+  document.querySelector("#restaurarGuruEspirito")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_GURU_ESPIRITO_USOS]: maxUsosGuruEspirito(token) });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#rolarCriadorIncubacao")?.addEventListener("click", async () => {
+    const resultado = await rolarNoDicePlusComResultado("1d100", "Criador de Pokémon", "Incubação em horas");
+    if (resultado === null) return;
+    alert(`INCUBAÇÃO\n${resultado} hora(s).`);
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#rolarCriadorIvs")?.addEventListener("click", async () => {
+    const atributos = ["Força", "Destreza", "Constituição", "Inteligência", "Sabedoria", "Carisma"];
+    const linhas = [];
+    for (const atributo of atributos) {
+      const resultado = await rolarNoDicePlusComResultado("1d20", "Criador de Pokémon", `IV • ${atributo}`);
+      if (resultado === null) return;
+      linhas.push(`${atributo}: ${resultado} → ${formatarBonus(bonusIvCriador(resultado))}`);
+    }
+    alert(`IVs DO OVO\n${linhas.join("\n")}`);
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#rolarCriadorIncubacaoVantagem")?.addEventListener("click", async () => {
+    const primeiro = await rolarNoDicePlusComResultado("1d100", "Cuidado e Carinho", "Incubação 1/2");
+    if (primeiro === null) return;
+    const segundo = await rolarNoDicePlusComResultado("1d100", "Cuidado e Carinho", "Incubação 2/2");
+    if (segundo === null) return;
+    alert(`INCUBAÇÃO COM CUIDADO\nResultados: ${primeiro} e ${segundo}\nTempo usado: ${Math.max(primeiro, segundo)} hora(s).`);
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#rolarCriadorAtributoHerdado")?.addEventListener("click", async () => {
+    const resultado = await rolarNoDicePlusComResultado("1d6", "Cuidado e Carinho", "Atributo herdado");
+    if (resultado === null) return;
+    alert(`ATRIBUTO HERDADO\n${resultado}: ${nomeAtributoCriador(resultado)}`);
+    await redesenharClasseAberta();
+  });
+  const campoBoaGenetica = document.querySelector("#criadorBoaGeneticaEscolha");
+  campoBoaGenetica?.addEventListener("blur", async () => {
+    const valor = String(campoBoaGenetica.value || "");
+    if (valor === String(token.metadata[META_CRIADOR_BOA_GENETICA_ESCOLHA] ?? "")) return;
+    await salvarEstadoClasse(token, { [META_CRIADOR_BOA_GENETICA_ESCOLHA]: valor });
+  });
+  const campoMestreTracos = document.querySelector("#criadorMestreTracosNotas");
+  campoMestreTracos?.addEventListener("blur", async () => {
+    const valor = String(campoMestreTracos.value || "");
+    if (valor === String(token.metadata[META_CRIADOR_MESTRE_TRACOS_NOTAS] ?? "")) return;
+    await salvarEstadoClasse(token, { [META_CRIADOR_MESTRE_TRACOS_NOTAS]: valor });
+  });
+  document.querySelector("#rolarCriadorShiny")?.addEventListener("click", async () => {
+    const ambos = document.querySelector("#criadorPaisShiny")?.value === "2";
+    const cd = ambos ? 86 : 91;
+    const resultado = await rolarNoDicePlusComResultado("1d100", "Boa Genética", `Pokémon Brilhante • CD ${cd}`);
+    if (resultado === null) return;
+    alert(resultado >= cd
+      ? `POKÉMON BRILHANTE!\nResultado: ${resultado}\nCD: ${cd}`
+      : `SEM BRILHO DESTA VEZ\nResultado: ${resultado}\nCD: ${cd}`);
+    await redesenharClasseAberta();
+  });
+
+  const gastarPontosTatico = async (quantidade) => {
+    const max = maxPontosTatico(nivelTreinador);
+    const atual = pontosTaticoAtuais(token, nivelTreinador);
+    const gasto = Math.max(1, Math.trunc(Number(quantidade) || 1));
+    if (gasto > atual) {
+      alert(`Você possui apenas ${atual} Ponto(s) Tático(s).`);
+      return false;
+    }
+    await salvarEstadoClasse(token, { [META_TATICO_PONTOS]: Math.max(0, atual - gasto) });
+    return true;
+  };
+  document.querySelector("#usarTaticoCura")?.addEventListener("click", async () => {
+    if (pontosTaticoAtuais(token, nivelTreinador) <= 0) return;
+    const resultado = await rolarNoDicePlusComResultado("1d6", "Tático", "+1d6 de cura");
+    if (resultado === null) return;
+    if (!(await gastarPontosTatico(1))) return;
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarTatico")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_TATICO_PONTOS]: maxPontosTatico(nivelTreinador) });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#usarTaticoGolpe")?.addEventListener("click", async () => {
+    if (!(await gastarPontosTatico(2))) return;
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#usarTaticoDefesa")?.addEventListener("click", async () => {
+    const gasto = Math.max(1, Math.trunc(Number(document.querySelector("#taticoDefesaGasto")?.value) || 1));
+    if (!(await gastarPontosTatico(gasto))) return;
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#usarTaticoCd")?.addEventListener("click", async () => {
+    const gasto = Math.max(1, Math.min(5, Math.trunc(Number(document.querySelector("#taticoCdGasto")?.value) || 1)));
+    if (!(await gastarPontosTatico(gasto))) return;
     await redesenharClasseAberta();
   });
 
