@@ -3356,7 +3356,7 @@ const IDS_TALENTOS_TREINADOR = new Set(TALENTOS_TREINADOR_POR_ID.keys());
 
 function normalizarTalentosTreinador(valor) {
   const lista = Array.isArray(valor) ? valor : [];
-  return Array.from({ length: 8 }, (_, i) => {
+  return Array.from({ length: 5 }, (_, i) => {
     const id = typeof lista[i] === 'string' ? lista[i] : null;
     return id && IDS_TALENTOS_TREINADOR.has(id) ? id : null;
   });
@@ -7040,8 +7040,8 @@ function mostrarFichaTreinadorTalEsp(token) {
 
     <section class="talEspSecao">
       <div class="talEspCabecalho">
-        <div><h3>TALENTOS</h3><p>Escolha até 8 talentos. Para trocar, remova primeiro com ×.</p></div>
-        <span class="talEspContador">${talentosSelecionados.filter(Boolean).length}/8</span>
+        <div><h3>TALENTOS</h3><p>Escolha até 5 talentos. Para trocar, remova primeiro com ×.</p></div>
+        <span class="talEspContador">${talentosSelecionados.filter(Boolean).length}/5</span>
       </div>
       <div class="gradeTalEsp">${talentosSelecionados.map((id, indice) => renderSlotTalento(id, indice)).join("")}</div>
     </section>
