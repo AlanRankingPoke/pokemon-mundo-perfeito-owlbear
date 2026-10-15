@@ -115,11 +115,6 @@ function bonusStatusMegaDoToken(token, atributo) {
   return Number(distribuicaoMegaDoToken(token).atributos?.[atributo]) || 0;
 }
 
-function bonusMovimentoMegaDoToken(token, chave) {
-  if (!megaAtivaNoToken(token)) return 0;
-  const passos = Number(distribuicaoMegaDoToken(token).movimentos?.[chave]) || 0;
-  return passos * MEGA_PASSO_MOVIMENTO;
-}
 
 function modificadorPorStatus(valor) {
   const numero = Number(String(valor ?? "").trim().replace(",", "."));
@@ -191,8 +186,6 @@ function dadosFormaDoToken(item) {
   };
 }
 
-function dadosImagemDaReferenciaMega(referencia) { return dadosFormaDoToken(referencia); }
-function dadosImagemDoToken(item) { return dadosFormaDoToken(item); }
 
 function megaConfigDoToken(token) {
   const config = token?.metadata?.[META_MEGA_CONFIG];
@@ -254,7 +247,7 @@ async function aplicarImagemMegaAoToken(token, destino, ativa) {
   aplicarFormaNoItem(token, destino, ativa);
 
   // Dá um instante para o Owlbear recalcular os bounds da nova imagem.
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await esperar(80);
 
   // Corrige qualquer salto lateral/vertical causado pelo offset da imagem.
   const boundsDepois = await OBR.scene.items.getItemBounds([token.id]);
@@ -315,31 +308,6 @@ async function definirReferenciaMega(tokenAtual, referenciaMega) {
   return config;
 }
 
-async function pegarBarraHpDoToken(tokenId) {
-  const barras = await OBR.scene.items.getItems(
-    (item) =>
-      item.type === "SHAPE" &&
-      item.metadata?.[`${PREFIX}/statusToken`] === tokenId &&
-      item.metadata?.[`${PREFIX}/tipoVisual`] === "fundo"
-  );
-  if (!barras.length) return null;
-  barras.sort((a, b) => {
-    const dataA = Date.parse(a.lastModified || "") || 0;
-    const dataB = Date.parse(b.lastModified || "") || 0;
-    return dataB - dataA;
-  });
-  return barras[0];
-}
-
-async function boundsBarraHpDoToken(tokenId) {
-  const barra = await pegarBarraHpDoToken(tokenId);
-  if (!barra) return null;
-  try {
-    return await OBR.scene.items.getItemBounds([barra.id]);
-  } catch (_) {
-    return null;
-  }
-}
 
 async function ativarMegaEvolucao(token) {
   const config = megaConfigDoToken(token);
@@ -355,9 +323,7 @@ async function retirarMegaEvolucao(token) {
   return false;
 }
 
-async function alternarMegaEvolucao(token) {
-  return megaAtivaNoToken(token) ? retirarMegaEvolucao(token) : ativarMegaEvolucao(token);
-}
+
 const STATUS_DEBUFFS = [ { id: "envenenado", nome: "Envenenado", sigla: "ENV", arquivo: "Envenenado.png", cor: "#8f39c7", imagem: { width: 1254, height: 1254, bbox: { x: 94, y: 416, width: 1066, height: 448 } } }, { id: "queimado", nome: "Queimado", sigla: "QMD", arquivo: "Queimado.png", cor: "#ef4b18", imagem: { width: 1254, height: 1254, bbox: { x: 88, y: 393, width: 1078, height: 465 } } }, { id: "paralizado", legacyId: "paralisado", nome: "Paralizado", sigla: "PAR", arquivo: "Paralizado.png", cor: "#e4b900", imagem: { width: 1254, height: 1254, bbox: { x: 48, y: 373, width: 1158, height: 498 } } }, { id: "congelado", nome: "Congelado", sigla: "GEL", arquivo: "Congelado.png", cor: "#40aee0", imagem: { width: 1254, height: 1254, bbox: { x: 78, y: 403, width: 1099, height: 472 } } }, { id: "dormindo", nome: "Dormindo", sigla: "DRM", arquivo: "Dormindo.png", cor: "#404bc9", imagem: { width: 1254, height: 1254, bbox: { x: 31, y: 374, width: 1192, height: 514 } } }, { id: "sonolento", nome: "Sonolento", sigla: "SON", arquivo: "Sonolento.png", cor: "#8580df", imagem: { width: 1254, height: 1254, bbox: { x: 78, y: 392, width: 1099, height: 471 } } }, { id: "atordoado", nome: "Atordoado", sigla: "ATO", arquivo: "Atordoado.png", cor: "#e2a900", imagem: { width: 1254, height: 1254, bbox: { x: 180, y: 438, width: 894, height: 378 } } }, { id: "encantado", nome: "Encantado", sigla: "ENC", arquivo: "Encantado.png", cor: "#df3889", imagem: { width: 1254, height: 1254, bbox: { x: 164, y: 429, width: 927, height: 397 } } }, { id: "confuso", nome: "Confuso", sigla: "CNF", arquivo: "Confuso.png", cor: "#16aaa5", imagem: { width: 1254, height: 1254, bbox: { x: 150, y: 431, width: 954, height: 392 } } } ];
 const chaveDebuff = (id) =>
 `${PREFIX}/debuff-${id}`;
@@ -1111,7 +1077,6 @@ const ESTILO_FICHA = `
   #salvarPokemonStatus,
   #salvarPokemonMoves,
   #salvarPokemonPericias,
-  #salvarPokemonTalentos,
   #salvarTreinadorStatus,
   #salvarTreinadorPerNot {
     min-height:42px !important;
@@ -1123,7 +1088,6 @@ const ESTILO_FICHA = `
   #salvarPokemonStatus,
   #salvarPokemonMoves,
   #salvarPokemonPericias,
-  #salvarPokemonTalentos,
   #salvarTreinadorStatus,
   #salvarTreinadorPerNot {
     display:none !important;
@@ -1595,13 +1559,52 @@ function limparRotuloDice(texto) { return String(texto || "") .replace(/[#+\-*/(
 function formatarBonus(valor) { const numero = Number(valor) || 0;
 return numero > 0 ? `+${numero}` : `${numero}`;
 }
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+}
+
+function numeroMetadata(token, chave, padrao = 0) {
+  const bruto = token?.metadata?.[chave];
+  const numero = Number(String(bruto ?? padrao).trim().replace(',', '.'));
+  return Number.isFinite(numero) ? numero : Number(padrao) || 0;
+}
+
+function modificadorTreinador(token, atributo) {
+  return Math.trunc(numeroMetadata(token, `${PREFIX}/treinador-mod-${atributo}`, 0));
+}
+
+function maxUsosPorModificador(token, atributo, base = 1, minimo = 1) {
+  return Math.max(minimo, Math.trunc(base + modificadorTreinador(token, atributo)));
+}
+
+async function atualizarMetadataToken(token, alteracoes) {
+  const entradas = Object.entries(alteracoes || {});
+  if (!token?.id || !entradas.length) return token;
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      item.metadata ||= {};
+      for (const [chave, valor] of entradas) item.metadata[chave] = valor;
+    }
+  });
+  token.metadata ||= {};
+  for (const [chave, valor] of entradas) token.metadata[chave] = valor;
+  return token;
+}
+
 
 const QUANTIDADE_EQUIPE_TREINADOR = 6;
 const QUANTIDADE_PC_TREINADOR = 16;
 
 function clonarDadosSimples(valor) {
   if (valor === undefined) return undefined;
-  try { return JSON.parse(JSON.stringify(valor)); } catch (_) { return valor; }
+  try {
+    if (typeof structuredClone === 'function') return structuredClone(valor);
+  } catch (_) {}
+  try {
+    return JSON.parse(JSON.stringify(valor));
+  } catch (_) {
+    return valor;
+  }
 }
 
 function rosterTreinadorPadrao() {
@@ -1726,7 +1729,7 @@ async function pontoUmGridNaFrenteDoTreinador(token) {
 }
 
 async function centralizarItemNoPonto(itemId, ponto) {
-  await new Promise((resolve) => setTimeout(resolve, 60));
+  await esperar(60);
   const bounds = await OBR.scene.items.getItemBounds([itemId]);
   const centro = centroDoBounds(bounds);
   const dx = ponto.x - centro.x;
@@ -1813,11 +1816,10 @@ function assinaturaSlotPokemon(slot) {
 
 let sincronizacaoRosterEmCampoPendente = null;
 async function sincronizarSnapshotsPokemonsEmCampo() {
-  const itens = await OBR.scene.items.getItems();
-  const pokemonsEmCampo = itens.filter((item) =>
-    item?.type === "IMAGE" &&
-    item.metadata?.[META_POKEMON_DONO_TREINADOR] &&
-    item.metadata?.[META_POKEMON_SLOT_TREINADOR]
+  const pokemonsEmCampo = await OBR.scene.items.getItems((item) =>
+    item?.type === 'IMAGE' &&
+    Boolean(item.metadata?.[META_POKEMON_DONO_TREINADOR]) &&
+    Boolean(item.metadata?.[META_POKEMON_SLOT_TREINADOR])
   );
   if (!pokemonsEmCampo.length) return;
 
@@ -1828,9 +1830,11 @@ async function sincronizarSnapshotsPokemonsEmCampo() {
     treinadoresPorId.get(donoId).push(pokemon);
   }
 
+  const donos = await OBR.scene.items.getItems([...treinadoresPorId.keys()]);
+  const donosPorId = new Map(donos.map((item) => [item.id, item]));
+
   for (const [donoId, pokemons] of treinadoresPorId) {
-    const donos = await OBR.scene.items.getItems([donoId]);
-    const dono = donos?.[0];
+    const dono = donosPorId.get(donoId);
     if (!dono) continue;
     const roster = rosterDoTreinador(dono);
     let mudou = false;
@@ -2101,7 +2105,7 @@ async function guardarPokemonCapturadoNoPc(treinador, pokemon) {
       }
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 120));
+    await esperar(120);
     pokemonAtual = (await OBR.scene.items.getItems([pokemonAtual.id]))?.[0];
 
     if (!pokemonAtual) throw new Error("O Pokémon saiu da mesa antes de concluir a captura.");
@@ -2163,7 +2167,7 @@ async function guardarPokemonCapturadoNoPc(treinador, pokemon) {
     } catch (erroPrimeiraTentativa) {
       // Uma segunda tentativa curta evita falhas transitórias de sincronização da cena.
       try {
-        await new Promise((resolve) => setTimeout(resolve, 140));
+        await esperar(140);
         treinadorAtual = (await OBR.scene.items.getItems([treinador.id]))?.[0] || treinadorAtual;
         await recolherPokemonDoTreinador(treinadorAtual, "pc", indicePc);
       } catch (erroSegundaTentativa) {
@@ -2201,39 +2205,21 @@ async function guardarPokemonCapturadoNoPc(treinador, pokemon) {
 }
 
 async function pokemonsDisponiveisParaRoster(token) {
-  // Busca a cena de novo TODA VEZ que o seletor é aberto.
-  // Assim não sobra Pokémon antigo/fantasma em cache.
-  const itensAtuais = await OBR.scene.items.getItems();
-  return itensAtuais.filter((item) => {
-    if (!tokenEstaDisponivelNaMesa(item)) return false;
-    if (item.id === token.id) return false;
-
-    // Só fichas realmente marcadas como POKÉMON.
-    const tipoFicha = item.metadata?.[`${PREFIX}/tipoFicha`];
-    if (tipoFicha !== "pokemon") return false;
-
-    // Pokémon que está EM CAMPO pode ser escolhido por outro treinador também.
-    // Se ele já pertencer a outro roster, o vínculo será transferido ao guardar.
-
-    // Token de referência Mega não é Pokémon disponível para o treinador.
-    if (String(item.name || "").trim().toLowerCase().startsWith("mega")) return false;
-
+  // Consulta a cena atual em toda abertura; o filtro é aplicado pelo próprio SDK.
+  return OBR.scene.items.getItems((item) => {
+    if (!tokenEstaDisponivelNaMesa(item) || item.id === token.id) return false;
+    if (item.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') return false;
+    if (String(item.name || '').trim().toLowerCase().startsWith('mega')) return false;
     return true;
   });
 }
 
 async function tokensSemFichaParaRegistrarComoPokemon(token) {
-  // Também usa somente os itens que existem e estão visíveis AGORA na cena.
-  const itensAtuais = await OBR.scene.items.getItems();
-  return itensAtuais.filter((item) => {
-    if (!tokenEstaDisponivelNaMesa(item)) return false;
-    if (item.id === token.id) return false;
+  return OBR.scene.items.getItems((item) => {
+    if (!tokenEstaDisponivelNaMesa(item) || item.id === token.id) return false;
     if (item.metadata?.[META_POKEMON_DONO_TREINADOR]) return false;
-    if (String(item.name || "").trim().toLowerCase().startsWith("mega")) return false;
-
-    // Só tokens ainda não classificados podem ser registrados como novos Pokémon.
-    const tipoFicha = item.metadata?.[`${PREFIX}/tipoFicha`];
-    return !tipoFicha;
+    if (String(item.name || '').trim().toLowerCase().startsWith('mega')) return false;
+    return !item.metadata?.[`${PREFIX}/tipoFicha`];
   });
 }
 
@@ -2496,52 +2482,147 @@ function formulaSalvaguarda(valor) { const numero = Number( String(valor ?? "") 
 if (Number.isNaN(numero)) { return null; }
 return `1d20${numero >= 0 ? "+" : ""}${numero}`;
 }
-async function dicePlusPronto() { const requestId = crypto.randomUUID();
-return new Promise((resolve) => { let terminou = false; const unsubscribe = OBR.broadcast.onMessage( "dice-plus/isReady", (event) => { if ( event.data?.ready === true && event.data?.requestId === requestId && !terminou ) { terminou = true; unsubscribe(); resolve(true); } } ); OBR.broadcast.sendMessage( "dice-plus/isReady", { requestId, timestamp: Date.now() }, { destination: "ALL" } ); setTimeout(() => { if (!terminou) { terminou = true; unsubscribe(); resolve(false); } }, 1000); }); }
-async function rolarNoDicePlus(formula, nome, tipo = "") { formula = String(formula || "").trim();
-if (!formula) { alert("A fórmula da rolagem está vazia.");
-return; }
-if (!(await dicePlusPronto())) { alert("Dice+ não foi encontrado.");
-return; }
-const playerId = await OBR.player.getId();
-const playerName = await OBR.player.getName();
-const nomeSeguro = limparRotuloDice(nome) || "Rolagem";
-const tipoSeguro = limparRotuloDice(tipo);
-const rotulo = tipoSeguro
-? `${nomeSeguro} ${tipoSeguro}`
-: nomeSeguro;
-const formulaCompleta =
-`${formula} # ${rotulo}`;
-await OBR.broadcast.sendMessage( "dice-plus/roll-request", { rollId:
-`pokemon_${Date.now()}_${Math.random()
-                    .toString(36)
-                    .slice(2, 8)}`,
-playerId, playerName, rollTarget: "everyone", diceNotation: formulaCompleta, showResults: true, timestamp: Date.now(), source: PREFIX }, { destination: "ALL" } ); }
-async function rolarNoDicePlusComResultado(formula, nome, tipo = "") { formula = String(formula || "").trim();
-if (!formula) { alert("A fórmula da rolagem está vazia.");
-return null; }
-if (!(await dicePlusPronto())) { alert("Dice+ não foi encontrado.");
-return null; }
-const playerId = await OBR.player.getId();
-const playerName = await OBR.player.getName();
-const nomeSeguro = limparRotuloDice(nome) || "Rolagem";
-const tipoSeguro = limparRotuloDice(tipo);
-const rotulo = tipoSeguro
-? `${nomeSeguro} ${tipoSeguro}`
-: nomeSeguro;
-const formulaCompleta =
-`${formula} # ${rotulo}`;
-const rollId =
-`pokemon_${Date.now()}_${Math.random()
-            .toString(36)
-            .slice(2, 8)}`;
-return new Promise(async (resolve) => { let terminou = false; let temporizador = null; const finalizar = (valor) => { if (terminou) { return; } terminou = true; if (temporizador) { clearTimeout(temporizador); } unsubscribeResultado(); unsubscribeErro(); resolve(valor); }; const unsubscribeResultado = OBR.broadcast.onMessage(
-`${PREFIX}/roll-result`,
-(event) => { const dados = event.data; if (dados?.rollId !== rollId) { return; } const total = Number( dados?.result?.totalValue ); finalizar( Number.isFinite(total) ? total : null ); } ); const unsubscribeErro = OBR.broadcast.onMessage(
-`${PREFIX}/roll-error`,
-(event) => { const dados = event.data; if (dados?.rollId !== rollId) { return; } alert( dados?.error
-? `Erro na rolagem: ${dados.error}`
-: "Não foi possível concluir a rolagem." ); finalizar(null); } ); temporizador = setTimeout(() => { if (!terminou) { alert( "A rolagem demorou demais para retornar o resultado." ); finalizar(null); } }, 30000); try { await OBR.broadcast.sendMessage( "dice-plus/roll-request", { rollId, playerId, playerName, rollTarget: "everyone", diceNotation: formulaCompleta, showResults: true, timestamp: Date.now(), source: PREFIX }, { destination: "ALL" } ); } catch (erro) { console.error( "Erro ao solicitar rolagem de cura no Dice+:", erro ); finalizar(null); } }); }
+function gerarIdRolagemDicePlus() {
+  return `pokemon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function dicePlusPronto() {
+  const requestId = crypto.randomUUID();
+  return new Promise((resolve) => {
+    let terminou = false;
+    let temporizador = null;
+    let unsubscribe = () => {};
+
+    const finalizar = (pronto) => {
+      if (terminou) return;
+      terminou = true;
+      if (temporizador) clearTimeout(temporizador);
+      unsubscribe();
+      resolve(Boolean(pronto));
+    };
+
+    unsubscribe = OBR.broadcast.onMessage('dice-plus/isReady', (event) => {
+      if (event.data?.ready === true && event.data?.requestId === requestId) finalizar(true);
+    });
+
+    temporizador = setTimeout(() => finalizar(false), 1000);
+    Promise.resolve(
+      OBR.broadcast.sendMessage(
+        'dice-plus/isReady',
+        { requestId, timestamp: Date.now() },
+        { destination: 'ALL' }
+      )
+    ).catch(() => finalizar(false));
+  });
+}
+
+async function prepararRolagemDicePlus(formula, nome, tipo = '') {
+  const formulaLimpa = String(formula || '').trim();
+  if (!formulaLimpa) {
+    alert('A fórmula da rolagem está vazia.');
+    return null;
+  }
+  if (!(await dicePlusPronto())) {
+    alert('Dice+ não foi encontrado.');
+    return null;
+  }
+
+  const [playerId, playerName] = await Promise.all([
+    OBR.player.getId(),
+    OBR.player.getName()
+  ]);
+  const nomeSeguro = limparRotuloDice(nome) || 'Rolagem';
+  const tipoSeguro = limparRotuloDice(tipo);
+  const rotulo = tipoSeguro ? `${nomeSeguro} ${tipoSeguro}` : nomeSeguro;
+
+  return {
+    rollId: gerarIdRolagemDicePlus(),
+    playerId,
+    playerName,
+    formulaCompleta: `${formulaLimpa} # ${rotulo}`
+  };
+}
+
+function payloadRolagemDicePlus(contexto) {
+  return {
+    rollId: contexto.rollId,
+    playerId: contexto.playerId,
+    playerName: contexto.playerName,
+    rollTarget: 'everyone',
+    diceNotation: contexto.formulaCompleta,
+    showResults: true,
+    timestamp: Date.now(),
+    source: PREFIX
+  };
+}
+
+async function rolarNoDicePlus(formula, nome, tipo = '') {
+  const contexto = await prepararRolagemDicePlus(formula, nome, tipo);
+  if (!contexto) return false;
+  try {
+    await OBR.broadcast.sendMessage(
+      'dice-plus/roll-request',
+      payloadRolagemDicePlus(contexto),
+      { destination: 'ALL' }
+    );
+    return true;
+  } catch (erro) {
+    console.error('Erro ao solicitar rolagem no Dice+:', erro);
+    alert('Não foi possível enviar a rolagem para o Dice+.');
+    return false;
+  }
+}
+
+async function rolarNoDicePlusComResultado(formula, nome, tipo = '') {
+  const contexto = await prepararRolagemDicePlus(formula, nome, tipo);
+  if (!contexto) return null;
+
+  return new Promise((resolve) => {
+    let terminou = false;
+    let temporizador = null;
+    let unsubscribeResultado = () => {};
+    let unsubscribeErro = () => {};
+
+    const finalizar = (valor) => {
+      if (terminou) return;
+      terminou = true;
+      if (temporizador) clearTimeout(temporizador);
+      unsubscribeResultado();
+      unsubscribeErro();
+      resolve(valor);
+    };
+
+    unsubscribeResultado = OBR.broadcast.onMessage(`${PREFIX}/roll-result`, (event) => {
+      const dados = event.data;
+      if (dados?.rollId !== contexto.rollId) return;
+      const total = Number(dados?.result?.totalValue);
+      finalizar(Number.isFinite(total) ? total : null);
+    });
+
+    unsubscribeErro = OBR.broadcast.onMessage(`${PREFIX}/roll-error`, (event) => {
+      const dados = event.data;
+      if (dados?.rollId !== contexto.rollId) return;
+      alert(dados?.error ? `Erro na rolagem: ${dados.error}` : 'Não foi possível concluir a rolagem.');
+      finalizar(null);
+    });
+
+    temporizador = setTimeout(() => {
+      alert('A rolagem demorou demais para retornar o resultado.');
+      finalizar(null);
+    }, 30000);
+
+    Promise.resolve(
+      OBR.broadcast.sendMessage(
+        'dice-plus/roll-request',
+        payloadRolagemDicePlus(contexto),
+        { destination: 'ALL' }
+      )
+    ).catch((erro) => {
+      console.error('Erro ao solicitar rolagem no Dice+:', erro);
+      finalizar(null);
+    });
+  });
+}
 const TIPOS_VISUAIS_HUD = [ "fundo", "vida", "hp-texto", "ca-circulo", "ca-texto", ...STATUS_DEBUFFS.map(
 (status) => `debuff-${status.id}`
 ) ];
@@ -2702,7 +2783,7 @@ status.id }) .build();
 // mas NÃO herdamos escala nem rotação.
 const comportamentos = new Set( visual .disableAttachmentBehavior || [] ); comportamentos.add("SCALE"); comportamentos.add("ROTATION"); visual.disableAttachmentBehavior = [...comportamentos]; visuaisDebuff.push(visual); } } const elementos = [ fundoBarra ]; if (barraVida) { elementos.push( barraVida ); } elementos.push( circuloCA, textoHP, textoCA, ...visuaisDebuff ); await OBR.scene.items.addItems( elementos ); const tiposAtivos = [ "fundo", "hp-texto", "ca-circulo", "ca-texto" ]; if (barraVida) { tiposAtivos.push("vida"); } for ( const status of debuffsAtivos ) { tiposAtivos.push(
 `debuff-${status.id}`
-); } await new Promise( (resolve) => setTimeout(resolve, 80) ); await desduplicarHudToken( token.id, tiposAtivos ); await new Promise( (resolve) => setTimeout(resolve, 220) ); await desduplicarHudToken( token.id, tiposAtivos ); } ); }
+); } await esperar(80); await desduplicarHudToken( token.id, tiposAtivos ); await esperar(220); await desduplicarHudToken( token.id, tiposAtivos ); } ); }
 async function pegarHpCaDaTela(aplicarCalculadora = false) { let hpAtual = Number( document .querySelector("#hpAtual") .value );
 let hpMax = Number( document .querySelector("#hpMax") .value );
 const ca = Number( document .querySelector("#ca") .value );
@@ -2998,9 +3079,9 @@ botaoRolar.addEventListener("click", async () => {
     dobrado,
     ajusteManual: 0
   });
-  await abrirApresentadorIniciativa(token);
+  await abrirApresentadorIniciativa();
 });
-if (botaoAbrirPainel) botaoAbrirPainel.addEventListener("click", () => abrirApresentadorIniciativa(token));
+if (botaoAbrirPainel) botaoAbrirPainel.addEventListener("click", () => abrirApresentadorIniciativa());
 if (botaoAvancarTurno) {
   botaoAvancarTurno.addEventListener("click", async () => {
     const iniciativas = iniciativasOrdenadas(await OBR.scene.items.getItems());
@@ -3060,95 +3141,8 @@ return `
         </div>
       `;
 } ).join(""); }
-function criarPericias( valores ) { return PERICIAS.map( (grupo) => { if (!grupo.pericias.length) {
-return `
-          <div style="
-            margin-bottom:12px;
-            border:1px solid #555;
-            border-radius:6px;
-            padding:8px;
-          ">
-            <strong>
-              ${grupo.atributo} —
-              ${grupo.nomeAtributo}
-            </strong>
-            <div style="
-              font-size:12px;
-              opacity:0.7;
-              margin-top:5px;
-            ">
-              Nenhuma perícia
-            </div>
-          </div>
-        `;
-} const linhas = grupo.pericias.map(
-(pericia) => `
-            <div style="
-              display:flex;
-              align-items:center;
-              justify-content:space-between;
-              gap:8px;
-              margin-bottom:6px;
-            ">
-              <span style="
-                flex:1;
-                font-size:13px;
-              ">
-                ${pericia.nome}
-              </span>
-              <input
-                id="pericia-${pericia.id}"
-                type="text"
-                value="${esc(valores[pericia.id])}"
-                placeholder="+0"
-                style="
-                  width:60px;
-                  box-sizing:border-box;
-                  text-align:center;
-                  padding:5px;
-                "
-              >
-            </div>
-          `
-).join("");
-return `
-        <div style="
-          margin-bottom:12px;
-          border:1px solid #555;
-          border-radius:6px;
-          padding:8px;
-        ">
-          <div style="
-            font-weight:bold;
-            margin-bottom:8px;
-          ">
-            ${grupo.atributo} —
-            ${grupo.nomeAtributo}
-          </div>
-          ${linhas}
-        </div>
-      `;
-} ).join(""); }
-function criarSlots( quantidade, prefixo, valores, placeholder ) { let html = "";
-for ( let i = 1; i <= quantidade; i++ ) {
-html += `
-      <input
-        id="${prefixo}${i}"
-        type="text"
-        value="${esc(
-            valores[i] ?? ""
-        )}"
-        placeholder="${placeholder} ${i}"
-        style="
-          width:100%;
-          box-sizing:border-box;
-          padding:7px;
-          margin-bottom:6px;
-        "
-      >
-    `;
-}
-return html; }
+
+
 function ativarCalculadoraHp() { const botaoSuper = document.querySelector("#botaoSuperEfetivo");
 const opcoesSuper = document.querySelector("#opcoesSuperEfetivo");
 const botaoResistente = document.querySelector("#botaoResistente");
@@ -3186,7 +3180,7 @@ botaoCalcular.addEventListener("click", () => { const campoCalculadora = documen
 atualizarVisual(); }
 let salvamentoBuffPendente = Promise.resolve();
 let salvamentoMovimentoPendente = Promise.resolve();
-const IDS_BOTOES_AUTOSAVE = [ "salvarPokemonStatus", "salvarPokemonMoves", "salvarPokemonPericias", "salvarPokemonTalentos", "salvarTreinadorStatus", "salvarTreinadorPerNot" ];
+const IDS_BOTOES_AUTOSAVE = [ "salvarPokemonStatus", "salvarPokemonMoves", "salvarPokemonPericias", "salvarTreinadorStatus", "salvarTreinadorPerNot" ];
 function ativarAutosaveDaTela() { const app = document.querySelector("#app");
 if (!app) { return; }
 const botaoSalvar = IDS_BOTOES_AUTOSAVE
@@ -3354,30 +3348,25 @@ const TALENTOS_TREINADOR = [
   { id: "perito", nome: "Perito", texto: "Ganha proficiência em qualquer combinação de três perícias à sua escolha." },
   { id: "resiliente", nome: "Resiliente", texto: "Escolha um atributo; o atributo escolhido aumenta em +1 e você ganha proficiência em testes de resistência usando esse atributo; se já for proficiente, o bônus não se acumula." }
 ];
+const TALENTOS_TREINADOR_POR_ID = new Map(TALENTOS_TREINADOR.map((item) => [item.id, item]));
+const IDS_TALENTOS_TREINADOR = new Set(TALENTOS_TREINADOR_POR_ID.keys());
 
-function talentosTreinadorPadrao() {
-  return Array.from({ length: 8 }, () => null);
-}
 
 function normalizarTalentosTreinador(valor) {
   const lista = Array.isArray(valor) ? valor : [];
-  const validos = new Set(TALENTOS_TREINADOR.map((t) => t.id));
   return Array.from({ length: 8 }, (_, i) => {
-    const id = typeof lista[i] === "string" ? lista[i] : null;
-    return id && validos.has(id) ? id : null;
+    const id = typeof lista[i] === 'string' ? lista[i] : null;
+    return id && IDS_TALENTOS_TREINADOR.has(id) ? id : null;
   });
 }
 
 function talentoTreinadorPorId(id) {
-  return TALENTOS_TREINADOR.find((t) => t.id === id) || null;
+  return TALENTOS_TREINADOR_POR_ID.get(id) || null;
 }
 
 async function salvarTalentosTreinador(token, lista) {
   const normalizada = normalizarTalentosTreinador(lista);
-  await OBR.scene.items.updateItems([token.id], (items) => {
-    for (const item of items) item.metadata[META_TREINADOR_TALENTOS] = normalizada;
-  });
-  token.metadata[META_TREINADOR_TALENTOS] = normalizada;
+  await atualizarMetadataToken(token, { [META_TREINADOR_TALENTOS]: normalizada });
   return normalizada;
 }
 
@@ -3401,30 +3390,25 @@ const ESPECIALIZACOES_TREINADOR = [
   { id: "jogador-equipe", nome: "Jogador de Equipe", tipo: "NORMAL", texto: "Qualquer atributo +1; Pokémon Normais recebem +1 em perícias; 1/Descanso Curto, concede +1d4 ao próximo teste de perícia ou ataque de um aliado até o início do próximo turno; também pode usar a reação para conceder o bônus antes da rolagem." },
   { id: "esquiador", nome: "Esquiador", tipo: "GELO", texto: "Proficiência em Acrobacia ou Atletismo; Pokémon de Gelo recebem +1 em perícias; +1d4 em Acrobacia ou Atletismo para atravessar gelo, neve e terreno escorregadio; como reação, reduz dano de Gelo em 1d4 + Prof." }
 ];
+const ESPECIALIZACOES_TREINADOR_POR_ID = new Map(ESPECIALIZACOES_TREINADOR.map((item) => [item.id, item]));
+const IDS_ESPECIALIZACOES_TREINADOR = new Set(ESPECIALIZACOES_TREINADOR_POR_ID.keys());
 
-function especializacoesTreinadorPadrao() {
-  return Array.from({ length: 6 }, () => null);
-}
 
 function normalizarEspecializacoesTreinador(valor) {
   const lista = Array.isArray(valor) ? valor : [];
-  const validos = new Set(ESPECIALIZACOES_TREINADOR.map((e) => e.id));
   return Array.from({ length: 6 }, (_, i) => {
-    const id = typeof lista[i] === "string" ? lista[i] : null;
-    return id && validos.has(id) ? id : null;
+    const id = typeof lista[i] === 'string' ? lista[i] : null;
+    return id && IDS_ESPECIALIZACOES_TREINADOR.has(id) ? id : null;
   });
 }
 
 function especializacaoPorId(id) {
-  return ESPECIALIZACOES_TREINADOR.find((e) => e.id === id) || null;
+  return ESPECIALIZACOES_TREINADOR_POR_ID.get(id) || null;
 }
 
 async function salvarEspecializacoesTreinador(token, lista) {
   const normalizada = normalizarEspecializacoesTreinador(lista);
-  await OBR.scene.items.updateItems([token.id], (items) => {
-    for (const item of items) item.metadata[META_TREINADOR_ESPECIALIZACOES] = normalizada;
-  });
-  token.metadata[META_TREINADOR_ESPECIALIZACOES] = normalizada;
+  await atualizarMetadataToken(token, { [META_TREINADOR_ESPECIALIZACOES]: normalizada });
   return normalizada;
 }
 
@@ -3491,33 +3475,24 @@ const CLASSES_TREINADOR = [
     resumo: "Um combatente de equipe maligna que administra Pontos Sombrios para sabotar, resistir e surpreender adversários."
   }
 ];
+const CLASSES_TREINADOR_POR_ID = new Map(CLASSES_TREINADOR.map((item) => [item.id, item]));
+
 
 function classeTreinadorPorId(id) {
-  return CLASSES_TREINADOR.find((classe) => classe.id === id) || null;
+  return CLASSES_TREINADOR_POR_ID.get(id) || null;
 }
 
 async function salvarClasseTreinador(token, classeId) {
   const classeValida = classeTreinadorPorId(classeId) ? classeId : null;
-  await OBR.scene.items.updateItems([token.id], (items) => {
-    for (const item of items) item.metadata[META_TREINADOR_CLASSE] = classeValida;
-  });
-  token.metadata[META_TREINADOR_CLASSE] = classeValida;
+  await atualizarMetadataToken(token, { [META_TREINADOR_CLASSE]: classeValida });
 }
 
 async function salvarEstadoClasse(token, alteracoes) {
-  const entradas = Object.entries(alteracoes || {});
-  if (!entradas.length) return;
-  await OBR.scene.items.updateItems([token.id], (items) => {
-    for (const item of items) {
-      for (const [chave, valor] of entradas) item.metadata[chave] = valor;
-    }
-  });
-  for (const [chave, valor] of entradas) token.metadata[chave] = valor;
+  await atualizarMetadataToken(token, alteracoes);
 }
 
 function maxUsosClasseAs(token) {
-  const modSab = Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-sab`] ?? "0").replace(",", ".")) || 0);
-  return Math.max(1, 1 + modSab);
+  return maxUsosPorModificador(token, 'sab', 1, 1);
 }
 
 function usosClasseAs(token, chave) {
@@ -3535,8 +3510,7 @@ function usosClasseFixo(token, chave, maximo) {
 }
 
 function bonusCarismaMentor(token) {
-  const modCar = Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-car`] ?? "0").replace(",", ".")) || 0);
-  return Math.max(1, modCar);
+  return Math.max(1, modificadorTreinador(token, 'car'));
 }
 
 function formulaGuloseimaMentor(nivel) {
@@ -3546,24 +3520,23 @@ function formulaGuloseimaMentor(nivel) {
 }
 
 function maxUsosInteligenciaClasse(token) {
-  const modInt = Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-int`] ?? "0").replace(",", ".")) || 0);
-  return Math.max(1, 1 + modInt);
+  return maxUsosPorModificador(token, 'int', 1, 1);
 }
 
 function modificadorCarismaClasse(token) {
-  return Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-car`] ?? "0").replace(",", ".")) || 0);
+  return modificadorTreinador(token, 'car');
 }
 
 function maxUsosCarismaClasse(token) {
-  return Math.max(1, 1 + modificadorCarismaClasse(token));
+  return maxUsosPorModificador(token, 'car', 1, 1);
 }
 
 function modificadorSabedoriaClasse(token) {
-  return Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-sab`] ?? "0").replace(",", ".")) || 0);
+  return modificadorTreinador(token, 'sab');
 }
 
 function maxUsosGuruEspirito(token) {
-  return Math.max(1, 1 + modificadorSabedoriaClasse(token));
+  return maxUsosPorModificador(token, 'sab', 1, 1);
 }
 
 function maxPontosTatico(nivel) {
@@ -3578,7 +3551,7 @@ function pontosTaticoAtuais(token, nivel) {
 }
 
 function maxUsosPatrulheiroStyler(token) {
-  return Math.max(1, modificadorSabedoriaClasse(token));
+  return Math.max(1, modificadorTreinador(token, 'sab'));
 }
 
 function maxPontosCapanga(nivel) {
@@ -3722,28 +3695,20 @@ const ORIGENS_TREINADOR = [
     texto: "Você é capaz de observar padrões e compreender as forças e fraquezas de um adversário. Como uma ação bônus, pode analisar um Pokémon que possa ver fazendo um teste de Investigação (CD = 10 + nível do alvo); se for bem-sucedido, descobre informações sobre o alvo conforme a habilidade. Pode usar esse recurso um número de vezes igual a 1 + seu modificador de Inteligência (mínimo 1). Uma vez por descanso longo, também pode usar a análise para orientar um Pokémon aliado ou seu Treinador, concedendo vantagem em uma rolagem de ataque ou resistência contra o alvo examinado."
   }
 ];
+const ORIGENS_TREINADOR_POR_ID = new Map(ORIGENS_TREINADOR.map((item) => [item.id, item]));
+
 
 function origemTreinadorPorId(id) {
-  return ORIGENS_TREINADOR.find((origem) => origem.id === id) || null;
+  return ORIGENS_TREINADOR_POR_ID.get(id) || null;
 }
 
 async function salvarOrigemTreinador(token, origemId) {
   const origemValida = origemTreinadorPorId(origemId) ? origemId : null;
-  await OBR.scene.items.updateItems([token.id], (items) => {
-    for (const item of items) item.metadata[META_TREINADOR_ORIGEM] = origemValida;
-  });
-  token.metadata[META_TREINADOR_ORIGEM] = origemValida;
+  await atualizarMetadataToken(token, { [META_TREINADOR_ORIGEM]: origemValida });
 }
 
 async function salvarEstadoOrigem(token, alteracoes) {
-  const entradas = Object.entries(alteracoes || {});
-  if (!entradas.length) return;
-  await OBR.scene.items.updateItems([token.id], (items) => {
-    for (const item of items) {
-      for (const [chave, valor] of entradas) item.metadata[chave] = valor;
-    }
-  });
-  for (const [chave, valor] of entradas) token.metadata[chave] = valor;
+  await atualizarMetadataToken(token, alteracoes);
 }
 
 async function rolarPericiaOrigemComVantagem(token, periciaId, nomePericia, titulo) {
@@ -9230,97 +9195,7 @@ document.querySelector('#colarFichaPokemon')?.addEventListener('click', async ()
   }
 });
 }
-function mostrarFichaPokemonTalentos( token ) { const app = document.querySelector("#app");
-const talentos = [];
-for ( let i = 1; i <= 5; i++ ) { talentos.push({ titulo: token.metadata[
-`${PREFIX}/pokemon-talento-${i}-titulo`
-] ?? "", descricao: token.metadata[
-`${PREFIX}/pokemon-talento-${i}-descricao`
-] ?? "" }); }
-let htmlTalentos = "";
-talentos.forEach( (talento, index) => { const numero = index + 1;
-htmlTalentos += `
-        <div style="
-          margin-bottom:14px;
-          border:1px solid #555;
-          border-radius:8px;
-          padding:10px;
-        ">
-          <div style="
-            font-weight:bold;
-            margin-bottom:8px;
-          ">
-            Talento ${numero}
-          </div>
-          <label>
-            Título
-          </label>
-          <input
-            id="pokemonTalento${numero}Titulo"
-            type="text"
-            value="${esc(
-                talento.titulo
-            )}"
-            placeholder="Título do talento"
-            style="
-              width:100%;
-              box-sizing:border-box;
-              padding:8px;
-              margin-top:4px;
-              margin-bottom:8px;
-            "
-          >
-          <label>
-            Descrição
-          </label>
-          <textarea
-            id="pokemonTalento${numero}Descricao"
-            rows="6"
-            placeholder="Descrição do talento..."
-            style="
-              width:100%;
-              min-height:130px;
-              box-sizing:border-box;
-              padding:9px;
-              margin-top:4px;
-              resize:vertical;
-            "
-          >${esc(
-              talento.descricao
-          )}</textarea>
-        </div>
-      `;
-} );
-app.innerHTML = `
-    ${ESTILO_FICHA}
-    ${cabecalhoPokemon(token, 4)}
-    <h3>
-      Talentos Pokémon
-    </h3>
-    ${htmlTalentos}
-    <br>
-    <button
-      id="salvarPokemonTalentos"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Talentos
-    </button>
-  `;
-ativarCabecalhoPokemon(token);
-document .querySelector( "#salvarPokemonTalentos" ) .addEventListener( "click", async () => { const novosTalentos = []; for ( let i = 1; i <= 5; i++ ) { novosTalentos.push({ titulo: document .querySelector(
-`#pokemonTalento${i}Titulo`
-) .value .trim(), descricao: document .querySelector(
-`#pokemonTalento${i}Descricao`
-) .value .trim() }); } await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { novosTalentos.forEach( ( talento, index ) => { const numero = index + 1; item.metadata[
-`${PREFIX}/pokemon-talento-${numero}-titulo`
-] = talento.titulo; item.metadata[
-`${PREFIX}/pokemon-talento-${numero}-descricao`
-] = talento.descricao; } ); } } ); } ); }
+
 async function mostrarTokenSelecionado() { const selection = await OBR.player.getSelection();
 if ( !selection || selection.length === 0 ) { return; }
 const items = await OBR.scene.items.getItems( selection );
@@ -9364,7 +9239,8 @@ app.innerHTML = `
               </div>
             `;
 } } }
-OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); OBR.scene.items.onChange(() => { agendarSincronizacaoRosterEmCampo(); agendarCorrecaoHudExistente(); }); OBR.player.onChange( async () => {
+let pluginInicializado = false;
+OBR.onReady( async () => { if (pluginInicializado) return; pluginInicializado = true; if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); OBR.scene.items.onChange(() => { agendarSincronizacaoRosterEmCampo(); agendarCorrecaoHudExistente(); }); OBR.player.onChange( async () => {
     try {
       if (await tratarSelecaoAlvoCaptura()) return;
     } catch (erro) {
