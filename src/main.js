@@ -14,6 +14,9 @@ const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
 const META_TREINADOR_ESPECIALIZACOES = `${PREFIX}/treinador-especializacoes`;
 const META_TREINADOR_TALENTOS = `${PREFIX}/treinador-talentos`;
 const META_TREINADOR_ORIGEM = `${PREFIX}/treinador-origem`;
+const META_RIVAL_LICAO = `${PREFIX}/origem-rival-licao`;
+const META_RIVAL_REVANCHE = `${PREFIX}/origem-rival-revanche`;
+const META_RIVAL_SEQUENCIA = `${PREFIX}/origem-rival-sequencia`;
 const META_POKEMON_APELIDO = `${PREFIX}/pokemon-apelido`;
 const META_POKEMON_DONO_TREINADOR = `${PREFIX}/treinador-pokemon-dono`;
 const META_POKEMON_SLOT_TREINADOR = `${PREFIX}/treinador-pokemon-slot`;
@@ -3385,7 +3388,43 @@ const ORIGENS_TREINADOR = [
     id: "atleta",
     nome: "ATLETA",
     habilidade: "ESPÍRITO COMPETITIVO",
-    texto: "Você tem uma força de vontade inabalável e um físico treinado pela competição. Ao realizar um teste de Atletismo para correr, escalar ou nadar, você pode rolar duas vezes e escolher o melhor resultado (uma vez por descanso curto ou longo). Além disso, você ignora penalidades de terreno difícil causadas por superfícies naturais (lama, areia, neve) ao se deslocar. Caso seja de Galar, você se torna especialista em Atletismo."
+    texto: "Você tem uma força de vontade inabalável e um físico treinado pela competição. Ao realizar um teste de Atletismo para correr, escalar ou nadar, pode rolar duas vezes e escolher o melhor resultado (uma vez por descanso curto ou longo). Além disso, ignora penalidades de terreno difícil causadas por superfícies naturais como lama, areia e neve ao se deslocar. Caso seja de Galar, torna-se especialista em Atletismo."
+  },
+  {
+    id: "conhecedor",
+    nome: "CONHECEDOR",
+    habilidade: "CUIDADO NATURAL",
+    texto: "Você sabe como acalmar e cuidar de pessoas e Pokémon feridos ou estressados. Ao realizar um teste de Sabedoria (Medicina) para conhecimentos da medicina humana e Pokémon, pode rolar duas vezes e escolher o melhor resultado (uma vez por descanso curto ou longo). Uma vez por descanso longo, pode passar 10 minutos cuidando de um Treinador ou Pokémon consciente para restaurar PV iguais ao seu modificador de Sabedoria + o nível do alvo (mínimo 1); criaturas tratadas dessa forma têm vantagem em testes de resistência contra a condição Envenenado nas próximas 24 horas."
+  },
+  {
+    id: "nobre",
+    nome: "NOBRE",
+    habilidade: "PRESENÇA ARISTOCRÁTICA",
+    texto: "Você carrega uma aura de confiança e autoridade que poucos ousam questionar. Ao realizar um teste de Carisma (Persuasão) com pessoas acostumadas à etiqueta ou autoridade, pode rolar duas vezes e escolher o melhor resultado (uma vez por descanso curto ou longo). Uma vez por descanso longo, pode usar 1 minuto para discursar, organizar ou encorajar uma equipe e conceder a até 6 ouvintes vantagem em um teste de perícia à escolha feito na próxima hora; ao chegar a um novo local, sabe onde encontrar recursos de luxo, hospedagens ou contatos de alto nível."
+  },
+  {
+    id: "encrenqueiro",
+    nome: "ENCRENQUEIRO",
+    habilidade: "FUGA RÁPIDA",
+    texto: "Você aprendeu a se virar em situações perigosas. Ao realizar um teste de Enganação ou Prestidigitação para despistar alguém, improvisar truques, distrair oponentes ou sair de situações embaraçosas, pode rolar duas vezes e escolher o melhor resultado (uma vez por descanso curto ou longo). Uma vez por descanso longo, pode fazer um teste de Prestidigitação com vantagem para resolver um obstáculo simples usando materiais limitados; além disso, conhece áreas menos movimentadas, becos tranquilos, abrigos e rotas alternativas em cidades e vilas."
+  },
+  {
+    id: "selvagem",
+    nome: "AMIGO DOS POKÉMON",
+    habilidade: "SABEDORIA SELVAGEM",
+    texto: "Você conhece a natureza e os hábitos dos Pokémon selvagens. Possui excelente memória para mapas e geografia, pode encontrar comida e água fresca quando o ambiente oferece recursos, Pokémon selvagens de atitude neutra têm atitude inicial amistosa com você a menos que sejam provocados e você possui vantagem em testes de Investigação para compreender o que um Pokémon tenta expressar por gestos, sons, comportamentos ou emoções."
+  },
+  {
+    id: "rival",
+    nome: "RIVAL",
+    habilidade: "ESPÍRITO DE SUPERAÇÃO",
+    texto: "Você prospera com a rivalidade, usando-a como combustível para evoluir. Quando perde uma competição, desafio ou falha em uma meta pessoal, pode guardar essa lição e receber vantagem em um teste de perícia relacionado em uma situação semelhante. Se perder uma batalha Pokémon, recebe vantagem em 1 ataque no próximo combate. A cada vitória consecutiva contra outros Treinadores, seus Pokémon recebem +1 na iniciativa das próximas batalhas, até o máximo de +3; ao perder uma batalha contra outro Treinador, o acúmulo é zerado."
+  },
+  {
+    id: "estudioso",
+    nome: "ESTUDIOSO",
+    habilidade: "ANÁLISE ESTRATÉGICA",
+    texto: "Você é capaz de observar padrões e compreender as forças e fraquezas de um adversário. Como uma ação bônus, pode analisar um Pokémon que possa ver fazendo um teste de Investigação (CD = 10 + nível do alvo); se for bem-sucedido, descobre informações sobre o alvo conforme a habilidade. Pode usar esse recurso um número de vezes igual a 1 + seu modificador de Inteligência (mínimo 1). Uma vez por descanso longo, também pode usar a análise para orientar um Pokémon aliado ou seu Treinador, concedendo vantagem em uma rolagem de ataque ou resistência contra o alvo examinado."
   }
 ];
 
@@ -3401,32 +3440,125 @@ async function salvarOrigemTreinador(token, origemId) {
   token.metadata[META_TREINADOR_ORIGEM] = origemValida;
 }
 
-async function rolarAtletismoOrigemComVantagem(token) {
+async function salvarEstadoOrigem(token, alteracoes) {
+  const entradas = Object.entries(alteracoes || {});
+  if (!entradas.length) return;
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      for (const [chave, valor] of entradas) item.metadata[chave] = valor;
+    }
+  });
+  for (const [chave, valor] of entradas) token.metadata[chave] = valor;
+}
+
+async function rolarPericiaOrigemComVantagem(token, periciaId, nomePericia, titulo) {
+  const atualizado = await pegarTokenAtualizado(token.id);
+  if (!atualizado) {
+    alert("O treinador não foi encontrado na cena.");
+    return null;
+  }
+
+  const valor = atualizado.metadata[`${PREFIX}/pericia-${periciaId}`] ?? "";
+  const formula = formulaSalvaguarda(valor);
+  if (!formula) {
+    alert(`Defina primeiro o valor de ${nomePericia} na aba PER/NOT.`);
+    return null;
+  }
+
+  const primeiro = await rolarNoDicePlusComResultado(formula, nomePericia, `${titulo} 1/2`);
+  if (primeiro === null) return null;
+  const segundo = await rolarNoDicePlusComResultado(formula, nomePericia, `${titulo} 2/2`);
+  if (segundo === null) return null;
+  const melhor = Math.max(primeiro, segundo);
+  alert(`${titulo}\n${nomePericia}: ${primeiro} e ${segundo}\nMelhor resultado: ${melhor}`);
+  return melhor;
+}
+
+async function rolarInvestigacaoEstudioso(token, nivelAlvo) {
+  const nivel = Math.max(1, Math.trunc(Number(nivelAlvo) || 0));
+  if (!Number.isFinite(nivel) || nivel < 1) {
+    alert("Informe o nível do Pokémon investigado.");
+    return;
+  }
+
   const atualizado = await pegarTokenAtualizado(token.id);
   if (!atualizado) {
     alert("O treinador não foi encontrado na cena.");
     return;
   }
-
-  const valorAtletismo = atualizado.metadata[`${PREFIX}/pericia-atletismo`] ?? "";
-  const formula = formulaSalvaguarda(valorAtletismo);
+  const valor = atualizado.metadata[`${PREFIX}/pericia-investigacao`] ?? "";
+  const formula = formulaSalvaguarda(valor);
   if (!formula) {
-    alert("Defina primeiro o valor de Atletismo na aba PER/NOT.");
+    alert("Defina primeiro o valor de Investigação na aba PER/NOT.");
     return;
   }
 
-  const primeiro = await rolarNoDicePlusComResultado(formula, "Atletismo", "Espírito Competitivo 1/2");
-  if (primeiro === null) return;
-  const segundo = await rolarNoDicePlusComResultado(formula, "Atletismo", "Espírito Competitivo 2/2");
-  if (segundo === null) return;
+  const cd = 10 + nivel;
+  const resultado = await rolarNoDicePlusComResultado(formula, "Investigação", `Análise Estratégica • CD ${cd}`);
+  if (resultado === null) return;
+  if (resultado >= cd) {
+    alert(`ANÁLISE BEM-SUCEDIDA\nResultado: ${resultado}\nCD: ${cd}`);
+  } else {
+    alert(`ANÁLISE NÃO CONCLUÍDA\nResultado: ${resultado}\nCD: ${cd}`);
+  }
+}
 
-  const melhor = Math.max(primeiro, segundo);
-  alert(`ESPÍRITO COMPETITIVO\nAtletismo com vantagem: ${primeiro} e ${segundo}\nMelhor resultado: ${melhor}`);
+function opcoesPericiasOrigemRival() {
+  return PERICIAS.flatMap((grupo) => grupo.pericias).map((pericia) =>
+    `<option value="${esc(pericia.id)}">${esc(pericia.nome)}</option>`
+  ).join("");
 }
 
 function mostrarFichaTreinadorClasOri(token) {
   const app = document.querySelector("#app");
   const origem = origemTreinadorPorId(token.metadata[META_TREINADOR_ORIGEM]);
+  const rivalLicao = token.metadata[META_RIVAL_LICAO] === true;
+  const rivalRevanche = token.metadata[META_RIVAL_REVANCHE] === true;
+  const rivalSequencia = Math.max(0, Math.min(3, Math.trunc(Number(token.metadata[META_RIVAL_SEQUENCIA]) || 0)));
+
+  const botoesOrigem = () => {
+    if (!origem) return "";
+    if (origem.id === "atleta") return `<button type="button" class="origemRolar" id="rolarAtletismoOrigem">🎲 ROLAR ATLETISMO COM VANTAGEM</button>`;
+    if (origem.id === "conhecedor") return `<button type="button" class="origemRolar" id="rolarMedicinaOrigem">🎲 ROLAR MEDICINA COM VANTAGEM</button>`;
+    if (origem.id === "nobre") return `<button type="button" class="origemRolar" id="rolarPersuasaoOrigem">🎲 ROLAR PERSUASÃO COM VANTAGEM</button>`;
+    if (origem.id === "encrenqueiro") return `
+      <div class="origemBotoesDuplos">
+        <button type="button" class="origemRolar" id="rolarEnganacaoOrigem">🎲 ENGANAÇÃO COM VANTAGEM</button>
+        <button type="button" class="origemRolar" id="rolarPrestidigitacaoOrigem">🎲 PRESTIDIGITAÇÃO COM VANTAGEM</button>
+      </div>`;
+    if (origem.id === "selvagem") return `<button type="button" class="origemRolar" id="rolarInvestigacaoSelvagem">🎲 INVESTIGAÇÃO COM VANTAGEM</button>`;
+    if (origem.id === "estudioso") return `
+      <div class="estudiosoPainel">
+        <label for="nivelAlvoEstudioso">NÍVEL DO POKÉMON INVESTIGADO</label>
+        <div class="estudiosoLinha">
+          <input id="nivelAlvoEstudioso" type="number" min="1" step="1" value="1">
+          <div class="estudiosoCd">CD <strong id="cdEstudioso">11</strong></div>
+        </div>
+        <button type="button" class="origemRolar" id="analisarEstudioso">🔎 ANALISAR POKÉMON</button>
+      </div>`;
+    if (origem.id === "rival") return `
+      <div class="rivalPainel">
+        <div class="rivalBloco">
+          <div class="rivalCab"><strong>LIÇÃO</strong><span class="rivalEstado ${rivalLicao ? "pronto" : ""}">${rivalLicao ? "PRONTA" : "VAZIA"}</span></div>
+          <button type="button" class="origemRolar" id="marcarLicaoRival">${rivalLicao ? "✓ LIÇÃO MARCADA" : "＋ MARCAR LIÇÃO"}</button>
+          <select id="periciaLicaoRival" ${rivalLicao ? "" : "disabled"}>${opcoesPericiasOrigemRival()}</select>
+          <button type="button" class="origemRolar" id="usarLicaoRival" ${rivalLicao ? "" : "disabled"}>🎲 USAR LIÇÃO — VANTAGEM</button>
+        </div>
+        <div class="rivalBloco">
+          <div class="rivalCab"><strong>REVANCHE</strong><span class="rivalEstado ${rivalRevanche ? "pronto" : ""}">${rivalRevanche ? "PRONTA" : "NÃO"}</span></div>
+          <button type="button" class="origemRolar" id="usarRevancheRival" ${rivalRevanche ? "" : "disabled"}>⚔ USAR REVANCHE</button>
+        </div>
+        <div class="rivalBloco">
+          <div class="rivalCab"><strong>SEQUÊNCIA DE VITÓRIAS</strong><span class="rivalSequencia">${rivalSequencia}/3</span></div>
+          <div class="rivalBonus">BÔNUS DE INICIATIVA DOS POKÉMON: <strong>+${rivalSequencia}</strong></div>
+          <div class="origemBotoesDuplos">
+            <button type="button" class="origemRolar" id="vitoriaRival">＋ VITÓRIA</button>
+            <button type="button" class="origemRolar perigo" id="derrotaRival">PERDEU BATALHA</button>
+          </div>
+        </div>
+      </div>`;
+    return "";
+  };
 
   app.innerHTML = `
     ${ESTILO_FICHA}
@@ -3436,31 +3568,39 @@ function mostrarFichaTreinadorClasOri(token) {
       .clasOriTitulo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
       .clasOriTitulo h3{margin:0;color:#2d4767;font-size:13px;letter-spacing:.35px}
       .clasOriTitulo p{margin:2px 0 0;color:#8192a7;font-size:8px;font-weight:700}
-      .origemVazia{width:100%;min-height:58px!important;border:1.5px dashed #a9bfd8!important;border-radius:11px!important;background:#f8fbff!important;color:#52749d!important;font-weight:900!important;font-size:10px!important;cursor:pointer}
+      .origemVazia{width:100%;min-height:52px!important;border:1.5px dashed #a9bfd8!important;border-radius:11px!important;background:#f8fbff!important;color:#52749d!important;font-weight:900!important;font-size:10px!important;cursor:pointer}
       .origemCard{border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(33,70,110,.06)}
-      .origemCardTopo{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;background:#f8fbff;border:0;cursor:pointer;text-align:left}
+      .origemCardTopo{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#f8fbff;border:0;cursor:pointer;text-align:left}
       .origemNome{font-size:12px;font-weight:1000;color:#2e5f9d;letter-spacing:.4px}
-      .origemHabNome{margin-top:2px;font-size:8px;font-weight:900;color:#71859e}
-      .origemSeta{font-size:11px;color:#56779e;font-weight:1000}
+      .origemSeta{font-size:10px;color:#56779e;font-weight:1000;white-space:nowrap}
       .origemRemover{width:27px!important;height:27px!important;min-height:27px!important;padding:0!important;border-radius:50%!important;font-size:14px!important;flex:0 0 27px;cursor:pointer}
-      .origemDetalhes{display:none;padding:9px 10px 10px;border-top:1px solid #e0e8f1;background:#fff}
+      .origemDetalhes{display:none;padding:10px;border-top:1px solid #e0e8f1;background:#fff}
       .origemDetalhes.aberto{display:block}
       .origemHabilidade{font-size:9px;font-weight:1000;color:#2e5f9d;margin-bottom:5px}
       .origemTexto{font-size:9px;line-height:1.42;color:#53677f;font-weight:700}
-      .origemRolar{width:100%;margin-top:9px;min-height:35px!important;padding:7px!important;background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important;font-size:9px!important;font-weight:1000!important;cursor:pointer}
-      .classePlaceholder{padding:10px;border:1px dashed #d5dfeb;border-radius:10px;background:#fafcff;color:#8a99aa;font-size:9px;font-weight:800;text-align:center}
-      .guiaOrigemOverlay{display:none;position:fixed;inset:7px;z-index:99999;background:rgba(245,249,254,.985);border:1px solid #bcd0e6;border-radius:14px;box-shadow:0 14px 36px rgba(20,43,70,.24);overflow:hidden;flex-direction:column}
-      .guiaOrigemOverlay.aberto{display:flex}
-      .guiaOrigemTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#fff;border-bottom:1px solid #dce6f1}
-      .guiaOrigemTopo h3{margin:0;color:#263f60;font-size:13px}
-      .guiaOrigemTopo p{margin:2px 0 0;color:#7b90aa;font-size:8px;font-weight:700}
-      .guiaOrigemFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:17px!important;cursor:pointer}
-      .guiaOrigemLista{padding:9px;overflow:auto;display:grid;grid-template-columns:1fr;gap:6px}
+      .origemRolar{width:100%;margin-top:8px;min-height:34px!important;padding:7px!important;background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important;font-size:8.5px!important;font-weight:1000!important;cursor:pointer}
+      .origemRolar.perigo{background:#fff4f4!important;border-color:#e9aaaa!important;color:#a84b4b!important}
+      .origemBotoesDuplos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+      .classePlaceholder{padding:12px;border:1px dashed #c8d6e6;border-radius:10px;background:#fbfdff;text-align:center;color:#91a0b2;font-size:9px;font-weight:900}
+      .guiaOrigemOverlay{display:none;position:fixed;z-index:5000;inset:0;background:rgba(13,26,43,.55);padding:16px;overflow:auto}
+      .guiaOrigemOverlay.aberto{display:block}
+      .guiaOrigemTopo{position:sticky;top:-16px;z-index:2;background:#fff;margin:-16px -16px 10px;padding:13px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #dce6f0}
+      .guiaOrigemTopo h3{margin:0;color:#274c79;font-size:14px}.guiaOrigemTopo p{margin:2px 0 0;color:#8798aa;font-size:8px;font-weight:700}
+      .guiaOrigemFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:15px!important}
+      .guiaOrigemLista{display:grid;grid-template-columns:1fr;gap:7px;max-width:520px;margin:0 auto;background:#f5f8fc;padding:9px;border-radius:12px}
       .guiaOrigemOpcao{width:100%;text-align:left;padding:9px;border:1px solid #d6e2ef;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
       .guiaOrigemOpcao:hover{border-color:#78a8e2;background:#f5f9ff}
       .guiaOrigemOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#2e5f9d}
       .guiaOrigemOpcaoHab{display:block;margin-top:3px;font-size:8px;font-weight:900;color:#72869f}
       .guiaOrigemOpcaoTexto{display:block;margin-top:5px;font-size:8px;line-height:1.35;font-weight:700;color:#5b6f87}
+      .estudiosoPainel,.rivalPainel{margin-top:9px;padding:8px;border:1px solid #d9e5f1;border-radius:10px;background:#f8fbff}
+      .estudiosoPainel label{display:block;font-size:8px;font-weight:1000;color:#647d9b;margin-bottom:5px}
+      .estudiosoLinha{display:grid;grid-template-columns:minmax(0,1fr) 74px;gap:6px;align-items:center}
+      .estudiosoLinha input,.rivalPainel select{width:100%;min-height:34px;padding:6px 8px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;font-weight:900;color:#2e4968;box-sizing:border-box}
+      .estudiosoCd{height:34px;display:flex;align-items:center;justify-content:center;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#657c98;font-size:9px;font-weight:900}.estudiosoCd strong{margin-left:4px;color:#2867b4;font-size:13px}
+      .rivalBloco{padding:8px 0;border-bottom:1px solid #dce7f1}.rivalBloco:first-child{padding-top:0}.rivalBloco:last-child{border-bottom:0;padding-bottom:0}
+      .rivalCab{display:flex;align-items:center;justify-content:space-between;gap:7px;color:#365a84;font-size:9px;margin-bottom:4px}.rivalEstado,.rivalSequencia{padding:3px 6px;border-radius:999px;background:#e6ebf1;color:#78889a;font-size:7px;font-weight:1000}.rivalEstado.pronto{background:#dff3e6;color:#358151}.rivalSequencia{background:#e5f0ff;color:#2d6cb8;font-size:9px}
+      .rivalBonus{margin:5px 0 1px;padding:6px 7px;background:#fff;border:1px solid #dbe6f1;border-radius:8px;color:#65798f;font-size:8px;font-weight:800}.rivalBonus strong{color:#2867b4}
     </style>
 
     <section class="clasOriSecao">
@@ -3469,7 +3609,7 @@ function mostrarFichaTreinadorClasOri(token) {
         <div class="origemCard">
           <div style="display:grid;grid-template-columns:minmax(0,1fr) 31px;align-items:center;gap:5px;padding:5px;background:#f8fbff;">
             <button type="button" class="origemCardTopo" id="abrirOrigemSelecionada">
-              <span><span class="origemNome">${esc(origem.nome)}</span><span class="origemHabNome">${esc(origem.habilidade)}</span></span>
+              <span class="origemNome">${esc(origem.nome)}</span>
               <span class="origemSeta" id="setaOrigemSelecionada">VER ▾</span>
             </button>
             <button type="button" class="origemRemover" id="removerOrigemTreinador" title="Remover origem">×</button>
@@ -3477,20 +3617,20 @@ function mostrarFichaTreinadorClasOri(token) {
           <div class="origemDetalhes" id="detalhesOrigemSelecionada">
             <div class="origemHabilidade">HABILIDADE: ${esc(origem.habilidade)}</div>
             <div class="origemTexto">${esc(origem.texto)}</div>
-            ${origem.id === "atleta" ? `<button type="button" class="origemRolar" id="rolarAtletismoOrigem">🎲 ROLAR ATLETISMO COM VANTAGEM</button>` : ""}
+            ${botoesOrigem()}
           </div>
         </div>
       ` : `<button type="button" class="origemVazia" id="escolherOrigemTreinador">＋ ESCOLHER ORIGEM</button>`}
     </section>
 
     <section class="clasOriSecao">
-      <div class="clasOriTitulo"><div><h3>CLASSE</h3><p>A estrutura já está reservada; configuraremos as classes nesta mesma aba.</p></div></div>
+      <div class="clasOriTitulo"><div><h3>CLASSE</h3><p>A estrutura está reservada para cadastrarmos as classes.</p></div></div>
       <div class="classePlaceholder">CLASSE AINDA NÃO CONFIGURADA</div>
     </section>
 
     <div class="guiaOrigemOverlay" id="guiaOrigensTreinador">
       <div class="guiaOrigemTopo">
-        <div><h3>Guia de Origens</h3><p>Escolha a origem do seu treinador.</p></div>
+        <div><h3>GUIA DE ORIGENS</h3><p>Escolha a origem do seu treinador.</p></div>
         <button type="button" class="guiaOrigemFechar" id="fecharGuiaOrigens">×</button>
       </div>
       <div class="guiaOrigemLista">
@@ -3537,34 +3677,108 @@ function mostrarFichaTreinadorClasOri(token) {
     if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
   });
 
-  document.querySelector("#rolarAtletismoOrigem")?.addEventListener("click", async () => {
-    const botao = document.querySelector("#rolarAtletismoOrigem");
+  const ligarVantagem = (seletor, id, nome, titulo) => {
+    document.querySelector(seletor)?.addEventListener("click", async () => {
+      const botao = document.querySelector(seletor);
+      if (botao) botao.disabled = true;
+      try { await rolarPericiaOrigemComVantagem(token, id, nome, titulo); }
+      finally { if (botao) botao.disabled = false; }
+    });
+  };
+  ligarVantagem("#rolarAtletismoOrigem", "atletismo", "Atletismo", "ESPÍRITO COMPETITIVO");
+  ligarVantagem("#rolarMedicinaOrigem", "medicina", "Medicina", "CUIDADO NATURAL");
+  ligarVantagem("#rolarPersuasaoOrigem", "persuasao", "Persuasão", "PRESENÇA ARISTOCRÁTICA");
+  ligarVantagem("#rolarEnganacaoOrigem", "enganacao", "Enganação", "FUGA RÁPIDA");
+  ligarVantagem("#rolarPrestidigitacaoOrigem", "prestidigitacao", "Prestidigitação", "FUGA RÁPIDA");
+  ligarVantagem("#rolarInvestigacaoSelvagem", "investigacao", "Investigação", "SABEDORIA SELVAGEM");
+
+  const nivelEstudioso = document.querySelector("#nivelAlvoEstudioso");
+  const cdEstudioso = document.querySelector("#cdEstudioso");
+  const atualizarCdEstudioso = () => {
+    const nivel = Math.max(1, Math.trunc(Number(nivelEstudioso?.value) || 1));
+    if (cdEstudioso) cdEstudioso.textContent = String(10 + nivel);
+  };
+  nivelEstudioso?.addEventListener("input", atualizarCdEstudioso);
+  document.querySelector("#analisarEstudioso")?.addEventListener("click", async () => {
+    const botao = document.querySelector("#analisarEstudioso");
     if (botao) botao.disabled = true;
-    try {
-      await rolarAtletismoOrigemComVantagem(token);
-    } finally {
-      if (botao) botao.disabled = false;
-    }
+    try { await rolarInvestigacaoEstudioso(token, nivelEstudioso?.value); }
+    finally { if (botao) botao.disabled = false; }
+  });
+
+  document.querySelector("#marcarLicaoRival")?.addEventListener("click", async () => {
+    await salvarEstadoOrigem(token, { [META_RIVAL_LICAO]: true });
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+  });
+  document.querySelector("#usarLicaoRival")?.addEventListener("click", async () => {
+    const seletor = document.querySelector("#periciaLicaoRival");
+    const id = seletor?.value || "";
+    const pericia = PERICIAS.flatMap((grupo) => grupo.pericias).find((p) => p.id === id);
+    if (!pericia) return;
+    const resultado = await rolarPericiaOrigemComVantagem(token, pericia.id, pericia.nome, "LIÇÃO DO RIVAL");
+    if (resultado === null) return;
+    await salvarEstadoOrigem(token, { [META_RIVAL_LICAO]: false });
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+  });
+  document.querySelector("#usarRevancheRival")?.addEventListener("click", async () => {
+    if (!rivalRevanche) return;
+    alert("REVANCHE USADA\nSeu próximo ataque no combate recebe vantagem. O Mestre resolve a aplicação normalmente.");
+    await salvarEstadoOrigem(token, { [META_RIVAL_REVANCHE]: false });
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+  });
+  document.querySelector("#vitoriaRival")?.addEventListener("click", async () => {
+    await salvarEstadoOrigem(token, { [META_RIVAL_SEQUENCIA]: Math.min(3, rivalSequencia + 1) });
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+  });
+  document.querySelector("#derrotaRival")?.addEventListener("click", async () => {
+    await salvarEstadoOrigem(token, { [META_RIVAL_SEQUENCIA]: 0, [META_RIVAL_REVANCHE]: true });
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
   });
 }
 
+function mostrarFichaTreinadorMocDin(token) {
+  const app = document.querySelector("#app");
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoTreinador(token, 6)}
+    <div style="padding:28px 14px;border:1px dashed #c6d7e8;border-radius:12px;background:#fbfdff;text-align:center;">
+      <div style="font-size:14px;font-weight:1000;color:#395d87;">MOC/DIN</div>
+      <div style="margin-top:5px;font-size:9px;font-weight:800;color:#8a9caf;">Aba reservada para a próxima etapa da ficha do treinador.</div>
+    </div>`;
+  ativarCabecalhoTreinador(token);
+}
+
 function menuTreinador(paginaAtual) {
-return `
+  const aba = (id, pagina, rotulo) => `
+    <button id="${id}" style="
+      min-width:0;width:100%;min-height:42px;padding:7px 4px;
+      font-size:9.5px;font-weight:900;cursor:pointer;
+      border-radius:10px;letter-spacing:.15px;
+      opacity:${paginaAtual === pagina ? "1" : "0.72"};
+      ${paginaAtual === pagina ? "border-color:#4c8dff;box-shadow:0 1px 5px rgba(76,141,255,.14);" : ""}
+    ">${rotulo}</button>`;
+  return `
     <div class="fichaAbas" style="
       display:grid;
-      grid-template-columns:repeat(5,minmax(0,1fr));
+      grid-template-columns:repeat(3,minmax(0,1fr));
       gap:6px;
       margin-bottom:15px;
       width:100%;
     ">
-      <button id="paginaTreinador1" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 1 ? "1" : "0.65"};">STATUS</button>
-      <button id="paginaTreinador2" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 2 ? "1" : "0.65"};">PKM</button>
-      <button id="paginaTreinador3" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 3 ? "1" : "0.65"};">PER/NOT</button>
-      <button id="paginaTreinador4" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 4 ? "1" : "0.65"};">TAL/ESP</button>
-      <button id="paginaTreinador5" style="min-width:0;width:100%;padding:8px 2px;font-size:9px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 5 ? "1" : "0.65"};">CLAS/ORI</button>
-    </div>
-  `;
+      ${aba("paginaTreinador1", 1, "STATUS")}
+      ${aba("paginaTreinador2", 2, "PKM")}
+      ${aba("paginaTreinador3", 3, "PER/NOT")}
+      ${aba("paginaTreinador4", 4, "TAL/ESP")}
+      ${aba("paginaTreinador5", 5, "CLAS/ORI")}
+      ${aba("paginaTreinador6", 6, "MOC/DIN")}
+    </div>`;
 }
+
 function cabecalhoTreinador( token, paginaAtual ) { const imagemToken = token.type === "IMAGE" ? token.image?.url || "" : "";
 return `
     <div class="fichaCabecalho" style="
@@ -3667,6 +3881,7 @@ function ativarMenuTreinador(token) {
   const perNot = document.querySelector("#paginaTreinador3");
   const talEsp = document.querySelector("#paginaTreinador4");
   const clasOri = document.querySelector("#paginaTreinador5");
+  const mocDin = document.querySelector("#paginaTreinador6");
   status?.addEventListener("click", async () => {
     const tokenAtualizado = await pegarTokenAtualizado(token.id);
     if (tokenAtualizado) mostrarFichaTreinadorPagina1(tokenAtualizado);
@@ -3687,7 +3902,12 @@ function ativarMenuTreinador(token) {
     const tokenAtualizado = await pegarTokenAtualizado(token.id);
     if (tokenAtualizado) mostrarFichaTreinadorClasOri(tokenAtualizado);
   });
+  mocDin?.addEventListener("click", async () => {
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaTreinadorMocDin(tokenAtualizado);
+  });
 }
+
 function criarPericiasTreinador(valores) {
   const pericias = PERICIAS.flatMap((grupo) =>
     grupo.pericias.map((pericia) => ({ ...pericia, atributo: grupo.atributo }))
