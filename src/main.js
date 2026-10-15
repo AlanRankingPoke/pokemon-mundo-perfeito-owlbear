@@ -2329,35 +2329,79 @@ if (!ativos.has(tipo)) { apagar.push( ...ordenados.map( (item) => item.id ) );
 continue; }
 if (ordenados.length > 1) { apagar.push( ...ordenados .slice(1) .map((item) => item.id) ); } }
 if (apagar.length) { await OBR.scene.items.deleteItems( [...new Set(apagar)] ); } }
-async function corrigirHudExistente() { const visuais = await OBR.scene.items.getItems( (item) => item.metadata?.[
-`${PREFIX}/statusToken`
-] !== undefined );
-if (!visuais.length) { return; }
-const tokenIds = [ ...new Set( visuais .map( (item) => item.metadata?.[
-`${PREFIX}/statusToken`
-] ) .filter(Boolean) ) ];
-const tokens = await OBR.scene.items.getItems( (item) => tokenIds.includes(item.id) );
-const tokensEncontrados = new Set( tokens.map((item) => item.id) );
-const orfaos = visuais .filter( (item) => !tokensEncontrados.has( item.metadata?.[
-`${PREFIX}/statusToken`
-] ) ) .map((item) => item.id);
-if (orfaos.length) { await OBR.scene.items.deleteItems( orfaos ); }
-// Recria o HUD inteiro de cada token.
-// Isso também APAGA automaticamente qualquer
-// ENV gigante criado por versões anteriores.
-for (const token of tokens) { const hpAtual = Number( token.metadata[
-`${PREFIX}/hpAtual`
-] ?? 100 ) || 0;
-const hpMax = Math.max( 1, Number( token.metadata[
-`${PREFIX}/hpMax`
-] ?? 100 ) || 1 );
-const caBase = Number( token.metadata[
-`${PREFIX}/ca`
-] ?? 10 ) || 0;
-const evasao = Number( token.metadata[
-`${PREFIX}/buff-evas`
-] ?? 0 ) || 0;
-await criarStatusNoToken( token, hpAtual, hpMax, caBase + evasao ); } }
+let temporizadorCorrecaoHud = null;
+
+async function corrigirHudExistente() {
+  const visuais = await OBR.scene.items.getItems(
+    (item) => item.metadata?.[`${PREFIX}/statusToken`] !== undefined
+  );
+  if (!visuais.length) return;
+
+  const tokenIds = [
+    ...new Set(
+      visuais
+        .map((item) => item.metadata?.[`${PREFIX}/statusToken`])
+        .filter(Boolean)
+    )
+  ];
+
+  const tokens = await OBR.scene.items.getItems(
+    (item) => tokenIds.includes(item.id)
+  );
+  const tokensPorId = new Map(tokens.map((item) => [item.id, item]));
+  const porTokenETipo = new Map();
+  const apagar = new Set();
+
+  for (const visual of visuais) {
+    const tokenId = visual.metadata?.[`${PREFIX}/statusToken`];
+    const tipo = visual.metadata?.[`${PREFIX}/tipoVisual`];
+
+    // Visual órfão ou copiado junto com outro token.
+    // Um HUD válido sempre precisa estar anexado exatamente
+    // ao token indicado pelo próprio metadata.
+    if (
+      !tokenId ||
+      !tokensPorId.has(tokenId) ||
+      visual.attachedTo !== tokenId ||
+      !tipo
+    ) {
+      apagar.add(visual.id);
+      continue;
+    }
+
+    const chave = `${tokenId}::${tipo}`;
+    if (!porTokenETipo.has(chave)) porTokenETipo.set(chave, []);
+    porTokenETipo.get(chave).push(visual);
+  }
+
+  // Mantém somente UM visual de cada tipo para cada token.
+  // Isso evita a corrida em que dois clientes do Owlbear
+  // recriam a mesma barra/ficha ao mesmo tempo.
+  for (const itens of porTokenETipo.values()) {
+    if (itens.length <= 1) continue;
+    const ordenados = [...itens].sort(ordenarHudMaisNovoPrimeiro);
+    for (const duplicado of ordenados.slice(1)) apagar.add(duplicado.id);
+  }
+
+  if (apagar.size) {
+    try {
+      await OBR.scene.items.deleteItems([...apagar]);
+    } catch (erro) {
+      console.warn("Não foi possível apagar todos os HUDs duplicados:", erro);
+    }
+  }
+}
+
+function agendarCorrecaoHudExistente(atraso = 450) {
+  if (temporizadorCorrecaoHud) clearTimeout(temporizadorCorrecaoHud);
+  temporizadorCorrecaoHud = setTimeout(() => {
+    temporizadorCorrecaoHud = null;
+    corrigirHudExistente().catch((erro) => {
+      console.warn("Não foi possível limpar HUD duplicado:", erro);
+    });
+  }, atraso);
+}
+
 async function executarEmFilaHud( tokenId, tarefa ) { const anterior = filaHudPorToken.get(tokenId) || Promise.resolve();
 const atual = anterior .catch(() => {}) .then(tarefa);
 filaHudPorToken.set( tokenId, atual );
@@ -6673,5 +6717,5 @@ app.innerHTML = `
               </div>
             `;
 } } }
-OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível normalizar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); OBR.scene.items.onChange(() => agendarSincronizacaoRosterEmCampo()); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
+OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); OBR.scene.items.onChange(() => { agendarSincronizacaoRosterEmCampo(); agendarCorrecaoHudExistente(); }); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
 // FIM
