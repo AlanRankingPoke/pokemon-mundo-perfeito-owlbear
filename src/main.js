@@ -31,6 +31,12 @@ const META_ENFERMEIRO_ALEGRIA_USOS = `${PREFIX}/classe-enfermeiro-alegria-usos`;
 const META_PESQUISADOR_PERICIA = `${PREFIX}/classe-pesquisador-pericia`;
 const META_PESQUISADOR_ANALISTA_USOS = `${PREFIX}/classe-pesquisador-analista-usos`;
 const META_PESQUISADOR_APRENDIZADO_USOS = `${PREFIX}/classe-pesquisador-aprendizado-usos`;
+const META_COMANDANTE_LIDER_USOS = `${PREFIX}/classe-comandante-lider-usos`;
+const META_COMANDANTE_DANO_USOS = `${PREFIX}/classe-comandante-dano-usos`;
+const META_COMANDANTE_MOVE_USOS = `${PREFIX}/classe-comandante-move-usos`;
+const META_COMANDANTE_EQUIPE_USOS = `${PREFIX}/classe-comandante-equipe-usos`;
+const META_COLECIONADOR_VANTAGEM_USOS = `${PREFIX}/classe-colecionador-vantagem-usos`;
+const META_COLECIONADOR_VANTAGEM_PREPARADA = `${PREFIX}/classe-colecionador-vantagem-preparada`;
 const META_RIVAL_LICAO = `${PREFIX}/origem-rival-licao`;
 const META_RIVAL_REVANCHE = `${PREFIX}/origem-rival-revanche`;
 const META_RIVAL_SEQUENCIA = `${PREFIX}/origem-rival-sequencia`;
@@ -2120,6 +2126,23 @@ async function guardarPokemonCapturadoNoPc(treinador, pokemon) {
     vinculoCriado = true;
 
     pokemonAtual = (await OBR.scene.items.getItems([pokemonAtual.id]))?.[0] || pokemonAtual;
+
+    // Especialista em Captura (Colecionador Pokémon Lv. 9): o Pokémon capturado
+    // entra no PC com saúde plena e sem Condições de Status.
+    if (classeAtivaNoNivel(treinadorAtual, "colecionador-pokemon", 9)) {
+      await OBR.scene.items.updateItems([pokemonAtual.id], (items) => {
+        for (const item of items) {
+          const hpMaxCaptura = Math.max(1, Number(item.metadata?.[`${PREFIX}/hpMax`] ?? 1) || 1);
+          item.metadata[`${PREFIX}/hpAtual`] = hpMaxCaptura;
+          for (const status of STATUS_DEBUFFS) {
+            item.metadata[chaveDebuff(status.id)] = false;
+            if (status.legacyId) item.metadata[chaveDebuff(status.legacyId)] = false;
+          }
+        }
+      });
+      pokemonAtual = (await OBR.scene.items.getItems([pokemonAtual.id]))?.[0] || pokemonAtual;
+    }
+
     const snapshot = snapshotPokemonParaTreinador(pokemonAtual);
     if (!snapshot) throw new Error("Não foi possível salvar os dados do Pokémon capturado.");
     snapshot.campoId = pokemonAtual.id;
@@ -3425,6 +3448,16 @@ const CLASSES_TREINADOR = [
     id: "pesquisador",
     nome: "PESQUISADOR",
     resumo: "Um estudioso de Pokémon que analisa adversários, aprimora aprendizado e prepara estratégias."
+  },
+  {
+    id: "comandante",
+    nome: "COMANDANTE",
+    resumo: "Um líder firme que fortalece a equipe, libera picos de poder e coordena todos em combate."
+  },
+  {
+    id: "colecionador-pokemon",
+    nome: "COLECIONADOR POKÉMON",
+    resumo: "Um especialista em captura, coleta e preservação de Pokémon de todos os tipos."
   }
 ];
 
@@ -3484,6 +3517,37 @@ function formulaGuloseimaMentor(nivel) {
 function maxUsosInteligenciaClasse(token) {
   const modInt = Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-int`] ?? "0").replace(",", ".")) || 0);
   return Math.max(1, 1 + modInt);
+}
+
+function modificadorCarismaClasse(token) {
+  return Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-car`] ?? "0").replace(",", ".")) || 0);
+}
+
+function maxUsosCarismaClasse(token) {
+  return Math.max(1, 1 + modificadorCarismaClasse(token));
+}
+
+function classeAtivaNoNivel(token, classeId, nivelMinimo) {
+  return token?.metadata?.[META_TREINADOR_CLASSE] === classeId &&
+    nivelTreinadorNormalizado(token?.metadata?.[`${PREFIX}/treinador-nivel`] ?? 1) >= nivelMinimo;
+}
+
+function bonusCapturaColecionador(token) {
+  return classeAtivaNoNivel(token, "colecionador-pokemon", 9) ? modificadorCarismaClasse(token) : 0;
+}
+
+function multiplicadorProfCaptura(token) {
+  return classeAtivaNoNivel(token, "colecionador-pokemon", 2) ? 3 : 2;
+}
+
+function recompensaColecionadorPorD6(valor) {
+  const n = Math.max(1, Math.min(6, Math.trunc(Number(valor) || 1)));
+  if (n === 1) return "Pokébolas: 5 aleatórias entre as 18 primeiras";
+  if (n === 2) return "Itens-X: 2 aleatórios entre os 8";
+  if (n === 3) return "Berries: 10 aleatórias entre as 52";
+  if (n === 4) return "Itens Seguráveis: 2 aleatórios entre os 58";
+  if (n === 5) return "Itens Evolutivos: 2 aleatórios entre os 28";
+  return "Vitaminas: 1 aleatória entre as 6";
 }
 
 function maxReservaCoracaoPuro(nivel) {
@@ -3686,6 +3750,14 @@ function mostrarFichaTreinadorClasOri(token) {
   const pesquisadorAnalistaUsos = usosClasseFixo(token, META_PESQUISADOR_ANALISTA_USOS, 1);
   const pesquisadorAprendizadoMax = maxUsosInteligenciaClasse(token);
   const pesquisadorAprendizadoUsos = usosClasseFixo(token, META_PESQUISADOR_APRENDIZADO_USOS, pesquisadorAprendizadoMax);
+  const comandanteLiderUsos = usosClasseFixo(token, META_COMANDANTE_LIDER_USOS, 1);
+  const comandanteDanoUsos = usosClasseFixo(token, META_COMANDANTE_DANO_USOS, 1);
+  const comandanteMoveUsos = usosClasseFixo(token, META_COMANDANTE_MOVE_USOS, 1);
+  const comandanteEquipeMax = maxUsosCarismaClasse(token);
+  const comandanteEquipeUsos = usosClasseFixo(token, META_COMANDANTE_EQUIPE_USOS, comandanteEquipeMax);
+  const comandanteTempHp = Math.max(0, nivelTreinador + modificadorCarismaClasse(token));
+  const colecionadorVantagemUsos = usosClasseFixo(token, META_COLECIONADOR_VANTAGEM_USOS, 1);
+  const colecionadorVantagemPreparada = token.metadata[META_COLECIONADOR_VANTAGEM_PREPARADA] === true && colecionadorVantagemUsos > 0;
   const origem = origemTreinadorPorId(token.metadata[META_TREINADOR_ORIGEM]);
   const rivalLicao = token.metadata[META_RIVAL_LICAO] === true;
   const rivalRevanche = token.metadata[META_RIVAL_REVANCHE] === true;
@@ -3996,6 +4068,110 @@ function mostrarFichaTreinadorClasOri(token) {
               <div class="classeRecursoTopo"><span>PESQUISA DO ADVERSÁRIO</span><strong>CD 10 / 15 / 20 / 25</strong></div>
               <button type="button" class="classeAcao classeAcaoCheia" id="usarPesquisadorPreparacao">🔎 ROLAR INVESTIGAÇÃO</button>
             </div>`
+        })}
+      `;
+    }
+
+    if (classe.id === "comandante") {
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "COMANDANTE",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Ao escolher este caminho, a Lealdade do seu Pokémon inicial aumenta para Leal. Além disso, qualquer novo Pokémon capturado recebe +1 em Lealdade. Este efeito é descritivo e não altera automaticamente as fichas dos Pokémon."
+        })}
+        ${blocoClasseAs({
+          titulo: "LÍDER INSPIRADOR",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Após 10 minutos inspirando seus aliados, escolha até seis criaturas amistosas, incluindo você, a até 9 metros. Cada uma recebe PV temporários iguais ao seu nível de Treinador + modificador de Carisma.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>PV TEMPORÁRIOS POR ALVO</span><strong>${comandanteTempHp}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarComandanteLider" ${comandanteLiderUsos > 0 ? "" : "disabled"}>USAR INSPIRAÇÃO</button>
+                <button type="button" class="classeRestaurar" id="restaurarComandanteLider">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "MOSTRE-ME O QUE VOCÊ TEM",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Escolha entre Dano Dobrado, que permite a um Pokémon dobrar todos os dados de dano de um Move antes da rolagem, ou Move de Nível Superior, que permite ativar um único Move de um nível acima dos Moves que ele pode aprender atualmente. Os dois efeitos não podem ser usados no mesmo Move e não combinam com outras mecânicas de combate, exceto Mega Evolução.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>DANO DOBRADO</span><strong>${comandanteDanoUsos > 0 ? "DISPONÍVEL" : "USADO"}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarComandanteDano" ${comandanteDanoUsos > 0 ? "" : "disabled"}>USAR DANO DOBRADO</button>
+                <button type="button" class="classeRestaurar" id="restaurarComandanteDano">RESTAURAR</button>
+              </div>
+            </div>
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>MOVE DE NÍVEL SUPERIOR</span><strong>${comandanteMoveUsos > 0 ? "DISPONÍVEL" : "USADO"}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarComandanteMove" ${comandanteMoveUsos > 0 ? "" : "disabled"}>USAR MOVE SUPERIOR</button>
+                <button type="button" class="classeRestaurar" id="restaurarComandanteMove">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "SOMOS UMA EQUIPE",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "Como ação bônus, você pode falar uma frase de comando. Até o início do seu próximo turno, todos os Pokémon aliados a até 18 metros têm vantagem em seus ataques e em testes de resistência contra Moves danosos.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>USOS DE COMANDO</span><strong>${comandanteEquipeUsos}/${comandanteEquipeMax}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarComandanteEquipe" ${comandanteEquipeUsos > 0 ? "" : "disabled"}>USAR COMANDO</button>
+                <button type="button" class="classeRestaurar" id="restaurarComandanteEquipe">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+      `;
+    }
+
+    if (classe.id === "colecionador-pokemon") {
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "COLECIONADOR POKÉMON",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "A partir do 2º nível, seu teste de captura passa a usar 3 × seu Bônus de Proficiência. A área de Captura da aba STATUS aplica esse multiplicador automaticamente."
+        })}
+        ${blocoClasseAs({
+          titulo: "TENHO QUE PEGAR TODOS",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Uma vez por descanso longo, você pode fazer um teste de captura com vantagem mesmo que o alvo não esteja sofrendo uma condição de status negativa. Sempre que falhar numa captura, o plugin rola 1d4 automaticamente; em um resultado 4, a Pokébola é recuperada.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>CAPTURA COM VANTAGEM</span><strong>${colecionadorVantagemPreparada ? "PREPARADA" : `${colecionadorVantagemUsos}/1`}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="prepararColecionadorVantagem" ${colecionadorVantagemUsos > 0 ? "" : "disabled"}>${colecionadorVantagemPreparada ? "CANCELAR VANTAGEM" : "PREPARAR PRÓXIMA CAPTURA"}</button>
+                <button type="button" class="classeRestaurar" id="restaurarColecionadorVantagem">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "ESPECIALISTA EM CAPTURA",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Pokémon capturados por você são enviados ao PC com saúde plena e sem Condições de Status. Além disso, seu modificador de Carisma é adicionado automaticamente às tentativas de captura. A cada 40 espécies diferentes completamente catalogadas, role 2d6 e receba uma recompensa para cada dado; resultados iguais concedem o mesmo brinde duas vezes.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>BÔNUS DE CAPTURA</span><strong>CAR ${formatarBonus(modificadorCarismaClasse(token))}</strong></div>
+              <button type="button" class="classeAcao classeAcaoCheia" id="rolarRecompensaColecionador">🎁 ROLAR RECOMPENSA 2D6</button>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "ATAQUES DISCIPLINADOS",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "Quando um Pokémon seu causaria dano suficiente para fazer um alvo desmaiar, você pode escolher deixá-lo com 1 PV. Além disso, ao capturar um Pokémon desejado, pode rolar novamente sua Natureza e escolher o resultado. Este efeito permanece descritivo para o Mestre aplicar narrativamente."
         })}
       `;
     }
@@ -4406,6 +4582,71 @@ function mostrarFichaTreinadorClasOri(token) {
     else if (resultado >= 15) faixa = "CD 15: até 2 Pokémon do grupo atual; também ativa o bônus de preparação dos aliados.";
     else if (resultado >= 10) faixa = "CD 10: alguns Pokémon que o adversário já possuiu ou utilizou.";
     alert(`PREPARAÇÃO ESTRATÉGICA\nResultado: ${resultado}\n${faixa}`);
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarComandanteLider")?.addEventListener("click", async () => {
+    const atual = usosClasseFixo(token, META_COMANDANTE_LIDER_USOS, 1);
+    if (atual <= 0) return;
+    await salvarEstadoClasse(token, { [META_COMANDANTE_LIDER_USOS]: 0 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarComandanteLider")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_COMANDANTE_LIDER_USOS]: 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#usarComandanteDano")?.addEventListener("click", async () => {
+    const atual = usosClasseFixo(token, META_COMANDANTE_DANO_USOS, 1);
+    if (atual <= 0) return;
+    await salvarEstadoClasse(token, { [META_COMANDANTE_DANO_USOS]: 0 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarComandanteDano")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_COMANDANTE_DANO_USOS]: 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#usarComandanteMove")?.addEventListener("click", async () => {
+    const atual = usosClasseFixo(token, META_COMANDANTE_MOVE_USOS, 1);
+    if (atual <= 0) return;
+    await salvarEstadoClasse(token, { [META_COMANDANTE_MOVE_USOS]: 0 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarComandanteMove")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_COMANDANTE_MOVE_USOS]: 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#usarComandanteEquipe")?.addEventListener("click", async () => {
+    const max = maxUsosCarismaClasse(token);
+    const atual = usosClasseFixo(token, META_COMANDANTE_EQUIPE_USOS, max);
+    if (atual <= 0) return;
+    await salvarEstadoClasse(token, { [META_COMANDANTE_EQUIPE_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarComandanteEquipe")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_COMANDANTE_EQUIPE_USOS]: maxUsosCarismaClasse(token) });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#prepararColecionadorVantagem")?.addEventListener("click", async () => {
+    const usos = usosClasseFixo(token, META_COLECIONADOR_VANTAGEM_USOS, 1);
+    if (usos <= 0) return;
+    const preparada = token.metadata[META_COLECIONADOR_VANTAGEM_PREPARADA] === true;
+    await salvarEstadoClasse(token, { [META_COLECIONADOR_VANTAGEM_PREPARADA]: !preparada });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarColecionadorVantagem")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, {
+      [META_COLECIONADOR_VANTAGEM_USOS]: 1,
+      [META_COLECIONADOR_VANTAGEM_PREPARADA]: false
+    });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#rolarRecompensaColecionador")?.addEventListener("click", async () => {
+    const dado1 = await rolarNoDicePlusComResultado("1d6", "Colecionador Pokémon", "Recompensa • Dado 1");
+    if (dado1 === null) return;
+    const dado2 = await rolarNoDicePlusComResultado("1d6", "Colecionador Pokémon", "Recompensa • Dado 2");
+    if (dado2 === null) return;
+    alert(`RECOMPENSAS DO COLECIONADOR\nDado 1 (${dado1}): ${recompensaColecionadorPorD6(dado1)}\nDado 2 (${dado2}): ${recompensaColecionadorPorD6(dado2)}`);
     await redesenharClasseAberta();
   });
 
@@ -4826,6 +5067,9 @@ function mostrarFichaTreinadorPagina1(token) {
   const bonusCaptura = token.metadata[`${PREFIX}/treinador-captura-bonus`] ?? 0;
   const cdCaptura = token.metadata[`${PREFIX}/treinador-captura-cd`] ?? "";
   const alvoCaptura = normalizarAlvoCaptura(token.metadata[META_TREINADOR_CAPTURA_ALVO]);
+  const multiplicadorCaptura = multiplicadorProfCaptura(token);
+  const bonusCarCaptura = bonusCapturaColecionador(token);
+  const formulaCapturaTexto = `1d20 + ${multiplicadorCaptura}×Prof + Bônus da Pokébola${bonusCarCaptura !== 0 ? ` ${formatarBonusFormula(bonusCarCaptura)}` : ""}`;
   const iniciativa = modDes;
 
   app.innerHTML = `
@@ -4974,7 +5218,7 @@ function mostrarFichaTreinadorPagina1(token) {
             </div>
             <button id="rolarCaptura" type="button" style="min-height:36px;font-weight:bold;cursor:pointer;">🎲 Tentar Captura</button>
           </div>
-          <div class="capturaFormula" id="formulaCapturaTreinador">1d20 + 2×Prof + Bônus da Pokébola</div>
+          <div class="capturaFormula" id="formulaCapturaTreinador">${esc(formulaCapturaTexto)}</div>
           <p class="capturaResultado" id="resultadoCapturaTreinador"></p>
         </div>
       </div>
@@ -5172,7 +5416,9 @@ function mostrarFichaTreinadorPagina1(token) {
 
     const prof = Math.trunc(numeroTreinador(campoProf?.value));
     const bonusBola = Math.trunc(numeroTreinador(campoBonusPokebola?.value));
-    const bonusTotal = (prof * 2) + bonusBola;
+    const multiplicadorProf = multiplicadorProfCaptura(treinadorAtualAntes);
+    const bonusCar = bonusCapturaColecionador(treinadorAtualAntes);
+    const bonusTotal = (prof * multiplicadorProf) + bonusBola + bonusCar;
     const formula = formulaSalvaguarda(bonusTotal);
     if (!formula) {
       alert("Não foi possível calcular a captura.");
@@ -5194,17 +5440,48 @@ function mostrarFichaTreinadorPagina1(token) {
     }
 
     try {
-      const resultado = await rolarNoDicePlusComResultado(
-        formula,
-        `Captura de ${alvoAtualAntes.name || "Pokémon"}`,
-        `CD ${cd}`
-      );
-      if (resultado === null) return;
+      const vantagemDisponivel = classeAtivaNoNivel(treinadorAtualAntes, "colecionador-pokemon", 5) &&
+        treinadorAtualAntes.metadata[META_COLECIONADOR_VANTAGEM_PREPARADA] === true &&
+        usosClasseFixo(treinadorAtualAntes, META_COLECIONADOR_VANTAGEM_USOS, 1) > 0;
+
+      let resultado = null;
+      if (vantagemDisponivel) {
+        const primeira = await rolarNoDicePlusComResultado(
+          formula,
+          `Captura de ${alvoAtualAntes.name || "Pokémon"}`,
+          `Vantagem 1/2 • CD ${cd}`
+        );
+        if (primeira === null) return;
+        const segunda = await rolarNoDicePlusComResultado(
+          formula,
+          `Captura de ${alvoAtualAntes.name || "Pokémon"}`,
+          `Vantagem 2/2 • CD ${cd}`
+        );
+        if (segunda === null) return;
+        resultado = Math.max(primeira, segunda);
+        await salvarEstadoClasse(treinadorAtualAntes, {
+          [META_COLECIONADOR_VANTAGEM_USOS]: 0,
+          [META_COLECIONADOR_VANTAGEM_PREPARADA]: false
+        });
+      } else {
+        resultado = await rolarNoDicePlusComResultado(
+          formula,
+          `Captura de ${alvoAtualAntes.name || "Pokémon"}`,
+          `CD ${cd}`
+        );
+        if (resultado === null) return;
+      }
 
       if (resultado < cd) {
+        let textoFalha = `Falhou: ${resultado} contra CD ${cd}.`;
+        if (classeAtivaNoNivel(treinadorAtualAntes, "colecionador-pokemon", 5)) {
+          const recuperacao = await rolarNoDicePlusComResultado("1d4", "Tenho que Pegar Todos", "Recuperar Pokébola");
+          if (recuperacao === 4) textoFalha += " Pokébola recuperada!";
+          else if (recuperacao !== null) textoFalha += ` Recuperação da Pokébola: ${recuperacao}/4.`;
+        }
         if (textoResultadoCaptura) {
           textoResultadoCaptura.style.color = "#b64b4b";
-          textoResultadoCaptura.textContent = `Falhou: ${resultado} contra CD ${cd}.`;
+          textoResultadoCaptura.textContent = textoFalha;
         }
         return;
       }
