@@ -18,6 +18,13 @@ const META_TREINADOR_CLASSE = `${PREFIX}/treinador-classe`;
 const META_AS_MESTRE_BATALHA_USOS = `${PREFIX}/classe-as-mestre-batalha-usos`;
 const META_AS_RITMO_COMBATE_USOS = `${PREFIX}/classe-as-ritmo-combate-usos`;
 const META_AS_TROCA_RAPIDA_USOS = `${PREFIX}/classe-as-troca-rapida-usos`;
+const META_VERSATIL_APOIADOR_USOS = `${PREFIX}/classe-versatil-apoiador-usos`;
+const META_VERSATIL_TALENTO_DIA = `${PREFIX}/classe-versatil-talento-dia`;
+const META_VERSATIL_MUITAS_FACES_ESCOLHA = `${PREFIX}/classe-versatil-muitas-faces-escolha`;
+const META_MENTOR_INSPIRACAO_USADA = `${PREFIX}/classe-mentor-inspiracao-usada`;
+const META_MENTOR_INSPIRACAO_TIPO = `${PREFIX}/classe-mentor-inspiracao-tipo`;
+const META_MENTOR_POKECHEF_USOS = `${PREFIX}/classe-mentor-pokechef-usos`;
+const META_MENTOR_TUTOR_MESTRE_USOS = `${PREFIX}/classe-mentor-tutor-mestre-usos`;
 const META_RIVAL_LICAO = `${PREFIX}/origem-rival-licao`;
 const META_RIVAL_REVANCHE = `${PREFIX}/origem-rival-revanche`;
 const META_RIVAL_SEQUENCIA = `${PREFIX}/origem-rival-sequencia`;
@@ -3392,6 +3399,16 @@ const CLASSES_TREINADOR = [
     id: "treinador-as",
     nome: "TREINADOR ÁS",
     resumo: "Especialista em batalhas Pokémon, com recursos que crescem conforme o nível do treinador."
+  },
+  {
+    id: "versatil",
+    nome: "VERSÁTIL",
+    resumo: "Um treinador adaptável que amplia especializações, apoia seus Pokémon e aprende recursos de outros caminhos."
+  },
+  {
+    id: "mentor-pokemon",
+    nome: "MENTOR POKÉMON",
+    resumo: "Um treinador focado em inspirar, cuidar e ensinar novas estratégias aos seus Pokémon."
   }
 ];
 
@@ -3428,6 +3445,24 @@ function usosClasseAs(token, chave) {
   const salvo = token?.metadata?.[chave];
   if (salvo === undefined || salvo === null || salvo === "") return max;
   return Math.max(0, Math.min(max, Math.trunc(Number(salvo) || 0)));
+}
+
+function usosClasseFixo(token, chave, maximo) {
+  const max = Math.max(0, Math.trunc(Number(maximo) || 0));
+  const salvo = token?.metadata?.[chave];
+  if (salvo === undefined || salvo === null || salvo === "") return max;
+  return Math.max(0, Math.min(max, Math.trunc(Number(salvo) || 0)));
+}
+
+function bonusCarismaMentor(token) {
+  const modCar = Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-car`] ?? "0").replace(",", ".")) || 0);
+  return Math.max(1, modCar);
+}
+
+function formulaGuloseimaMentor(nivel) {
+  if (nivel >= 15) return "4d6+6";
+  if (nivel >= 9) return "2d8+4";
+  return "2d4+2";
 }
 
 function blocoClasseAs({ titulo, nivel, liberado, texto, extra = "" }) {
@@ -3576,6 +3611,14 @@ function mostrarFichaTreinadorClasOri(token) {
   const mestreBatalhaUsos = usosClasseAs(token, META_AS_MESTRE_BATALHA_USOS);
   const ritmoCombateUsos = usosClasseAs(token, META_AS_RITMO_COMBATE_USOS);
   const trocaRapidaUsos = usosClasseAs(token, META_AS_TROCA_RAPIDA_USOS);
+  const versatilApoiadorUsos = usosClasseAs(token, META_VERSATIL_APOIADOR_USOS);
+  const versatilTalentoDia = talentoTreinadorPorId(token.metadata[META_VERSATIL_TALENTO_DIA]);
+  const versatilMuitasFacesEscolha = String(token.metadata[META_VERSATIL_MUITAS_FACES_ESCOLHA] ?? "");
+  const mentorInspiracaoUsada = token.metadata[META_MENTOR_INSPIRACAO_USADA] === true;
+  const mentorInspiracaoTipo = String(token.metadata[META_MENTOR_INSPIRACAO_TIPO] ?? "");
+  const mentorBonusCar = bonusCarismaMentor(token);
+  const mentorPokechefUsos = usosClasseAs(token, META_MENTOR_POKECHEF_USOS);
+  const mentorTutorMestreUsos = usosClasseFixo(token, META_MENTOR_TUTOR_MESTRE_USOS, 2);
   const origem = origemTreinadorPorId(token.metadata[META_TREINADOR_ORIGEM]);
   const rivalLicao = token.metadata[META_RIVAL_LICAO] === true;
   const rivalRevanche = token.metadata[META_RIVAL_REVANCHE] === true;
@@ -3583,64 +3626,183 @@ function mostrarFichaTreinadorClasOri(token) {
 
   const conteudoClasse = () => {
     if (!classe) return "";
-    if (classe.id !== "treinador-as") return "";
 
     const nivel2 = nivelTreinador >= 2;
     const nivel5 = nivelTreinador >= 5;
     const nivel9 = nivelTreinador >= 9;
     const nivel15 = nivelTreinador >= 15;
 
-    return `
-      <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
-      ${blocoClasseAs({
-        titulo: "TREINADOR ÁS",
-        nivel: 2,
-        liberado: nivel2,
-        texto: "Começando no 2º nível, todos os seus Pokémon recebem +1 em suas rolagens de ataque e dano. Esse bônus é apenas uma regra da classe e não altera automaticamente as fichas dos Pokémon."
-      })}
-      ${blocoClasseAs({
-        titulo: "MESTRE DE BATALHA",
-        nivel: 5,
-        liberado: nivel5,
-        texto: "Você possui uma reserva de dados de batalha (d6) igual a 1 + seu modificador de Sabedoria, mínimo de 1. Depois de uma rolagem inicial, pode usar um desses dados para acrescentar o resultado a uma única rolagem de ataque ou dano de um de seus Pokémon.",
-        extra: `
-          <div class="classeRecurso">
-            <div class="classeRecursoTopo"><span>DADOS DE BATALHA</span><strong>${mestreBatalhaUsos}/${maxUsosAs} d6</strong></div>
-            <div class="classeAcoes">
-              <button type="button" class="classeAcao" id="usarMestreBatalha" ${mestreBatalhaUsos > 0 ? "" : "disabled"}>🎲 ROLAR 1D6</button>
-              <button type="button" class="classeRestaurar" id="restaurarMestreBatalha">RESTAURAR</button>
-            </div>
-          </div>`
-      })}
-      ${blocoClasseAs({
-        titulo: "RITMO DE COMBATE",
-        nivel: 9,
-        liberado: nivel9,
-        texto: "Seus Pokémon ganham +3 metros de deslocamento. Além disso, ao realizar uma rolagem de iniciativa, você pode rolar 1d6 adicional. Esta parte de deslocamento é apenas descritiva e não altera automaticamente a ficha do Pokémon.",
-        extra: `
-          <div class="classeRecurso">
-            <div class="classeRecursoTopo"><span>USOS DE RITMO</span><strong>${ritmoCombateUsos}/${maxUsosAs}</strong></div>
-            <div class="classeAcoes">
-              <button type="button" class="classeAcao" id="usarRitmoCombate" ${ritmoCombateUsos > 0 ? "" : "disabled"}>🎲 ROLAR +1D6 INICIATIVA</button>
-              <button type="button" class="classeRestaurar" id="restaurarRitmoCombate">RESTAURAR</button>
-            </div>
-          </div>`
-      })}
-      ${blocoClasseAs({
-        titulo: "TROCA RÁPIDA",
-        nivel: 15,
-        liberado: nivel15,
-        texto: "Você pode recolher e liberar Pokémon como uma ação bônus em vez de uma ação padrão. Um Pokémon não pode ser trocado até o final do seu primeiro turno completo em combate, salvo efeitos específicos que permitam a troca.",
-        extra: `
-          <div class="classeRecurso">
-            <div class="classeRecursoTopo"><span>USOS DE TROCA RÁPIDA</span><strong>${trocaRapidaUsos}/${maxUsosAs}</strong></div>
-            <div class="classeAcoes">
-              <button type="button" class="classeAcao" id="usarTrocaRapida" ${trocaRapidaUsos > 0 ? "" : "disabled"}>USAR</button>
-              <button type="button" class="classeRestaurar" id="restaurarTrocaRapida">RESTAURAR</button>
-            </div>
-          </div>`
-      })}
-    `;
+    if (classe.id === "treinador-as") {
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "TREINADOR ÁS",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Começando no 2º nível, todos os seus Pokémon recebem +1 em suas rolagens de ataque e dano. Esse bônus é apenas uma regra da classe e não altera automaticamente as fichas dos Pokémon."
+        })}
+        ${blocoClasseAs({
+          titulo: "MESTRE DE BATALHA",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Você possui uma reserva de dados de batalha (d6) igual a 1 + seu modificador de Sabedoria, mínimo de 1. Depois de uma rolagem inicial, pode usar um desses dados para acrescentar o resultado a uma única rolagem de ataque ou dano de um de seus Pokémon.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>DADOS DE BATALHA</span><strong>${mestreBatalhaUsos}/${maxUsosAs} d6</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarMestreBatalha" ${mestreBatalhaUsos > 0 ? "" : "disabled"}>🎲 ROLAR 1D6</button>
+                <button type="button" class="classeRestaurar" id="restaurarMestreBatalha">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "RITMO DE COMBATE",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Seus Pokémon ganham +3 metros de deslocamento. Além disso, ao realizar uma rolagem de iniciativa, você pode rolar 1d6 adicional. Esta parte de deslocamento é apenas descritiva e não altera automaticamente a ficha do Pokémon.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>USOS DE RITMO</span><strong>${ritmoCombateUsos}/${maxUsosAs}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarRitmoCombate" ${ritmoCombateUsos > 0 ? "" : "disabled"}>🎲 ROLAR +1D6 INICIATIVA</button>
+                <button type="button" class="classeRestaurar" id="restaurarRitmoCombate">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "TROCA RÁPIDA",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "Você pode recolher e liberar Pokémon como uma ação bônus em vez de uma ação padrão. Um Pokémon não pode ser trocado até o final do seu primeiro turno completo em combate, salvo efeitos específicos que permitam a troca.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>USOS DE TROCA RÁPIDA</span><strong>${trocaRapidaUsos}/${maxUsosAs}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarTrocaRapida" ${trocaRapidaUsos > 0 ? "" : "disabled"}>USAR</button>
+                <button type="button" class="classeRestaurar" id="restaurarTrocaRapida">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+      `;
+    }
+
+    if (classe.id === "versatil") {
+      const opcoesTalentos = TALENTOS_TREINADOR.map((talento) =>
+        `<option value="${esc(talento.id)}" ${versatilTalentoDia?.id === talento.id ? "selected" : ""}>${esc(talento.nome)}</option>`
+      ).join("");
+
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "VERSÁTIL",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "No 2º nível, selecione uma Especialização adicional e duas novas proficiências em perícias para o seu Treinador."
+        })}
+        ${blocoClasseAs({
+          titulo: "APOIADOR",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Você ganha um número de dados de habilidade (d6) igual a 1 + seu modificador de Sabedoria, mínimo de 1. Pode atribuir um desses dados a qualquer um de seus Pokémon para ser adicionado a um único teste de perícia ou resistência, após o resultado do teste inicial.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>DADOS DE HABILIDADE</span><strong>${versatilApoiadorUsos}/${maxUsosAs} d6</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarVersatilApoiador" ${versatilApoiadorUsos > 0 ? "" : "disabled"}>🎲 ROLAR 1D6</button>
+                <button type="button" class="classeRestaurar" id="restaurarVersatilApoiador">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "MUITAS FACES",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "No 9º nível, você pode escolher dois recursos de 2º nível ou um recurso de 5º ou 9º nível de qualquer outro caminho de Treinador.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>RECURSOS ESCOLHIDOS</span><strong>ANOTAÇÃO</strong></div>
+              <textarea class="classeTextoLivre" id="versatilMuitasFacesEscolha" placeholder="Escreva aqui os recursos escolhidos em Muitas Faces...">${esc(versatilMuitasFacesEscolha)}</textarea>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "TROCA DE HABILIDADE",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "A cada descanso longo, escolha um talento da seção Talentos para que todos os seus Pokémon o conheçam naquele dia. O talento pode ser alterado a cada descanso longo.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>TALENTO DO DIA</span><strong>${versatilTalentoDia ? esc(versatilTalentoDia.nome) : "NENHUM"}</strong></div>
+              <select class="classeSelect" id="versatilTalentoDia">
+                <option value="">— ESCOLHER TALENTO —</option>
+                ${opcoesTalentos}
+              </select>
+              <button type="button" class="classeAcao classeAcaoCheia" id="salvarVersatilTalentoDia">SALVAR TALENTO DO DIA</button>
+            </div>`
+        })}
+      `;
+    }
+
+    if (classe.id === "mentor-pokemon") {
+      const formulaGuloseima = formulaGuloseimaMentor(nivelTreinador);
+      const inspiracaoNome = mentorInspiracaoTipo === "ataque" ? "ATAQUE" : mentorInspiracaoTipo === "dano" ? "DANO" : mentorInspiracaoTipo === "ca" ? "CA" : "NENHUM";
+
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "MENTOR POKÉMON",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Uma vez por descanso curto, como ação bônus, você inspira todos os Pokémon aliados. Até o seu próximo turno, escolha ATAQUE, DANO ou CA; todos os Pokémon aliados adicionam seu modificador de Carisma, mínimo de 1, ao valor escolhido.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>INSPIRAÇÃO</span><strong>${mentorInspiracaoUsada ? `USADA • ${inspiracaoNome} +${mentorBonusCar}` : `DISPONÍVEL • +${mentorBonusCar}`}</strong></div>
+              <div class="classeAcoesTripla">
+                <button type="button" class="classeAcao" data-mentor-inspirar="ataque" ${mentorInspiracaoUsada ? "disabled" : ""}>ATAQUE</button>
+                <button type="button" class="classeAcao" data-mentor-inspirar="dano" ${mentorInspiracaoUsada ? "disabled" : ""}>DANO</button>
+                <button type="button" class="classeAcao" data-mentor-inspirar="ca" ${mentorInspiracaoUsada ? "disabled" : ""}>CA</button>
+              </div>
+              <button type="button" class="classeRestaurar classeAcaoCheia" id="restaurarMentorInspiracao">RESTAURAR</button>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "POKÉCHEF",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Você prepara Guloseimas Comestíveis para Pokémon. No 5º nível elas concedem 2d4+2 PV temporários. Você pode usar este recurso um número de vezes igual a 1 + seu modificador de Sabedoria e repõe os usos a cada descanso longo.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>GULOSEIMAS • ${formulaGuloseima}</span><strong>${mentorPokechefUsos}/${maxUsosAs}</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarMentorPokechef" ${mentorPokechefUsos > 0 ? "" : "disabled"}>🎲 ROLAR ${formulaGuloseima}</button>
+                <button type="button" class="classeRestaurar" id="restaurarMentorPokechef">RESTAURAR</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "TUTOR CAPACITADO",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "A partir do 9º nível, suas TMs podem ser usadas duas vezes antes de serem quebradas. Além disso, sua Guloseima Comestível passa a conceder 2d8+4 pontos de vida temporários."
+        })}
+        ${blocoClasseAs({
+          titulo: "TUTOR MESTRE",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "No 15º nível, sua Guloseima Comestível passa a conceder 4d6+6 PV temporários. Além disso, você pode usar esta habilidade duas vezes por descanso longo para treinar Pokémon: ensinar um Move presente na lista de TMs daquele Pokémon ou aprimorar um Move de dano conhecido, permitindo rolar o dano duas vezes e usar o maior resultado, além de +2 no acerto ou na CD.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>USOS DE TUTOR MESTRE</span><strong>${mentorTutorMestreUsos}/2</strong></div>
+              <div class="classeAcoes">
+                <button type="button" class="classeAcao" id="usarMentorEnsinarMove" ${mentorTutorMestreUsos > 0 ? "" : "disabled"}>ENSINAR MOVE</button>
+                <button type="button" class="classeAcao" id="usarMentorAprimorarMove" ${mentorTutorMestreUsos > 0 ? "" : "disabled"}>APRIMORAR MOVE</button>
+              </div>
+              <button type="button" class="classeRestaurar classeAcaoCheia" id="restaurarMentorTutorMestre">RESTAURAR</button>
+            </div>`
+        })}
+      `;
+    }
+
+    return "";
   };
 
   const botoesOrigem = () => {
@@ -3705,7 +3867,7 @@ function mostrarFichaTreinadorClasOri(token) {
       .classeResumoNivel{margin:0 0 8px;padding:7px 8px;border-radius:8px;background:#edf5ff;color:#5f7794;font-size:8px;font-weight:900;text-align:center}.classeResumoNivel strong{color:#2867b4;font-size:11px}
       .classeHab{margin-top:7px;padding:8px;border:1px solid #d7e3f0;border-radius:9px;background:#fbfdff}.classeHab:first-of-type{margin-top:0}
       .classeHab.bloqueada{opacity:.56;background:#f6f7f9}.classeHabTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}.classeHabTopo>div{display:flex;align-items:center;gap:6px;min-width:0}.classeHabTopo strong{font-size:9px;color:#2d5e98}.classeHabTopo>div span{font-size:7px;color:#8597aa;font-weight:1000}.classeHabEstado{padding:3px 6px;border-radius:999px;background:#dff3e6;color:#358151;font-size:7px;font-weight:1000;white-space:nowrap}.classeHab.bloqueada .classeHabEstado{background:#e9edf2;color:#8996a5}.classeHabTexto{font-size:8.5px;line-height:1.4;color:#566c84;font-weight:700}
-      .classeRecurso{margin-top:7px;padding:7px;border:1px solid #dbe7f3;border-radius:8px;background:#fff}.classeRecursoTopo{display:flex;justify-content:space-between;align-items:center;gap:7px;color:#6b7f96;font-size:7.5px;font-weight:1000}.classeRecursoTopo strong{font-size:10px;color:#2c67aa}.classeAcoes{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:6px;margin-top:6px}.classeAcao,.classeRestaurar{min-height:32px!important;padding:6px!important;font-size:8px!important;font-weight:1000!important}.classeAcao{background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important}.classeRestaurar{background:#f7f9fc!important;border-color:#c7d4e3!important;color:#627991!important}
+      .classeRecurso{margin-top:7px;padding:7px;border:1px solid #dbe7f3;border-radius:8px;background:#fff}.classeRecursoTopo{display:flex;justify-content:space-between;align-items:center;gap:7px;color:#6b7f96;font-size:7.5px;font-weight:1000}.classeRecursoTopo strong{font-size:10px;color:#2c67aa}.classeAcoes{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:6px;margin-top:6px}.classeAcoesTripla{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:6px}.classeSelect{width:100%;min-height:34px;margin-top:6px;padding:6px 8px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:8px;font-weight:900;box-sizing:border-box}.classeTextoLivre{width:100%;min-height:74px;margin-top:6px;padding:8px 9px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:8.5px;line-height:1.4;font-weight:800;box-sizing:border-box;resize:vertical;outline:none}.classeTextoLivre:focus{border-color:#6da4e5;box-shadow:0 0 0 2px rgba(72,133,205,.10)}.classeAcaoCheia{width:100%;margin-top:6px!important}.classeAcao,.classeRestaurar{min-height:32px!important;padding:6px!important;font-size:8px!important;font-weight:1000!important}.classeAcao{background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important}.classeRestaurar{background:#f7f9fc!important;border-color:#c7d4e3!important;color:#627991!important}
       .guiaClasseOverlay{display:none;position:fixed;z-index:5001;inset:0;background:rgba(13,26,43,.55);padding:16px;overflow:auto}.guiaClasseOverlay.aberto{display:block}.guiaClasseTopo{position:sticky;top:-16px;z-index:2;background:#fff;margin:-16px -16px 10px;padding:13px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #dce6f0}.guiaClasseTopo h3{margin:0;color:#274c79;font-size:14px}.guiaClasseTopo p{margin:2px 0 0;color:#8798aa;font-size:8px;font-weight:700}.guiaClasseFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:15px!important}.guiaClasseLista{display:grid;gap:7px}.guiaClasseOpcao{width:100%;padding:10px!important;border:1px solid #cfdeee!important;border-radius:10px!important;background:#fff!important;text-align:left!important;cursor:pointer}.guiaClasseOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#2e5f9d}.guiaClasseOpcaoTexto{display:block;margin-top:4px;font-size:8px;line-height:1.35;font-weight:700;color:#5b6f87}
       .origemVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #a9bfd8!important;border-radius:11px!important;background:#f8fbff!important;color:#52749d!important;font-weight:900!important;font-size:10px!important;text-align:center!important;cursor:pointer}
       .origemCard{width:100%;max-width:410px;margin:0 auto;border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(33,70,110,.06);text-align:left}
@@ -3888,6 +4050,81 @@ function mostrarFichaTreinadorClasOri(token) {
   });
   document.querySelector("#restaurarTrocaRapida")?.addEventListener("click", async () => {
     await salvarEstadoClasse(token, { [META_AS_TROCA_RAPIDA_USOS]: maxUsosClasseAs(token) });
+    await redesenharClasseAberta();
+  });
+
+
+  document.querySelector("#usarVersatilApoiador")?.addEventListener("click", async () => {
+    const atual = usosClasseAs(token, META_VERSATIL_APOIADOR_USOS);
+    if (atual <= 0) return;
+    const resultado = await rolarNoDicePlusComResultado("1d6", "Apoiador", "Dado de Habilidade");
+    if (resultado === null) return;
+    await salvarEstadoClasse(token, { [META_VERSATIL_APOIADOR_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarVersatilApoiador")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_VERSATIL_APOIADOR_USOS]: maxUsosClasseAs(token) });
+    await redesenharClasseAberta();
+  });
+
+  const campoMuitasFaces = document.querySelector("#versatilMuitasFacesEscolha");
+  campoMuitasFaces?.addEventListener("blur", async () => {
+    const valor = String(campoMuitasFaces.value || "");
+    if (valor === String(token.metadata[META_VERSATIL_MUITAS_FACES_ESCOLHA] ?? "")) return;
+    await salvarEstadoClasse(token, { [META_VERSATIL_MUITAS_FACES_ESCOLHA]: valor });
+  });
+
+  document.querySelector("#salvarVersatilTalentoDia")?.addEventListener("click", async () => {
+    const seletor = document.querySelector("#versatilTalentoDia");
+    const talentoId = seletor?.value || null;
+    await salvarEstadoClasse(token, { [META_VERSATIL_TALENTO_DIA]: talentoId });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelectorAll("[data-mentor-inspirar]").forEach((botao) => {
+    botao.addEventListener("click", async () => {
+      if (token.metadata[META_MENTOR_INSPIRACAO_USADA] === true) return;
+      const tipo = String(botao.dataset.mentorInspirar || "");
+      if (!["ataque", "dano", "ca"].includes(tipo)) return;
+      await salvarEstadoClasse(token, {
+        [META_MENTOR_INSPIRACAO_USADA]: true,
+        [META_MENTOR_INSPIRACAO_TIPO]: tipo
+      });
+      await redesenharClasseAberta();
+    });
+  });
+  document.querySelector("#restaurarMentorInspiracao")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, {
+      [META_MENTOR_INSPIRACAO_USADA]: false,
+      [META_MENTOR_INSPIRACAO_TIPO]: ""
+    });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarMentorPokechef")?.addEventListener("click", async () => {
+    const atual = usosClasseAs(token, META_MENTOR_POKECHEF_USOS);
+    if (atual <= 0) return;
+    const formula = formulaGuloseimaMentor(nivelTreinador);
+    const resultado = await rolarNoDicePlusComResultado(formula, "Pokéchef", "Guloseima Comestível • PV Temporários");
+    if (resultado === null) return;
+    await salvarEstadoClasse(token, { [META_MENTOR_POKECHEF_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarMentorPokechef")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_MENTOR_POKECHEF_USOS]: maxUsosClasseAs(token) });
+    await redesenharClasseAberta();
+  });
+
+  const usarTutorMestre = async () => {
+    const atual = usosClasseFixo(token, META_MENTOR_TUTOR_MESTRE_USOS, 2);
+    if (atual <= 0) return;
+    await salvarEstadoClasse(token, { [META_MENTOR_TUTOR_MESTRE_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  };
+  document.querySelector("#usarMentorEnsinarMove")?.addEventListener("click", usarTutorMestre);
+  document.querySelector("#usarMentorAprimorarMove")?.addEventListener("click", usarTutorMestre);
+  document.querySelector("#restaurarMentorTutorMestre")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_MENTOR_TUTOR_MESTRE_USOS]: 2 });
     await redesenharClasseAberta();
   });
 
