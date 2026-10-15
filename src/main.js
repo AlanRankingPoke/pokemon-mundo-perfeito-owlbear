@@ -3564,15 +3564,15 @@ function mostrarFichaTreinadorClasOri(token) {
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(token, 5)}
     <style>
-      .clasOriSecao{margin-bottom:15px}
-      .clasOriTitulo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
-      .clasOriTitulo h3{margin:0;color:#2d4767;font-size:13px;letter-spacing:.35px}
-      .clasOriTitulo p{margin:2px 0 0;color:#8192a7;font-size:8px;font-weight:700}
-      .origemVazia{width:100%;min-height:52px!important;border:1.5px dashed #a9bfd8!important;border-radius:11px!important;background:#f8fbff!important;color:#52749d!important;font-weight:900!important;font-size:10px!important;cursor:pointer}
-      .origemCard{border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(33,70,110,.06)}
-      .origemCardTopo{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#f8fbff;border:0;cursor:pointer;text-align:left}
-      .origemNome{font-size:12px;font-weight:1000;color:#2e5f9d;letter-spacing:.4px}
-      .origemSeta{font-size:10px;color:#56779e;font-weight:1000;white-space:nowrap}
+      .clasOriSecao{width:100%;max-width:440px;margin:0 auto 18px;box-sizing:border-box;text-align:center}
+      .clasOriTitulo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 auto 9px;text-align:center}.clasOriTitulo>div{width:100%;margin:0 auto;text-align:center}
+      .clasOriTitulo h3{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;box-sizing:border-box;margin:0 auto;color:#2e5f9d;font-size:15px;font-weight:1000;letter-spacing:.5px;border:1px solid #d4e2f1;border-radius:11px;background:linear-gradient(180deg,#f8fbff 0%,#f0f6fd 100%)}
+      .clasOriTitulo p{max-width:340px;margin:7px auto 0;color:#71859d;font-size:8.5px;line-height:1.35;font-weight:800;text-align:center}
+      .origemVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #a9bfd8!important;border-radius:11px!important;background:#f8fbff!important;color:#52749d!important;font-weight:900!important;font-size:10px!important;text-align:center!important;cursor:pointer}
+      .origemCard{width:100%;max-width:410px;margin:0 auto;border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(33,70,110,.06);text-align:left}
+      .origemCardTopo{position:relative;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 52px 10px 11px;background:#f8fbff;border:0;cursor:pointer;text-align:center}
+      .origemNome{display:block;width:100%;font-size:12px;font-weight:1000;color:#2e5f9d;letter-spacing:.4px;text-align:center}
+      .origemSeta{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:9px;color:#56779e;font-weight:1000;white-space:nowrap}
       .origemRemover{width:27px!important;height:27px!important;min-height:27px!important;padding:0!important;border-radius:50%!important;font-size:14px!important;flex:0 0 27px;cursor:pointer}
       .origemDetalhes{display:none;padding:10px;border-top:1px solid #e0e8f1;background:#fff}
       .origemDetalhes.aberto{display:block}
@@ -3581,7 +3581,7 @@ function mostrarFichaTreinadorClasOri(token) {
       .origemRolar{width:100%;margin-top:8px;min-height:34px!important;padding:7px!important;background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important;font-size:8.5px!important;font-weight:1000!important;cursor:pointer}
       .origemRolar.perigo{background:#fff4f4!important;border-color:#e9aaaa!important;color:#a84b4b!important}
       .origemBotoesDuplos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-      .classePlaceholder{padding:12px;border:1px dashed #c8d6e6;border-radius:10px;background:#fbfdff;text-align:center;color:#91a0b2;font-size:9px;font-weight:900}
+      .classePlaceholder{width:100%;max-width:390px;box-sizing:border-box;margin:0 auto;padding:15px 12px;border:1px dashed #c8d6e6;border-radius:10px;background:#fbfdff;text-align:center;color:#91a0b2;font-size:9px;font-weight:900}
       .guiaOrigemOverlay{display:none;position:fixed;z-index:5000;inset:0;background:rgba(13,26,43,.55);padding:16px;overflow:auto}
       .guiaOrigemOverlay.aberto{display:block}
       .guiaOrigemTopo{position:sticky;top:-16px;z-index:2;background:#fff;margin:-16px -16px 10px;padding:13px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #dce6f0}
@@ -3761,21 +3761,39 @@ function mostrarFichaTreinadorMocDin(token) {
 }
 
 function menuTreinador(paginaAtual) {
-  const aba = (id, pagina, rotulo) => `
-    <button id="${id}" style="
-      min-width:0;width:100%;min-height:42px;padding:7px 4px;
-      font-size:9.5px;font-weight:900;cursor:pointer;
-      border-radius:10px;letter-spacing:.15px;
-      opacity:${paginaAtual === pagina ? "1" : "0.72"};
-      ${paginaAtual === pagina ? "border-color:#4c8dff;box-shadow:0 1px 5px rgba(76,141,255,.14);" : ""}
-    ">${rotulo}</button>`;
+  const aba = (id, pagina, rotulo) => {
+    const ativa = paginaAtual === pagina;
+    return `
+      <button id="${id}" style="
+        min-width:0!important;
+        width:100%!important;
+        min-height:52px!important;
+        height:52px!important;
+        padding:8px 5px!important;
+        box-sizing:border-box!important;
+        font-size:10.5px!important;
+        line-height:1.05!important;
+        font-weight:900!important;
+        cursor:pointer!important;
+        border-radius:10px!important;
+        letter-spacing:.15px!important;
+        opacity:1!important;
+        white-space:nowrap!important;
+        background:${ativa ? "linear-gradient(135deg,#4c8dff 0%,#2f73dc 100%)" : "linear-gradient(180deg,#ffffff 0%,#f1f5fa 100%)"}!important;
+        color:${ativa ? "#ffffff" : "#35475f"}!important;
+        border:${ativa ? "1px solid #2f73dc" : "1px solid #d2dce8"}!important;
+        box-shadow:${ativa ? "0 4px 10px rgba(47,115,220,.20)" : "0 2px 5px rgba(35,64,97,.05)"}!important;
+      ">${rotulo}</button>`;
+  };
+
   return `
-    <div class="fichaAbas" style="
-      display:grid;
-      grid-template-columns:repeat(3,minmax(0,1fr));
-      gap:6px;
-      margin-bottom:15px;
-      width:100%;
+    <div class="fichaAbas treinadorAbas" style="
+      display:grid!important;
+      grid-template-columns:repeat(3,minmax(0,1fr))!important;
+      gap:7px!important;
+      margin-bottom:16px!important;
+      width:100%!important;
+      align-items:stretch!important;
     ">
       ${aba("paginaTreinador1", 1, "STATUS")}
       ${aba("paginaTreinador2", 2, "PKM")}
