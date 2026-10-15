@@ -5235,6 +5235,7 @@ const TIPOS_ITEM_MOCHILA = [
   { id: "medicina", nome: "MEDICINA", detalhe: "Poções e itens que curam HP ou condições de status." },
   { id: "tms", nome: "TMs", detalhe: "Máquinas Técnicas e itens relacionados a Moves." },
   { id: "itens", nome: "ITENS", detalhe: "Itens de combate e equipamentos para Pokémon." },
+  { id: "pokebolas", nome: "POKÉBOLAS", detalhe: "Pokébolas de qualquer tipo usadas em tentativas de captura." },
   { id: "extras", nome: "EXTRAS", detalhe: "Cordas, ferramentas e outros itens de aventura." }
 ];
 
@@ -5303,13 +5304,16 @@ async function alterarPokedolsTreinador(token, delta) {
 async function comprarItemVendinha(token, dados) {
   const nome = String(dados?.nome || "").trim();
   const tipo = String(dados?.tipo || "");
-  const preco = Math.max(0, Math.trunc(Number(dados?.preco) || 0));
+  const precoUnitario = Math.max(0, Math.trunc(Number(dados?.preco) || 0));
+  const quantidade = Math.max(1, Math.min(999, Math.trunc(Number(dados?.quantidade) || 1)));
   const tipoValido = TIPOS_ITEM_MOCHILA.some((item) => item.id === tipo);
 
   if (!nome) return { ok: false, mensagem: "Escreva o nome do item antes de comprar." };
   if (!tipoValido) return { ok: false, mensagem: "Escolha um tipo de item válido." };
-  if (!Number.isFinite(preco) || preco < 0) return { ok: false, mensagem: "Informe um preço válido." };
+  if (!Number.isFinite(precoUnitario) || precoUnitario < 0) return { ok: false, mensagem: "Informe um preço válido." };
+  if (!Number.isFinite(quantidade) || quantidade < 1) return { ok: false, mensagem: "Informe uma quantidade válida." };
 
+  const precoTotal = precoUnitario * quantidade;
   let resultado = { ok: false, mensagem: "Não foi possível concluir a compra." };
   const idNovo = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -5318,10 +5322,10 @@ async function comprarItemVendinha(token, dados) {
       item.metadata ||= {};
       const saldo = normalizarPokedols(item.metadata[META_TREINADOR_POKEDOLS]);
 
-      if (saldo < preco) {
+      if (saldo < precoTotal) {
         resultado = {
           ok: false,
-          mensagem: `Pokédols insuficientes. Saldo atual: ₱${formatarPokedols(saldo)}.`
+          mensagem: `Pokédols insuficientes. Total: ₱${formatarPokedols(precoTotal)} · Saldo: ₱${formatarPokedols(saldo)}.`
         };
         continue;
       }
@@ -5334,25 +5338,28 @@ async function comprarItemVendinha(token, dados) {
       );
 
       if (existente) {
-        existente.quantidade += 1;
-        existente.ultimoPreco = preco;
+        existente.quantidade += quantidade;
+        existente.ultimoPreco = precoUnitario;
       } else {
         mochila.push({
           id: idNovo,
           nome,
           tipo,
-          quantidade: 1,
-          ultimoPreco: preco
+          quantidade,
+          ultimoPreco: precoUnitario
         });
       }
 
-      const novoSaldo = saldo - preco;
+      const novoSaldo = saldo - precoTotal;
       item.metadata[META_TREINADOR_POKEDOLS] = novoSaldo;
       item.metadata[META_TREINADOR_MOCHILA] = mochila;
       resultado = {
         ok: true,
-        mensagem: `${nome} comprado por ₱${formatarPokedols(preco)}.`,
-        saldo: novoSaldo
+        mensagem: `${quantidade}x ${nome} comprado por ₱${formatarPokedols(precoTotal)}.`,
+        saldo: novoSaldo,
+        quantidade,
+        precoUnitario,
+        precoTotal
       };
     }
   });
@@ -5362,25 +5369,9 @@ async function comprarItemVendinha(token, dados) {
 
 function htmlItensMochila(mochila) {
   const itens = normalizarMochilaTreinador(mochila);
-  if (!itens.length) {
-    return `
-      <div style="
-        padding:18px 12px;
-        border:1px dashed #cbd8e6;
-        border-radius:12px;
-        text-align:center;
-        color:#8b9caf;
-        font-size:10px;
-        font-weight:800;
-        background:#fbfdff;
-      ">
-        A mochila ainda está vazia.
-      </div>`;
-  }
 
   return TIPOS_ITEM_MOCHILA.map((tipo) => {
     const destaCategoria = itens.filter((item) => item.tipo === tipo.id);
-    if (!destaCategoria.length) return "";
     return `
       <div style="margin-top:10px;">
         <div style="
@@ -5388,32 +5379,30 @@ function htmlItensMochila(mochila) {
           font-weight:1000;
           color:#43658c;
           letter-spacing:.4px;
-          margin-bottom:5px;
+          margin-bottom:${destaCategoria.length ? "5px" : "0"};
         ">${tipo.nome}</div>
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;">
-          ${destaCategoria.map((item) => `
-            <div style="
-              min-width:0;
-              padding:9px 10px;
-              border:1px solid #d8e2ee;
-              border-radius:10px;
-              background:#ffffff;
-              box-shadow:0 2px 5px rgba(37,67,102,.04);
-            ">
+        ${destaCategoria.length ? `
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;">
+            ${destaCategoria.map((item) => `
               <div style="
-                font-size:10px;
-                font-weight:1000;
-                color:#263d59;
-                overflow:hidden;
-                text-overflow:ellipsis;
-                white-space:nowrap;
-              ">${esc(item.nome)}</div>
-              <div style="margin-top:3px;font-size:9px;font-weight:800;color:#8294a9;">
-                Qtd. ${item.quantidade}
+                min-width:0;
+                padding:9px 10px;
+                border:1px solid #d8e2ee;
+                border-radius:10px;
+                background:#ffffff;
+                box-shadow:0 2px 5px rgba(37,67,102,.04);
+              ">
+                <div style="
+                  font-size:10px;
+                  font-weight:1000;
+                  color:#263d59;
+                  overflow:hidden;
+                  text-overflow:ellipsis;
+                  white-space:nowrap;
+                ">${item.quantidade}x ${esc(item.nome)}</div>
               </div>
-            </div>
-          `).join("")}
-        </div>
+            `).join("")}
+          </div>` : ""}
       </div>`;
   }).join("");
 }
@@ -5536,7 +5525,7 @@ function mostrarFichaTreinadorMocDin(token) {
         <div style="text-align:center;">
           <div style="font-size:17px;font-weight:1000;color:#285f9e;">VENDINHA</div>
           <div style="margin-top:3px;font-size:9px;line-height:1.35;font-weight:800;color:#8496aa;">
-            Escreva o item, escolha a categoria e informe o preço.
+            Escreva o item, escolha a categoria, informe o preço unitário e a quantidade.
           </div>
         </div>
 
@@ -5558,7 +5547,7 @@ function mostrarFichaTreinadorMocDin(token) {
             ">
           </label>
 
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,.7fr);gap:8px;">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(82px,.55fr) minmax(74px,.45fr);gap:8px;">
             <label style="font-size:9px;font-weight:1000;color:#58708c;">
               TIPO
               <select id="tipoItemVendinha" style="
@@ -5578,7 +5567,7 @@ function mostrarFichaTreinadorMocDin(token) {
             </label>
 
             <label style="font-size:9px;font-weight:1000;color:#58708c;">
-              PREÇO
+              PREÇO UN.
               <input id="precoItemVendinha" type="number" min="0" step="1" placeholder="0" style="
                 display:block;
                 width:100%;
@@ -5593,7 +5582,36 @@ function mostrarFichaTreinadorMocDin(token) {
                 box-sizing:border-box;
               ">
             </label>
+
+            <label style="font-size:9px;font-weight:1000;color:#58708c;">
+              QTD.
+              <input id="quantidadeItemVendinha" type="number" min="1" max="999" step="1" value="1" style="
+                display:block;
+                width:100%;
+                margin-top:4px;
+                padding:10px;
+                border:1px solid #cbd7e5;
+                border-radius:10px;
+                font-size:11px;
+                font-weight:900;
+                color:#304963;
+                background:#fff;
+                box-sizing:border-box;
+                text-align:center;
+              ">
+            </label>
           </div>
+
+          <div id="totalCompraVendinha" style="
+            padding:9px 10px;
+            border:1px solid #d8e3ef;
+            border-radius:10px;
+            background:#f8fbff;
+            text-align:center;
+            color:#426487;
+            font-size:9.5px;
+            font-weight:1000;
+          ">TOTAL: ₱0</div>
 
           <div id="descricaoTipoVendinha" style="
             min-height:28px;
@@ -5663,6 +5681,16 @@ async function ativarMocDinTreinador(token) {
   atualizarDescricaoTipo();
   document.querySelector("#tipoItemVendinha")?.addEventListener("change", atualizarDescricaoTipo);
 
+  const atualizarTotalCompra = () => {
+    const preco = Math.max(0, Math.trunc(Number(document.querySelector("#precoItemVendinha")?.value) || 0));
+    const quantidade = Math.max(1, Math.min(999, Math.trunc(Number(document.querySelector("#quantidadeItemVendinha")?.value) || 1)));
+    const alvo = document.querySelector("#totalCompraVendinha");
+    if (alvo) alvo.textContent = `TOTAL: ₱${formatarPokedols(preco * quantidade)} (${quantidade}x)`;
+  };
+  document.querySelector("#precoItemVendinha")?.addEventListener("input", atualizarTotalCompra);
+  document.querySelector("#quantidadeItemVendinha")?.addEventListener("input", atualizarTotalCompra);
+  atualizarTotalCompra();
+
   const redesenhar = async () => {
     const atualizado = await pegarTokenAtualizado(token.id);
     if (atualizado) mostrarFichaTreinadorMocDin(atualizado);
@@ -5694,7 +5722,9 @@ async function ativarMocDinTreinador(token) {
     const nome = document.querySelector("#nomeItemVendinha")?.value || "";
     const tipo = document.querySelector("#tipoItemVendinha")?.value || "";
     const precoCampo = document.querySelector("#precoItemVendinha");
+    const quantidadeCampo = document.querySelector("#quantidadeItemVendinha");
     const precoBruto = String(precoCampo?.value ?? "").trim();
+    const quantidadeBruta = String(quantidadeCampo?.value ?? "1").trim();
 
     if (!precoBruto) {
       if (mensagem) {
@@ -5713,9 +5743,18 @@ async function ativarMocDinTreinador(token) {
       return;
     }
 
+    const quantidade = Math.trunc(Number(quantidadeBruta));
+    if (!Number.isFinite(quantidade) || quantidade < 1 || quantidade > 999) {
+      if (mensagem) {
+        mensagem.style.color = "#a34b54";
+        mensagem.textContent = "Quantidade inválida. Use um valor entre 1 e 999.";
+      }
+      return;
+    }
+
     if (botao) botao.disabled = true;
     try {
-      const resultado = await comprarItemVendinha(token, { nome, tipo, preco });
+      const resultado = await comprarItemVendinha(token, { nome, tipo, preco, quantidade });
       if (!resultado.ok) {
         if (mensagem) {
           mensagem.style.color = "#a34b54";
