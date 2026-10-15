@@ -13,6 +13,9 @@ const META_PAINEL_INICIATIVA_FILHO = `${PREFIX}/painel-iniciativa-filho`;
 const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
 const META_POKEMON_DONO_TREINADOR = `${PREFIX}/treinador-pokemon-dono`;
 const META_POKEMON_SLOT_TREINADOR = `${PREFIX}/treinador-pokemon-slot`;
+const META_TREINADOR_CAPTURA_ALVO = `${PREFIX}/treinador-captura-alvo`;
+const META_CAPTURA_LOCK = `${PREFIX}/captura-lock`;
+let capturaSelecaoPendente = null;
 const META_MEGA_CONFIG =
 `${PREFIX}/mega-config`;
 const META_MEGA_ATIVA =
@@ -1603,7 +1606,7 @@ function metadataPokemonParaSlot(item) {
   const resultado = {};
   for (const [chave, valor] of Object.entries(item?.metadata || {})) {
     if (!chave.startsWith(`${PREFIX}/`)) continue;
-    if ([META_INICIATIVA_TRACKER, META_TURNO_INICIATIVA, META_POKEMON_DONO_TREINADOR, META_POKEMON_SLOT_TREINADOR].includes(chave)) continue;
+    if ([META_INICIATIVA_TRACKER, META_TURNO_INICIATIVA, META_POKEMON_DONO_TREINADOR, META_POKEMON_SLOT_TREINADOR, META_CAPTURA_LOCK].includes(chave)) continue;
     resultado[chave] = clonarDadosSimples(valor);
   }
   resultado[`${PREFIX}/tipoFicha`] = "pokemon";
@@ -1946,6 +1949,200 @@ function tokenEstaDisponivelNaMesa(item) {
   if (item.visible === false) return false;
   if (!item.image?.url) return false;
   return true;
+}
+
+function normalizarAlvoCaptura(valor) {
+  if (!valor || typeof valor !== "object") return null;
+  const id = String(valor.id || "").trim();
+  if (!id) return null;
+  return {
+    id,
+    nome: String(valor.nome || "Pokémon"),
+    imagemUrl: String(valor.imagemUrl || ""),
+    selecionadoEm: Number(valor.selecionadoEm) || 0
+  };
+}
+
+function resumoAlvoCapturaPokemon(item) {
+  return {
+    id: item.id,
+    nome: item.name || "Pokémon",
+    imagemUrl: item.image?.url || "",
+    selecionadoEm: Date.now()
+  };
+}
+
+function pokemonPodeSerAlvoCaptura(item) {
+  if (!tokenEstaDisponivelNaMesa(item)) return false;
+  if (item.metadata?.[`${PREFIX}/tipoFicha`] !== "pokemon") return false;
+  if (item.metadata?.[META_POKEMON_DONO_TREINADOR]) return false;
+  if (String(item.name || "").trim().toLowerCase().startsWith("mega")) return false;
+  return true;
+}
+
+async function salvarAlvoCapturaTreinador(treinadorId, pokemon) {
+  const resumo = resumoAlvoCapturaPokemon(pokemon);
+  await OBR.scene.items.updateItems([treinadorId], (items) => {
+    for (const item of items) item.metadata[META_TREINADOR_CAPTURA_ALVO] = resumo;
+  });
+  return resumo;
+}
+
+async function limparAlvoCapturaTreinador(treinadorId) {
+  await OBR.scene.items.updateItems([treinadorId], (items) => {
+    for (const item of items) delete item.metadata[META_TREINADOR_CAPTURA_ALVO];
+  });
+}
+
+async function tratarSelecaoAlvoCaptura() {
+  const estado = capturaSelecaoPendente;
+  if (!estado?.treinadorId) return false;
+  if (estado.iniciadoEm && Date.now() - estado.iniciadoEm > 120000) {
+    capturaSelecaoPendente = null;
+    return false;
+  }
+
+  const selection = await OBR.player.getSelection();
+  if (!selection?.length) return true;
+
+  const alvoId = selection[0];
+  if (!alvoId || alvoId === estado.treinadorId) return true;
+
+  const itens = await OBR.scene.items.getItems([alvoId]);
+  const alvo = itens?.[0];
+  if (!alvo) return true;
+
+  if (!pokemonPodeSerAlvoCaptura(alvo)) {
+    const tipo = alvo.metadata?.[`${PREFIX}/tipoFicha`];
+    if (alvo.metadata?.[META_POKEMON_DONO_TREINADOR]) {
+      alert("Esse Pokémon já pertence ao roster de um treinador e não pode ser usado como alvo de captura.");
+    } else if (tipo !== "pokemon") {
+      alert("Selecione um token que esteja cadastrado como POKÉMON no plugin.");
+    } else {
+      alert("Esse token não pode ser usado como alvo de captura.");
+    }
+    return true;
+  }
+
+  capturaSelecaoPendente = null;
+  await salvarAlvoCapturaTreinador(estado.treinadorId, alvo);
+
+  // Retorna a seleção ao treinador para manter a ficha aberta após escolher o alvo.
+  await OBR.player.select([estado.treinadorId], true);
+  const treinadorAtual = (await OBR.scene.items.getItems([estado.treinadorId]))?.[0];
+  if (treinadorAtual) mostrarFichaTreinadorPagina1(treinadorAtual);
+  return true;
+}
+
+function primeiroIndiceLivrePc(roster) {
+  return Array.isArray(roster?.pc) ? roster.pc.findIndex((slot) => !slot) : -1;
+}
+
+async function guardarPokemonCapturadoNoPc(treinador, pokemon) {
+  let treinadorAtual = (await OBR.scene.items.getItems([treinador.id]))?.[0] || treinador;
+  let pokemonAtual = (await OBR.scene.items.getItems([pokemon.id]))?.[0];
+
+  if (!pokemonAtual || !pokemonPodeSerAlvoCaptura(pokemonAtual)) {
+    throw new Error("O Pokémon não está mais disponível para captura.");
+  }
+
+  let roster = await sincronizarRosterTreinadorComCena(treinadorAtual);
+  let indicePc = primeiroIndiceLivrePc(roster);
+  if (indicePc < 0) throw new Error("O PC deste treinador está cheio (16/16).");
+
+  const tentativaId = `${treinador.id}:${Date.now()}:${Math.random().toString(36).slice(2, 9)}`;
+  const agora = Date.now();
+  let vinculoCriado = false;
+  let rosterSalvo = false;
+
+  try {
+    // Trava curta para impedir duas capturas simultâneas do mesmo token.
+    await OBR.scene.items.updateItems([pokemonAtual.id], (items) => {
+      for (const item of items) {
+        item.metadata[META_CAPTURA_LOCK] = { id: tentativaId, em: agora };
+      }
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    pokemonAtual = (await OBR.scene.items.getItems([pokemonAtual.id]))?.[0];
+
+    if (!pokemonAtual) throw new Error("O Pokémon saiu da mesa antes de concluir a captura.");
+    const lock = pokemonAtual.metadata?.[META_CAPTURA_LOCK];
+    if (lock?.id !== tentativaId) {
+      throw new Error("Outro jogador está concluindo uma captura desse Pokémon.");
+    }
+    if (pokemonAtual.metadata?.[META_POKEMON_DONO_TREINADOR]) {
+      throw new Error("Esse Pokémon já foi adicionado ao roster de outro treinador.");
+    }
+
+    treinadorAtual = (await OBR.scene.items.getItems([treinador.id]))?.[0] || treinadorAtual;
+    roster = await sincronizarRosterTreinadorComCena(treinadorAtual);
+    indicePc = primeiroIndiceLivrePc(roster);
+    if (indicePc < 0) throw new Error("O PC deste treinador ficou cheio antes da captura terminar.");
+
+    const chaveFinal = chaveSlotTreinador("pc", indicePc);
+
+    // Primeiro vinculamos o token ao slot. Se algo interromper o processo,
+    // ele continua sendo um Pokémon válido do roster em campo, sem duplicar.
+    await OBR.scene.items.updateItems([pokemonAtual.id], (items) => {
+      for (const item of items) {
+        item.metadata[META_POKEMON_DONO_TREINADOR] = treinadorAtual.id;
+        item.metadata[META_POKEMON_SLOT_TREINADOR] = chaveFinal;
+        delete item.metadata[META_CAPTURA_LOCK];
+      }
+    });
+    vinculoCriado = true;
+
+    pokemonAtual = (await OBR.scene.items.getItems([pokemonAtual.id]))?.[0] || pokemonAtual;
+    const snapshot = snapshotPokemonParaTreinador(pokemonAtual);
+    if (!snapshot) throw new Error("Não foi possível salvar os dados do Pokémon capturado.");
+    snapshot.campoId = pokemonAtual.id;
+    roster.pc[indicePc] = snapshot;
+    await salvarRosterTreinador(treinadorAtual, roster);
+    rosterSalvo = true;
+
+    // Recolhe para o PC usando o mesmo fluxo já usado pela ficha do treinador.
+    let recolhido = true;
+    try {
+      await recolherPokemonDoTreinador(treinadorAtual, "pc", indicePc);
+    } catch (erroPrimeiraTentativa) {
+      // Uma segunda tentativa curta evita falhas transitórias de sincronização da cena.
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 140));
+        treinadorAtual = (await OBR.scene.items.getItems([treinador.id]))?.[0] || treinadorAtual;
+        await recolherPokemonDoTreinador(treinadorAtual, "pc", indicePc);
+      } catch (erroSegundaTentativa) {
+        recolhido = false;
+        console.warn(
+          "O Pokémon foi capturado, mas não foi possível recolhê-lo automaticamente:",
+          erroPrimeiraTentativa,
+          erroSegundaTentativa
+        );
+      }
+    }
+
+    return { indicePc, recolhido };
+  } catch (erro) {
+    // Se o roster ainda não foi salvo, desfaz qualquer reserva/vínculo temporário.
+    if (!rosterSalvo) {
+      try {
+        await OBR.scene.items.updateItems([pokemon.id], (items) => {
+          for (const item of items) {
+            const lock = item.metadata?.[META_CAPTURA_LOCK];
+            if (lock?.id === tentativaId) delete item.metadata[META_CAPTURA_LOCK];
+            if (
+              vinculoCriado &&
+              item.metadata?.[META_POKEMON_DONO_TREINADOR] === treinadorAtual.id
+            ) {
+              delete item.metadata[META_POKEMON_DONO_TREINADOR];
+              delete item.metadata[META_POKEMON_SLOT_TREINADOR];
+            }
+          }
+        });
+      } catch (_) {}
+    }
+    throw erro;
+  }
 }
 
 async function pokemonsDisponiveisParaRoster(token) {
@@ -3334,6 +3531,8 @@ function mostrarFichaTreinadorPagina1(token) {
   const ca = calcularCaTreinador(modDes, bonusCaManual);
   const proficiencia = token.metadata[`${PREFIX}/treinador-proficiencia`] ?? 0;
   const bonusCaptura = token.metadata[`${PREFIX}/treinador-captura-bonus`] ?? 0;
+  const cdCaptura = token.metadata[`${PREFIX}/treinador-captura-cd`] ?? "";
+  const alvoCaptura = normalizarAlvoCaptura(token.metadata[META_TREINADOR_CAPTURA_ALVO]);
   const iniciativa = modDes;
 
   app.innerHTML = `
@@ -3358,11 +3557,22 @@ function mostrarFichaTreinadorPagina1(token) {
       .treinadorFerramentasStatus #iniciativa{width:auto!important;min-width:42px!important;flex:1 1 52px!important}
       .treinadorFerramentasStatus #rolarIniciativa{flex:0 0 34px!important;width:34px!important;min-height:34px!important}
       .capturaTreinadorCard{margin-top:10px;padding:9px;border:1px solid #d7e3f2;border-radius:11px;background:#fff}
-      .capturaTreinadorLinha{display:grid;grid-template-columns:90px minmax(0,1fr);gap:7px;align-items:end}
+      .capturaTreinadorTitulo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;color:#365a86;font-size:11px;font-weight:900}
+      .capturaAlvoCard{display:grid;grid-template-columns:50px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px;border:1px solid #d8e4f1;border-radius:10px;background:#f8fbff;margin-bottom:8px}
+      .capturaAlvoCard.vazio{grid-template-columns:minmax(0,1fr) auto}
+      .capturaAlvoImagem{width:48px;height:48px;object-fit:contain;border:1px solid #cfdeee;border-radius:9px;background:#fff}
+      .capturaAlvoNome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#263f60;font-size:11px;font-weight:1000}
+      .capturaAlvoAjuda{margin:2px 0 0!important;font-size:8px!important;color:#7a8ea7!important;font-weight:800!important}
+      .capturaAlvoSelecionar{min-height:34px!important;padding:6px 9px!important;font-size:9px!important;font-weight:900!important;cursor:pointer}
+      .capturaAlvoSelecionar.ativo{background:#315f9a!important;color:#fff!important;border-color:#315f9a!important}
+      .capturaAlvoLimpar{width:27px!important;height:27px!important;min-height:27px!important;padding:0!important;border-radius:50%!important;color:#b64141!important;background:#fff2f2!important;border:1px solid #e5aaaa!important;font-weight:1000!important}
+      .capturaTreinadorLinha{display:grid;grid-template-columns:82px 92px minmax(0,1fr);gap:7px;align-items:end}
       .capturaFormula{margin:6px 0 0;padding:5px 7px;border-radius:7px;background:#f4f7fb;color:#365a86;font-size:9px;font-weight:900;text-align:center}
+      .capturaResultado{min-height:14px;margin:5px 0 0!important;font-size:9px!important;font-weight:900!important;text-align:center}
       @media(max-width:430px){
         .treinadorFerramentasStatus{grid-template-columns:1fr}
-        .capturaTreinadorLinha{grid-template-columns:1fr}
+        .capturaTreinadorLinha{grid-template-columns:1fr 1fr}
+        .capturaTreinadorLinha #rolarCaptura{grid-column:1/-1}
       }
     </style>
     <div class="statusGrid statusGridPokemon" style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
@@ -3431,14 +3641,45 @@ function mostrarFichaTreinadorPagina1(token) {
         </div>
 
         <div class="capturaTreinadorCard">
+          <div class="capturaTreinadorTitulo">
+            <span>🎯 CAPTURA</span>
+            <span>Sucesso = resultado ≥ CD</span>
+          </div>
+
+          ${alvoCaptura ? `
+            <div class="capturaAlvoCard">
+              <img class="capturaAlvoImagem" src="${esc(alvoCaptura.imagemUrl)}" alt="">
+              <div style="min-width:0;">
+                <div class="capturaAlvoNome">${esc(alvoCaptura.nome)}</div>
+                <p class="capturaAlvoAjuda">Alvo selecionado na mesa</p>
+              </div>
+              <button id="limparAlvoCaptura" class="capturaAlvoLimpar" type="button" title="Remover alvo">×</button>
+            </div>
+          ` : `
+            <div class="capturaAlvoCard vazio">
+              <div>
+                <div class="capturaAlvoNome">Nenhum Pokémon selecionado</div>
+                <p class="capturaAlvoAjuda">Clique no botão e depois clique no Pokémon que deseja capturar.</p>
+              </div>
+              <button id="selecionarAlvoCaptura" class="capturaAlvoSelecionar" type="button">🎯 Selecionar</button>
+            </div>
+          `}
+
+          ${alvoCaptura ? `<button id="selecionarAlvoCaptura" class="capturaAlvoSelecionar" type="button" style="width:100%;margin:0 0 8px;">🎯 Trocar Pokémon selecionado</button>` : ""}
+
           <div class="capturaTreinadorLinha">
+            <div>
+              <p style="margin:0 0 4px;font-size:10px;font-weight:900;">CD</p>
+              <input id="treinadorCapturaCd" type="number" min="0" step="1" value="${esc(cdCaptura)}" placeholder="CD" style="width:100%;box-sizing:border-box;text-align:center;">
+            </div>
             <div>
               <p style="margin:0 0 4px;font-size:10px;font-weight:900;">Bônus Pokébola</p>
               <input id="treinadorCapturaBonus" type="number" step="1" value="${esc(bonusCaptura)}" style="width:100%;box-sizing:border-box;text-align:center;">
             </div>
-            <button id="rolarCaptura" type="button" style="min-height:36px;font-weight:bold;cursor:pointer;">🎲 Rolar Captura</button>
+            <button id="rolarCaptura" type="button" style="min-height:36px;font-weight:bold;cursor:pointer;">🎲 Tentar Captura</button>
           </div>
           <div class="capturaFormula" id="formulaCapturaTreinador">1d20 + 2×Prof + Bônus da Pokébola</div>
+          <p class="capturaResultado" id="resultadoCapturaTreinador"></p>
         </div>
       </div>
     </div>
@@ -3462,10 +3703,12 @@ function mostrarFichaTreinadorPagina1(token) {
   const campoCa = document.querySelector("#ca");
   const campoBonusCa = document.querySelector("#bonusCaTreinador");
   const campoProf = document.querySelector("#treinadorProficiencia");
+  const campoCdCaptura = document.querySelector("#treinadorCapturaCd");
   const campoBonusPokebola = document.querySelector("#treinadorCapturaBonus");
   const textoFormulaHp = document.querySelector("#formulaHpTreinador");
   const textoFormulaCa = document.querySelector("#formulaCaTreinador");
   const textoFormulaCaptura = document.querySelector("#formulaCapturaTreinador");
+  const textoResultadoCaptura = document.querySelector("#resultadoCapturaTreinador");
 
   const atualizarHpAutomatico = () => {
     const nivel = nivelTreinadorNormalizado(campoNivel?.value);
@@ -3495,8 +3738,10 @@ function mostrarFichaTreinadorPagina1(token) {
     const bonusBola = Math.trunc(numeroTreinador(campoBonusPokebola?.value));
     const bonusProf = prof * 2;
     const total = bonusProf + bonusBola;
+    const cdTexto = String(campoCdCaptura?.value ?? "").trim();
+    const contraCd = cdTexto !== "" ? ` • CD ${Math.max(0, Math.trunc(numeroTreinador(cdTexto)))}` : "";
     if (textoFormulaCaptura) {
-      textoFormulaCaptura.textContent = `1d20 ${formatarBonusFormula(bonusProf)} (2×Prof) ${formatarBonusFormula(bonusBola)} Pokébola = 1d20 ${formatarBonusFormula(total)}`;
+      textoFormulaCaptura.textContent = `1d20 ${formatarBonusFormula(bonusProf)} (2×Prof) ${formatarBonusFormula(bonusBola)} Pokébola = 1d20 ${formatarBonusFormula(total)}${contraCd}`;
     }
   };
 
@@ -3508,6 +3753,8 @@ function mostrarFichaTreinadorPagina1(token) {
   campoDes?.addEventListener("change", atualizarCaAutomatica);
   campoProf?.addEventListener("input", atualizarFormulaCaptura);
   campoProf?.addEventListener("change", atualizarFormulaCaptura);
+  campoCdCaptura?.addEventListener("input", atualizarFormulaCaptura);
+  campoCdCaptura?.addEventListener("change", atualizarFormulaCaptura);
   campoBonusPokebola?.addEventListener("input", atualizarFormulaCaptura);
   campoBonusPokebola?.addEventListener("change", atualizarFormulaCaptura);
 
@@ -3526,13 +3773,140 @@ function mostrarFichaTreinadorPagina1(token) {
   atualizarCaAutomatica();
   atualizarFormulaCaptura();
 
+  document.querySelector("#selecionarAlvoCaptura")?.addEventListener("click", () => {
+    const botao = document.querySelector("#selecionarAlvoCaptura");
+    if (capturaSelecaoPendente?.treinadorId === token.id) {
+      capturaSelecaoPendente = null;
+      if (botao) {
+        botao.classList.remove("ativo");
+        botao.textContent = alvoCaptura ? "🎯 Trocar Pokémon selecionado" : "🎯 Selecionar";
+      }
+      return;
+    }
+
+    capturaSelecaoPendente = { treinadorId: token.id, iniciadoEm: Date.now() };
+    if (botao) {
+      botao.classList.add("ativo");
+      botao.textContent = "👆 Clique no Pokémon na mesa...";
+    }
+    if (textoResultadoCaptura) {
+      textoResultadoCaptura.style.color = "#315f9a";
+      textoResultadoCaptura.textContent = "Modo de seleção ativo: clique em um token com ficha POKÉMON.";
+    }
+  });
+
+  document.querySelector("#limparAlvoCaptura")?.addEventListener("click", async () => {
+    capturaSelecaoPendente = null;
+    await limparAlvoCapturaTreinador(token.id);
+    const treinadorAtual = (await OBR.scene.items.getItems([token.id]))?.[0];
+    if (treinadorAtual) mostrarFichaTreinadorPagina1(treinadorAtual);
+  });
+
   document.querySelector("#rolarCaptura")?.addEventListener("click", async () => {
+    const botao = document.querySelector("#rolarCaptura");
+    const cdTexto = String(campoCdCaptura?.value ?? "").trim();
+    if (cdTexto === "") {
+      alert("Informe a CD de captura antes de rolar.");
+      campoCdCaptura?.focus();
+      return;
+    }
+
+    const cd = Math.max(0, Math.trunc(numeroTreinador(cdTexto)));
+    const alvoSalvo = normalizarAlvoCaptura(token.metadata[META_TREINADOR_CAPTURA_ALVO]) || alvoCaptura;
+    if (!alvoSalvo?.id) {
+      alert("Selecione primeiro o Pokémon que será capturado.");
+      return;
+    }
+
+    const treinadorAtualAntes = (await OBR.scene.items.getItems([token.id]))?.[0] || token;
+    const rosterAntes = await sincronizarRosterTreinadorComCena(treinadorAtualAntes);
+    if (primeiroIndiceLivrePc(rosterAntes) < 0) {
+      alert("O PC deste treinador está cheio (16/16). Libere um espaço antes de tentar a captura.");
+      return;
+    }
+
+    const alvoAtualAntes = (await OBR.scene.items.getItems([alvoSalvo.id]))?.[0];
+    if (!alvoAtualAntes || !pokemonPodeSerAlvoCaptura(alvoAtualAntes)) {
+      await limparAlvoCapturaTreinador(token.id);
+      alert("O Pokémon selecionado não está mais disponível para captura. Selecione outro alvo.");
+      const treinadorAtual = (await OBR.scene.items.getItems([token.id]))?.[0];
+      if (treinadorAtual) mostrarFichaTreinadorPagina1(treinadorAtual);
+      return;
+    }
+
     const prof = Math.trunc(numeroTreinador(campoProf?.value));
     const bonusBola = Math.trunc(numeroTreinador(campoBonusPokebola?.value));
     const bonusTotal = (prof * 2) + bonusBola;
     const formula = formulaSalvaguarda(bonusTotal);
-    if (!formula) { alert("Não foi possível calcular a captura."); return; }
-    await rolarNoDicePlus(formula, `Captura • 2×Prof ${formatarBonusFormula(prof * 2)} • Pokébola ${formatarBonusFormula(bonusBola)}`);
+    if (!formula) {
+      alert("Não foi possível calcular a captura.");
+      return;
+    }
+
+    // Persiste os valores usados nesta tentativa antes da rolagem.
+    await OBR.scene.items.updateItems([token.id], (items) => {
+      for (const item of items) {
+        item.metadata[`${PREFIX}/treinador-captura-cd`] = cd;
+        item.metadata[`${PREFIX}/treinador-captura-bonus`] = bonusBola;
+      }
+    });
+
+    if (botao) botao.disabled = true;
+    if (textoResultadoCaptura) {
+      textoResultadoCaptura.style.color = "#53647a";
+      textoResultadoCaptura.textContent = `Rolando contra CD ${cd}...`;
+    }
+
+    try {
+      const resultado = await rolarNoDicePlusComResultado(
+        formula,
+        `Captura de ${alvoAtualAntes.name || "Pokémon"}`,
+        `CD ${cd}`
+      );
+      if (resultado === null) return;
+
+      if (resultado < cd) {
+        if (textoResultadoCaptura) {
+          textoResultadoCaptura.style.color = "#b64b4b";
+          textoResultadoCaptura.textContent = `Falhou: ${resultado} contra CD ${cd}.`;
+        }
+        return;
+      }
+
+      if (textoResultadoCaptura) {
+        textoResultadoCaptura.style.color = "#248454";
+        textoResultadoCaptura.textContent = `Sucesso: ${resultado} contra CD ${cd}. Enviando ao PC...`;
+      }
+
+      const alvoAtual = (await OBR.scene.items.getItems([alvoSalvo.id]))?.[0];
+      if (!alvoAtual || !pokemonPodeSerAlvoCaptura(alvoAtual)) {
+        throw new Error("O Pokémon deixou de estar disponível antes da captura ser concluída.");
+      }
+
+      const treinadorAtual = (await OBR.scene.items.getItems([token.id]))?.[0] || token;
+      const captura = await guardarPokemonCapturadoNoPc(treinadorAtual, alvoAtual);
+      await limparAlvoCapturaTreinador(token.id);
+
+      const treinadorFinal = (await OBR.scene.items.getItems([token.id]))?.[0] || treinadorAtual;
+      await OBR.player.select([token.id], true);
+      mostrarFichaTreinadorPagina1(treinadorFinal);
+
+      const numeroSlot = captura.indicePc + 1;
+      if (captura.recolhido) {
+        alert(`${alvoAtual.name || "Pokémon"} capturado! Ele foi enviado automaticamente para o PC, slot ${numeroSlot}.`);
+      } else {
+        alert(`${alvoAtual.name || "Pokémon"} foi capturado e vinculado ao PC, slot ${numeroSlot}, mas permaneceu na mesa. Clique nele pelo roster para recolher.`);
+      }
+    } catch (erro) {
+      console.error("Erro ao concluir captura automática:", erro);
+      if (textoResultadoCaptura) {
+        textoResultadoCaptura.style.color = "#b64b4b";
+        textoResultadoCaptura.textContent = erro?.message || "Não foi possível concluir a captura.";
+      }
+      alert(erro?.message || "Não foi possível concluir a captura.");
+    } finally {
+      if (botao) botao.disabled = false;
+    }
   });
 
   document.querySelector("#salvarTreinadorStatus")?.addEventListener("click", async () => {
@@ -3548,6 +3922,8 @@ function mostrarFichaTreinadorPagina1(token) {
 
     const novoNivel = nivelTreinadorNormalizado(campoNivel?.value);
     const novaProficiencia = Math.trunc(numeroTreinador(campoProf?.value));
+    const novoCdCapturaTexto = String(campoCdCaptura?.value ?? "").trim();
+    const novoCdCaptura = novoCdCapturaTexto === "" ? "" : Math.max(0, Math.trunc(numeroTreinador(novoCdCapturaTexto)));
     const novoBonusCaptura = Math.trunc(numeroTreinador(campoBonusPokebola?.value));
     const novoBonusCa = Math.trunc(numeroTreinador(campoBonusCa?.value));
     const novosModificadores = {};
@@ -3575,6 +3951,7 @@ function mostrarFichaTreinadorPagina1(token) {
         delete item.metadata[`${PREFIX}/treinador-iniciativa-habilidade`];
         delete item.metadata[`${PREFIX}/treinador-iniciativa-dobrar`];
         item.metadata[`${PREFIX}/treinador-captura-bonus`] = novoBonusCaptura;
+        item.metadata[`${PREFIX}/treinador-captura-cd`] = novoCdCaptura;
         ATRIBUTOS.forEach((atributo) => {
           item.metadata[`${PREFIX}/treinador-mod-${atributo}`] = novosModificadores[atributo];
           item.metadata[`${PREFIX}/treinador-save-${atributo}`] = novasSalvaguardas[atributo];
@@ -6545,5 +6922,13 @@ app.innerHTML = `
               </div>
             `;
 } } }
-OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); OBR.scene.items.onChange(() => { agendarSincronizacaoRosterEmCampo(); agendarCorrecaoHudExistente(); }); OBR.player.onChange( async () => { await mostrarTokenSelecionado(); } ); } );
+OBR.onReady( async () => { if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); OBR.scene.items.onChange(() => { agendarSincronizacaoRosterEmCampo(); agendarCorrecaoHudExistente(); }); OBR.player.onChange( async () => {
+    try {
+      if (await tratarSelecaoAlvoCaptura()) return;
+    } catch (erro) {
+      console.warn("Não foi possível selecionar o alvo de captura:", erro);
+      capturaSelecaoPendente = null;
+    }
+    await mostrarTokenSelecionado();
+  } ); } );
 // FIM
