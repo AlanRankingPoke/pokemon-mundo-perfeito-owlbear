@@ -3539,14 +3539,14 @@ function mostrarFichaTreinadorClasOri(token) {
     if (origem.id === "rival") return `
       <div class="rivalPainel">
         <div class="rivalBloco">
-          <div class="rivalCab"><strong>LIÇÃO</strong><span class="rivalEstado ${rivalLicao ? "pronto" : ""}">${rivalLicao ? "PRONTA" : "VAZIA"}</span></div>
-          <button type="button" class="origemRolar" id="marcarLicaoRival">${rivalLicao ? "✓ LIÇÃO MARCADA" : "＋ MARCAR LIÇÃO"}</button>
+          <div class="rivalCab"><strong>LIÇÃO</strong><span class="rivalEstado ${rivalLicao ? "pronto" : ""}">${rivalLicao ? "SIM" : "NÃO"}</span></div>
+          <button type="button" class="origemRolar" id="marcarLicaoRival">${rivalLicao ? "✓ LIÇÃO ATIVA" : "＋ MARCAR LIÇÃO"}</button>
           <select id="periciaLicaoRival" ${rivalLicao ? "" : "disabled"}>${opcoesPericiasOrigemRival()}</select>
           <button type="button" class="origemRolar" id="usarLicaoRival" ${rivalLicao ? "" : "disabled"}>🎲 USAR LIÇÃO — VANTAGEM</button>
         </div>
         <div class="rivalBloco">
-          <div class="rivalCab"><strong>REVANCHE</strong><span class="rivalEstado ${rivalRevanche ? "pronto" : ""}">${rivalRevanche ? "PRONTA" : "NÃO"}</span></div>
-          <button type="button" class="origemRolar" id="usarRevancheRival" ${rivalRevanche ? "" : "disabled"}>⚔ USAR REVANCHE</button>
+          <div class="rivalCab"><strong>REVANCHE</strong><span class="rivalEstado ${rivalRevanche ? "pronto" : ""}">${rivalRevanche ? "SIM" : "NÃO"}</span></div>
+          <button type="button" class="origemRolar" id="usarRevancheRival">⚔ REVANCHE</button>
         </div>
         <div class="rivalBloco">
           <div class="rivalCab"><strong>SEQUÊNCIA DE VITÓRIAS</strong><span class="rivalSequencia">${rivalSequencia}/3</span></div>
@@ -3706,11 +3706,21 @@ function mostrarFichaTreinadorClasOri(token) {
     finally { if (botao) botao.disabled = false; }
   });
 
-  document.querySelector("#marcarLicaoRival")?.addEventListener("click", async () => {
-    await salvarEstadoOrigem(token, { [META_RIVAL_LICAO]: true });
+  const redesenharRivalAberto = async () => {
     const atualizado = await pegarTokenAtualizado(token.id);
-    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+    if (!atualizado) return;
+    mostrarFichaTreinadorClasOri(atualizado);
+    const detalhes = document.querySelector("#detalhesOrigemSelecionada");
+    const seta = document.querySelector("#setaOrigemSelecionada");
+    detalhes?.classList.add("aberto");
+    if (seta) seta.textContent = "RECOLHER ▴";
+  };
+
+  document.querySelector("#marcarLicaoRival")?.addEventListener("click", async () => {
+    await salvarEstadoOrigem(token, { [META_RIVAL_LICAO]: !rivalLicao });
+    await redesenharRivalAberto();
   });
+
   document.querySelector("#usarLicaoRival")?.addEventListener("click", async () => {
     const seletor = document.querySelector("#periciaLicaoRival");
     const id = seletor?.value || "";
@@ -3719,25 +3729,22 @@ function mostrarFichaTreinadorClasOri(token) {
     const resultado = await rolarPericiaOrigemComVantagem(token, pericia.id, pericia.nome, "LIÇÃO DO RIVAL");
     if (resultado === null) return;
     await salvarEstadoOrigem(token, { [META_RIVAL_LICAO]: false });
-    const atualizado = await pegarTokenAtualizado(token.id);
-    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+    await redesenharRivalAberto();
   });
+
   document.querySelector("#usarRevancheRival")?.addEventListener("click", async () => {
-    if (!rivalRevanche) return;
-    alert("REVANCHE USADA\nSeu próximo ataque no combate recebe vantagem. O Mestre resolve a aplicação normalmente.");
-    await salvarEstadoOrigem(token, { [META_RIVAL_REVANCHE]: false });
-    const atualizado = await pegarTokenAtualizado(token.id);
-    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+    await salvarEstadoOrigem(token, { [META_RIVAL_REVANCHE]: !rivalRevanche });
+    await redesenharRivalAberto();
   });
+
   document.querySelector("#vitoriaRival")?.addEventListener("click", async () => {
     await salvarEstadoOrigem(token, { [META_RIVAL_SEQUENCIA]: Math.min(3, rivalSequencia + 1) });
-    const atualizado = await pegarTokenAtualizado(token.id);
-    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+    await redesenharRivalAberto();
   });
+
   document.querySelector("#derrotaRival")?.addEventListener("click", async () => {
     await salvarEstadoOrigem(token, { [META_RIVAL_SEQUENCIA]: 0, [META_RIVAL_REVANCHE]: true });
-    const atualizado = await pegarTokenAtualizado(token.id);
-    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+    await redesenharRivalAberto();
   });
 }
 
