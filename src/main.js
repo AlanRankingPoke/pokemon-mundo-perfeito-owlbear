@@ -1137,8 +1137,384 @@ const ESTILO_FICHA = `
       flex-basis:62px !important;
     }
   }
+
+  /* PERSONALIZAÇÃO LOCAL DA FICHA */
+  #app.fichaPersonalizada {
+    background-image:
+      linear-gradient(
+        rgba(255,255,255,var(--ficha-overlay, .58)),
+        rgba(246,249,253,var(--ficha-overlay, .58))
+      ),
+      var(--ficha-bg-image) !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: local !important;
+  }
+  #app.fichaPersonalizada .fichaCabecalho {
+    background: rgba(255,255,255,.76) !important;
+    border: 1px solid rgba(204,218,235,.85) !important;
+    border-radius: 14px !important;
+    padding: 8px !important;
+    box-shadow: 0 5px 18px rgba(30,55,84,.10) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  #app.fichaPersonalizada .statusCard,
+  #app.fichaPersonalizada .pokemonStatusPrincipal,
+  #app.fichaPersonalizada .pokemonStatusCampo,
+  #app.fichaPersonalizada details {
+    background: rgba(255,255,255,.84) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  #app.fichaPersonalizada input,
+  #app.fichaPersonalizada textarea,
+  #app.fichaPersonalizada select {
+    background: rgba(255,255,255,.91) !important;
+  }
+  .fichaAcoesCabecalho {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:6px !important;
+    flex:0 0 auto !important;
+  }
+  #personalizarFicha {
+    flex:0 0 auto !important;
+    min-height:34px !important;
+    padding:7px 9px !important;
+    white-space:nowrap !important;
+    border-radius:999px !important;
+    font-size:9.5px !important;
+    color:#53647a !important;
+    background:#f6f8fb !important;
+  }
+  #personalizarFicha:hover {
+    background:#eaf3ff !important;
+    color:#245fae !important;
+  }
+  .painelPersonalizacaoFicha {
+    position:fixed;
+    top:72px;
+    right:12px;
+    z-index:99999;
+    width:min(300px, calc(100vw - 24px));
+    padding:12px;
+    border:1px solid #c9d8e9;
+    border-radius:14px;
+    background:rgba(248,251,255,.96);
+    box-shadow:0 18px 50px rgba(24,47,79,.24);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+  }
+  .painelPersonalizacaoTopo {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .painelPersonalizacaoTitulo {
+    font-size:11px;
+    font-weight:1000;
+    color:#284d7c;
+    letter-spacing:.35px;
+  }
+  .painelPersonalizacaoFechar {
+    width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    padding:0!important;
+    border-radius:50%!important;
+  }
+  .painelPersonalizacaoAcoes {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:7px;
+  }
+  .painelPersonalizacaoAcoes button {
+    min-height:34px!important;
+    padding:7px 8px!important;
+    font-size:9px!important;
+  }
+  .painelPersonalizacaoLinha {
+    margin-top:10px;
+    padding-top:9px;
+    border-top:1px solid #dce6f1;
+  }
+  .painelPersonalizacaoLinha label {
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:5px;
+  }
+  .painelPersonalizacaoLinha input[type="range"] {
+    width:100%;
+    padding:0!important;
+    min-height:24px!important;
+    box-shadow:none!important;
+  }
+  @media (max-width: 430px) {
+    .fichaAcoesCabecalho {
+      flex-direction:column !important;
+      gap:4px !important;
+    }
+    #personalizarFicha,
+    #trocarTipo {
+      min-height:30px !important;
+      padding:5px 7px !important;
+      font-size:8.5px !important;
+    }
+  }
+
 </style>
 `;
+
+const DB_PERSONALIZACAO_FICHA = "pokemon-mundo-perfeito-personalizacao";
+const STORE_PERSONALIZACAO_FICHA = "fundos";
+let promessaBancoPersonalizacaoFicha = null;
+
+function abrirBancoPersonalizacaoFicha() {
+  if (promessaBancoPersonalizacaoFicha) return promessaBancoPersonalizacaoFicha;
+  promessaBancoPersonalizacaoFicha = new Promise((resolve) => {
+    if (!("indexedDB" in window)) {
+      resolve(null);
+      return;
+    }
+    try {
+      const requisicao = indexedDB.open(DB_PERSONALIZACAO_FICHA, 1);
+      requisicao.onupgradeneeded = () => {
+        const banco = requisicao.result;
+        if (!banco.objectStoreNames.contains(STORE_PERSONALIZACAO_FICHA)) {
+          banco.createObjectStore(STORE_PERSONALIZACAO_FICHA, { keyPath: "id" });
+        }
+      };
+      requisicao.onsuccess = () => resolve(requisicao.result);
+      requisicao.onerror = () => resolve(null);
+    } catch (_) {
+      resolve(null);
+    }
+  });
+  return promessaBancoPersonalizacaoFicha;
+}
+
+async function lerPersonalizacaoFicha(tokenId) {
+  const id = String(tokenId || "");
+  if (!id) return null;
+  const banco = await abrirBancoPersonalizacaoFicha();
+  if (banco) {
+    try {
+      return await new Promise((resolve) => {
+        const transacao = banco.transaction(STORE_PERSONALIZACAO_FICHA, "readonly");
+        const requisicao = transacao.objectStore(STORE_PERSONALIZACAO_FICHA).get(id);
+        requisicao.onsuccess = () => resolve(requisicao.result || null);
+        requisicao.onerror = () => resolve(null);
+      });
+    } catch (_) {}
+  }
+  try {
+    const bruto = localStorage.getItem(`${PREFIX}/personalizacao-ficha/${id}`);
+    return bruto ? JSON.parse(bruto) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function salvarPersonalizacaoFicha(tokenId, dados) {
+  const id = String(tokenId || "");
+  if (!id) return;
+  const registro = { id, ...dados };
+  const banco = await abrirBancoPersonalizacaoFicha();
+  if (banco) {
+    try {
+      await new Promise((resolve) => {
+        const transacao = banco.transaction(STORE_PERSONALIZACAO_FICHA, "readwrite");
+        transacao.objectStore(STORE_PERSONALIZACAO_FICHA).put(registro);
+        transacao.oncomplete = () => resolve();
+        transacao.onerror = () => resolve();
+        transacao.onabort = () => resolve();
+      });
+      return;
+    } catch (_) {}
+  }
+  try {
+    localStorage.setItem(`${PREFIX}/personalizacao-ficha/${id}`, JSON.stringify(registro));
+  } catch (_) {}
+}
+
+async function removerPersonalizacaoFicha(tokenId) {
+  const id = String(tokenId || "");
+  if (!id) return;
+  const banco = await abrirBancoPersonalizacaoFicha();
+  if (banco) {
+    try {
+      await new Promise((resolve) => {
+        const transacao = banco.transaction(STORE_PERSONALIZACAO_FICHA, "readwrite");
+        transacao.objectStore(STORE_PERSONALIZACAO_FICHA).delete(id);
+        transacao.oncomplete = () => resolve();
+        transacao.onerror = () => resolve();
+        transacao.onabort = () => resolve();
+      });
+    } catch (_) {}
+  }
+  try {
+    localStorage.removeItem(`${PREFIX}/personalizacao-ficha/${id}`);
+  } catch (_) {}
+}
+
+function lerArquivoComoDataUrl(arquivo) {
+  return new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onload = () => resolve(String(leitor.result || ""));
+    leitor.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+    leitor.readAsDataURL(arquivo);
+  });
+}
+
+function carregarImagemDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const imagem = new Image();
+    imagem.onload = () => resolve(imagem);
+    imagem.onerror = () => reject(new Error("Imagem inválida."));
+    imagem.src = dataUrl;
+  });
+}
+
+async function prepararImagemFundoFicha(arquivo) {
+  if (!arquivo || !String(arquivo.type || "").startsWith("image/")) {
+    throw new Error("Escolha uma imagem PNG, JPG ou WebP.");
+  }
+  const original = await lerArquivoComoDataUrl(arquivo);
+  const imagem = await carregarImagemDataUrl(original);
+  const limite = 1600;
+  const escala = Math.min(1, limite / Math.max(imagem.naturalWidth || 1, imagem.naturalHeight || 1));
+  const largura = Math.max(1, Math.round((imagem.naturalWidth || 1) * escala));
+  const altura = Math.max(1, Math.round((imagem.naturalHeight || 1) * escala));
+  const canvas = document.createElement("canvas");
+  canvas.width = largura;
+  canvas.height = altura;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(imagem, 0, 0, largura, altura);
+  const webp = canvas.toDataURL("image/webp", 0.82);
+  return webp && webp.startsWith("data:image/") ? webp : canvas.toDataURL("image/jpeg", 0.82);
+}
+
+function limparVisualPersonalizacaoFicha(app) {
+  if (!app) return;
+  app.classList.remove("fichaPersonalizada");
+  app.style.removeProperty("--ficha-bg-image");
+  app.style.removeProperty("--ficha-overlay");
+}
+
+async function aplicarPersonalizacaoFicha(token) {
+  const app = document.querySelector("#app");
+  if (!app || !token?.id) return;
+  const id = String(token.id);
+  app.dataset.personalizacaoToken = id;
+  const configuracao = await lerPersonalizacaoFicha(id);
+  if (!app.isConnected || app.dataset.personalizacaoToken !== id) return;
+  if (!configuracao?.imagem) {
+    limparVisualPersonalizacaoFicha(app);
+    return;
+  }
+  const overlay = Math.max(0.18, Math.min(0.90, Number(configuracao.overlay ?? 0.58)));
+  app.classList.add("fichaPersonalizada");
+  app.style.setProperty("--ficha-bg-image", `url("${String(configuracao.imagem).replace(/"/g, "%22")}")`);
+  app.style.setProperty("--ficha-overlay", String(overlay));
+}
+
+async function abrirPainelPersonalizacaoFicha(token) {
+  const app = document.querySelector("#app");
+  if (!app || !token?.id) return;
+  document.querySelector("#painelPersonalizacaoFicha")?.remove();
+
+  const configuracao = await lerPersonalizacaoFicha(token.id);
+  const overlayInicial = Math.round(Math.max(0.18, Math.min(0.90, Number(configuracao?.overlay ?? 0.58))) * 100);
+
+  const painel = document.createElement("div");
+  painel.id = "painelPersonalizacaoFicha";
+  painel.className = "painelPersonalizacaoFicha";
+  painel.innerHTML = `
+    <div class="painelPersonalizacaoTopo">
+      <div class="painelPersonalizacaoTitulo">🎨 FUNDO DA FICHA</div>
+      <button type="button" class="painelPersonalizacaoFechar" id="fecharPersonalizacaoFicha">×</button>
+    </div>
+    <input id="arquivoFundoFicha" type="file" accept="image/png,image/jpeg,image/webp" style="display:none!important">
+    <div class="painelPersonalizacaoAcoes">
+      <button type="button" id="escolherFundoFicha">ESCOLHER IMAGEM</button>
+      <button type="button" id="removerFundoFicha">REMOVER FUNDO</button>
+    </div>
+    <div class="painelPersonalizacaoLinha">
+      <label for="overlayFundoFicha">
+        <span>VÉU DE LEITURA</span>
+        <strong id="valorOverlayFundoFicha">${overlayInicial}%</strong>
+      </label>
+      <input id="overlayFundoFicha" type="range" min="18" max="90" step="1" value="${overlayInicial}">
+    </div>
+    <p style="margin-top:8px!important;font-size:8px!important;color:#7b8da4!important;font-weight:800!important;text-align:center;">
+      A imagem fica salva somente neste navegador e nesta ficha.
+    </p>
+  `;
+  app.appendChild(painel);
+
+  const arquivo = painel.querySelector("#arquivoFundoFicha");
+  const escolher = painel.querySelector("#escolherFundoFicha");
+  const remover = painel.querySelector("#removerFundoFicha");
+  const slider = painel.querySelector("#overlayFundoFicha");
+  const valorSlider = painel.querySelector("#valorOverlayFundoFicha");
+
+  painel.querySelector("#fecharPersonalizacaoFicha")?.addEventListener("click", () => painel.remove());
+  escolher?.addEventListener("click", () => arquivo?.click());
+
+  arquivo?.addEventListener("change", async () => {
+    const selecionado = arquivo.files?.[0];
+    if (!selecionado) return;
+    escolher.disabled = true;
+    const textoOriginal = escolher.textContent;
+    escolher.textContent = "PROCESSANDO...";
+    try {
+      const imagem = await prepararImagemFundoFicha(selecionado);
+      const overlay = Number(slider?.value || overlayInicial) / 100;
+      await salvarPersonalizacaoFicha(token.id, { imagem, overlay });
+      await aplicarPersonalizacaoFicha(token);
+    } catch (erro) {
+      alert(erro?.message || "Não foi possível usar essa imagem.");
+    } finally {
+      escolher.disabled = false;
+      escolher.textContent = textoOriginal;
+      if (arquivo) arquivo.value = "";
+    }
+  });
+
+  slider?.addEventListener("input", () => {
+    const numero = Number(slider.value || overlayInicial);
+    if (valorSlider) valorSlider.textContent = `${numero}%`;
+    app.style.setProperty("--ficha-overlay", String(numero / 100));
+  });
+  slider?.addEventListener("change", async () => {
+    const atual = await lerPersonalizacaoFicha(token.id);
+    if (!atual?.imagem) return;
+    await salvarPersonalizacaoFicha(token.id, {
+      imagem: atual.imagem,
+      overlay: Number(slider.value || overlayInicial) / 100
+    });
+  });
+
+  remover?.addEventListener("click", async () => {
+    await removerPersonalizacaoFicha(token.id);
+    limparVisualPersonalizacaoFicha(app);
+    painel.remove();
+  });
+}
+
+function ativarPersonalizacaoFicha(token) {
+  document.querySelector("#personalizarFicha")?.addEventListener("click", () => {
+    void abrirPainelPersonalizacaoFicha(token);
+  });
+  void aplicarPersonalizacaoFicha(token);
+}
+
 function urlApresentadorIniciativa() { const url = new URL(window.location.href);
 url.searchParams.set( "view", "initiative" );
 return url.toString(); }
@@ -6199,22 +6575,34 @@ font-size:30px;
           </div>
         </div>
       </div>
-      <button
-        id="trocarTipo"
-        style="
-          font-size:11px;
-          cursor:pointer;
-          white-space:nowrap;
-        "
-      >
-        Trocar tipo
-      </button>
+      <div class="fichaAcoesCabecalho">
+        <button
+          id="personalizarFicha"
+          type="button"
+          title="Escolher o papel de parede desta ficha"
+        >
+          🎨 Personalizar
+        </button>
+        <button
+          id="trocarTipo"
+          style="
+            font-size:11px;
+            cursor:pointer;
+            white-space:nowrap;
+          "
+        >
+          Trocar tipo
+        </button>
+      </div>
     </div>
     ${menuTreinador(paginaAtual)}
   `;
 }
-function ativarCabecalhoTreinador( token ) { document .querySelector( "#trocarTipo" ) .addEventListener( "click", () => trocarTipoFicha( token ) );
-ativarMenuTreinador( token ); }
+function ativarCabecalhoTreinador( token ) {
+  document.querySelector("#trocarTipo")?.addEventListener("click", () => trocarTipoFicha(token));
+  ativarPersonalizacaoFicha(token);
+  ativarMenuTreinador(token);
+}
 function ativarMenuTreinador(token) {
   const status = document.querySelector("#paginaTreinador1");
   const pkm = document.querySelector("#paginaTreinador2");
@@ -7391,23 +7779,33 @@ font-size:30px;
           </div>
         </div>
       </div>
-      <button
-        id="trocarTipo"
-        style="
-          font-size:11px;
-          cursor:pointer;
-          flex:0 0 auto;
-          padding:6px 8px;
-        "
-      >
-        Trocar tipo
-      </button>
+      <div class="fichaAcoesCabecalho">
+        <button
+          id="personalizarFicha"
+          type="button"
+          title="Escolher o papel de parede desta ficha"
+        >
+          🎨 Personalizar
+        </button>
+        <button
+          id="trocarTipo"
+          style="
+            font-size:11px;
+            cursor:pointer;
+            flex:0 0 auto;
+            padding:6px 8px;
+          "
+        >
+          Trocar tipo
+        </button>
+      </div>
     </div>
     ${menuPokemon(paginaAtual)}
   `;
 }
 function ativarCabecalhoPokemon(token) {
   document.querySelector("#trocarTipo")?.addEventListener("click", () => trocarTipoFicha(token));
+  ativarPersonalizacaoFicha(token);
   const campoNome = document.querySelector("#nomeFichaPokemon");
   if (campoNome) {
     const salvar = async () => {
