@@ -3725,12 +3725,46 @@ function mostrarFichaTreinadorPagina1(token) {
     }
   };
 
-  const atualizarCaAutomatica = () => {
+  let temporizadorSincronizarCaTreinador = null;
+
+  const sincronizarCaTreinadorComHud = (atraso = 80) => {
+    if (temporizadorSincronizarCaTreinador) clearTimeout(temporizadorSincronizarCaTreinador);
+    temporizadorSincronizarCaTreinador = setTimeout(async () => {
+      temporizadorSincronizarCaTreinador = null;
+      try {
+        const des = Math.trunc(numeroTreinador(campoDes?.value));
+        const bonus = Math.trunc(numeroTreinador(campoBonusCa?.value));
+        const novaCa = calcularCaTreinador(des, bonus);
+        const hpAtualHud = Math.max(0, Math.trunc(numeroTreinador(campoHpAtual?.value)));
+        const hpMaxHud = Math.max(1, Math.trunc(numeroTreinador(campoHpMax?.value)));
+
+        // A CA automática do treinador precisa alimentar o mesmo metadata
+        // utilizado pelo círculo de CA do HUD embaixo do token.
+        await OBR.scene.items.updateItems([token.id], (items) => {
+          for (const item of items) {
+            item.metadata[`${PREFIX}/ca`] = novaCa;
+            item.metadata[`${PREFIX}/treinador-ca-bonus`] = bonus;
+            item.metadata[`${PREFIX}/treinador-mod-des`] = campoDes?.value.trim() || "";
+          }
+        });
+
+        const tokenAtual = (await OBR.scene.items.getItems([token.id]))?.[0];
+        if (tokenAtual) {
+          await criarStatusNoToken(tokenAtual, hpAtualHud, hpMaxHud, novaCa);
+        }
+      } catch (erro) {
+        console.warn("Não foi possível sincronizar a CA do treinador com o HUD:", erro);
+      }
+    }, atraso);
+  };
+
+  const atualizarCaAutomatica = (sincronizarHud = false) => {
     const des = Math.trunc(numeroTreinador(campoDes?.value));
     const bonus = Math.trunc(numeroTreinador(campoBonusCa?.value));
     const novaCa = calcularCaTreinador(des, bonus);
     if (campoCa) campoCa.value = String(novaCa);
     if (textoFormulaCa) textoFormulaCa.textContent = `10 ${formatarBonusFormula(des)} DES ${formatarBonusFormula(bonus)} bônus = ${novaCa}`;
+    if (sincronizarHud) sincronizarCaTreinadorComHud();
   };
 
   const atualizarFormulaCaptura = () => {
@@ -3749,8 +3783,8 @@ function mostrarFichaTreinadorPagina1(token) {
   campoNivel?.addEventListener("change", atualizarHpAutomatico);
   campoCon?.addEventListener("input", atualizarHpAutomatico);
   campoCon?.addEventListener("change", atualizarHpAutomatico);
-  campoDes?.addEventListener("input", atualizarCaAutomatica);
-  campoDes?.addEventListener("change", atualizarCaAutomatica);
+  campoDes?.addEventListener("input", () => atualizarCaAutomatica(true));
+  campoDes?.addEventListener("change", () => atualizarCaAutomatica(true));
   campoProf?.addEventListener("input", atualizarFormulaCaptura);
   campoProf?.addEventListener("change", atualizarFormulaCaptura);
   campoCdCaptura?.addEventListener("input", atualizarFormulaCaptura);
@@ -3761,17 +3795,21 @@ function mostrarFichaTreinadorPagina1(token) {
   document.querySelector("#aumentarCaTreinador")?.addEventListener("click", () => {
     if (!campoBonusCa) return;
     campoBonusCa.value = String(Math.trunc(numeroTreinador(campoBonusCa.value)) + 1);
-    atualizarCaAutomatica();
+    atualizarCaAutomatica(true);
   });
   document.querySelector("#diminuirCaTreinador")?.addEventListener("click", () => {
     if (!campoBonusCa) return;
     campoBonusCa.value = String(Math.trunc(numeroTreinador(campoBonusCa.value)) - 1);
-    atualizarCaAutomatica();
+    atualizarCaAutomatica(true);
   });
 
   atualizarHpAutomatico();
   atualizarCaAutomatica();
   atualizarFormulaCaptura();
+
+  // Corrige imediatamente HUDs antigos que ainda estejam exibindo a CA
+  // anterior ao novo cálculo automático do treinador.
+  sincronizarCaTreinadorComHud(140);
 
   document.querySelector("#selecionarAlvoCaptura")?.addEventListener("click", () => {
     const botao = document.querySelector("#selecionarAlvoCaptura");
