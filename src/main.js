@@ -41,6 +41,8 @@ const META_GURU_ESPIRITO_USOS = `${PREFIX}/classe-guru-espirito-usos`;
 const META_CRIADOR_BOA_GENETICA_ESCOLHA = `${PREFIX}/classe-criador-boa-genetica-escolha`;
 const META_CRIADOR_MESTRE_TRACOS_NOTAS = `${PREFIX}/classe-criador-mestre-tracos-notas`;
 const META_TATICO_PONTOS = `${PREFIX}/classe-tatico-pontos`;
+const META_PATRULHEIRO_STYLER_USOS = `${PREFIX}/classe-patrulheiro-styler-usos`;
+const META_CAPANGA_PONTOS = `${PREFIX}/classe-capanga-pontos`;
 const META_RIVAL_LICAO = `${PREFIX}/origem-rival-licao`;
 const META_RIVAL_REVANCHE = `${PREFIX}/origem-rival-revanche`;
 const META_RIVAL_SEQUENCIA = `${PREFIX}/origem-rival-sequencia`;
@@ -3477,6 +3479,16 @@ const CLASSES_TREINADOR = [
     id: "tatico",
     nome: "TÁTICO",
     resumo: "Um estrategista que administra Pontos Táticos para cura, dano, defesa e controle de CD."
+  },
+  {
+    id: "patrulheiro",
+    nome: "PATRULHEIRO",
+    resumo: "Um treinador ligado à natureza que compreende Pokémon, utiliza o Capture Styler e fortalece os vínculos da equipe."
+  },
+  {
+    id: "capanga",
+    nome: "CAPANGA",
+    resumo: "Um combatente de equipe maligna que administra Pontos Sombrios para sabotar, resistir e surpreender adversários."
   }
 ];
 
@@ -3561,6 +3573,21 @@ function maxPontosTatico(nivel) {
 function pontosTaticoAtuais(token, nivel) {
   const max = maxPontosTatico(nivel);
   const salvo = token?.metadata?.[META_TATICO_PONTOS];
+  if (salvo === undefined || salvo === null || salvo === "") return max;
+  return Math.max(0, Math.min(max, Math.trunc(Number(salvo) || 0)));
+}
+
+function maxUsosPatrulheiroStyler(token) {
+  return Math.max(1, modificadorSabedoriaClasse(token));
+}
+
+function maxPontosCapanga(nivel) {
+  return Math.max(1, nivelTreinadorNormalizado(nivel));
+}
+
+function pontosCapangaAtuais(token, nivel) {
+  const max = maxPontosCapanga(nivel);
+  const salvo = token?.metadata?.[META_CAPANGA_PONTOS];
   if (salvo === undefined || salvo === null || salvo === "") return max;
   return Math.max(0, Math.min(max, Math.trunc(Number(salvo) || 0)));
 }
@@ -3815,6 +3842,10 @@ function mostrarFichaTreinadorClasOri(token) {
   const criadorMestreTracosNotas = String(token.metadata[META_CRIADOR_MESTRE_TRACOS_NOTAS] ?? "");
   const taticoPontosMax = maxPontosTatico(nivelTreinador);
   const taticoPontos = pontosTaticoAtuais(token, nivelTreinador);
+  const patrulheiroStylerMax = maxUsosPatrulheiroStyler(token);
+  const patrulheiroStylerUsos = usosClasseFixo(token, META_PATRULHEIRO_STYLER_USOS, patrulheiroStylerMax);
+  const capangaPontosMax = maxPontosCapanga(nivelTreinador);
+  const capangaPontos = pontosCapangaAtuais(token, nivelTreinador);
   const origem = origemTreinadorPorId(token.metadata[META_TREINADOR_ORIGEM]);
   const rivalLicao = token.metadata[META_RIVAL_LICAO] === true;
   const rivalRevanche = token.metadata[META_RIVAL_REVANCHE] === true;
@@ -4384,6 +4415,96 @@ function mostrarFichaTreinadorClasOri(token) {
                 <button type="button" class="classeAcao" id="usarTaticoCd" ${taticoPontos > 0 ? "" : "disabled"}>⚡ AUMENTAR CD</button>
               </div>
             </div>`
+        })}
+      `;
+    }
+
+    if (classe.id === "patrulheiro") {
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        ${blocoClasseAs({
+          titulo: "PATRULHEIRO",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Você ganha proficiência em Natureza e Sobrevivência; caso já seja proficiente, torna-se especialista. Além disso, seu deslocamento de caminhada aumenta em 3 metros. Esses ajustes permanecem descritivos para serem registrados na ficha conforme necessário."
+        })}
+        ${blocoClasseAs({
+          titulo: "CONEXÃO PROFUNDA",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Você compreende melhor gestos, sons e emoções dos Pokémon e pode usar o Capture Styler para estabelecer uma cooperação temporária. Faça um teste de Adestrar Animais: CD 10 para Pokémon amistoso, CD 15 para neutro e CD 20 para incomodado. Em sucesso, ele coopera por 1 hora, +1 hora para cada 5 pontos acima da CD. O Styler possui usos iguais ao seu modificador de Sabedoria, mínimo 1.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeRecursoTopo"><span>CAPTURE STYLER</span><strong>${patrulheiroStylerUsos}/${patrulheiroStylerMax}</strong></div>
+              <div class="classeAcoes">
+                <select id="patrulheiroAtitude">
+                  <option value="10">AMISTOSO — CD 10</option>
+                  <option value="15">NEUTRO — CD 15</option>
+                  <option value="20">INCOMODADO — CD 20</option>
+                </select>
+                <button type="button" class="classeAcao" id="usarPatrulheiroStyler" ${patrulheiroStylerUsos > 0 ? "" : "disabled"}>🎯 USAR STYLER</button>
+              </div>
+              <button type="button" class="classeRestaurar classeAcaoCheia" id="restaurarPatrulheiroStyler">RESTAURAR</button>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "LIGAÇÃO FORTE",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Uma vez por descanso longo, você pode criar vínculos com até dois Pokémon. Além disso, dobra sua proficiência em Adestrar Animais para acalmar um Pokémon raivoso ou encontrar um Pokémon perdido, e aprende um assobio capaz de chamar seus Pokémon em um raio de 200 metros quando puderem ouvi-lo."
+        })}
+        ${blocoClasseAs({
+          titulo: "MELHORES AMIGOS",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "Você e seus Pokémon agem em perfeita sintonia. Podem dividir suas ações conforme a regra da classe e, uma vez por rodada, você pode usar uma ação padrão para conceder +2 à próxima rolagem de ataque ou dano de um de seus Pokémon nessa rodada."
+        })}
+      `;
+    }
+
+    if (classe.id === "capanga") {
+      return `
+        <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+        <div class="classeRecurso classeRecursoDestaque">
+          <div class="classeRecursoTopo"><span>PONTOS SOMBRIOS</span><strong>${capangaPontos}/${capangaPontosMax}</strong></div>
+          <div class="classeAcoes">
+            <input id="capangaSabotagemGasto" type="number" min="1" max="${capangaPontosMax}" step="1" value="1">
+            <button type="button" class="classeAcao" id="usarCapangaSabotagem" ${capangaPontos > 0 ? "" : "disabled"}>🕶 SABOTAGEM</button>
+            <button type="button" class="classeRestaurar" id="restaurarCapanga">RESTAURAR</button>
+          </div>
+        </div>
+        ${blocoClasseAs({
+          titulo: "CAPANGA",
+          nivel: 2,
+          liberado: nivel2,
+          texto: "Sua reserva de Pontos Sombrios é igual ao seu nível de Treinador. Depois que um oponente fizer uma rolagem de ataque contra um de seus Pokémon, você pode gastar qualquer quantidade de Pontos Sombrios para reduzir o total da rolagem, caso isso faça o ataque falhar. Um 20 natural não pode ser reduzido e a rolagem natural continua valendo para efeitos secundários."
+        })}
+        ${blocoClasseAs({
+          titulo: "ENCRENCA EM DOBRO",
+          nivel: 5,
+          liberado: nivel5,
+          texto: "Você pode gastar 3 Pontos Sombrios para obter vantagem em qualquer teste de perícia, jogada de ataque ou teste de resistência feito por você ou por um de seus Pokémon. Quando um inimigo obtiver 1 natural em uma jogada de ataque contra um de seus Pokémon, recupere 1 Ponto Sombrio.",
+          extra: `
+            <div class="classeRecurso">
+              <div class="classeAcoesDuas">
+                <button type="button" class="classeAcao" id="usarCapangaVantagem" ${capangaPontos >= 3 ? "" : "disabled"}>🎲 -3 PT: VANTAGEM SOMBRIA</button>
+                <button type="button" class="classeAcao" id="recuperarCapangaNatural1" ${capangaPontos < capangaPontosMax ? "" : "disabled"}>+1 PT — INIMIGO TIROU 1</button>
+              </div>
+            </div>`
+        })}
+        ${blocoClasseAs({
+          titulo: "RENDA-SE AGORA",
+          nivel: 9,
+          liberado: nivel9,
+          texto: "Como reação, você pode gastar 4 Pontos Sombrios para adicionar um nível de resistência a um Move que cause dano a um de seus Pokémon: Vulnerável → Neutro, Neutro → Resistente, Resistente → Imune.",
+          extra: `<button type="button" class="classeAcao classeAcaoCheia" id="usarCapangaResistencia" ${capangaPontos >= 4 ? "" : "disabled"}>🛡 GASTAR 4 PONTOS SOMBRIOS</button>`
+        })}
+        ${blocoClasseAs({
+          titulo: "PREPARE-SE PARA LUTAR",
+          nivel: 15,
+          liberado: nivel15,
+          texto: "Você e seus Pokémon dominam uma técnica sombria avançada. Você pode gastar 5 Pontos Sombrios para permitir que um de seus Pokémon invoque o Move Me First.",
+          extra: `<button type="button" class="classeAcao classeAcaoCheia" id="usarCapangaMeFirst" ${capangaPontos >= 5 ? "" : "disabled"}>⚔ GASTAR 5 PT — ME FIRST</button>`
         })}
       `;
     }
@@ -4958,6 +5079,72 @@ function mostrarFichaTreinadorClasOri(token) {
   });
   document.querySelector("#restaurarTatico")?.addEventListener("click", async () => {
     await salvarEstadoClasse(token, { [META_TATICO_PONTOS]: maxPontosTatico(nivelTreinador) });
+    await redesenharClasseAberta();
+  });
+
+
+  document.querySelector("#usarPatrulheiroStyler")?.addEventListener("click", async () => {
+    const max = maxUsosPatrulheiroStyler(token);
+    const atual = usosClasseFixo(token, META_PATRULHEIRO_STYLER_USOS, max);
+    if (atual <= 0) return;
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (!atualizado) return;
+    const valor = atualizado.metadata[`${PREFIX}/pericia-adestrar-animais`] ?? "";
+    const formula = formulaSalvaguarda(valor);
+    if (!formula) {
+      alert("Defina primeiro o valor de Adestrar Animais na aba PER/NOT.");
+      return;
+    }
+    const cd = Math.max(10, Math.min(20, Math.trunc(Number(document.querySelector("#patrulheiroAtitude")?.value) || 10)));
+    const resultado = await rolarNoDicePlusComResultado(formula, "Adestrar Animais", `Capture Styler • CD ${cd}`);
+    if (resultado === null) return;
+    await salvarEstadoClasse(token, { [META_PATRULHEIRO_STYLER_USOS]: atual - 1 });
+    if (resultado >= cd) {
+      const horas = 1 + Math.floor(Math.max(0, resultado - cd) / 5);
+      alert(`CONEXÃO ESTABELECIDA\nResultado: ${resultado}\nCD: ${cd}\nDuração: ${horas} hora(s).`);
+    } else {
+      alert(`CONEXÃO NÃO ESTABELECIDA\nResultado: ${resultado}\nCD: ${cd}`);
+    }
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarPatrulheiroStyler")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_PATRULHEIRO_STYLER_USOS]: maxUsosPatrulheiroStyler(token) });
+    await redesenharClasseAberta();
+  });
+
+  const gastarPontosCapanga = async (quantidade) => {
+    const max = maxPontosCapanga(nivelTreinador);
+    const atual = pontosCapangaAtuais(token, nivelTreinador);
+    const gasto = Math.max(1, Math.trunc(Number(quantidade) || 1));
+    if (gasto > atual) return false;
+    await salvarEstadoClasse(token, { [META_CAPANGA_PONTOS]: atual - gasto });
+    return true;
+  };
+  document.querySelector("#usarCapangaSabotagem")?.addEventListener("click", async () => {
+    const gasto = Math.max(1, Math.trunc(Number(document.querySelector("#capangaSabotagemGasto")?.value) || 1));
+    if (!await gastarPontosCapanga(gasto)) return;
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarCapanga")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_CAPANGA_PONTOS]: maxPontosCapanga(nivelTreinador) });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#usarCapangaVantagem")?.addEventListener("click", async () => {
+    if (!await gastarPontosCapanga(3)) return;
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#recuperarCapangaNatural1")?.addEventListener("click", async () => {
+    const max = maxPontosCapanga(nivelTreinador);
+    const atual = pontosCapangaAtuais(token, nivelTreinador);
+    await salvarEstadoClasse(token, { [META_CAPANGA_PONTOS]: Math.min(max, atual + 1) });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#usarCapangaResistencia")?.addEventListener("click", async () => {
+    if (!await gastarPontosCapanga(4)) return;
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#usarCapangaMeFirst")?.addEventListener("click", async () => {
+    if (!await gastarPontosCapanga(5)) return;
     await redesenharClasseAberta();
   });
   document.querySelector("#usarTaticoGolpe")?.addEventListener("click", async () => {
