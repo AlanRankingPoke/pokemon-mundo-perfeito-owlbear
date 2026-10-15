@@ -3337,7 +3337,7 @@ return `
       <button id="paginaTreinador1" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 1 ? "1" : "0.65"};">STATUS</button>
       <button id="paginaTreinador2" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 2 ? "1" : "0.65"};">PKM</button>
       <button id="paginaTreinador3" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 3 ? "1" : "0.65"};">PER/NOT</button>
-      <button id="paginaTreinador4" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 4 ? "1" : "0.65"};">Tal/Esp</button>
+      <button id="paginaTreinador4" style="min-width:0;width:100%;padding:8px 3px;font-size:10px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 4 ? "1" : "0.65"};">TAL/ESP</button>
     </div>
   `;
 }
@@ -4122,6 +4122,11 @@ function mostrarFichaTreinadorTalEsp(token) {
   const app = document.querySelector("#app");
   let selecionadas = normalizarEspecializacoesTreinador(token.metadata[META_TREINADOR_ESPECIALIZACOES]);
 
+  const rotuloTipo = (tipo) => {
+    const texto = String(tipo || "").toLocaleLowerCase("pt-BR");
+    return texto ? texto.charAt(0).toLocaleUpperCase("pt-BR") + texto.slice(1) : "";
+  };
+
   const renderSlot = (id, indice) => {
     const esp = especializacaoPorId(id);
     if (!esp) {
@@ -4132,16 +4137,22 @@ function mostrarFichaTreinadorTalEsp(token) {
           <span class="slotEspVazioTexto">Escolher especialização</span>
         </button>`;
     }
+
+    const nomeCurto = `${esp.nome} ${rotuloTipo(esp.tipo)}`;
     return `
       <div class="slotEspecializacao preenchido" data-slot-especializacao="${indice}" role="button" tabindex="0">
         <span class="slotEspNumero">${indice + 1}</span>
         <button type="button" class="slotEspRemover" data-remover-especializacao="${indice}" title="Remover especialização">×</button>
-        <div class="slotEspCabecalho">
-          <strong>${esc(esp.nome)}</strong>
-          <span>${esc(esp.tipo)}</span>
+        <div class="slotEspLinhaPrincipal" title="Clique para trocar a especialização">
+          <strong>${esc(nomeCurto)}</strong>
         </div>
-        <p>${esc(esp.texto)}</p>
-        <small>Clique para trocar</small>
+        <div class="slotEspAcoes">
+          <span class="slotEspTrocar">CLIQUE NO NOME PARA TROCAR</span>
+          <button type="button" class="slotEspExpandir" data-expandir-especializacao="${indice}" aria-expanded="false">VER EFEITO ▾</button>
+        </div>
+        <div class="slotEspDetalhes" data-detalhes-especializacao="${indice}">
+          <p>${esc(esp.texto)}</p>
+        </div>
       </div>`;
   };
 
@@ -4153,22 +4164,26 @@ function mostrarFichaTreinadorTalEsp(token) {
       .talEspCabecalho h3{margin:0;color:#263f60;font-size:15px}
       .talEspCabecalho p{margin:3px 0 0;font-size:9px;color:#7a8da5;font-weight:700;line-height:1.3}
       .talEspContador{flex:0 0 auto;padding:5px 8px;border-radius:999px;background:#eaf3ff;color:#2f6cb8;font-size:9px;font-weight:1000;border:1px solid #c8dcf4}
-      .gradeEspecializacoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-      .slotEspecializacao{position:relative;min-width:0;min-height:112px;border:1px solid #d3dfed;border-radius:12px;background:linear-gradient(180deg,#fff 0%,#f7faff 100%);box-shadow:0 3px 9px rgba(39,72,110,.06);box-sizing:border-box}
-      button.slotEspecializacao{width:100%;padding:12px 9px;cursor:pointer;color:#647b98}
-      .slotEspecializacao.vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border-style:dashed;background:#fbfdff}
+      .gradeEspecializacoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+      .slotEspecializacao{position:relative;min-width:0;border:1px solid #d3dfed;border-radius:11px;background:linear-gradient(180deg,#fff 0%,#f7faff 100%);box-shadow:0 3px 9px rgba(39,72,110,.06);box-sizing:border-box}
+      button.slotEspecializacao{width:100%;min-height:68px;padding:10px 8px;cursor:pointer;color:#647b98}
+      .slotEspecializacao.vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-style:dashed;background:#fbfdff}
       .slotEspecializacao.vazio:hover{border-color:#79a8e6;background:#f2f8ff}
-      .slotEspecializacao.preenchido{padding:10px 9px 8px;cursor:pointer;overflow:hidden}
+      .slotEspecializacao.preenchido{min-height:68px;padding:9px 8px 7px;cursor:pointer;overflow:hidden}
       .slotEspecializacao.preenchido:hover{border-color:#8db3e2;background:#f8fbff}
-      .slotEspNumero{position:absolute;left:7px;top:7px;width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#edf4fc;color:#5e7898;font-size:9px;font-weight:1000}
-      .slotEspMais{font-size:25px;line-height:1;color:#4c8dff;font-weight:800}
-      .slotEspVazioTexto{font-size:10px;font-weight:900}
-      .slotEspCabecalho{padding:1px 24px 6px 22px;border-bottom:1px solid #e6edf5;margin-bottom:6px;min-width:0}
-      .slotEspCabecalho strong{display:block;color:#233d5e;font-size:10px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
-      .slotEspCabecalho span{display:inline-block;margin-top:3px;padding:2px 5px;border-radius:999px;background:#eaf3ff;color:#3471bc;font-size:7px;font-weight:1000;letter-spacing:.3px}
-      .slotEspecializacao p{margin:0;color:#52677f;font-size:8.5px;line-height:1.32;font-weight:700}
-      .slotEspecializacao small{display:block;margin-top:6px;color:#8ba0b8;font-size:7px;font-weight:900;text-align:right}
-      .slotEspRemover{position:absolute;right:6px;top:6px;width:20px!important;height:20px!important;min-height:20px!important;padding:0!important;border-radius:50%!important;background:#fff1f1!important;color:#b44747!important;border:1px solid #e7bcbc!important;font-size:13px!important;line-height:18px!important;z-index:2;cursor:pointer}
+      .slotEspNumero{position:absolute;left:6px;top:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#edf4fc;color:#5e7898;font-size:8px;font-weight:1000}
+      .slotEspMais{font-size:21px;line-height:1;color:#4c8dff;font-weight:800}
+      .slotEspVazioTexto{font-size:9px;font-weight:900}
+      .slotEspLinhaPrincipal{padding:2px 23px 6px 22px;border-bottom:1px solid #e7eef6;min-width:0}
+      .slotEspLinhaPrincipal strong{display:block;color:#233d5e;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .slotEspAcoes{display:flex;align-items:center;justify-content:space-between;gap:5px;padding-top:6px}
+      .slotEspTrocar{min-width:0;color:#99a9ba;font-size:6.6px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .slotEspExpandir{flex:0 0 auto;width:auto!important;min-height:22px!important;padding:3px 6px!important;border-radius:7px!important;background:#edf5ff!important;color:#3973bb!important;border:1px solid #c9ddf4!important;font-size:7px!important;font-weight:1000!important;box-shadow:none!important;cursor:pointer}
+      .slotEspExpandir:hover{background:#e2efff!important}
+      .slotEspDetalhes{display:none;margin-top:6px;padding:7px 7px 6px;border-top:1px solid #e7eef6;background:#f9fbfe;border-radius:0 0 8px 8px}
+      .slotEspDetalhes.aberto{display:block}
+      .slotEspDetalhes p{margin:0;color:#52677f;font-size:8.3px;line-height:1.34;font-weight:700}
+      .slotEspRemover{position:absolute;right:5px;top:5px;width:19px!important;height:19px!important;min-height:19px!important;padding:0!important;border-radius:50%!important;background:#fff1f1!important;color:#b44747!important;border:1px solid #e7bcbc!important;font-size:12px!important;line-height:17px!important;z-index:2;cursor:pointer}
       .guiaEspecializacoesOverlay{display:none;position:fixed;inset:7px;z-index:99999;background:rgba(245,249,254,.985);border:1px solid #bcd0e6;border-radius:14px;box-shadow:0 14px 36px rgba(20,43,70,.24);overflow:hidden;flex-direction:column}
       .guiaEspecializacoesOverlay.aberto{display:flex}
       .guiaEspTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#fff;border-bottom:1px solid #dce6f1}
@@ -4178,18 +4193,17 @@ function mostrarFichaTreinadorTalEsp(token) {
       .guiaEspLista{padding:9px;overflow:auto;display:grid;grid-template-columns:1fr;gap:6px}
       .guiaEspOpcao{width:100%;text-align:left;padding:8px 9px;border:1px solid #d6e2ef;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
       .guiaEspOpcao:hover{border-color:#78a8e2;background:#f5f9ff}
-      .guiaEspOpcao:disabled{opacity:.42;cursor:not-allowed;background:#f2f4f7}
       .guiaEspNome{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#263f60;font-size:9px;font-weight:1000;text-transform:uppercase}
       .guiaEspTipo{flex:0 0 auto;padding:2px 5px;border-radius:999px;background:#eaf3ff;color:#3572bd;font-size:7px}
       .guiaEspTexto{display:block;margin-top:4px;color:#5b6f87;font-size:8px;line-height:1.28;font-weight:700;text-transform:none}
       .talentosFuturo{margin-top:12px;padding:8px 9px;border:1px dashed #d8e2ed;border-radius:10px;color:#8a9cb0;font-size:8px;font-weight:800;text-align:center;background:#fafcff}
-      @media(max-width:410px){.gradeEspecializacoes{grid-template-columns:1fr}.slotEspecializacao{min-height:96px}}
+      @media(max-width:410px){.gradeEspecializacoes{grid-template-columns:1fr}}
     </style>
 
     <div class="talEspCabecalho">
       <div>
         <h3>Especializações</h3>
-        <p>Escolha até 6 especializações. Clique em qualquer caixa para abrir o guia.</p>
+        <p>Escolha até 6 especializações. Repetições são permitidas.</p>
       </div>
       <span class="talEspContador" id="contadorEspecializacoes">${selecionadas.filter(Boolean).length}/6</span>
     </div>
@@ -4225,14 +4239,12 @@ function mostrarFichaTreinadorTalEsp(token) {
   const abrirGuia = (indice) => {
     slotAberto = indice;
     const atualId = selecionadas[indice];
-    const usadosOutros = new Set(selecionadas.filter((id, i) => id && i !== indice));
     if (subtitulo) subtitulo.textContent = `Slot ${indice + 1} • escolha uma especialização`;
     if (listaGuia) {
       listaGuia.innerHTML = ESPECIALIZACOES_TREINADOR.map((esp) => {
-        const indisponivel = usadosOutros.has(esp.id);
         const atual = atualId === esp.id;
         return `
-          <button type="button" class="guiaEspOpcao" data-especializacao="${esp.id}" ${indisponivel ? "disabled" : ""}>
+          <button type="button" class="guiaEspOpcao" data-especializacao="${esp.id}">
             <span class="guiaEspNome">
               <span>${esc(esp.nome)}${atual ? " ✓" : ""}</span>
               <span class="guiaEspTipo">${esc(esp.tipo)}</span>
@@ -4242,7 +4254,7 @@ function mostrarFichaTreinadorTalEsp(token) {
       }).join("");
       listaGuia.querySelectorAll("[data-especializacao]").forEach((botao) => {
         botao.addEventListener("click", async () => {
-          if (slotAberto === null || botao.disabled) return;
+          if (slotAberto === null) return;
           const id = botao.dataset.especializacao;
           const novaLista = [...selecionadas];
           novaLista[slotAberto] = id;
@@ -4260,13 +4272,26 @@ function mostrarFichaTreinadorTalEsp(token) {
 
   document.querySelectorAll("[data-slot-especializacao]").forEach((slot) => {
     const abrir = (evento) => {
-      if (evento.target?.closest?.("[data-remover-especializacao]")) return;
+      if (evento.target?.closest?.("[data-remover-especializacao], [data-expandir-especializacao]")) return;
       const indice = Number(slot.dataset.slotEspecializacao);
       if (Number.isInteger(indice)) abrirGuia(indice);
     };
     slot.addEventListener("click", abrir);
     slot.addEventListener("keydown", (evento) => {
       if (evento.key === "Enter" || evento.key === " ") { evento.preventDefault(); abrir(evento); }
+    });
+  });
+
+  document.querySelectorAll("[data-expandir-especializacao]").forEach((botao) => {
+    botao.addEventListener("click", (evento) => {
+      evento.stopPropagation();
+      const indice = botao.dataset.expandirEspecializacao;
+      const detalhes = document.querySelector(`[data-detalhes-especializacao="${indice}"]`);
+      if (!detalhes) return;
+      const abrindo = !detalhes.classList.contains("aberto");
+      detalhes.classList.toggle("aberto", abrindo);
+      botao.setAttribute("aria-expanded", abrindo ? "true" : "false");
+      botao.textContent = abrindo ? "RECOLHER ▴" : "VER EFEITO ▾";
     });
   });
 
@@ -4283,7 +4308,6 @@ function mostrarFichaTreinadorTalEsp(token) {
     });
   });
 }
-
 function menuPokemon(paginaAtual) {
 return `
     <div class="fichaAbas" style="
