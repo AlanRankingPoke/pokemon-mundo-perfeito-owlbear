@@ -515,7 +515,9 @@ const ESTILO_FICHA = `
   #paginaTreinador1,
   #paginaTreinador2,
   #paginaTreinador3,
-  #paginaTreinador4 {
+  #paginaTreinador4,
+  #paginaTreinador5,
+  #paginaTreinador6 {
     flex:1 !important;
     min-height:52px !important;
     padding:8px 5px !important;
@@ -533,7 +535,9 @@ const ESTILO_FICHA = `
   #paginaTreinador1[style*="opacity:1"],
   #paginaTreinador2[style*="opacity:1"],
   #paginaTreinador3[style*="opacity:1"],
-  #paginaTreinador4[style*="opacity:1"] {
+  #paginaTreinador4[style*="opacity:1"],
+  #paginaTreinador5[style*="opacity:1"],
+  #paginaTreinador6[style*="opacity:1"] {
     background: linear-gradient(135deg, #4c8dff 0%, #2f73dc 100%) !important;
     color:#ffffff !important;
     border-color:#2f73dc !important;
@@ -6076,22 +6080,24 @@ function menuTreinador(paginaAtual) {
       <button id="${id}" style="
         min-width:0!important;
         width:100%!important;
-        min-height:52px!important;
-        height:52px!important;
-        padding:8px 5px!important;
+        min-height:40px!important;
+        height:40px!important;
+        padding:5px 6px!important;
         box-sizing:border-box!important;
-        font-size:10.5px!important;
-        line-height:1.05!important;
+        font-size:9.4px!important;
+        line-height:1.12!important;
         font-weight:900!important;
         cursor:pointer!important;
-        border-radius:10px!important;
-        letter-spacing:.15px!important;
+        border-radius:9px!important;
+        letter-spacing:0!important;
         opacity:1!important;
-        white-space:nowrap!important;
+        white-space:normal!important;
+        text-align:center!important;
+        overflow-wrap:anywhere!important;
         background:${ativa ? "linear-gradient(135deg,#4c8dff 0%,#2f73dc 100%)" : "linear-gradient(180deg,#ffffff 0%,#f1f5fa 100%)"}!important;
         color:${ativa ? "#ffffff" : "#35475f"}!important;
         border:${ativa ? "1px solid #2f73dc" : "1px solid #d2dce8"}!important;
-        box-shadow:${ativa ? "0 4px 10px rgba(47,115,220,.20)" : "0 2px 5px rgba(35,64,97,.05)"}!important;
+        box-shadow:${ativa ? "0 3px 8px rgba(47,115,220,.18)" : "0 1px 4px rgba(35,64,97,.045)"}!important;
       ">${rotulo}</button>`;
   };
 
@@ -6099,17 +6105,17 @@ function menuTreinador(paginaAtual) {
     <div class="fichaAbas treinadorAbas" style="
       display:grid!important;
       grid-template-columns:repeat(3,minmax(0,1fr))!important;
-      gap:7px!important;
-      margin-bottom:16px!important;
+      gap:6px!important;
+      margin-bottom:13px!important;
       width:100%!important;
       align-items:stretch!important;
     ">
       ${aba("paginaTreinador1", 1, "STATUS")}
-      ${aba("paginaTreinador2", 2, "PKM")}
-      ${aba("paginaTreinador3", 3, "PER/NOT")}
-      ${aba("paginaTreinador4", 4, "TAL/ESP")}
-      ${aba("paginaTreinador5", 5, "CLAS/ORI")}
-      ${aba("paginaTreinador6", 6, "MOC/DIN")}
+      ${aba("paginaTreinador2", 2, "POKÉMONS")}
+      ${aba("paginaTreinador3", 3, "PERÍCIAS E NOTAS")}
+      ${aba("paginaTreinador4", 4, "TALENTOS E ESPECIALIZAÇÕES")}
+      ${aba("paginaTreinador5", 5, "CLASSES E ORIGENS")}
+      ${aba("paginaTreinador6", 6, "MOCHILA E LOJA")}
     </div>`;
 }
 
