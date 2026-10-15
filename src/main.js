@@ -5232,12 +5232,17 @@ function mostrarFichaTreinadorClasOri(token) {
 
 
 const TIPOS_ITEM_MOCHILA = [
-  { id: "medicina", nome: "MEDICINA", detalhe: "Poções e itens que curam HP ou condições de status." },
-  { id: "tms", nome: "TMs", detalhe: "Máquinas Técnicas e itens relacionados a Moves." },
-  { id: "itens", nome: "ITENS", detalhe: "Itens de combate e equipamentos para Pokémon." },
-  { id: "pokebolas", nome: "POKÉBOLAS", detalhe: "Pokébolas de qualquer tipo usadas em tentativas de captura." },
-  { id: "extras", nome: "EXTRAS", detalhe: "Cordas, ferramentas e outros itens de aventura." }
+  { id: "medicina", nome: "MEDICINA", detalhe: "Poções e itens que curam HP ou condições de status.", icone: "Potion.png" },
+  { id: "tms", nome: "TMs", detalhe: "Máquinas Técnicas e itens relacionados a Moves.", icone: "Tm.png" },
+  { id: "itens", nome: "ITENS", detalhe: "Itens de combate e equipamentos para Pokémon.", icone: "Life Orb.png" },
+  { id: "pokebolas", nome: "POKÉBOLAS", detalhe: "Pokébolas de qualquer tipo usadas em tentativas de captura.", icone: "Pokebola.png" },
+  { id: "extras", nome: "EXTRAS", detalhe: "Cordas, ferramentas e outros itens de aventura.", icone: "Escape Hope.png" }
 ];
+
+function urlArquivoPublico(nomeArquivo) {
+  const base = String(import.meta.env.BASE_URL || "/");
+  return new URL(`${base}${String(nomeArquivo || "").replace(/^\/+/, "")}`, window.location.origin).toString();
+}
 
 function normalizarPokedols(valor) {
   const numero = Math.trunc(Number(String(valor ?? 0).trim().replace(",", ".")) || 0);
@@ -5542,72 +5547,53 @@ function htmlCardItemMochila(item) {
 function htmlItensMochila(mochila) {
   const itens = normalizarMochilaTreinador(mochila);
 
-  const icones = {
-    medicina: "✚",
-    tms: "◆",
-    itens: "⚔",
-    pokebolas: "◉",
-    extras: "✦"
-  };
-
   return TIPOS_ITEM_MOCHILA.map((tipo) => {
     const destaCategoria = itens.filter((item) => item.tipo === tipo.id);
     const temItens = destaCategoria.length > 0;
+    const totalUnidades = destaCategoria.reduce((soma, item) => soma + Math.max(0, Number(item.quantidade) || 0), 0);
+    const urlIcone = urlArquivoPublico(tipo.icone);
 
     return `
       <div style="
-        margin-top:9px;
+        margin-top:10px;
         padding:${temItens ? "10px" : "8px 10px"};
         border:1px solid ${temItens ? "#d6e1ee" : "#e3eaf2"};
-        border-radius:12px;
-        background:${temItens ? "linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)" : "#fbfcfe"};
-        box-shadow:${temItens ? "0 3px 8px rgba(32,67,108,.055)" : "none"};
+        border-radius:13px;
+        background:${temItens ? "linear-gradient(180deg,#ffffff 0%,#f7fbff 100%)" : "#fbfcfe"};
+        box-shadow:${temItens ? "0 4px 10px rgba(32,67,108,.055)" : "none"};
       ">
-        <div style="
-          display:flex;
-          align-items:center;
-          gap:7px;
-          min-height:20px;
-        ">
-          <span style="
-            width:21px;
-            height:21px;
-            flex:0 0 21px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            border-radius:7px;
-            background:${temItens ? "#eaf3ff" : "#f1f4f8"};
-            color:${temItens ? "#3474bd" : "#94a3b4"};
-            font-size:10px;
-            font-weight:1000;
-          ">${icones[tipo.id] || "•"}</span>
-          <span style="
-            font-size:10px;
-            font-weight:1000;
-            color:${temItens ? "#315d8e" : "#7f91a6"};
-            letter-spacing:.45px;
-          ">${tipo.nome}</span>
+        <div style="display:flex;align-items:center;gap:10px;min-height:38px;">
+          <div style="
+            width:39px;height:39px;flex:0 0 39px;display:flex;align-items:center;justify-content:center;
+            border:1px solid ${temItens ? "#d5e1ee" : "#e4eaf1"};border-radius:11px;
+            background:#ffffff;box-shadow:0 2px 6px rgba(35,69,106,.06);overflow:hidden;
+          ">
+            <img
+              src="${esc(urlIcone)}"
+              alt="${esc(tipo.nome)}"
+              title="${esc(tipo.nome)}"
+              style="width:33px;height:33px;display:block;object-fit:contain;"
+            >
+          </div>
+
+          <div style="min-width:0;flex:1;">
+            <div style="
+              font-size:10.5px;font-weight:1000;color:${temItens ? "#315d8e" : "#75899f"};
+              letter-spacing:.45px;line-height:1.15;
+            ">${tipo.nome}</div>
+            ${temItens ? `<div style="margin-top:2px;font-size:7.5px;font-weight:800;color:#8a9caf;">
+              ${destaCategoria.length} ${destaCategoria.length === 1 ? "ITEM" : "ITENS"} · ${totalUnidades} ${totalUnidades === 1 ? "UNIDADE" : "UNIDADES"}
+            </div>` : ""}
+          </div>
+
           ${temItens ? `<span style="
-            margin-left:auto;
-            min-width:21px;
-            padding:2px 6px;
-            border-radius:999px;
-            background:#edf4fc;
-            color:#6280a1;
-            font-size:8px;
-            font-weight:1000;
-            text-align:center;
-          ">${destaCategoria.length}</span>` : ""}
+            min-width:25px;padding:4px 7px;border-radius:999px;background:#edf4fc;color:#6280a1;
+            font-size:8px;font-weight:1000;text-align:center;
+          ">${totalUnidades}x</span>` : ""}
         </div>
 
         ${temItens ? `
-          <div style="
-            display:flex;
-            flex-direction:column;
-            gap:6px;
-            margin-top:8px;
-          ">
+          <div style="display:flex;flex-direction:column;gap:7px;margin-top:9px;">
             ${destaCategoria.map((item) => htmlCardItemMochila(item)).join("")}
           </div>
         ` : ""}
