@@ -507,9 +507,7 @@ const ESTILO_FICHA = `
   #paginaPokemon4,
   #paginaTreinador1,
   #paginaTreinador2,
-  #paginaTreinador3,
-  #paginaTreinador4,
-  #paginaTreinador5 {
+  #paginaTreinador3 {
     flex:1 !important;
     min-height:52px !important;
     padding:8px 5px !important;
@@ -526,9 +524,7 @@ const ESTILO_FICHA = `
   #paginaPokemon4[style*="opacity:1"],
   #paginaTreinador1[style*="opacity:1"],
   #paginaTreinador2[style*="opacity:1"],
-  #paginaTreinador3[style*="opacity:1"],
-  #paginaTreinador4[style*="opacity:1"],
-  #paginaTreinador5[style*="opacity:1"] {
+  #paginaTreinador3[style*="opacity:1"] {
     background: linear-gradient(135deg, #4c8dff 0%, #2f73dc 100%) !important;
     color:#ffffff !important;
     border-color:#2f73dc !important;
@@ -1076,9 +1072,7 @@ const ESTILO_FICHA = `
   #salvarPokemonPericias,
   #salvarPokemonTalentos,
   #salvarTreinadorStatus,
-  #salvarTreinadorPerTal,
-  #salvarTreinadorHabilidades,
-  #salvarTreinadorAnotacoes {
+  #salvarTreinadorPerNot {
     min-height:42px !important;
     border:0 !important;
     background: linear-gradient(135deg, #4c8dff 0%, #286bd7 100%) !important;
@@ -1090,9 +1084,7 @@ const ESTILO_FICHA = `
   #salvarPokemonPericias,
   #salvarPokemonTalentos,
   #salvarTreinadorStatus,
-  #salvarTreinadorPerTal,
-  #salvarTreinadorHabilidades,
-  #salvarTreinadorAnotacoes {
+  #salvarTreinadorPerNot {
     display:none !important;
   }
   details {
@@ -2010,7 +2002,7 @@ async function mostrarFichaTreinadorPokemons(token) {
   const roster = await sincronizarRosterTreinadorComCena(token);
   app.innerHTML = `
     ${ESTILO_FICHA}
-    ${cabecalhoTreinador(token, 5)}
+    ${cabecalhoTreinador(token, 2)}
     <style>
       .treinadorPokemonSecao{margin-top:10px;padding:10px;border:1px solid #d6e2f0;border-radius:13px;background:linear-gradient(180deg,#fbfdff,#f3f8ff)}
       .treinadorPokemonTitulo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:900;color:#315b90}
@@ -2601,6 +2593,74 @@ function ativarRolagensSalvaguarda(token) { document .querySelectorAll(".rolarAt
                 atributo.toUpperCase()
               }`
 ); } ); } ); }
+function ativarCalculadoraHpTreinador() {
+  const botaoCalcular = document.querySelector("#botaoCalcularHp");
+  if (!botaoCalcular) return;
+  botaoCalcular.addEventListener("click", () => {
+    const campoCalculadora = document.querySelector("#alterarHp");
+    if (!campoCalculadora?.value.trim()) {
+      alert("Digite um valor na Calculadora antes de calcular.");
+      return;
+    }
+    const botaoSalvarStatus = document.querySelector("#salvarTreinadorStatus");
+    if (!botaoSalvarStatus) return;
+    botaoSalvarStatus.dataset.aplicarCalculadora = "1";
+    botaoSalvarStatus.click();
+  });
+}
+
+function ativarRolagemIniciativaTreinador(token) {
+  const botaoRolar = document.querySelector("#rolarIniciativa");
+  const campoIniciativa = document.querySelector("#iniciativa");
+  const campoDestreza = document.querySelector("#treinador-mod-des");
+  const botaoAbrirPainel = document.querySelector("#abrirApresentadorIniciativa");
+  const botaoRemover = document.querySelector("#removerDaIniciativa");
+  if (!botaoRolar || !campoIniciativa || !campoDestreza) return;
+
+  let botaoAvancar = document.querySelector("#avancarTurnoIniciativa");
+  if (!botaoAvancar && botaoRemover?.parentElement) {
+    botaoAvancar = document.createElement("button");
+    botaoAvancar.id = "avancarTurnoIniciativa";
+    botaoAvancar.type = "button";
+    botaoAvancar.title = "Passar o turno para o próximo participante";
+    botaoAvancar.textContent = "➜";
+    botaoAvancar.style.cssText = "min-width:34px;min-height:34px;padding:4px 6px;font-size:12px;cursor:pointer";
+    botaoRemover.parentElement.insertBefore(botaoAvancar, botaoRemover);
+  }
+
+  const numeroCampo = (valor) => {
+    const numero = Number(String(valor ?? "").trim().replace(",", "."));
+    return Number.isNaN(numero) ? 0 : numero;
+  };
+  const atualizar = () => { campoIniciativa.value = String(numeroCampo(campoDestreza.value)); };
+  campoDestreza.addEventListener("input", atualizar);
+  campoDestreza.addEventListener("change", atualizar);
+
+  botaoRolar.addEventListener("click", async () => {
+    const formula = formulaSalvaguarda(numeroCampo(campoDestreza.value));
+    if (!formula) { alert("Não foi possível calcular a iniciativa."); return; }
+    const total = await rolarNoDicePlusComResultado(formula, "Iniciativa");
+    if (total === null) return;
+    await salvarResultadoIniciativa(token, total, {
+      rolagemBase: total,
+      bonusHabilidade: 0,
+      dobrado: false,
+      ajusteManual: 0
+    });
+    await abrirApresentadorIniciativa();
+  });
+
+  botaoAbrirPainel?.addEventListener("click", () => abrirApresentadorIniciativa());
+  botaoAvancar?.addEventListener("click", async () => {
+    const iniciativas = iniciativasOrdenadas(await OBR.scene.items.getItems());
+    if (!iniciativas.length) return;
+    const atual = iniciativas.find(({ item }) => item.metadata?.[META_TURNO_INICIATIVA] === true)?.item || iniciativas[0].item;
+    await avancarTurnoIniciativa(atual.id);
+  });
+  botaoRemover?.addEventListener("click", async () => { await removerDaIniciativa(token.id); });
+  atualizar();
+}
+
 function ativarRolagemIniciativa(token) {
 const botaoRolar = document.querySelector("#rolarIniciativa");
 const campoIniciativa = document.querySelector("#iniciativa");
@@ -2874,7 +2934,7 @@ botaoCalcular.addEventListener("click", () => { const campoCalculadora = documen
 atualizarVisual(); }
 let salvamentoBuffPendente = Promise.resolve();
 let salvamentoMovimentoPendente = Promise.resolve();
-const IDS_BOTOES_AUTOSAVE = [ "salvarPokemonStatus", "salvarPokemonMoves", "salvarPokemonPericias", "salvarPokemonTalentos", "salvarTreinadorStatus", "salvarTreinadorPerTal", "salvarTreinadorHabilidades", "salvarTreinadorAnotacoes" ];
+const IDS_BOTOES_AUTOSAVE = [ "salvarPokemonStatus", "salvarPokemonMoves", "salvarPokemonPericias", "salvarPokemonTalentos", "salvarTreinadorStatus", "salvarTreinadorPerNot" ];
 function ativarAutosaveDaTela() { const app = document.querySelector("#app");
 if (!app) { return; }
 const botaoSalvar = IDS_BOTOES_AUTOSAVE
@@ -3017,20 +3077,18 @@ async function trocarTipoFicha( token ) { await OBR.scene.items.updateItems( [to
 `${PREFIX}/tipoFicha`
 ]; } } );
 mostrarEscolhaFicha( token ); }
-function menuTreinador( paginaAtual ) {
+function menuTreinador(paginaAtual) {
 return `
     <div class="fichaAbas" style="
       display:grid;
-      grid-template-columns:repeat(5,minmax(0,1fr));
-      gap:5px;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:6px;
       margin-bottom:15px;
       width:100%;
     ">
-      <button id="paginaTreinador1" style="min-width:0;width:100%;padding:8px 2px;font-size:9px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 1 ? "1" : "0.65"};">STATUS</button>
-      <button id="paginaTreinador2" style="min-width:0;width:100%;padding:8px 2px;font-size:9px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 2 ? "1" : "0.65"};">PER / TAL</button>
-      <button id="paginaTreinador3" style="min-width:0;width:100%;padding:8px 2px;font-size:8px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 3 ? "1" : "0.65"};">HABILIDADES</button>
-      <button id="paginaTreinador4" style="min-width:0;width:100%;padding:8px 2px;font-size:8px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 4 ? "1" : "0.65"};">ANOTAÇÕES</button>
-      <button id="paginaTreinador5" style="min-width:0;width:100%;padding:8px 2px;font-size:8px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 5 ? "1" : "0.65"};">POKÉMONS</button>
+      <button id="paginaTreinador1" style="min-width:0;width:100%;padding:8px 4px;font-size:11px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 1 ? "1" : "0.65"};">STATUS</button>
+      <button id="paginaTreinador2" style="min-width:0;width:100%;padding:8px 4px;font-size:11px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 2 ? "1" : "0.65"};">PKM</button>
+      <button id="paginaTreinador3" style="min-width:0;width:100%;padding:8px 4px;font-size:11px;font-weight:bold;cursor:pointer;opacity:${paginaAtual === 3 ? "1" : "0.65"};">PER/NOT</button>
     </div>
   `;
 }
@@ -3130,11 +3188,23 @@ font-size:30px;
 }
 function ativarCabecalhoTreinador( token ) { document .querySelector( "#trocarTipo" ) .addEventListener( "click", () => trocarTipoFicha( token ) );
 ativarMenuTreinador( token ); }
-function ativarMenuTreinador( token ) { document .querySelector( "#paginaTreinador1" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorPagina1( tokenAtualizado ); } );
-document .querySelector( "#paginaTreinador2" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorPerTal( tokenAtualizado ); } );
-document .querySelector( "#paginaTreinador3" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorHabilidades( tokenAtualizado ); } );
-document .querySelector( "#paginaTreinador4" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaTreinadorAnotacoes( tokenAtualizado ); } );
-document .querySelector( "#paginaTreinador5" ) .addEventListener( "click", async () => { const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } await mostrarFichaTreinadorPokemons( tokenAtualizado ); } ); }
+function ativarMenuTreinador(token) {
+  const status = document.querySelector("#paginaTreinador1");
+  const pkm = document.querySelector("#paginaTreinador2");
+  const perNot = document.querySelector("#paginaTreinador3");
+  status?.addEventListener("click", async () => {
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaTreinadorPagina1(tokenAtualizado);
+  });
+  pkm?.addEventListener("click", async () => {
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) await mostrarFichaTreinadorPokemons(tokenAtualizado);
+  });
+  perNot?.addEventListener("click", async () => {
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaTreinadorPerNot(tokenAtualizado);
+  });
+}
 function criarPericiasTreinador(valores) {
   const pericias = PERICIAS.flatMap((grupo) =>
     grupo.pericias.map((pericia) => ({ ...pericia, atributo: grupo.atributo }))
@@ -3221,596 +3291,192 @@ function ativarRolagensPericiasTreinador() { document .querySelectorAll( ".rolar
 ); const formula = formulaSalvaguarda( campo?.value ); if (!formula) { alert( "Valor da perícia inválido." ); return; } await rolarNoDicePlus( formula,
 `Perícia ${nome}`
 ); } ); } ); }
-function mostrarFichaTreinadorPagina1( token ) { const app = document.querySelector( "#app" );
-const hpAtual = token.metadata[
-`${PREFIX}/hpAtual`
-] ?? 100;
-const hpMax = token.metadata[
-`${PREFIX}/hpMax`
-] ?? 100;
-const caBase = Number( token.metadata[
-`${PREFIX}/ca`
-] ?? 10 ) || 0;
-const estagioEvasao = normalizarEstagioBuff( token.metadata[
-`${PREFIX}/buff-evas`
-] ?? 0, "evas" );
-const ca = caBase + estagioEvasao;
-const proficiencia = token.metadata[
-`${PREFIX}/treinador-proficiencia`
-] ?? 0;
-const bonusCaptura = token.metadata[
-`${PREFIX}/treinador-captura-bonus`
-] ?? "";
-const modificadores = {};
-const salvaguardas = {};
-ATRIBUTOS.forEach( (atributo) => { modificadores[ atributo ] = token.metadata[
-`${PREFIX}/treinador-mod-${atributo}`
-] ?? ""; salvaguardas[ atributo ] = token.metadata[
-`${PREFIX}/treinador-save-${atributo}`
-] ?? ""; } );
-const iniciativaAlerta = token.metadata[
-`${PREFIX}/treinador-iniciativa-alerta`
-] === true;
-const iniciativaHabilidade = token.metadata[
-`${PREFIX}/treinador-iniciativa-habilidade`
-] === true;
-const iniciativaDobrar = token.metadata[
-`${PREFIX}/treinador-iniciativa-dobrar`
-] === true;
-const estagioVelocidade = normalizarEstagioBuff( token.metadata[
-`${PREFIX}/buff-vel`
-] ?? 0, "vel" );
-const iniciativa = (Number(String(modificadores.des ?? "").replace(",", ".")) || 0) + (estagioVelocidade * (Number(proficiencia) || 0)) + (iniciativaAlerta ? 5 : 0);
-app.innerHTML = `
+function mostrarFichaTreinadorPagina1(token) {
+  const app = document.querySelector("#app");
+  const hpAtual = token.metadata[`${PREFIX}/hpAtual`] ?? 100;
+  const hpMax = token.metadata[`${PREFIX}/hpMax`] ?? 100;
+  const caBase = Number(token.metadata[`${PREFIX}/ca`] ?? 10) || 0;
+  const estagioEvasao = normalizarEstagioBuff(token.metadata[`${PREFIX}/buff-evas`] ?? 0, "evas");
+  const ca = caBase + estagioEvasao;
+  const proficiencia = token.metadata[`${PREFIX}/treinador-proficiencia`] ?? 0;
+  const bonusCaptura = token.metadata[`${PREFIX}/treinador-captura-bonus`] ?? "";
+  const modificadores = {};
+  const salvaguardas = {};
+  ATRIBUTOS.forEach((atributo) => {
+    modificadores[atributo] = token.metadata[`${PREFIX}/treinador-mod-${atributo}`] ?? "";
+    salvaguardas[atributo] = token.metadata[`${PREFIX}/treinador-save-${atributo}`] ?? "";
+  });
+  // Treinadores usam somente o valor puro de DES na iniciativa.
+  const iniciativa = Number(String(modificadores.des ?? "").replace(",", ".")) || 0;
+
+  app.innerHTML = `
     ${ESTILO_FICHA}
-    ${cabecalhoTreinador(
-        token,
-        1
-    )}
-    <div style="
-      display:flex;
-      gap:6px;
-      align-items:flex-end;
-      width:100%;
-    ">
-      <div style="flex:1; min-width:0;">
-        <p>HP Atual</p>
-        <input
-          id="hpAtual"
-          type="number"
-          value="${hpAtual}"
-          style="width:100%; box-sizing:border-box; text-align:center;"
-        >
-      </div>
-      <div style="flex:1; min-width:0;">
-        <p>HP Máx.</p>
-        <input
-          id="hpMax"
-          type="number"
-          value="${hpMax}"
-          style="width:100%; box-sizing:border-box; text-align:center;"
-        >
-      </div>
-      <div style="flex:1; min-width:0;">
-        <p>CA</p>
-        <input
-          id="ca"
-          type="number"
-          value="${ca}"
-          style="width:100%; box-sizing:border-box; text-align:center;"
-        >
-      </div>
-      <div style="flex:1; min-width:0;">
-        <p>Prof</p>
-        <input
-          id="treinadorProficiencia"
-          type="number"
-          min="0"
-          step="1"
-          value="${proficiencia}"
-          style="width:100%; box-sizing:border-box; text-align:center;"
-        >
-      </div>
-    </div>
-    <input
-      id="bonusEvasaoCa"
-      type="hidden"
-      value="${estagioEvasao}"
-    >
-    <div class="calculadoraHpLinha">
-      <p class="calculadoraTitulo">Calculadora</p>
-      <div class="calculadoraControles">
-        <div class="calculadoraHpCampo">
-          <input
-            id="alterarHp"
-            type="text"
-            placeholder="-34, 20, =50"
-          >
+    ${cabecalhoTreinador(token, 1)}
+    <style>
+      .treinadorStatusTopo .pokemonStatusCampo:nth-child(3),
+      .treinadorStatusTopo .pokemonStatusCampo:nth-child(4){grid-column:span 3!important}
+      .treinadorFerramentasStatus{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;align-items:stretch}
+      .treinadorFerramentasStatus .pokemonCalculadoraCard{margin-top:0!important;height:100%;box-sizing:border-box}
+      .treinadorFerramentasStatus .iniciativaBloco{width:auto!important;margin-top:0!important;padding:8px!important;border:1px solid #d7e3f2!important;border-radius:11px!important;background:#fff!important;box-sizing:border-box}
+      .treinadorFerramentasStatus .iniciativaTitulo{margin:0 0 6px!important;color:#365a86!important;font-size:11px!important}
+      .treinadorFerramentasStatus .iniciativaLinha{flex-wrap:nowrap!important;gap:4px!important;justify-content:stretch!important}
+      .treinadorFerramentasStatus #iniciativa{width:auto!important;min-width:42px!important;flex:1 1 52px!important}
+      .treinadorFerramentasStatus #rolarIniciativa{flex:0 0 34px!important;width:34px!important;min-height:34px!important}
+      @media(max-width:430px){.treinadorFerramentasStatus{grid-template-columns:1fr}}
+    </style>
+    <div class="statusGrid statusGridPokemon" style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+      <div class="statusCard pokemonStatusPrincipal" style="flex:1;min-width:120px;">
+        <div class="pokemonStatusTopo treinadorStatusTopo">
+          <div class="pokemonStatusCampo"><p>HP Atual</p><input id="hpAtual" type="number" value="${hpAtual}"></div>
+          <div class="pokemonStatusCampo"><p>HP Máx.</p><input id="hpMax" type="number" value="${hpMax}"></div>
+          <div class="pokemonStatusCampo"><p>CA</p><input id="ca" type="number" value="${ca}"></div>
+          <div class="pokemonStatusCampo"><p>Prof</p><input id="treinadorProficiencia" type="number" min="0" step="1" value="${proficiencia}"></div>
         </div>
-      <div class="superEfetivoWrap">
-        <button
-          id="botaoSuperEfetivo"
-          type="button"
-        >
-          Super Efetivo
-        </button>
-        <div
-          id="opcoesSuperEfetivo"
-          class="opcoesSuperEfetivo"
-        >
-          <button
-            type="button"
-            class="multiplicadorSuperEfetivo"
-            data-fator="1"
-          >
-            Neutro
-          </button>
-          <button
-            type="button"
-            class="multiplicadorSuperEfetivo"
-            data-fator="2"
-          >
-            2x
-          </button>
-          <button
-            type="button"
-            class="multiplicadorSuperEfetivo"
-            data-fator="4"
-          >
-            4x
-          </button>
+        <input id="bonusEvasaoCa" type="hidden" value="${estagioEvasao}">
+
+        <div class="treinadorFerramentasStatus">
+          <div class="calculadoraHpLinha pokemonCalculadoraCard" style="margin:0;min-width:0;padding:8px;">
+            <p class="calculadoraTitulo" style="margin-bottom:5px;">Calculadora</p>
+            <div style="display:flex;gap:5px;align-items:center;">
+              <input id="alterarHp" type="text" placeholder="-34, 20, =50" style="min-width:0;flex:1;">
+              <button id="botaoCalcularHp" type="button" style="min-width:64px;padding:7px 5px;font-weight:900;">Calcular</button>
+            </div>
+            <input id="tipoMoveHpSelecionado" type="hidden" value="neutro">
+            <input id="estagioDefHp" type="hidden" value="0">
+            <input id="estagioDefSpHp" type="hidden" value="0">
+            <input id="multiplicadorHp" type="hidden" value="1">
+          </div>
+
+          <div class="iniciativaBloco treinadorIniciativaCompacta" style="margin:0;min-width:0;padding:8px;">
+            <p class="iniciativaTitulo" style="margin-bottom:5px;">Iniciativa</p>
+            <div class="iniciativaLinha" style="display:grid;grid-template-columns:minmax(0,1fr) repeat(3,34px);gap:4px;align-items:center;">
+              <input id="iniciativa" type="text" value="${esc(iniciativa)}" readonly title="Treinador: iniciativa = DES. Sem Alerta, Habilidade, Dobrar ou bônus de Velocidade.">
+              <button id="rolarIniciativa" type="button" title="Rolar iniciativa" style="min-width:34px;min-height:34px;padding:4px;">🎲</button>
+              <button id="abrirApresentadorIniciativa" type="button" title="Abrir apresentador" style="min-width:34px;min-height:34px;padding:4px;">📋</button>
+              <button id="removerDaIniciativa" type="button" title="Remover da iniciativa" style="min-width:34px;min-height:34px;padding:4px;">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <hr style="margin:12px 0;">
+        <div style="display:flex;align-items:flex-end;gap:8px;">
+          <div style="width:92px;flex:0 0 92px;">
+            <p style="margin:0 0 4px;font-size:10px;font-weight:900;">Captura</p>
+            <input id="treinadorCapturaBonus" type="text" value="${esc(bonusCaptura)}" placeholder="+0" style="width:100%;box-sizing:border-box;text-align:center;">
+          </div>
+          <button id="rolarCaptura" type="button" style="flex:1;min-height:36px;font-weight:bold;cursor:pointer;">🎲 Rolar Captura</button>
         </div>
       </div>
-      <div class="resistenteWrap">
-        <button
-          id="botaoResistente"
-          type="button"
-        >
-          Resistente
-        </button>
-        <div
-          id="opcoesResistente"
-          class="opcoesResistente"
-        >
-          <button
-            type="button"
-            class="divisorResistente"
-            data-fator="1"
-          >
-            Neutro
-          </button>
-          <button
-            type="button"
-            class="divisorResistente"
-            data-fator="0.5"
-          >
-            2x
-          </button>
-          <button
-            type="button"
-            class="divisorResistente"
-            data-fator="0.25"
-          >
-            4x
-          </button>
-        </div>
-      </div>
-      <div class="moveWrap">
-        <button id="botaoMove" type="button">Move</button>
-        <div id="opcoesMove" class="opcoesMove">
-          <button type="button" class="tipoMoveHp" data-tipo="neutro">Neutro</button>
-          <button type="button" class="tipoMoveHp" data-tipo="fisico">Físico</button>
-          <button type="button" class="tipoMoveHp" data-tipo="especial">Especial</button>
-        </div>
-      </div>
-      </div>
-      <div class="calculadoraAcao">
-        <button id="botaoCalcularHp" type="button">Calcular</button>
-      </div>
-      <input id="tipoMoveHpSelecionado" type="hidden" value="neutro">
-      <input id="estagioDefHp" type="hidden" value="0">
-      <input id="estagioDefSpHp" type="hidden" value="0">
-      <input
-        id="multiplicadorHp"
-        type="hidden"
-        value="1"
-      >
     </div>
-    <div class="iniciativaBloco">
-      <p class="iniciativaTitulo">Iniciativa</p>
-      <div class="iniciativaLinha">
-        <input
-          id="iniciativa"
-          type="text"
-          value="${esc(iniciativa)}"
-          readonly
-          title="Bônus do dado = DES + (VEL × Prof) + Alerta. Habilidade e Dobrar alteram apenas o total no apresentador."
-        >
-        <button
-          id="rolarIniciativa"
-          type="button"
-          title="Rolar iniciativa e entrar no organizador"
-        >🎲</button>
-        <button
-          id="abrirApresentadorIniciativa"
-          type="button"
-          title="Abrir organizador de iniciativa"
-          style="
-            min-width:38px;
-            min-height:36px;
-            padding:5px 7px;
-            font-size:12px;
-            cursor:pointer;
-          "
-        >📋</button>
-        <button
-          id="removerDaIniciativa"
-          type="button"
-          title="Remover este token da iniciativa"
-          style="
-            min-width:38px;
-            min-height:36px;
-            padding:5px 7px;
-            font-size:12px;
-            cursor:pointer;
-          "
-        >✕</button>
-        <button
-          id="botaoIniciativaAlerta"
-          class="iniciativaCheck ${iniciativaAlerta ? "ativo" : ""}"
-          type="button"
-          title="Alerta: +5 na iniciativa"
-        >
-          <span class="iniciativaCheckBolinha">✓</span>
-          <span>Alerta</span>
-        </button>
-        <button
-          id="botaoIniciativaHabilidade"
-          class="iniciativaCheck ${iniciativaHabilidade ? "ativo" : ""}"
-          type="button"
-          title="Habilidade: +2x Prof no TOTAL mostrado no apresentador"
-        >
-          <span class="iniciativaCheckBolinha">✓</span>
-          <span>Habilidade</span>
-        </button>
-        <button
-          id="botaoIniciativaDobrar"
-          class="iniciativaCheck ${iniciativaDobrar ? "ativo" : ""}"
-          type="button"
-          title="Dobrar o total final da iniciativa no apresentador"
-        >
-          <span class="iniciativaCheckBolinha">✓</span>
-          <span>Dobrar</span>
-        </button>
-      </div>
-      <input
-        id="iniciativaAlerta"
-        type="hidden"
-        value="${iniciativaAlerta ? "1" : "0"}"
-      >
-      <input
-        id="iniciativaHabilidade"
-        type="hidden"
-        value="${iniciativaHabilidade ? "1" : "0"}"
-      >
-      <input
-        id="iniciativaDobrar"
-        type="hidden"
-        value="${iniciativaDobrar ? "1" : "0"}"
-      >
-    </div>
-    <hr>
-    <h3>
-      🎯 Captura
-    </h3>
-    <div style="
-      display:flex;
-      align-items:center;
-      gap:8px;
-      margin-bottom:12px;
-    ">
-      <input
-        id="treinadorCapturaBonus"
-        type="text"
-        value="${esc(
-            bonusCaptura
-        )}"
-        placeholder="+0"
-        style="
-          width:80px;
-          box-sizing:border-box;
-          text-align:center;
-          padding:7px;
-        "
-      >
-      <button
-        id="rolarCaptura"
-        type="button"
-        style="
-          flex:1;
-          padding:8px;
-          font-weight:bold;
-          cursor:pointer;
-        "
-      >
-        🎲 Rolar Captura
-      </button>
-    </div>
-    <hr>
-    ${criarLinhaAtributos(
-        "Modificadores",
-        "treinador-mod",
-        modificadores
-    )}
-    ${criarLinhaAtributos(
-        "Salva-guardas",
-        "treinador-save",
-        salvaguardas
-    )}
+
+    ${criarLinhaAtributos("Modificadores", "treinador-mod", modificadores)}
+    ${criarLinhaAtributos("Salva-guardas", "treinador-save", salvaguardas)}
     <br>
-    <button
-      id="salvarTreinadorStatus"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Status
-    </button>
+    <button id="salvarTreinadorStatus" style="width:100%;padding:10px;font-weight:bold;cursor:pointer;">Salvar Status</button>
   `;
-ativarCabecalhoTreinador( token );
-ativarRolagensSalvaguarda(token);
-ativarRolagemIniciativa(token);
-ativarCalculadoraHp();
-document .querySelector( "#rolarCaptura" ) .addEventListener( "click", async () => { const valor = document .querySelector( "#treinadorCapturaBonus" ) .value; const formula = formulaSalvaguarda( valor ); if (!formula) { alert( "Bônus de captura inválido." ); return; } await rolarNoDicePlus( formula, "Captura" ); } );
-document .querySelector( "#salvarTreinadorStatus" ) .addEventListener( "click", async () => { const botaoSalvarStatus = document.querySelector("#salvarTreinadorStatus"); const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1"; if (botaoSalvarStatus) { botaoSalvarStatus.dataset.aplicarCalculadora = "0"; } const dados = await pegarHpCaDaTela(aplicarCalculadora); if (!dados) { return; } const novaProficiencia = Number( document .querySelector( "#treinadorProficiencia" ) .value ) || 0; const novaIniciativa = document .querySelector("#iniciativa") .value .trim(); const iniciativaAlertaAtiva = document .querySelector("#iniciativaAlerta") ?.value === "1"; const iniciativaHabilidadeAtiva = document .querySelector("#iniciativaHabilidade") ?.value === "1"; const iniciativaDobrarAtiva = document .querySelector("#iniciativaDobrar") ?.value === "1"; const novoBonusCaptura = document .querySelector( "#treinadorCapturaBonus" ) .value .trim(); const novosModificadores = {}; const novasSalvaguardas = {}; ATRIBUTOS.forEach( (atributo) => { novosModificadores[ atributo ] = document .querySelector(
-`#treinador-mod-${atributo}`
-) .value .trim(); novasSalvaguardas[ atributo ] = document .querySelector(
-`#treinador-save-${atributo}`
-) .value .trim(); } ); await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { item.metadata[
-`${PREFIX}/hpAtual`
-] = dados.hpAtual; item.metadata[
-`${PREFIX}/hpMax`
-] = dados.hpMax; item.metadata[
-`${PREFIX}/ca`
-] = dados.caBase; item.metadata[
-`${PREFIX}/treinador-proficiencia`
-] = novaProficiencia; item.metadata[
-`${PREFIX}/treinador-iniciativa`
-] = novaIniciativa; item.metadata[
-`${PREFIX}/treinador-iniciativa-alerta`
-] = iniciativaAlertaAtiva; item.metadata[
-`${PREFIX}/treinador-iniciativa-habilidade`
-] = iniciativaHabilidadeAtiva; item.metadata[
-`${PREFIX}/treinador-iniciativa-dobrar`
-] = iniciativaDobrarAtiva; item.metadata[
-`${PREFIX}/treinador-captura-bonus`
-] = novoBonusCaptura; ATRIBUTOS.forEach( (atributo) => { item.metadata[
-`${PREFIX}/treinador-mod-${atributo}`
-] = novosModificadores[ atributo ]; item.metadata[
-`${PREFIX}/treinador-save-${atributo}`
-] = novasSalvaguardas[ atributo ]; } ); } } ); document .querySelector( "#hpAtual" ) .value = dados.hpAtual; document .querySelector( "#hpMax" ) .value = dados.hpMax; if (dados.calculadoraAplicada) { document .querySelector( "#alterarHp" ) .value = ""; } await criarStatusNoToken( token, dados.hpAtual, dados.hpMax, dados.ca ); } ); }
-function mostrarFichaTreinadorPerTal( token ) { const app = document.querySelector( "#app" );
-const valoresPericias = {};
-const talentos = {};
-PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = token.metadata[
-`${PREFIX}/pericia-${pericia.id}`
-] ?? ""; } ); } );
-for ( let i = 1; i <= 5; i++ ) { talentos[i] = token.metadata[
-`${PREFIX}/talento-${i}`
-] ?? ""; }
-app.innerHTML = `
-    ${ESTILO_FICHA}
-    ${cabecalhoTreinador(
-        token,
-        2
-    )}
-    <h3>
-      Perícias
-    </h3>
-    ${criarPericiasTreinador(
-        valoresPericias
-    )}
-    <hr>
-    <h3>
-      🎖️ Talentos
-    </h3>
-    <div style="
-      margin-bottom:20px;
-    ">
-      ${criarSlots(
-        5,
-        "talento",
-        talentos,
-        "Talento"
-      )}
-    </div>
-    <button
-      id="salvarTreinadorPerTal"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Perícias / Talentos
-    </button>
-  `;
-ativarCabecalhoTreinador( token );
-ativarRolagensPericiasTreinador();
-document .querySelector( "#salvarTreinadorPerTal" ) .addEventListener( "click", async () => { const novasPericias = {}; const novosTalentos = {}; PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { novasPericias[ pericia.id ] = document .querySelector(
-`#pericia-${pericia.id}`
-) .value .trim(); } ); } ); for ( let i = 1; i <= 5; i++ ) { novosTalentos[ i ] = document .querySelector(
-`#talento${i}`
-) .value .trim(); } await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { item.metadata[
-`${PREFIX}/pericia-${pericia.id}`
-] = novasPericias[ pericia.id ]; } ); } ); for ( let i = 1; i <= 5; i++ ) { item.metadata[
-`${PREFIX}/talento-${i}`
-] = novosTalentos[ i ]; } } } ); } ); }
-function mostrarFichaTreinadorHabilidades( token ) { const app = document.querySelector( "#app" );
-const especializacoes = {};
-const habilidades = {};
-const rolagens = {};
-for ( let i = 1; i <= 4; i++ ) { especializacoes[i] = token.metadata[
-`${PREFIX}/especializacao-${i}`
-] ?? ""; }
-for ( let i = 1; i <= 8; i++ ) { habilidades[i] = token.metadata[
-`${PREFIX}/habilidade-treinador-${i}`
-] ?? ""; }
-for ( let i = 1; i <= 3; i++ ) { rolagens[i] = token.metadata[
-`${PREFIX}/rolagem-d6-${i}`
-] ?? ""; }
-let htmlRolagens = "";
-for ( let i = 1; i <= 3; i++ ) {
-htmlRolagens += `
-      <div style="
-        display:flex;
-        gap:6px;
-        margin-bottom:8px;
-      ">
-        <input
-          id="rolagemD6-${i}"
-          type="text"
-          value="${esc(
-            rolagens[i]
-          )}"
-          placeholder="Nome da rolagem"
-          style="
-            flex:1;
-            box-sizing:border-box;
-            padding:7px;
-          "
-        >
-        <button
-          type="button"
-          class="rolarD6"
-          data-rolagem="${i}"
-          style="
-            width:90px;
-            cursor:pointer;
-            font-weight:bold;
-          "
-        >
-          🎲 ROLAR
-        </button>
-      </div>
-    `;
+
+  ativarCabecalhoTreinador(token);
+  ativarRolagensSalvaguarda(token);
+  ativarRolagemIniciativaTreinador(token);
+  ativarCalculadoraHpTreinador();
+
+  document.querySelector("#rolarCaptura")?.addEventListener("click", async () => {
+    const valor = document.querySelector("#treinadorCapturaBonus")?.value;
+    const formula = formulaSalvaguarda(valor);
+    if (!formula) { alert("Bônus de captura inválido."); return; }
+    await rolarNoDicePlus(formula, "Captura");
+  });
+
+  document.querySelector("#salvarTreinadorStatus")?.addEventListener("click", async () => {
+    const botaoSalvarStatus = document.querySelector("#salvarTreinadorStatus");
+    const aplicarCalculadora = botaoSalvarStatus?.dataset.aplicarCalculadora === "1";
+    if (botaoSalvarStatus) botaoSalvarStatus.dataset.aplicarCalculadora = "0";
+    const dados = await pegarHpCaDaTela(aplicarCalculadora);
+    if (!dados) return;
+
+    const novaProficiencia = Number(document.querySelector("#treinadorProficiencia")?.value) || 0;
+    const novoBonusCaptura = document.querySelector("#treinadorCapturaBonus")?.value.trim() || "";
+    const novosModificadores = {};
+    const novasSalvaguardas = {};
+    ATRIBUTOS.forEach((atributo) => {
+      novosModificadores[atributo] = document.querySelector(`#treinador-mod-${atributo}`)?.value.trim() || "";
+      novasSalvaguardas[atributo] = document.querySelector(`#treinador-save-${atributo}`)?.value.trim() || "";
+    });
+
+    await OBR.scene.items.updateItems([token.id], (items) => {
+      for (const item of items) {
+        item.metadata[`${PREFIX}/hpAtual`] = dados.hpAtual;
+        item.metadata[`${PREFIX}/hpMax`] = dados.hpMax;
+        item.metadata[`${PREFIX}/ca`] = dados.caBase;
+        item.metadata[`${PREFIX}/treinador-proficiencia`] = novaProficiencia;
+        item.metadata[`${PREFIX}/treinador-iniciativa`] = Number(String(novosModificadores.des ?? "").replace(",", ".")) || 0;
+        // Remove de vez os antigos modificadores especiais de iniciativa do treinador.
+        delete item.metadata[`${PREFIX}/treinador-iniciativa-alerta`];
+        delete item.metadata[`${PREFIX}/treinador-iniciativa-habilidade`];
+        delete item.metadata[`${PREFIX}/treinador-iniciativa-dobrar`];
+        item.metadata[`${PREFIX}/treinador-captura-bonus`] = novoBonusCaptura;
+        ATRIBUTOS.forEach((atributo) => {
+          item.metadata[`${PREFIX}/treinador-mod-${atributo}`] = novosModificadores[atributo];
+          item.metadata[`${PREFIX}/treinador-save-${atributo}`] = novasSalvaguardas[atributo];
+        });
+      }
+    });
+
+    document.querySelector("#hpAtual").value = dados.hpAtual;
+    document.querySelector("#hpMax").value = dados.hpMax;
+    document.querySelector("#iniciativa").value = String(Number(String(novosModificadores.des ?? "").replace(",", ".")) || 0);
+    if (dados.calculadoraAplicada) document.querySelector("#alterarHp").value = "";
+    await criarStatusNoToken(token, dados.hpAtual, dados.hpMax, dados.ca);
+  });
 }
-app.innerHTML = `
+function mostrarFichaTreinadorPerNot(token) {
+  const app = document.querySelector("#app");
+  const valoresPericias = {};
+  PERICIAS.forEach((grupo) => {
+    grupo.pericias.forEach((pericia) => {
+      valoresPericias[pericia.id] = token.metadata[`${PREFIX}/pericia-${pericia.id}`] ?? "";
+    });
+  });
+  const anotacoes = token.metadata[`${PREFIX}/treinador-anotacoes`] ?? "";
+
+  app.innerHTML = `
     ${ESTILO_FICHA}
-    ${cabecalhoTreinador(
-        token,
-        3
-    )}
-    <h3>
-      🎯 Especializações
-    </h3>
-    <div style="
-      margin-bottom:20px;
-    ">
-      ${criarSlots(
-        4,
-        "especializacao",
-        especializacoes,
-        "Especialização"
-      )}
-    </div>
-    <h3>
-      ⭐ Habilidades de Treinador
-    </h3>
-    <div style="
-      margin-bottom:20px;
-    ">
-      ${criarSlots(
-        8,
-        "habilidadeTreinador",
-        habilidades,
-        "Habilidade"
-      )}
-    </div>
-    <hr>
-    <h3>
-      🎲 Rolagens 1d6
-    </h3>
-    ${htmlRolagens}
-    <br>
-    <button
-      id="salvarTreinadorHabilidades"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Habilidades
-    </button>
-  `;
-ativarCabecalhoTreinador( token );
-document .querySelectorAll( ".rolarD6" ) .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.rolagem; const nome = document .querySelector(
-`#rolagemD6-${numero}`
-) .value .trim(); if (!nome) { alert( "Coloque o nome da rolagem primeiro." ); return; } await rolarNoDicePlus( "1d6", nome ); } ); } );
-document .querySelector( "#salvarTreinadorHabilidades" ) .addEventListener( "click", async () => { const novasEspecializacoes = {}; const novasHabilidades = {}; const novasRolagens = {}; for ( let i = 1; i <= 4; i++ ) { novasEspecializacoes[ i ] = document .querySelector(
-`#especializacao${i}`
-) .value .trim(); } for ( let i = 1; i <= 8; i++ ) { novasHabilidades[ i ] = document .querySelector(
-`#habilidadeTreinador${i}`
-) .value .trim(); } for ( let i = 1; i <= 3; i++ ) { novasRolagens[ i ] = document .querySelector(
-`#rolagemD6-${i}`
-) .value .trim(); } await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { for ( let i = 1; i <= 4; i++ ) { item.metadata[
-`${PREFIX}/especializacao-${i}`
-] = novasEspecializacoes[ i ]; } for ( let i = 1; i <= 8; i++ ) { item.metadata[
-`${PREFIX}/habilidade-treinador-${i}`
-] = novasHabilidades[ i ]; } for ( let i = 1; i <= 3; i++ ) { item.metadata[
-`${PREFIX}/rolagem-d6-${i}`
-] = novasRolagens[ i ]; } } } ); } ); }
-function mostrarFichaTreinadorAnotacoes( token ) { const app = document.querySelector( "#app" );
-const anotacoes = token.metadata[
-`${PREFIX}/treinador-anotacoes`
-] ?? "";
-app.innerHTML = `
-    ${ESTILO_FICHA}
-    ${cabecalhoTreinador(
-        token,
-        4
-    )}
-    <h3>
-      📝 Anotações
-    </h3>
+    ${cabecalhoTreinador(token, 3)}
+    <h3 style="margin-bottom:8px;">Perícias</h3>
+    ${criarPericiasTreinador(valoresPericias)}
+    <hr style="margin:14px 0 10px;">
+    <h3 style="margin-bottom:8px;">📝 Anotações</h3>
     <textarea
       id="treinadorAnotacoes"
       placeholder="Escreva aqui as anotações da sessão..."
-      style="
-        width:100%;
-        min-height:520px;
-        box-sizing:border-box;
-        padding:10px;
-        resize:vertical;
-        font-family:Arial, sans-serif;
-        line-height:1.4;
-      "
-    >${esc(
-        anotacoes
-    )}</textarea>
+      style="width:100%;min-height:250px;box-sizing:border-box;padding:10px;resize:vertical;font-family:Arial,sans-serif;line-height:1.4;"
+    >${esc(anotacoes)}</textarea>
     <br><br>
-    <button
-      id="salvarTreinadorAnotacoes"
-      style="
-        width:100%;
-        padding:10px;
-        font-weight:bold;
-        cursor:pointer;
-      "
-    >
-      Salvar Anotações
-    </button>
+    <button id="salvarTreinadorPerNot" style="width:100%;padding:10px;font-weight:bold;cursor:pointer;">Salvar Perícias / Anotações</button>
   `;
-ativarCabecalhoTreinador( token );
-document .querySelector( "#salvarTreinadorAnotacoes" ) .addEventListener( "click", async () => { const novasAnotacoes = document .querySelector( "#treinadorAnotacoes" ) .value; await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { item.metadata[
-`${PREFIX}/treinador-anotacoes`
-] = novasAnotacoes; } } ); } ); }
+
+  ativarCabecalhoTreinador(token);
+  ativarRolagensPericiasTreinador();
+  document.querySelector("#salvarTreinadorPerNot")?.addEventListener("click", async () => {
+    const novasPericias = {};
+    PERICIAS.forEach((grupo) => {
+      grupo.pericias.forEach((pericia) => {
+        novasPericias[pericia.id] = document.querySelector(`#pericia-${pericia.id}`)?.value.trim() || "";
+      });
+    });
+    const novasAnotacoes = document.querySelector("#treinadorAnotacoes")?.value ?? "";
+    await OBR.scene.items.updateItems([token.id], (items) => {
+      for (const item of items) {
+        PERICIAS.forEach((grupo) => {
+          grupo.pericias.forEach((pericia) => {
+            item.metadata[`${PREFIX}/pericia-${pericia.id}`] = novasPericias[pericia.id];
+          });
+        });
+        item.metadata[`${PREFIX}/treinador-anotacoes`] = novasAnotacoes;
+      }
+    });
+  });
+}
 function menuPokemon(paginaAtual) {
 return `
     <div class="fichaAbas" style="
