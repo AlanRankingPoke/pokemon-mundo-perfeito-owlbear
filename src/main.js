@@ -14,6 +14,10 @@ const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
 const META_TREINADOR_ESPECIALIZACOES = `${PREFIX}/treinador-especializacoes`;
 const META_TREINADOR_TALENTOS = `${PREFIX}/treinador-talentos`;
 const META_TREINADOR_ORIGEM = `${PREFIX}/treinador-origem`;
+const META_TREINADOR_CLASSE = `${PREFIX}/treinador-classe`;
+const META_AS_MESTRE_BATALHA_USOS = `${PREFIX}/classe-as-mestre-batalha-usos`;
+const META_AS_RITMO_COMBATE_USOS = `${PREFIX}/classe-as-ritmo-combate-usos`;
+const META_AS_TROCA_RAPIDA_USOS = `${PREFIX}/classe-as-troca-rapida-usos`;
 const META_RIVAL_LICAO = `${PREFIX}/origem-rival-licao`;
 const META_RIVAL_REVANCHE = `${PREFIX}/origem-rival-revanche`;
 const META_RIVAL_SEQUENCIA = `${PREFIX}/origem-rival-sequencia`;
@@ -3383,6 +3387,61 @@ async function salvarEspecializacoesTreinador(token, lista) {
 }
 
 
+const CLASSES_TREINADOR = [
+  {
+    id: "treinador-as",
+    nome: "TREINADOR ÁS",
+    resumo: "Especialista em batalhas Pokémon, com recursos que crescem conforme o nível do treinador."
+  }
+];
+
+function classeTreinadorPorId(id) {
+  return CLASSES_TREINADOR.find((classe) => classe.id === id) || null;
+}
+
+async function salvarClasseTreinador(token, classeId) {
+  const classeValida = classeTreinadorPorId(classeId) ? classeId : null;
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) item.metadata[META_TREINADOR_CLASSE] = classeValida;
+  });
+  token.metadata[META_TREINADOR_CLASSE] = classeValida;
+}
+
+async function salvarEstadoClasse(token, alteracoes) {
+  const entradas = Object.entries(alteracoes || {});
+  if (!entradas.length) return;
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      for (const [chave, valor] of entradas) item.metadata[chave] = valor;
+    }
+  });
+  for (const [chave, valor] of entradas) token.metadata[chave] = valor;
+}
+
+function maxUsosClasseAs(token) {
+  const modSab = Math.trunc(Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-sab`] ?? "0").replace(",", ".")) || 0);
+  return Math.max(1, 1 + modSab);
+}
+
+function usosClasseAs(token, chave) {
+  const max = maxUsosClasseAs(token);
+  const salvo = token?.metadata?.[chave];
+  if (salvo === undefined || salvo === null || salvo === "") return max;
+  return Math.max(0, Math.min(max, Math.trunc(Number(salvo) || 0)));
+}
+
+function blocoClasseAs({ titulo, nivel, liberado, texto, extra = "" }) {
+  return `
+    <div class="classeHab ${liberado ? "liberada" : "bloqueada"}">
+      <div class="classeHabTopo">
+        <div><strong>${esc(titulo)}</strong><span>LV. ${nivel}</span></div>
+        <span class="classeHabEstado">${liberado ? "LIBERADA" : `🔒 LV. ${nivel}`}</span>
+      </div>
+      <div class="classeHabTexto">${esc(texto)}</div>
+      ${liberado ? extra : ""}
+    </div>`;
+}
+
 const ORIGENS_TREINADOR = [
   {
     id: "atleta",
@@ -3511,10 +3570,78 @@ function opcoesPericiasOrigemRival() {
 
 function mostrarFichaTreinadorClasOri(token) {
   const app = document.querySelector("#app");
+  const classe = classeTreinadorPorId(token.metadata[META_TREINADOR_CLASSE]);
+  const nivelTreinador = nivelTreinadorNormalizado(token.metadata[`${PREFIX}/treinador-nivel`] ?? 1);
+  const maxUsosAs = maxUsosClasseAs(token);
+  const mestreBatalhaUsos = usosClasseAs(token, META_AS_MESTRE_BATALHA_USOS);
+  const ritmoCombateUsos = usosClasseAs(token, META_AS_RITMO_COMBATE_USOS);
+  const trocaRapidaUsos = usosClasseAs(token, META_AS_TROCA_RAPIDA_USOS);
   const origem = origemTreinadorPorId(token.metadata[META_TREINADOR_ORIGEM]);
   const rivalLicao = token.metadata[META_RIVAL_LICAO] === true;
   const rivalRevanche = token.metadata[META_RIVAL_REVANCHE] === true;
   const rivalSequencia = Math.max(0, Math.min(3, Math.trunc(Number(token.metadata[META_RIVAL_SEQUENCIA]) || 0)));
+
+  const conteudoClasse = () => {
+    if (!classe) return "";
+    if (classe.id !== "treinador-as") return "";
+
+    const nivel2 = nivelTreinador >= 2;
+    const nivel5 = nivelTreinador >= 5;
+    const nivel9 = nivelTreinador >= 9;
+    const nivel15 = nivelTreinador >= 15;
+
+    return `
+      <div class="classeResumoNivel">NÍVEL DO TREINADOR: <strong>${nivelTreinador}</strong></div>
+      ${blocoClasseAs({
+        titulo: "TREINADOR ÁS",
+        nivel: 2,
+        liberado: nivel2,
+        texto: "Começando no 2º nível, todos os seus Pokémon recebem +1 em suas rolagens de ataque e dano. Esse bônus é apenas uma regra da classe e não altera automaticamente as fichas dos Pokémon."
+      })}
+      ${blocoClasseAs({
+        titulo: "MESTRE DE BATALHA",
+        nivel: 5,
+        liberado: nivel5,
+        texto: "Você possui uma reserva de dados de batalha (d6) igual a 1 + seu modificador de Sabedoria, mínimo de 1. Depois de uma rolagem inicial, pode usar um desses dados para acrescentar o resultado a uma única rolagem de ataque ou dano de um de seus Pokémon.",
+        extra: `
+          <div class="classeRecurso">
+            <div class="classeRecursoTopo"><span>DADOS DE BATALHA</span><strong>${mestreBatalhaUsos}/${maxUsosAs} d6</strong></div>
+            <div class="classeAcoes">
+              <button type="button" class="classeAcao" id="usarMestreBatalha" ${mestreBatalhaUsos > 0 ? "" : "disabled"}>🎲 ROLAR 1D6</button>
+              <button type="button" class="classeRestaurar" id="restaurarMestreBatalha">RESTAURAR</button>
+            </div>
+          </div>`
+      })}
+      ${blocoClasseAs({
+        titulo: "RITMO DE COMBATE",
+        nivel: 9,
+        liberado: nivel9,
+        texto: "Seus Pokémon ganham +3 metros de deslocamento. Além disso, ao realizar uma rolagem de iniciativa, você pode rolar 1d6 adicional. Esta parte de deslocamento é apenas descritiva e não altera automaticamente a ficha do Pokémon.",
+        extra: `
+          <div class="classeRecurso">
+            <div class="classeRecursoTopo"><span>USOS DE RITMO</span><strong>${ritmoCombateUsos}/${maxUsosAs}</strong></div>
+            <div class="classeAcoes">
+              <button type="button" class="classeAcao" id="usarRitmoCombate" ${ritmoCombateUsos > 0 ? "" : "disabled"}>🎲 ROLAR +1D6 INICIATIVA</button>
+              <button type="button" class="classeRestaurar" id="restaurarRitmoCombate">RESTAURAR</button>
+            </div>
+          </div>`
+      })}
+      ${blocoClasseAs({
+        titulo: "TROCA RÁPIDA",
+        nivel: 15,
+        liberado: nivel15,
+        texto: "Você pode recolher e liberar Pokémon como uma ação bônus em vez de uma ação padrão. Um Pokémon não pode ser trocado até o final do seu primeiro turno completo em combate, salvo efeitos específicos que permitam a troca.",
+        extra: `
+          <div class="classeRecurso">
+            <div class="classeRecursoTopo"><span>USOS DE TROCA RÁPIDA</span><strong>${trocaRapidaUsos}/${maxUsosAs}</strong></div>
+            <div class="classeAcoes">
+              <button type="button" class="classeAcao" id="usarTrocaRapida" ${trocaRapidaUsos > 0 ? "" : "disabled"}>USAR</button>
+              <button type="button" class="classeRestaurar" id="restaurarTrocaRapida">RESTAURAR</button>
+            </div>
+          </div>`
+      })}
+    `;
+  };
 
   const botoesOrigem = () => {
     if (!origem) return "";
@@ -3568,6 +3695,18 @@ function mostrarFichaTreinadorClasOri(token) {
       .clasOriTitulo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 auto 9px;text-align:center}.clasOriTitulo>div{width:100%;margin:0 auto;text-align:center}
       .clasOriTitulo h3{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;box-sizing:border-box;margin:0 auto;color:#2e5f9d;font-size:15px;font-weight:1000;letter-spacing:.5px;border:1px solid #d4e2f1;border-radius:11px;background:linear-gradient(180deg,#f8fbff 0%,#f0f6fd 100%)}
       .clasOriTitulo p{max-width:340px;margin:7px auto 0;color:#71859d;font-size:8.5px;line-height:1.35;font-weight:800;text-align:center}
+      .classeVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #8fb2dd!important;border-radius:11px!important;background:#f5f9ff!important;color:#2e5f9d!important;font-weight:1000!important;font-size:10px!important;text-align:center!important;cursor:pointer}
+      .classeCard{width:100%;max-width:410px;margin:0 auto;border:1px solid #bfd4ea;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 8px rgba(33,70,110,.08);text-align:left}
+      .classeCardTopo{position:relative;width:100%;display:flex;align-items:center;justify-content:center;padding:10px 58px 10px 12px;background:linear-gradient(180deg,#f3f8ff,#edf5ff);border:0;cursor:pointer;text-align:center}
+      .classeNome{display:block;width:100%;font-size:12px;font-weight:1000;color:#214f89;letter-spacing:.5px;text-align:center}
+      .classeSeta{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:9px;color:#56779e;font-weight:1000;white-space:nowrap}
+      .classeRemover{width:27px!important;height:27px!important;min-height:27px!important;padding:0!important;border-radius:50%!important;font-size:14px!important;flex:0 0 27px;cursor:pointer}
+      .classeDetalhes{display:none;padding:10px;border-top:1px solid #dce8f4;background:#fff}.classeDetalhes.aberto{display:block}
+      .classeResumoNivel{margin:0 0 8px;padding:7px 8px;border-radius:8px;background:#edf5ff;color:#5f7794;font-size:8px;font-weight:900;text-align:center}.classeResumoNivel strong{color:#2867b4;font-size:11px}
+      .classeHab{margin-top:7px;padding:8px;border:1px solid #d7e3f0;border-radius:9px;background:#fbfdff}.classeHab:first-of-type{margin-top:0}
+      .classeHab.bloqueada{opacity:.56;background:#f6f7f9}.classeHabTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}.classeHabTopo>div{display:flex;align-items:center;gap:6px;min-width:0}.classeHabTopo strong{font-size:9px;color:#2d5e98}.classeHabTopo>div span{font-size:7px;color:#8597aa;font-weight:1000}.classeHabEstado{padding:3px 6px;border-radius:999px;background:#dff3e6;color:#358151;font-size:7px;font-weight:1000;white-space:nowrap}.classeHab.bloqueada .classeHabEstado{background:#e9edf2;color:#8996a5}.classeHabTexto{font-size:8.5px;line-height:1.4;color:#566c84;font-weight:700}
+      .classeRecurso{margin-top:7px;padding:7px;border:1px solid #dbe7f3;border-radius:8px;background:#fff}.classeRecursoTopo{display:flex;justify-content:space-between;align-items:center;gap:7px;color:#6b7f96;font-size:7.5px;font-weight:1000}.classeRecursoTopo strong{font-size:10px;color:#2c67aa}.classeAcoes{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:6px;margin-top:6px}.classeAcao,.classeRestaurar{min-height:32px!important;padding:6px!important;font-size:8px!important;font-weight:1000!important}.classeAcao{background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important}.classeRestaurar{background:#f7f9fc!important;border-color:#c7d4e3!important;color:#627991!important}
+      .guiaClasseOverlay{display:none;position:fixed;z-index:5001;inset:0;background:rgba(13,26,43,.55);padding:16px;overflow:auto}.guiaClasseOverlay.aberto{display:block}.guiaClasseTopo{position:sticky;top:-16px;z-index:2;background:#fff;margin:-16px -16px 10px;padding:13px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #dce6f0}.guiaClasseTopo h3{margin:0;color:#274c79;font-size:14px}.guiaClasseTopo p{margin:2px 0 0;color:#8798aa;font-size:8px;font-weight:700}.guiaClasseFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:15px!important}.guiaClasseLista{display:grid;gap:7px}.guiaClasseOpcao{width:100%;padding:10px!important;border:1px solid #cfdeee!important;border-radius:10px!important;background:#fff!important;text-align:left!important;cursor:pointer}.guiaClasseOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#2e5f9d}.guiaClasseOpcaoTexto{display:block;margin-top:4px;font-size:8px;line-height:1.35;font-weight:700;color:#5b6f87}
       .origemVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #a9bfd8!important;border-radius:11px!important;background:#f8fbff!important;color:#52749d!important;font-weight:900!important;font-size:10px!important;text-align:center!important;cursor:pointer}
       .origemCard{width:100%;max-width:410px;margin:0 auto;border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(33,70,110,.06);text-align:left}
       .origemCardTopo{position:relative;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 52px 10px 11px;background:#f8fbff;border:0;cursor:pointer;text-align:center}
@@ -3604,6 +3743,24 @@ function mostrarFichaTreinadorClasOri(token) {
     </style>
 
     <section class="clasOriSecao">
+      <div class="clasOriTitulo"><div><h3>CLASSE</h3><p>Escolha a classe do treinador e acompanhe a progressão por nível.</p></div></div>
+      ${classe ? `
+        <div class="classeCard">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 31px;align-items:center;gap:5px;padding:5px;background:#f3f8ff;">
+            <button type="button" class="classeCardTopo" id="abrirClasseSelecionada">
+              <span class="classeNome">${esc(classe.nome)}</span>
+              <span class="classeSeta" id="setaClasseSelecionada">VER ▾</span>
+            </button>
+            <button type="button" class="classeRemover" id="removerClasseTreinador" title="Remover classe">×</button>
+          </div>
+          <div class="classeDetalhes" id="detalhesClasseSelecionada">
+            ${conteudoClasse()}
+          </div>
+        </div>
+      ` : `<button type="button" class="classeVazia" id="escolherClasseTreinador">＋ ESCOLHER CLASSE</button>`}
+    </section>
+
+    <section class="clasOriSecao">
       <div class="clasOriTitulo"><div><h3>ORIGEM</h3><p>Escolha a origem do treinador e consulte sua habilidade.</p></div></div>
       ${origem ? `
         <div class="origemCard">
@@ -3623,10 +3780,20 @@ function mostrarFichaTreinadorClasOri(token) {
       ` : `<button type="button" class="origemVazia" id="escolherOrigemTreinador">＋ ESCOLHER ORIGEM</button>`}
     </section>
 
-    <section class="clasOriSecao">
-      <div class="clasOriTitulo"><div><h3>CLASSE</h3><p>A estrutura está reservada para cadastrarmos as classes.</p></div></div>
-      <div class="classePlaceholder">CLASSE AINDA NÃO CONFIGURADA</div>
-    </section>
+    <div class="guiaClasseOverlay" id="guiaClassesTreinador">
+      <div class="guiaClasseTopo">
+        <div><h3>GUIA DE CLASSES</h3><p>Escolha a classe do seu treinador.</p></div>
+        <button type="button" class="guiaClasseFechar" id="fecharGuiaClasses">×</button>
+      </div>
+      <div class="guiaClasseLista">
+        ${CLASSES_TREINADOR.map((item) => `
+          <button type="button" class="guiaClasseOpcao" data-classe-escolha="${item.id}">
+            <span class="guiaClasseOpcaoNome">${esc(item.nome)}</span>
+            <span class="guiaClasseOpcaoTexto">${esc(item.resumo)}</span>
+          </button>
+        `).join("")}
+      </div>
+    </div>
 
     <div class="guiaOrigemOverlay" id="guiaOrigensTreinador">
       <div class="guiaOrigemTopo">
@@ -3646,6 +3813,83 @@ function mostrarFichaTreinadorClasOri(token) {
   `;
 
   ativarCabecalhoTreinador(token);
+
+  const overlayClasse = document.querySelector("#guiaClassesTreinador");
+  const abrirGuiaClasse = () => overlayClasse?.classList.add("aberto");
+  const fecharGuiaClasse = () => overlayClasse?.classList.remove("aberto");
+  document.querySelector("#escolherClasseTreinador")?.addEventListener("click", abrirGuiaClasse);
+  document.querySelector("#fecharGuiaClasses")?.addEventListener("click", fecharGuiaClasse);
+  overlayClasse?.addEventListener("click", (evento) => { if (evento.target === overlayClasse) fecharGuiaClasse(); });
+
+  document.querySelectorAll("[data-classe-escolha]").forEach((botao) => {
+    botao.addEventListener("click", async () => {
+      await salvarClasseTreinador(token, botao.dataset.classeEscolha);
+      const atualizado = await pegarTokenAtualizado(token.id);
+      if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+    });
+  });
+
+  document.querySelector("#abrirClasseSelecionada")?.addEventListener("click", () => {
+    const detalhes = document.querySelector("#detalhesClasseSelecionada");
+    const seta = document.querySelector("#setaClasseSelecionada");
+    if (!detalhes) return;
+    const abrindo = !detalhes.classList.contains("aberto");
+    detalhes.classList.toggle("aberto", abrindo);
+    if (seta) seta.textContent = abrindo ? "RECOLHER ▴" : "VER ▾";
+  });
+
+  document.querySelector("#removerClasseTreinador")?.addEventListener("click", async () => {
+    await salvarClasseTreinador(token, null);
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaTreinadorClasOri(atualizado);
+  });
+
+  const redesenharClasseAberta = async () => {
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (!atualizado) return;
+    mostrarFichaTreinadorClasOri(atualizado);
+    const detalhes = document.querySelector("#detalhesClasseSelecionada");
+    const seta = document.querySelector("#setaClasseSelecionada");
+    detalhes?.classList.add("aberto");
+    if (seta) seta.textContent = "RECOLHER ▴";
+  };
+
+  document.querySelector("#usarMestreBatalha")?.addEventListener("click", async () => {
+    const atual = usosClasseAs(token, META_AS_MESTRE_BATALHA_USOS);
+    if (atual <= 0) return;
+    const resultado = await rolarNoDicePlusComResultado("1d6", "Mestre de Batalha", "Dado de Batalha");
+    if (resultado === null) return;
+    await salvarEstadoClasse(token, { [META_AS_MESTRE_BATALHA_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarMestreBatalha")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_AS_MESTRE_BATALHA_USOS]: maxUsosClasseAs(token) });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarRitmoCombate")?.addEventListener("click", async () => {
+    const atual = usosClasseAs(token, META_AS_RITMO_COMBATE_USOS);
+    if (atual <= 0) return;
+    const resultado = await rolarNoDicePlusComResultado("1d6", "Ritmo de Combate", "+1d6 Iniciativa");
+    if (resultado === null) return;
+    await salvarEstadoClasse(token, { [META_AS_RITMO_COMBATE_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarRitmoCombate")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_AS_RITMO_COMBATE_USOS]: maxUsosClasseAs(token) });
+    await redesenharClasseAberta();
+  });
+
+  document.querySelector("#usarTrocaRapida")?.addEventListener("click", async () => {
+    const atual = usosClasseAs(token, META_AS_TROCA_RAPIDA_USOS);
+    if (atual <= 0) return;
+    await salvarEstadoClasse(token, { [META_AS_TROCA_RAPIDA_USOS]: atual - 1 });
+    await redesenharClasseAberta();
+  });
+  document.querySelector("#restaurarTrocaRapida")?.addEventListener("click", async () => {
+    await salvarEstadoClasse(token, { [META_AS_TROCA_RAPIDA_USOS]: maxUsosClasseAs(token) });
+    await redesenharClasseAberta();
+  });
 
   const overlay = document.querySelector("#guiaOrigensTreinador");
   const abrirGuia = () => overlay?.classList.add("aberto");
