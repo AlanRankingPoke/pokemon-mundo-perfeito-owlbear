@@ -342,9 +342,9 @@ const ESTILO_FICHA = `
     --pm-line: #d8e2ee;
     --pm-text: #1f2f46;
     --pm-muted: #6c7d93;
-    --pm-blue: #3f82e8;
-    --pm-blue-strong: #2868c9;
-    --pm-blue-soft: #eaf3ff;
+    --pm-blue: #e53935;
+    --pm-blue-strong: #b71c1c;
+    --pm-blue-soft: #fff0f0;
     --pm-red: #e85858;
     --pm-shadow: 0 8px 24px rgba(28, 54, 86, 0.10);
   }
@@ -364,14 +364,14 @@ const ESTILO_FICHA = `
     letter-spacing: -0.4px;
   }
   #app h3 {
-    color: #2c5f9f !important;
+    color: #a61b1b !important;
     font-size: 16px !important;
     font-weight: 800 !important;
     margin: 15px 0 9px !important;
     padding: 9px 11px;
     border-radius: 9px;
-    background: linear-gradient(90deg, #edf5ff 0%, #f8fbff 100%);
-    border: 1px solid #d9e8fb;
+    background: linear-gradient(90deg, #fff3f3 0%, #fffafa 100%);
+    border: 1px solid #efbcbc;
   }
   #app p {
     margin: 8px 0 5px !important;
@@ -406,7 +406,7 @@ const ESTILO_FICHA = `
   }
   #app input:hover,
   #app textarea:hover {
-    border-color: #9fb9da !important;
+    border-color: #d18b8b !important;
   }
   #app input:focus,
   #app textarea:focus {
@@ -424,9 +424,9 @@ const ESTILO_FICHA = `
     transition: transform .1s ease, border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;
   }
   #app button:hover {
-    border-color: #82afea !important;
-    background: #edf5ff !important;
-    color: #235fae !important;
+    border-color: #dc4b4b !important;
+    background: #fff3f3 !important;
+    color: #b71c1c !important;
     box-shadow: 0 4px 10px rgba(63,130,232,.12);
   }
   #app button:active {
@@ -470,8 +470,8 @@ const ESTILO_FICHA = `
     justify-content:center !important;
     overflow:hidden !important;
     border-radius:16px !important;
-    border:2px solid #7bb0f3 !important;
-    background: linear-gradient(145deg, #f7fbff, #edf5ff) !important;
+    border:2px solid #d93636 !important;
+    background: linear-gradient(145deg, #fffafa, #fff3f3) !important;
     box-shadow: 0 4px 10px rgba(49, 103, 171, 0.10);
     padding:4px !important;
   }
@@ -499,8 +499,8 @@ const ESTILO_FICHA = `
     background: #f6f8fb !important;
   }
   #trocarTipo:hover {
-    background:#eaf3ff !important;
-    color:#245fae !important;
+    background:#fff0f0 !important;
+    color:#b71c1c !important;
   }
   .fichaAbas {
     display:flex !important;
@@ -538,9 +538,9 @@ const ESTILO_FICHA = `
   #paginaTreinador4[style*="opacity:1"],
   #paginaTreinador5[style*="opacity:1"],
   #paginaTreinador6[style*="opacity:1"] {
-    background: linear-gradient(135deg, #4c8dff 0%, #2f73dc 100%) !important;
+    background: linear-gradient(135deg, #ef4444 0%, #c62828 100%) !important;
     color:#ffffff !important;
-    border-color:#2f73dc !important;
+    border-color:#c62828 !important;
     box-shadow:0 4px 10px rgba(47,115,220,.20) !important;
   }
   .statusGrid {
@@ -582,8 +582,8 @@ const ESTILO_FICHA = `
 
   /* STATUS DO POKÉMON — mais nítido e compacto */
   .pokemonStatusPrincipal {
-    background:linear-gradient(180deg,#f8fbff 0%,#eef5ff 100%) !important;
-    border:1px solid #c9d9ee !important;
+    background:linear-gradient(180deg,#fffafa 0%,#fff5f5 100%) !important;
+    border:1px solid #d9a5a5 !important;
     border-radius:14px !important;
     padding:10px !important;
     box-shadow:0 4px 14px rgba(44,86,140,.10) !important;
@@ -612,7 +612,7 @@ const ESTILO_FICHA = `
   .pokemonStatusCampo {
     min-width:0 !important;
     padding:7px !important;
-    border:1px solid #d6e3f2 !important;
+    border:1px solid #e0b0b0 !important;
     border-radius:11px !important;
     background:#ffffff !important;
   }
@@ -636,29 +636,29 @@ const ESTILO_FICHA = `
     font-size:16px !important;
     font-weight:900 !important;
     color:#18385f !important;
-    background:#f7fbff !important;
-    border:1px solid #a9c4e7 !important;
+    background:#fffafa !important;
+    border:1px solid #dda0a0 !important;
     border-radius:9px !important;
     box-shadow:inset 0 1px 2px rgba(33,68,110,.05) !important;
   }
 
   .pokemonStatusCampo input:focus {
     background:#ffffff !important;
-    border-color:#4c8dff !important;
+    border-color:#ef4444 !important;
     box-shadow:0 0 0 3px rgba(76,141,255,.12) !important;
   }
 
   .pokemonCalculadoraCard {
     margin-top:9px !important;
     padding:8px !important;
-    border:1px solid #d7e3f2 !important;
+    border:1px solid #e0b0b0 !important;
     border-radius:11px !important;
     background:#ffffff !important;
   }
 
   .pokemonCalculadoraCard .calculadoraTitulo {
     margin:0 0 6px !important;
-    color:#365a86 !important;
+    color:#8f1d1d !important;
     font-size:11px !important;
     font-weight:900 !important;
   }
@@ -668,8 +668,8 @@ const ESTILO_FICHA = `
   }
 
   .pokemonCalculadoraCard #alterarHp {
-    background:#f8fbff !important;
-    border:1px solid #abc3e2 !important;
+    background:#fffafa !important;
+    border:1px solid #d89a9a !important;
     color:#203149 !important;
     font-weight:800 !important;
   }
@@ -737,8 +737,8 @@ const ESTILO_FICHA = `
     gap:8px !important;
     padding:8px 9px;
     border-radius:9px;
-    background:#f5f9ff;
-    border:1px solid #dbe8f7;
+    background:#fff8f8;
+    border:1px solid #efcaca;
   }
   #proficiencia,
   #treinadorProficiencia {
@@ -878,13 +878,13 @@ const ESTILO_FICHA = `
     line-height:1 !important;
   }
   .iniciativaCheck.ativo {
-    background:#eaf3ff !important;
-    color:#245fae !important;
-    border-color:#7aa8e6 !important;
+    background:#fff0f0 !important;
+    color:#b71c1c !important;
+    border-color:#d45d5d !important;
   }
   .iniciativaCheck.ativo .iniciativaCheckBolinha {
-    background:#3f82e8 !important;
-    border-color:#2868c9 !important;
+    background:#e53935 !important;
+    border-color:#b71c1c !important;
     color:#fff !important;
   }
   #botaoSuperEfetivo.super2 {
@@ -899,9 +899,9 @@ const ESTILO_FICHA = `
   }
   #botaoResistente.resistente2,
   #botaoResistente.resistente4 {
-    background:linear-gradient(135deg, #65a9ff 0%, #367bd4 100%) !important;
+    background:linear-gradient(135deg, #ef5350 0%, #d32f2f 100%) !important;
     color:#fff !important;
-    border-color:#2f6dbd !important;
+    border-color:#b71c1c !important;
   }
   .opcoesSuperEfetivo,
   .opcoesResistente,
@@ -959,9 +959,9 @@ const ESTILO_FICHA = `
   }
   .divisorResistente[data-fator="0.5"].ativo,
   .divisorResistente[data-fator="0.25"].ativo {
-    background:#3f82e8 !important;
+    background:#e53935 !important;
     color:#fff !important;
-    border-color:#2868c9 !important;
+    border-color:#b71c1c !important;
   }
   #botaoMove.moveFisico {
     background:linear-gradient(135deg, #f59a55 0%, #d96e2b 100%) !important;
@@ -1009,7 +1009,7 @@ const ESTILO_FICHA = `
     gap:5px !important;
     min-width:0 !important;
     padding:4px 6px !important;
-    border:1px solid #dbe5f0 !important;
+    border:1px solid #e2bcbc !important;
     border-radius:10px !important;
     background:#fbfdff !important;
   }
@@ -1053,11 +1053,11 @@ const ESTILO_FICHA = `
     white-space:nowrap !important;
   }
   .movimentoValor {
-    border-color:#a8c7ef !important;
-    background:linear-gradient(180deg, #ffffff 0%, #f3f8ff 100%) !important;
+    border-color:#e3a0a0 !important;
+    background:linear-gradient(180deg, #ffffff 0%, #fff7f7 100%) !important;
   }
   .movimentoValor:not(:focus) {
-    color:#245fae !important;
+    color:#b71c1c !important;
   }
   .movimentoValor:focus {
     color:#203149 !important;
@@ -1076,9 +1076,9 @@ const ESTILO_FICHA = `
   .rolarD6,
   #rolarCaptura,
   #rolarIniciativa {
-    background: linear-gradient(180deg, #f4f9ff 0%, #e7f2ff 100%) !important;
-    color:#2865be !important;
-    border-color:#a8c7ef !important;
+    background: linear-gradient(180deg, #fff7f7 0%, #e7f2ff 100%) !important;
+    color:#b71c1c !important;
+    border-color:#e3a0a0 !important;
   }
   #salvarPokemonStatus,
   #salvarPokemonMoves,
@@ -1087,7 +1087,7 @@ const ESTILO_FICHA = `
   #salvarTreinadorPerNot {
     min-height:42px !important;
     border:0 !important;
-    background: linear-gradient(135deg, #4c8dff 0%, #286bd7 100%) !important;
+    background: linear-gradient(135deg, #ef4444 0%, #c62828 100%) !important;
     color:#fff !important;
     box-shadow:0 5px 12px rgba(40,107,215,.22) !important;
   }
@@ -1105,7 +1105,7 @@ const ESTILO_FICHA = `
     box-shadow:0 2px 8px rgba(30,50,80,.055) !important;
   }
   details:hover {
-    border-color:#a9c4e5 !important;
+    border-color:#d99b9b !important;
   }
   summary {
     color:#2d4462 !important;
@@ -1138,383 +1138,145 @@ const ESTILO_FICHA = `
     }
   }
 
-  /* PERSONALIZAÇÃO LOCAL DA FICHA */
-  #app.fichaPersonalizada {
-    background-image:
-      linear-gradient(
-        rgba(255,255,255,var(--ficha-overlay, .58)),
-        rgba(246,249,253,var(--ficha-overlay, .58))
-      ),
-      var(--ficha-bg-image) !important;
-    background-size: cover !important;
-    background-position: center !important;
-    background-repeat: no-repeat !important;
-    background-attachment: local !important;
-  }
-  #app.fichaPersonalizada .fichaCabecalho {
-    background: rgba(255,255,255,.76) !important;
-    border: 1px solid rgba(204,218,235,.85) !important;
-    border-radius: 14px !important;
-    padding: 8px !important;
-    box-shadow: 0 5px 18px rgba(30,55,84,.10) !important;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  #app.fichaPersonalizada .statusCard,
-  #app.fichaPersonalizada .pokemonStatusPrincipal,
-  #app.fichaPersonalizada .pokemonStatusCampo,
-  #app.fichaPersonalizada details {
-    background: rgba(255,255,255,.84) !important;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  #app.fichaPersonalizada input,
-  #app.fichaPersonalizada textarea,
-  #app.fichaPersonalizada select {
-    background: rgba(255,255,255,.91) !important;
-  }
-  .fichaAcoesCabecalho {
-    display:flex !important;
-    align-items:center !important;
-    justify-content:flex-end !important;
-    gap:6px !important;
-    flex:0 0 auto !important;
-  }
-  #personalizarFicha {
-    flex:0 0 auto !important;
-    min-height:34px !important;
-    padding:7px 9px !important;
-    white-space:nowrap !important;
-    border-radius:999px !important;
-    font-size:9.5px !important;
-    color:#53647a !important;
-    background:#f6f8fb !important;
-  }
-  #personalizarFicha:hover {
-    background:#eaf3ff !important;
-    color:#245fae !important;
-  }
-  .painelPersonalizacaoFicha {
-    position:fixed;
-    top:72px;
-    right:12px;
-    z-index:99999;
-    width:min(300px, calc(100vw - 24px));
-    padding:12px;
-    border:1px solid #c9d8e9;
-    border-radius:14px;
-    background:rgba(248,251,255,.96);
-    box-shadow:0 18px 50px rgba(24,47,79,.24);
-    backdrop-filter:blur(14px);
-    -webkit-backdrop-filter:blur(14px);
-  }
-  .painelPersonalizacaoTopo {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:8px;
-    margin-bottom:10px;
-  }
-  .painelPersonalizacaoTitulo {
-    font-size:11px;
-    font-weight:1000;
-    color:#284d7c;
-    letter-spacing:.35px;
-  }
-  .painelPersonalizacaoFechar {
-    width:28px!important;
-    height:28px!important;
-    min-height:28px!important;
-    padding:0!important;
-    border-radius:50%!important;
-  }
-  .painelPersonalizacaoAcoes {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:7px;
-  }
-  .painelPersonalizacaoAcoes button {
-    min-height:34px!important;
-    padding:7px 8px!important;
-    font-size:9px!important;
-  }
-  .painelPersonalizacaoLinha {
-    margin-top:10px;
-    padding-top:9px;
-    border-top:1px solid #dce6f1;
-  }
-  .painelPersonalizacaoLinha label {
-    display:flex;
-    justify-content:space-between;
-    gap:8px;
-    margin-bottom:5px;
-  }
-  .painelPersonalizacaoLinha input[type="range"] {
-    width:100%;
-    padding:0!important;
-    min-height:24px!important;
-    box-shadow:none!important;
-  }
-  @media (max-width: 430px) {
-    .fichaAcoesCabecalho {
-      flex-direction:column !important;
-      gap:4px !important;
-    }
-    #personalizarFicha,
-    #trocarTipo {
-      min-height:30px !important;
-      padding:5px 7px !important;
-      font-size:8.5px !important;
-    }
-  }
 
+  /* ===== TEMA POKÉMON — VERMELHO + PRETO ===== */
+  :root {
+    --pm-line:#202020;
+    --pm-text:#111111;
+    --pm-muted:#4a4a4a;
+    --pm-blue:#e53935;
+    --pm-blue-strong:#b71c1c;
+    --pm-blue-soft:#fff0f0;
+    --pm-red:#e53935;
+  }
+  #app {
+    color:#111111 !important;
+    background:linear-gradient(180deg,#ffffff 0%,#fafafa 100%) !important;
+  }
+  #app h2,
+  #app p,
+  #app label,
+  #app .fichaSubtitulo {
+    color:#111111 !important;
+  }
+  #app h3 {
+    color:#b71c1c !important;
+    background:linear-gradient(90deg,#fff0f0 0%,#ffffff 100%) !important;
+    border-color:#202020 !important;
+  }
+  #app input,
+  #app textarea,
+  #app select {
+    color:#111111 !important;
+    border-color:#202020 !important;
+    background:#ffffff !important;
+  }
+  #app input:hover,
+  #app textarea:hover,
+  #app select:hover {
+    border-color:#c62828 !important;
+  }
+  #app input:focus,
+  #app textarea:focus,
+  #app select:focus {
+    border-color:#e53935 !important;
+    box-shadow:0 0 0 3px rgba(229,57,53,.14) !important;
+  }
+  #app button {
+    color:#111111 !important;
+    border-color:#202020 !important;
+    background:linear-gradient(180deg,#ffffff 0%,#f7f7f7 100%) !important;
+  }
+  #app button:hover {
+    color:#a31515 !important;
+    border-color:#d32f2f !important;
+    background:#fff1f1 !important;
+    box-shadow:0 4px 10px rgba(198,40,40,.12) !important;
+  }
+  .fichaAvatar {
+    border-color:#e53935 !important;
+    background:linear-gradient(145deg,#ffffff,#fff1f1) !important;
+    box-shadow:0 4px 10px rgba(183,28,28,.12) !important;
+  }
+  #trocarTipo {
+    color:#111111 !important;
+    border-color:#202020 !important;
+    background:#ffffff !important;
+  }
+  #trocarTipo:hover {
+    color:#b71c1c !important;
+    border-color:#d32f2f !important;
+    background:#fff0f0 !important;
+  }
+  #paginaPokemon1,
+  #paginaPokemon2,
+  #paginaPokemon3,
+  #paginaPokemon4 {
+    color:#111111 !important;
+    border-color:#202020 !important;
+  }
+  #paginaPokemon1[style*="opacity:1"],
+  #paginaPokemon2[style*="opacity:1"],
+  #paginaPokemon3[style*="opacity:1"],
+  #paginaPokemon4[style*="opacity:1"] {
+    color:#ffffff !important;
+    background:linear-gradient(135deg,#e53935 0%,#b71c1c 100%) !important;
+    border-color:#8f1111 !important;
+    box-shadow:0 4px 10px rgba(183,28,28,.20) !important;
+  }
+  .statusCard,
+  .pokemonStatusPrincipal,
+  .pokemonStatusCampo,
+  .pokemonCalculadoraCard,
+  .proficienciaLinha,
+  .treinadorPokemonSecao,
+  .treinadorPokemonSlot,
+  .seletorRosterPainel {
+    border-color:#202020 !important;
+  }
+  .pokemonStatusPrincipal,
+  .pokemonCalculadoraCard,
+  .proficienciaLinha {
+    background:linear-gradient(180deg,#ffffff 0%,#fff8f8 100%) !important;
+  }
+  .pokemonStatusCampo p,
+  .pokemonCalculadoraCard .calculadoraTitulo,
+  .treinadorPokemonNome,
+  .treinadorPokemonTitulo {
+    color:#111111 !important;
+  }
+  .pokemonStatusCampo input,
+  .pokemonCalculadoraCard #alterarHp {
+    color:#111111 !important;
+    border-color:#202020 !important;
+    background:#ffffff !important;
+  }
+  #ca {
+    border-left-color:#e53935 !important;
+  }
+  #app hr,
+  .pokemonDetalhesCompactos,
+  .registrarPokemonNovoLista {
+    border-color:#202020 !important;
+    background-color:#202020;
+  }
+  .treinadorPokemonMais,
+  .treinadorPokemonMoverAviso,
+  .seletorRosterTopo {
+    color:#b71c1c !important;
+  }
+  .treinadorPokemonMover {
+    background:#fff0f0 !important;
+    border-color:#202020 !important;
+    color:#b71c1c !important;
+  }
+  .treinadorPokemonMover.ativo {
+    background:#b71c1c !important;
+    color:#ffffff !important;
+    border-color:#8f1111 !important;
+  }
 </style>
 `;
-
-const DB_PERSONALIZACAO_FICHA = "pokemon-mundo-perfeito-personalizacao";
-const STORE_PERSONALIZACAO_FICHA = "fundos";
-let promessaBancoPersonalizacaoFicha = null;
-
-function abrirBancoPersonalizacaoFicha() {
-  if (promessaBancoPersonalizacaoFicha) return promessaBancoPersonalizacaoFicha;
-  promessaBancoPersonalizacaoFicha = new Promise((resolve) => {
-    if (!("indexedDB" in window)) {
-      resolve(null);
-      return;
-    }
-    try {
-      const requisicao = indexedDB.open(DB_PERSONALIZACAO_FICHA, 1);
-      requisicao.onupgradeneeded = () => {
-        const banco = requisicao.result;
-        if (!banco.objectStoreNames.contains(STORE_PERSONALIZACAO_FICHA)) {
-          banco.createObjectStore(STORE_PERSONALIZACAO_FICHA, { keyPath: "id" });
-        }
-      };
-      requisicao.onsuccess = () => resolve(requisicao.result);
-      requisicao.onerror = () => resolve(null);
-    } catch (_) {
-      resolve(null);
-    }
-  });
-  return promessaBancoPersonalizacaoFicha;
-}
-
-async function lerPersonalizacaoFicha(tokenId) {
-  const id = String(tokenId || "");
-  if (!id) return null;
-  const banco = await abrirBancoPersonalizacaoFicha();
-  if (banco) {
-    try {
-      return await new Promise((resolve) => {
-        const transacao = banco.transaction(STORE_PERSONALIZACAO_FICHA, "readonly");
-        const requisicao = transacao.objectStore(STORE_PERSONALIZACAO_FICHA).get(id);
-        requisicao.onsuccess = () => resolve(requisicao.result || null);
-        requisicao.onerror = () => resolve(null);
-      });
-    } catch (_) {}
-  }
-  try {
-    const bruto = localStorage.getItem(`${PREFIX}/personalizacao-ficha/${id}`);
-    return bruto ? JSON.parse(bruto) : null;
-  } catch (_) {
-    return null;
-  }
-}
-
-async function salvarPersonalizacaoFicha(tokenId, dados) {
-  const id = String(tokenId || "");
-  if (!id) return;
-  const registro = { id, ...dados };
-  const banco = await abrirBancoPersonalizacaoFicha();
-  if (banco) {
-    try {
-      await new Promise((resolve) => {
-        const transacao = banco.transaction(STORE_PERSONALIZACAO_FICHA, "readwrite");
-        transacao.objectStore(STORE_PERSONALIZACAO_FICHA).put(registro);
-        transacao.oncomplete = () => resolve();
-        transacao.onerror = () => resolve();
-        transacao.onabort = () => resolve();
-      });
-      return;
-    } catch (_) {}
-  }
-  try {
-    localStorage.setItem(`${PREFIX}/personalizacao-ficha/${id}`, JSON.stringify(registro));
-  } catch (_) {}
-}
-
-async function removerPersonalizacaoFicha(tokenId) {
-  const id = String(tokenId || "");
-  if (!id) return;
-  const banco = await abrirBancoPersonalizacaoFicha();
-  if (banco) {
-    try {
-      await new Promise((resolve) => {
-        const transacao = banco.transaction(STORE_PERSONALIZACAO_FICHA, "readwrite");
-        transacao.objectStore(STORE_PERSONALIZACAO_FICHA).delete(id);
-        transacao.oncomplete = () => resolve();
-        transacao.onerror = () => resolve();
-        transacao.onabort = () => resolve();
-      });
-    } catch (_) {}
-  }
-  try {
-    localStorage.removeItem(`${PREFIX}/personalizacao-ficha/${id}`);
-  } catch (_) {}
-}
-
-function lerArquivoComoDataUrl(arquivo) {
-  return new Promise((resolve, reject) => {
-    const leitor = new FileReader();
-    leitor.onload = () => resolve(String(leitor.result || ""));
-    leitor.onerror = () => reject(new Error("Não foi possível ler a imagem."));
-    leitor.readAsDataURL(arquivo);
-  });
-}
-
-function carregarImagemDataUrl(dataUrl) {
-  return new Promise((resolve, reject) => {
-    const imagem = new Image();
-    imagem.onload = () => resolve(imagem);
-    imagem.onerror = () => reject(new Error("Imagem inválida."));
-    imagem.src = dataUrl;
-  });
-}
-
-async function prepararImagemFundoFicha(arquivo) {
-  if (!arquivo || !String(arquivo.type || "").startsWith("image/")) {
-    throw new Error("Escolha uma imagem PNG, JPG ou WebP.");
-  }
-  const original = await lerArquivoComoDataUrl(arquivo);
-  const imagem = await carregarImagemDataUrl(original);
-  const limite = 1600;
-  const escala = Math.min(1, limite / Math.max(imagem.naturalWidth || 1, imagem.naturalHeight || 1));
-  const largura = Math.max(1, Math.round((imagem.naturalWidth || 1) * escala));
-  const altura = Math.max(1, Math.round((imagem.naturalHeight || 1) * escala));
-  const canvas = document.createElement("canvas");
-  canvas.width = largura;
-  canvas.height = altura;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(imagem, 0, 0, largura, altura);
-  const webp = canvas.toDataURL("image/webp", 0.82);
-  return webp && webp.startsWith("data:image/") ? webp : canvas.toDataURL("image/jpeg", 0.82);
-}
-
-function limparVisualPersonalizacaoFicha(app) {
-  if (!app) return;
-  app.classList.remove("fichaPersonalizada");
-  app.style.removeProperty("--ficha-bg-image");
-  app.style.removeProperty("--ficha-overlay");
-}
-
-async function aplicarPersonalizacaoFicha(token) {
-  const app = document.querySelector("#app");
-  if (!app || !token?.id) return;
-  const id = String(token.id);
-  app.dataset.personalizacaoToken = id;
-  const configuracao = await lerPersonalizacaoFicha(id);
-  if (!app.isConnected || app.dataset.personalizacaoToken !== id) return;
-  if (!configuracao?.imagem) {
-    limparVisualPersonalizacaoFicha(app);
-    return;
-  }
-  const overlay = Math.max(0.18, Math.min(0.90, Number(configuracao.overlay ?? 0.58)));
-  app.classList.add("fichaPersonalizada");
-  app.style.setProperty("--ficha-bg-image", `url("${String(configuracao.imagem).replace(/"/g, "%22")}")`);
-  app.style.setProperty("--ficha-overlay", String(overlay));
-}
-
-async function abrirPainelPersonalizacaoFicha(token) {
-  const app = document.querySelector("#app");
-  if (!app || !token?.id) return;
-  document.querySelector("#painelPersonalizacaoFicha")?.remove();
-
-  const configuracao = await lerPersonalizacaoFicha(token.id);
-  const overlayInicial = Math.round(Math.max(0.18, Math.min(0.90, Number(configuracao?.overlay ?? 0.58))) * 100);
-
-  const painel = document.createElement("div");
-  painel.id = "painelPersonalizacaoFicha";
-  painel.className = "painelPersonalizacaoFicha";
-  painel.innerHTML = `
-    <div class="painelPersonalizacaoTopo">
-      <div class="painelPersonalizacaoTitulo">🎨 FUNDO DA FICHA</div>
-      <button type="button" class="painelPersonalizacaoFechar" id="fecharPersonalizacaoFicha">×</button>
-    </div>
-    <input id="arquivoFundoFicha" type="file" accept="image/png,image/jpeg,image/webp" style="display:none!important">
-    <div class="painelPersonalizacaoAcoes">
-      <button type="button" id="escolherFundoFicha">ESCOLHER IMAGEM</button>
-      <button type="button" id="removerFundoFicha">REMOVER FUNDO</button>
-    </div>
-    <div class="painelPersonalizacaoLinha">
-      <label for="overlayFundoFicha">
-        <span>VÉU DE LEITURA</span>
-        <strong id="valorOverlayFundoFicha">${overlayInicial}%</strong>
-      </label>
-      <input id="overlayFundoFicha" type="range" min="18" max="90" step="1" value="${overlayInicial}">
-    </div>
-    <p style="margin-top:8px!important;font-size:8px!important;color:#7b8da4!important;font-weight:800!important;text-align:center;">
-      A imagem fica salva somente neste navegador e nesta ficha.
-    </p>
-  `;
-  app.appendChild(painel);
-
-  const arquivo = painel.querySelector("#arquivoFundoFicha");
-  const escolher = painel.querySelector("#escolherFundoFicha");
-  const remover = painel.querySelector("#removerFundoFicha");
-  const slider = painel.querySelector("#overlayFundoFicha");
-  const valorSlider = painel.querySelector("#valorOverlayFundoFicha");
-
-  painel.querySelector("#fecharPersonalizacaoFicha")?.addEventListener("click", () => painel.remove());
-  escolher?.addEventListener("click", () => arquivo?.click());
-
-  arquivo?.addEventListener("change", async () => {
-    const selecionado = arquivo.files?.[0];
-    if (!selecionado) return;
-    escolher.disabled = true;
-    const textoOriginal = escolher.textContent;
-    escolher.textContent = "PROCESSANDO...";
-    try {
-      const imagem = await prepararImagemFundoFicha(selecionado);
-      const overlay = Number(slider?.value || overlayInicial) / 100;
-      await salvarPersonalizacaoFicha(token.id, { imagem, overlay });
-      await aplicarPersonalizacaoFicha(token);
-    } catch (erro) {
-      alert(erro?.message || "Não foi possível usar essa imagem.");
-    } finally {
-      escolher.disabled = false;
-      escolher.textContent = textoOriginal;
-      if (arquivo) arquivo.value = "";
-    }
-  });
-
-  slider?.addEventListener("input", () => {
-    const numero = Number(slider.value || overlayInicial);
-    if (valorSlider) valorSlider.textContent = `${numero}%`;
-    app.style.setProperty("--ficha-overlay", String(numero / 100));
-  });
-  slider?.addEventListener("change", async () => {
-    const atual = await lerPersonalizacaoFicha(token.id);
-    if (!atual?.imagem) return;
-    await salvarPersonalizacaoFicha(token.id, {
-      imagem: atual.imagem,
-      overlay: Number(slider.value || overlayInicial) / 100
-    });
-  });
-
-  remover?.addEventListener("click", async () => {
-    await removerPersonalizacaoFicha(token.id);
-    limparVisualPersonalizacaoFicha(app);
-    painel.remove();
-  });
-}
-
-function ativarPersonalizacaoFicha(token) {
-  document.querySelector("#personalizarFicha")?.addEventListener("click", () => {
-    void abrirPainelPersonalizacaoFicha(token);
-  });
-  void aplicarPersonalizacaoFicha(token);
-}
-
 function urlApresentadorIniciativa() { const url = new URL(window.location.href);
 url.searchParams.set( "view", "initiative" );
 return url.toString(); }
@@ -1884,7 +1646,7 @@ papel.innerHTML = `
             .initTurno:hover{background:#2fbb6e;border-color:#a2ffc8}
             .initValorLinha{display:flex;align-items:center;justify-content:center;gap:2px}
             .initValor{
-                min-width:30px;padding:2px 5px;border-radius:999px;background:#2e72d2;color:#fff;
+                min-width:30px;padding:2px 5px;border-radius:999px;background:#d32f2f;color:#fff;
                 font-size:13px;font-weight:900;line-height:1.15;text-align:center
             }
             .initCard:first-child .initValor{background:#e97808}
@@ -2624,13 +2386,13 @@ async function mostrarFichaTreinadorPokemons(token) {
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(token, 2)}
     <style>
-      .treinadorPokemonSecao{margin-top:10px;padding:10px;border:1px solid #d6e2f0;border-radius:13px;background:linear-gradient(180deg,#fbfdff,#f3f8ff)}
-      .treinadorPokemonTitulo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:900;color:#315b90}
+      .treinadorPokemonSecao{margin-top:10px;padding:10px;border:1px solid #dfb2b2;border-radius:13px;background:linear-gradient(180deg,#fbfdff,#fff7f7)}
+      .treinadorPokemonTitulo{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:900;color:#8f1d1d}
       .treinadorPokemonGradeEquipe{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
       .treinadorPokemonGradePc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-      .treinadorPokemonSlot{position:relative;min-width:0;border:1px solid #c8d8eb;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(35,73,118,.08)}
+      .treinadorPokemonSlot{position:relative;min-width:0;border:1px solid #d79f9f;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(35,73,118,.08)}
       button.treinadorPokemonSlot.vazio{width:100%;min-height:103px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#7990ad;border-style:dashed;cursor:pointer}
-      .treinadorPokemonMais{font-size:26px;line-height:1;color:#4c8dff}.treinadorPokemonSlotLabel{font-size:9px;font-weight:900}
+      .treinadorPokemonMais{font-size:26px;line-height:1;color:#ef4444}.treinadorPokemonSlotLabel{font-size:9px;font-weight:900}
       .treinadorPokemonPrincipal{width:100%;height:100%;min-height:112px;padding:7px 4px 5px!important;border:0!important;background:transparent!important;box-shadow:none!important;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;cursor:pointer}
       .treinadorPokemonSlot.compacto .treinadorPokemonPrincipal{min-height:91px;padding:5px 2px 4px!important}
       .treinadorPokemonRetrato{width:58px;height:58px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:2px solid #8eabc9;background:#f4f8fd;overflow:hidden}
@@ -2639,15 +2401,15 @@ async function mostrarFichaTreinadorPokemons(token) {
       .treinadorPokemonNome{width:100%;margin-top:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;font-weight:900;color:#30455f;text-align:center}
       .treinadorPokemonSlot.compacto .treinadorPokemonNome{font-size:8px}
       .treinadorPokemonEstado{margin-top:2px;font-size:7px;font-weight:900;color:#5e7898}.treinadorPokemonSlot.emCampo{border-color:#4bc27c;box-shadow:0 0 0 2px rgba(75,194,124,.12)}.treinadorPokemonSlot.emCampo .treinadorPokemonEstado{color:#21995a}
-      .treinadorPokemonMover{position:absolute!important;top:3px;left:3px;width:24px!important;height:20px!important;min-height:20px!important;padding:0!important;border-radius:7px!important;background:#eef5ff!important;border:1px solid #9dbce4!important;color:#315f9a!important;font-size:12px!important;font-weight:900!important;line-height:1!important;z-index:4}
-      .treinadorPokemonMover.ativo{background:#315f9a!important;color:#fff!important;border-color:#315f9a!important}
+      .treinadorPokemonMover{position:absolute!important;top:3px;left:3px;width:24px!important;height:20px!important;min-height:20px!important;padding:0!important;border-radius:7px!important;background:#fff5f5!important;border:1px solid #d98d8d!important;color:#b71c1c!important;font-size:12px!important;font-weight:900!important;line-height:1!important;z-index:4}
+      .treinadorPokemonMover.ativo{background:#b71c1c!important;color:#fff!important;border-color:#b71c1c!important}
       .treinadorPokemonRemover{position:absolute!important;top:3px;right:3px;width:20px!important;height:20px!important;min-height:20px!important;padding:0!important;border-radius:50%!important;background:#fff0f0!important;border:1px solid #e7a4a4!important;color:#b63e3e!important;font-size:13px!important;line-height:1!important;z-index:4}
-      .treinadorPokemonMoverAviso{display:none;margin:0 0 9px;padding:7px 9px;border-radius:9px;background:#eaf3ff;border:1px solid #9fc1ea;color:#315f9a;font-size:9px;font-weight:900;text-align:center;line-height:1.3}
+      .treinadorPokemonMoverAviso{display:none;margin:0 0 9px;padding:7px 9px;border-radius:9px;background:#fff0f0;border:1px solid #dc9292;color:#b71c1c;font-size:9px;font-weight:900;text-align:center;line-height:1.3}
       .treinadorPokemonMoverAviso.ativo{display:block}
       .treinadorPokemonAjuda{margin:9px 1px 0!important;font-size:9px!important;color:#6f8299!important;line-height:1.35}
       .seletorRosterFundo{position:fixed;inset:0;z-index:9999;background:rgba(12,22,35,.72);display:flex;align-items:center;justify-content:center;padding:14px}
-      .seletorRosterPainel{width:min(390px,100%);max-height:86vh;overflow:auto;background:#f7fbff;border:1px solid #9bbbe2;border-radius:15px;padding:12px;box-shadow:0 18px 55px rgba(0,0,0,.34)}
-      .seletorRosterTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:#284a75;font-size:13px;font-weight:900}.seletorRosterFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important}
+      .seletorRosterPainel{width:min(390px,100%);max-height:86vh;overflow:auto;background:#fffafa;border:1px solid #d88b8b;border-radius:15px;padding:12px;box-shadow:0 18px 55px rgba(0,0,0,.34)}
+      .seletorRosterTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:#7f1d1d;font-size:13px;font-weight:900}.seletorRosterFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important}
       .seletorRosterGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.seletorRosterPokemon{display:grid!important;grid-template-columns:52px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;min-height:64px!important;padding:6px!important;text-align:left!important}.seletorRosterPokemon img{width:50px;height:50px;object-fit:contain;border-radius:9px;background:#fff;border:1px solid #d5e0ed}.seletorRosterPokemon span{overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:900}
       .registrarPokemonNovo{width:100%;margin:9px 0 6px!important;min-height:38px!important;background:linear-gradient(135deg,#45a86c,#2c8b55)!important;color:#fff!important;border-color:#287d4d!important;font-size:10px!important;font-weight:900!important}
       .registrarPokemonNovoLista{display:none;margin-top:7px;padding-top:8px;border-top:1px solid #d8e4f1}.registrarPokemonNovoLista.aberto{display:block}.registrarPokemonNovoTitulo{margin:0 0 7px!important;font-size:9px!important;color:#5a718d!important;text-align:center}.registrarPokemonBadge{display:inline-block;margin-left:5px;padding:2px 5px;border-radius:999px;background:#fff4cf;color:#8d6b12;font-size:7px;font-weight:900}
@@ -3129,7 +2891,7 @@ token.id,
 [`${PREFIX}/statusToken`]:
 token.id,
 [`${PREFIX}/tipoVisual`]:
-"hp-texto" }) .build() ); const caX = inicioX + larguraBarra + espacoCA + 8; const caY = barraY - ( (tamanhoCA - alturaBarra) / 2 ) + 3; const circuloCA = prepararVisualHud( buildShape() .shapeType("CIRCLE") .width(tamanhoCA) .height(tamanhoCA) .position({ x: caX, y: caY }) .fillColor("#2481CC") .fillOpacity(1) .strokeColor("#FFFFFF") .strokeWidth(2) .layer("ATTACHMENT") .zIndex(1) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
+"hp-texto" }) .build() ); const caX = inicioX + larguraBarra + espacoCA + 8; const caY = barraY - ( (tamanhoCA - alturaBarra) / 2 ) + 3; const circuloCA = prepararVisualHud( buildShape() .shapeType("CIRCLE") .width(tamanhoCA) .height(tamanhoCA) .position({ x: caX, y: caY }) .fillColor("#d32f2f") .fillOpacity(1) .strokeColor("#FFFFFF") .strokeWidth(2) .layer("ATTACHMENT") .zIndex(1) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
 [`${PREFIX}/statusToken`]:
 token.id,
 [`${PREFIX}/tipoVisual`]:
@@ -4399,7 +4161,7 @@ function mostrarFichaTreinadorClasOri(token) {
             <div class="classeRecurso">
               <div class="classeRecursoTopo"><span>RESERVA DE CURA</span><strong>${enfermeiroReservaAtual}/${enfermeiroReservaMax} PV</strong></div>
               <div class="classeAcoes">
-                <input id="enfermeiroCoracaoGasto" type="number" min="1" step="1" value="1" style="width:100%;min-height:32px;padding:6px 8px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:9px;font-weight:900;box-sizing:border-box">
+                <input id="enfermeiroCoracaoGasto" type="number" min="1" step="1" value="1" style="width:100%;min-height:32px;padding:6px 8px;border:1px solid #d6a0a0;border-radius:8px;background:#fff;color:#8f1d1d;font-size:9px;font-weight:900;box-sizing:border-box">
                 <button type="button" class="classeAcao" id="usarEnfermeiroCoracao" ${enfermeiroReservaAtual > 0 ? "" : "disabled"}>GASTAR PV</button>
               </div>
               <button type="button" class="classeRestaurar classeAcaoCheia" id="restaurarEnfermeiroCoracao">RESTAURAR RESERVA</button>
@@ -4909,60 +4671,60 @@ function mostrarFichaTreinadorClasOri(token) {
     <style>
       .clasOriSecao{width:100%;max-width:440px;margin:0 auto 18px;box-sizing:border-box;text-align:center}
       .clasOriTitulo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 auto 9px;text-align:center}.clasOriTitulo>div{width:100%;margin:0 auto;text-align:center}
-      .clasOriTitulo h3{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;box-sizing:border-box;margin:0 auto;color:#2e5f9d;font-size:15px;font-weight:1000;letter-spacing:.5px;border:1px solid #d4e2f1;border-radius:11px;background:linear-gradient(180deg,#f8fbff 0%,#f0f6fd 100%)}
+      .clasOriTitulo h3{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;box-sizing:border-box;margin:0 auto;color:#a61b1b;font-size:15px;font-weight:1000;letter-spacing:.5px;border:1px solid #d4e2f1;border-radius:11px;background:linear-gradient(180deg,#fffafa 0%,#fff6f6 100%)}
       .clasOriTitulo p{max-width:340px;margin:7px auto 0;color:#71859d;font-size:8.5px;line-height:1.35;font-weight:800;text-align:center}
-      .classeVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #8fb2dd!important;border-radius:11px!important;background:#f5f9ff!important;color:#2e5f9d!important;font-weight:1000!important;font-size:10px!important;text-align:center!important;cursor:pointer}
-      .classeCard{width:100%;max-width:410px;margin:0 auto;border:1px solid #bfd4ea;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 8px rgba(33,70,110,.08);text-align:left}
-      .classeCardTopo{position:relative;width:100%;display:flex;align-items:center;justify-content:center;padding:10px 58px 10px 12px;background:linear-gradient(180deg,#f3f8ff,#edf5ff);border:0;cursor:pointer;text-align:center}
-      .classeNome{display:block;width:100%;font-size:12px;font-weight:1000;color:#214f89;letter-spacing:.5px;text-align:center}
-      .classeSeta{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:9px;color:#56779e;font-weight:1000;white-space:nowrap}
+      .classeVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #d77a7a!important;border-radius:11px!important;background:#fff8f8!important;color:#a61b1b!important;font-weight:1000!important;font-size:10px!important;text-align:center!important;cursor:pointer}
+      .classeCard{width:100%;max-width:410px;margin:0 auto;border:1px solid #d6a0a0;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 8px rgba(33,70,110,.08);text-align:left}
+      .classeCardTopo{position:relative;width:100%;display:flex;align-items:center;justify-content:center;padding:10px 58px 10px 12px;background:linear-gradient(180deg,#fff7f7,#fff3f3);border:0;cursor:pointer;text-align:center}
+      .classeNome{display:block;width:100%;font-size:12px;font-weight:1000;color:#8f1d1d;letter-spacing:.5px;text-align:center}
+      .classeSeta{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:9px;color:#8f1d1d;font-weight:1000;white-space:nowrap}
       .classeRemover{width:27px!important;height:27px!important;min-height:27px!important;padding:0!important;border-radius:50%!important;font-size:14px!important;flex:0 0 27px;cursor:pointer}
       .classeDetalhes{display:none;padding:10px;border-top:1px solid #dce8f4;background:#fff}.classeDetalhes.aberto{display:block}
-      .classeResumoNivel{margin:0 0 8px;padding:7px 8px;border-radius:8px;background:#edf5ff;color:#5f7794;font-size:8px;font-weight:900;text-align:center}.classeResumoNivel strong{color:#2867b4;font-size:11px}
+      .classeResumoNivel{margin:0 0 8px;padding:7px 8px;border-radius:8px;background:#fff3f3;color:#5f7794;font-size:8px;font-weight:900;text-align:center}.classeResumoNivel strong{color:#b71c1c;font-size:11px}
       .classeHab{margin-top:7px;padding:8px;border:1px solid #d7e3f0;border-radius:9px;background:#fbfdff}.classeHab:first-of-type{margin-top:0}
-      .classeHab.bloqueada{opacity:.56;background:#f6f7f9}.classeHabTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}.classeHabTopo>div{display:flex;align-items:center;gap:6px;min-width:0}.classeHabTopo strong{font-size:9px;color:#2d5e98}.classeHabTopo>div span{font-size:7px;color:#8597aa;font-weight:1000}.classeHabEstado{padding:3px 6px;border-radius:999px;background:#dff3e6;color:#358151;font-size:7px;font-weight:1000;white-space:nowrap}.classeHab.bloqueada .classeHabEstado{background:#e9edf2;color:#8996a5}.classeHabTexto{font-size:8.5px;line-height:1.4;color:#566c84;font-weight:700}
-      .classeRecurso{margin-top:7px;padding:7px;border:1px solid #dbe7f3;border-radius:8px;background:#fff}.classeRecursoTopo{display:flex;justify-content:space-between;align-items:center;gap:7px;color:#6b7f96;font-size:7.5px;font-weight:1000}.classeRecursoTopo strong{font-size:10px;color:#2c67aa}.classeAcoes{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:6px;margin-top:6px}.classeAcoesTripla{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:6px}.classeSelect{width:100%;min-height:34px;margin-top:6px;padding:6px 8px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:8px;font-weight:900;box-sizing:border-box}.classeTextoLivre{width:100%;min-height:74px;margin-top:6px;padding:8px 9px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#365a84;font-size:8.5px;line-height:1.4;font-weight:800;box-sizing:border-box;resize:vertical;outline:none}.classeTextoLivre:focus{border-color:#6da4e5;box-shadow:0 0 0 2px rgba(72,133,205,.10)}.classeAcaoCheia{width:100%;margin-top:6px!important}.classeAcao,.classeRestaurar{min-height:32px!important;padding:6px!important;font-size:8px!important;font-weight:1000!important}.classeAcao{background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important}.classeRestaurar{background:#f7f9fc!important;border-color:#c7d4e3!important;color:#627991!important}.classeAcoesDuas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}.classeCampoLabel{display:block;margin:0 0 5px;color:#6c8098;font-size:7.5px;font-weight:1000;letter-spacing:.3px;text-align:left}.classeCampoTexto{width:100%;box-sizing:border-box;border:1px solid #c8d9eb;border-radius:8px;background:#fff;color:#17385f;font-size:8.5px;font-weight:800;padding:8px;outline:none}.classeCampoArea{min-height:72px;resize:vertical;line-height:1.35}.classeRecursoDestaque{border-color:#8db6e8!important;background:#f2f7ff!important}.classeRecurso select,.classeRecurso input[type="number"]{width:100%;min-height:32px;box-sizing:border-box;border:1px solid #c8d9eb;border-radius:8px;background:#fff;color:#17385f;font-size:8px;font-weight:900;padding:6px;outline:none}
-      .guiaClasseOverlay{display:none;position:fixed;z-index:5001;inset:0;background:rgba(13,26,43,.55);padding:16px;overflow:auto}.guiaClasseOverlay.aberto{display:block}.guiaClasseTopo{position:sticky;top:-16px;z-index:2;background:#fff;margin:-16px -16px 10px;padding:13px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #dce6f0}.guiaClasseTopo h3{margin:0;color:#274c79;font-size:14px}.guiaClasseTopo p{margin:2px 0 0;color:#8798aa;font-size:8px;font-weight:700}.guiaClasseFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:15px!important}.guiaClasseLista{display:grid;gap:7px}.guiaClasseOpcao{width:100%;padding:10px!important;border:1px solid #cfdeee!important;border-radius:10px!important;background:#fff!important;text-align:left!important;cursor:pointer}.guiaClasseOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#2e5f9d}.guiaClasseOpcaoTexto{display:block;margin-top:4px;font-size:8px;line-height:1.35;font-weight:700;color:#5b6f87}
-      .origemVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #a9bfd8!important;border-radius:11px!important;background:#f8fbff!important;color:#52749d!important;font-weight:900!important;font-size:10px!important;text-align:center!important;cursor:pointer}
+      .classeHab.bloqueada{opacity:.56;background:#f6f7f9}.classeHabTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}.classeHabTopo>div{display:flex;align-items:center;gap:6px;min-width:0}.classeHabTopo strong{font-size:9px;color:#a61b1b}.classeHabTopo>div span{font-size:7px;color:#8597aa;font-weight:1000}.classeHabEstado{padding:3px 6px;border-radius:999px;background:#dff3e6;color:#358151;font-size:7px;font-weight:1000;white-space:nowrap}.classeHab.bloqueada .classeHabEstado{background:#e9edf2;color:#8996a5}.classeHabTexto{font-size:8.5px;line-height:1.4;color:#566c84;font-weight:700}
+      .classeRecurso{margin-top:7px;padding:7px;border:1px solid #dbe7f3;border-radius:8px;background:#fff}.classeRecursoTopo{display:flex;justify-content:space-between;align-items:center;gap:7px;color:#6b7f96;font-size:7.5px;font-weight:1000}.classeRecursoTopo strong{font-size:10px;color:#c62828}.classeAcoes{display:grid;grid-template-columns:minmax(0,1fr) 86px;gap:6px;margin-top:6px}.classeAcoesTripla{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:6px}.classeSelect{width:100%;min-height:34px;margin-top:6px;padding:6px 8px;border:1px solid #d6a0a0;border-radius:8px;background:#fff;color:#8f1d1d;font-size:8px;font-weight:900;box-sizing:border-box}.classeTextoLivre{width:100%;min-height:74px;margin-top:6px;padding:8px 9px;border:1px solid #d6a0a0;border-radius:8px;background:#fff;color:#8f1d1d;font-size:8.5px;line-height:1.4;font-weight:800;box-sizing:border-box;resize:vertical;outline:none}.classeTextoLivre:focus{border-color:#ef6c6c;box-shadow:0 0 0 2px rgba(72,133,205,.10)}.classeAcaoCheia{width:100%;margin-top:6px!important}.classeAcao,.classeRestaurar{min-height:32px!important;padding:6px!important;font-size:8px!important;font-weight:1000!important}.classeAcao{background:#fff3f3!important;border-color:#dc7b7b!important;color:#b71c1c!important}.classeRestaurar{background:#f7f9fc!important;border-color:#c7d4e3!important;color:#627991!important}.classeAcoesDuas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}.classeCampoLabel{display:block;margin:0 0 5px;color:#6c8098;font-size:7.5px;font-weight:1000;letter-spacing:.3px;text-align:left}.classeCampoTexto{width:100%;box-sizing:border-box;border:1px solid #d79f9f;border-radius:8px;background:#fff;color:#7f1d1d;font-size:8.5px;font-weight:800;padding:8px;outline:none}.classeCampoArea{min-height:72px;resize:vertical;line-height:1.35}.classeRecursoDestaque{border-color:#dc7b7b!important;background:#fff6f6!important}.classeRecurso select,.classeRecurso input[type="number"]{width:100%;min-height:32px;box-sizing:border-box;border:1px solid #d79f9f;border-radius:8px;background:#fff;color:#7f1d1d;font-size:8px;font-weight:900;padding:6px;outline:none}
+      .guiaClasseOverlay{display:none;position:fixed;z-index:5001;inset:0;background:rgba(13,26,43,.55);padding:16px;overflow:auto}.guiaClasseOverlay.aberto{display:block}.guiaClasseTopo{position:sticky;top:-16px;z-index:2;background:#fff;margin:-16px -16px 10px;padding:13px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #dce6f0}.guiaClasseTopo h3{margin:0;color:#7f1d1d;font-size:14px}.guiaClasseTopo p{margin:2px 0 0;color:#8798aa;font-size:8px;font-weight:700}.guiaClasseFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:15px!important}.guiaClasseLista{display:grid;gap:7px}.guiaClasseOpcao{width:100%;padding:10px!important;border:1px solid #cfdeee!important;border-radius:10px!important;background:#fff!important;text-align:left!important;cursor:pointer}.guiaClasseOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#a61b1b}.guiaClasseOpcaoTexto{display:block;margin-top:4px;font-size:8px;line-height:1.35;font-weight:700;color:#5b6f87}
+      .origemVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #d3a0a0!important;border-radius:11px!important;background:#fffafa!important;color:#8f1d1d!important;font-weight:900!important;font-size:10px!important;text-align:center!important;cursor:pointer}
       .origemCard{width:100%;max-width:410px;margin:0 auto;border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(33,70,110,.06);text-align:left}
-      .origemCardTopo{position:relative;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 52px 10px 11px;background:#f8fbff;border:0;cursor:pointer;text-align:center}
-      .origemNome{display:block;width:100%;font-size:12px;font-weight:1000;color:#2e5f9d;letter-spacing:.4px;text-align:center}
-      .origemSeta{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:9px;color:#56779e;font-weight:1000;white-space:nowrap}
+      .origemCardTopo{position:relative;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 52px 10px 11px;background:#fffafa;border:0;cursor:pointer;text-align:center}
+      .origemNome{display:block;width:100%;font-size:12px;font-weight:1000;color:#a61b1b;letter-spacing:.4px;text-align:center}
+      .origemSeta{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:9px;color:#8f1d1d;font-weight:1000;white-space:nowrap}
       .origemRemover{width:27px!important;height:27px!important;min-height:27px!important;padding:0!important;border-radius:50%!important;font-size:14px!important;flex:0 0 27px;cursor:pointer}
       .origemDetalhes{display:none;padding:10px;border-top:1px solid #e0e8f1;background:#fff}
       .origemDetalhes.aberto{display:block}
-      .origemHabilidade{font-size:9px;font-weight:1000;color:#2e5f9d;margin-bottom:5px}
+      .origemHabilidade{font-size:9px;font-weight:1000;color:#a61b1b;margin-bottom:5px}
       .origemTexto{font-size:9px;line-height:1.42;color:#53677f;font-weight:700}
-      .origemRolar{width:100%;margin-top:8px;min-height:34px!important;padding:7px!important;background:#edf5ff!important;border-color:#8eb5e8!important;color:#2867b4!important;font-size:8.5px!important;font-weight:1000!important;cursor:pointer}
+      .origemRolar{width:100%;margin-top:8px;min-height:34px!important;padding:7px!important;background:#fff3f3!important;border-color:#dc7b7b!important;color:#b71c1c!important;font-size:8.5px!important;font-weight:1000!important;cursor:pointer}
       .origemRolar.perigo{background:#fff4f4!important;border-color:#e9aaaa!important;color:#a84b4b!important}
       .origemBotoesDuplos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-      .classePlaceholder{width:100%;max-width:390px;box-sizing:border-box;margin:0 auto;padding:15px 12px;border:1px dashed #c8d6e6;border-radius:10px;background:#fbfdff;text-align:center;color:#91a0b2;font-size:9px;font-weight:900}
+      .classePlaceholder{width:100%;max-width:390px;box-sizing:border-box;margin:0 auto;padding:15px 12px;border:1px dashed #c8d6e6;border-radius:10px;background:#fbfdff;text-align:center;color:#555555;font-size:9px;font-weight:900}
       .guiaOrigemOverlay{display:none;position:fixed;z-index:5000;inset:0;background:rgba(13,26,43,.55);padding:16px;overflow:auto}
       .guiaOrigemOverlay.aberto{display:block}
       .guiaOrigemTopo{position:sticky;top:-16px;z-index:2;background:#fff;margin:-16px -16px 10px;padding:13px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #dce6f0}
-      .guiaOrigemTopo h3{margin:0;color:#274c79;font-size:14px}.guiaOrigemTopo p{margin:2px 0 0;color:#8798aa;font-size:8px;font-weight:700}
+      .guiaOrigemTopo h3{margin:0;color:#7f1d1d;font-size:14px}.guiaOrigemTopo p{margin:2px 0 0;color:#8798aa;font-size:8px;font-weight:700}
       .guiaOrigemFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:15px!important}
       .guiaOrigemLista{display:grid;grid-template-columns:1fr;gap:7px;max-width:520px;margin:0 auto;background:#f5f8fc;padding:9px;border-radius:12px}
-      .guiaOrigemOpcao{width:100%;text-align:left;padding:9px;border:1px solid #d6e2ef;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
-      .guiaOrigemOpcao:hover{border-color:#78a8e2;background:#f5f9ff}
-      .guiaOrigemOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#2e5f9d}
+      .guiaOrigemOpcao{width:100%;text-align:left;padding:9px;border:1px solid #dfb2b2;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
+      .guiaOrigemOpcao:hover{border-color:#d45d5d;background:#fff8f8}
+      .guiaOrigemOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#a61b1b}
       .guiaOrigemOpcaoHab{display:block;margin-top:3px;font-size:8px;font-weight:900;color:#72869f}
       .guiaOrigemOpcaoTexto{display:block;margin-top:5px;font-size:8px;line-height:1.35;font-weight:700;color:#5b6f87}
-      .estudiosoPainel,.rivalPainel{margin-top:9px;padding:8px;border:1px solid #d9e5f1;border-radius:10px;background:#f8fbff}
+      .estudiosoPainel,.rivalPainel{margin-top:9px;padding:8px;border:1px solid #d9e5f1;border-radius:10px;background:#fffafa}
       .estudiosoPainel label{display:block;font-size:8px;font-weight:1000;color:#647d9b;margin-bottom:5px}
       .estudiosoLinha{display:grid;grid-template-columns:minmax(0,1fr) 74px;gap:6px;align-items:center}
-      .estudiosoLinha input,.rivalPainel select{width:100%;min-height:34px;padding:6px 8px;border:1px solid #c6d7ea;border-radius:8px;background:#fff;font-weight:900;color:#2e4968;box-sizing:border-box}
-      .estudiosoCd{height:34px;display:flex;align-items:center;justify-content:center;border:1px solid #c6d7ea;border-radius:8px;background:#fff;color:#657c98;font-size:9px;font-weight:900}.estudiosoCd strong{margin-left:4px;color:#2867b4;font-size:13px}
+      .estudiosoLinha input,.rivalPainel select{width:100%;min-height:34px;padding:6px 8px;border:1px solid #d6a0a0;border-radius:8px;background:#fff;font-weight:900;color:#7f1d1d;box-sizing:border-box}
+      .estudiosoCd{height:34px;display:flex;align-items:center;justify-content:center;border:1px solid #d6a0a0;border-radius:8px;background:#fff;color:#657c98;font-size:9px;font-weight:900}.estudiosoCd strong{margin-left:4px;color:#b71c1c;font-size:13px}
       .rivalBloco{padding:8px 0;border-bottom:1px solid #dce7f1}.rivalBloco:first-child{padding-top:0}.rivalBloco:last-child{border-bottom:0;padding-bottom:0}
-      .rivalCab{display:flex;align-items:center;justify-content:space-between;gap:7px;color:#365a84;font-size:9px;margin-bottom:4px}.rivalEstado,.rivalSequencia{padding:3px 6px;border-radius:999px;background:#e6ebf1;color:#78889a;font-size:7px;font-weight:1000}.rivalEstado.pronto{background:#dff3e6;color:#358151}.rivalSequencia{background:#e5f0ff;color:#2d6cb8;font-size:9px}
-      .rivalBonus{margin:5px 0 1px;padding:6px 7px;background:#fff;border:1px solid #dbe6f1;border-radius:8px;color:#65798f;font-size:8px;font-weight:800}.rivalBonus strong{color:#2867b4}
+      .rivalCab{display:flex;align-items:center;justify-content:space-between;gap:7px;color:#8f1d1d;font-size:9px;margin-bottom:4px}.rivalEstado,.rivalSequencia{padding:3px 6px;border-radius:999px;background:#e6ebf1;color:#78889a;font-size:7px;font-weight:1000}.rivalEstado.pronto{background:#dff3e6;color:#358151}.rivalSequencia{background:#fff1f1;color:#c62828;font-size:9px}
+      .rivalBonus{margin:5px 0 1px;padding:6px 7px;background:#fff;border:1px solid #dbe6f1;border-radius:8px;color:#65798f;font-size:8px;font-weight:800}.rivalBonus strong{color:#b71c1c}
     </style>
 
     <section class="clasOriSecao">
       <div class="clasOriTitulo"><div><h3>CLASSE</h3><p>Escolha a classe do treinador e acompanhe a progressão por nível.</p></div></div>
       ${classe ? `
         <div class="classeCard">
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) 31px;align-items:center;gap:5px;padding:5px;background:#f3f8ff;">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 31px;align-items:center;gap:5px;padding:5px;background:#fff7f7;">
             <button type="button" class="classeCardTopo" id="abrirClasseSelecionada">
               <span class="classeNome">${esc(classe.nome)}</span>
               <span class="classeSeta" id="setaClasseSelecionada">VER ▾</span>
@@ -4980,7 +4742,7 @@ function mostrarFichaTreinadorClasOri(token) {
       <div class="clasOriTitulo"><div><h3>ORIGEM</h3><p>Escolha a origem do treinador e consulte sua habilidade.</p></div></div>
       ${origem ? `
         <div class="origemCard">
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) 31px;align-items:center;gap:5px;padding:5px;background:#f8fbff;">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 31px;align-items:center;gap:5px;padding:5px;background:#fffafa;">
             <button type="button" class="origemCardTopo" id="abrirOrigemSelecionada">
               <span class="origemNome">${esc(origem.nome)}</span>
               <span class="origemSeta" id="setaOrigemSelecionada">VER ▾</span>
@@ -5856,8 +5618,8 @@ function htmlDetalheEspecialItemMochila(item) {
           data-item-id="${esc(item.id)}"
           data-item-nome="${esc(item.nome)}"
           style="
-            min-height:31px;padding:7px 9px;border:1px solid #75a7df;border-radius:8px;
-            background:#edf6ff;color:#2d6da9;font-size:8px;font-weight:1000;cursor:pointer;white-space:nowrap;
+            min-height:31px;padding:7px 9px;border:1px solid #e57373;border-radius:8px;
+            background:#fff4f4;color:#c62828;font-size:8px;font-weight:1000;cursor:pointer;white-space:nowrap;
           "
         >🎲 ROLAR</button>
       </div>`;
@@ -5884,7 +5646,7 @@ function htmlDetalheEspecialItemMochila(item) {
             "
           >
         </label>
-        <span style="padding-bottom:8px;color:#8a9caf;font-size:7.5px;font-weight:900;">sem rolagem</span>
+        <span style="padding-bottom:8px;color:#555555;font-size:7.5px;font-weight:900;">sem rolagem</span>
       </div>`;
   }
 
@@ -5902,7 +5664,7 @@ function htmlCardItemMochila(item) {
     ">
       <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;">
         <div style="
-          min-width:34px;padding:5px 7px;border-radius:8px;background:#edf5ff;color:#2869ad;
+          min-width:34px;padding:5px 7px;border-radius:8px;background:#fff3f3;color:#c62828;
           font-size:10px;line-height:1;font-weight:1000;text-align:center;white-space:nowrap;
         ">${item.quantidade}x</div>
 
@@ -5939,7 +5701,7 @@ function htmlItensMochila(mochila) {
         padding:${temItens ? "10px" : "8px 10px"};
         border:1px solid ${temItens ? "#d6e1ee" : "#e3eaf2"};
         border-radius:13px;
-        background:${temItens ? "linear-gradient(180deg,#ffffff 0%,#f7fbff 100%)" : "#fbfcfe"};
+        background:${temItens ? "linear-gradient(180deg,#ffffff 0%,#fffafa 100%)" : "#fbfcfe"};
         box-shadow:${temItens ? "0 4px 10px rgba(32,67,108,.055)" : "none"};
       ">
         <div style="display:flex;align-items:center;gap:10px;min-height:38px;">
@@ -5958,16 +5720,16 @@ function htmlItensMochila(mochila) {
 
           <div style="min-width:0;flex:1;">
             <div style="
-              font-size:10.5px;font-weight:1000;color:${temItens ? "#315d8e" : "#75899f"};
+              font-size:10.5px;font-weight:1000;color:${temItens ? "#8f1d1d" : "#75899f"};
               letter-spacing:.45px;line-height:1.15;
             ">${tipo.nome}</div>
-            ${temItens ? `<div style="margin-top:2px;font-size:7.5px;font-weight:800;color:#8a9caf;">
+            ${temItens ? `<div style="margin-top:2px;font-size:7.5px;font-weight:800;color:#555555;">
               ${destaCategoria.length} ${destaCategoria.length === 1 ? "ITEM" : "ITENS"} · ${totalUnidades} ${totalUnidades === 1 ? "UNIDADE" : "UNIDADES"}
             </div>` : ""}
           </div>
 
           ${temItens ? `<span style="
-            min-width:25px;padding:4px 7px;border-radius:999px;background:#edf4fc;color:#6280a1;
+            min-width:25px;padding:4px 7px;border-radius:999px;background:#fff5f5;color:#6280a1;
             font-size:8px;font-weight:1000;text-align:center;
           ">${totalUnidades}x</span>` : ""}
         </div>
@@ -6010,20 +5772,20 @@ function mostrarFichaTreinadorMocDin(token) {
           flex-wrap:wrap;
         ">
           <div>
-            <div style="font-size:11px;font-weight:1000;color:#4a6b92;letter-spacing:.45px;">POKÉDOLS</div>
+            <div style="font-size:11px;font-weight:1000;color:#8f1d1d;letter-spacing:.45px;">POKÉDOLS</div>
             <div id="saldoPokedolsTreinador" style="
               margin-top:2px;
               font-size:27px;
               line-height:1;
               font-weight:1000;
-              color:#173f76;
+              color:#7f1d1d;
             ">₱${formatarPokedols(saldo)}</div>
           </div>
           <div style="
             padding:7px 9px;
             border-radius:999px;
-            background:#eef5ff;
-            color:#52739a;
+            background:#fff5f5;
+            color:#8f1d1d;
             font-size:8.5px;
             font-weight:900;
             text-align:center;
@@ -6035,7 +5797,7 @@ function mostrarFichaTreinadorMocDin(token) {
             padding:10px;
             border:1px solid #d8e3ef;
             border-radius:11px;
-            background:#f8fbff;
+            background:#fffafa;
           ">
             <div style="font-size:9px;font-weight:1000;color:#5e7692;margin-bottom:6px;">
               CONTROLE DO GM
@@ -6096,7 +5858,7 @@ function mostrarFichaTreinadorMocDin(token) {
         background:#ffffff;
       ">
         <div style="text-align:center;">
-          <div style="font-size:17px;font-weight:1000;color:#285f9e;">VENDINHA</div>
+          <div style="font-size:17px;font-weight:1000;color:#a61b1b;">VENDINHA</div>
           <div style="margin-top:3px;font-size:9px;line-height:1.35;font-weight:800;color:#8496aa;">
             Escreva o item, escolha a categoria, informe o preço unitário e a quantidade.
           </div>
@@ -6179,9 +5941,9 @@ function mostrarFichaTreinadorMocDin(token) {
             padding:9px 10px;
             border:1px solid #d8e3ef;
             border-radius:10px;
-            background:#f8fbff;
+            background:#fffafa;
             text-align:center;
-            color:#426487;
+            color:#8f1d1d;
             font-size:9.5px;
             font-weight:1000;
           ">TOTAL: ₱0</div>
@@ -6224,7 +5986,7 @@ function mostrarFichaTreinadorMocDin(token) {
         padding:14px;
         border:1px solid #cfdceb;
         border-radius:16px;
-        background:linear-gradient(180deg,#f8fbff 0%,#f3f7fc 100%);
+        background:linear-gradient(180deg,#fffafa 0%,#f3f7fc 100%);
         box-shadow:0 4px 11px rgba(35,66,103,.06);
       ">
         <div style="
@@ -6242,12 +6004,12 @@ function mostrarFichaTreinadorMocDin(token) {
             align-items:center;
             justify-content:center;
             border-radius:9px;
-            background:#e8f2ff;
-            color:#2f72bb;
+            background:#fff1f1;
+            color:#c62828;
             font-size:12px;
             font-weight:1000;
           ">▣</span>
-          <div style="font-size:13px;font-weight:1000;color:#315f93;letter-spacing:.3px;">MOCHILA</div>
+          <div style="font-size:13px;font-weight:1000;color:#8f1d1d;letter-spacing:.3px;">MOCHILA</div>
         </div>
         <div style="margin-top:4px;">
           ${htmlItensMochila(mochila)}
@@ -6470,10 +6232,10 @@ function menuTreinador(paginaAtual) {
         white-space:normal!important;
         text-align:center!important;
         overflow-wrap:anywhere!important;
-        background:${ativa ? "linear-gradient(135deg,#4c8dff 0%,#2f73dc 100%)" : "linear-gradient(180deg,#ffffff 0%,#f1f5fa 100%)"}!important;
-        color:${ativa ? "#ffffff" : "#35475f"}!important;
-        border:${ativa ? "1px solid #2f73dc" : "1px solid #d2dce8"}!important;
-        box-shadow:${ativa ? "0 3px 8px rgba(47,115,220,.18)" : "0 1px 4px rgba(35,64,97,.045)"}!important;
+        background:${ativa ? "linear-gradient(135deg,#e53935 0%,#b71c1c 100%)" : "linear-gradient(180deg,#ffffff 0%,#f1f5fa 100%)"}!important;
+        color:${ativa ? "#ffffff" : "#111111"}!important;
+        border:${ativa ? "1px solid #8f1111" : "1px solid #202020"}!important;
+        box-shadow:${ativa ? "0 3px 8px rgba(183,28,28,.20)" : "0 1px 4px rgba(0,0,0,.06)"}!important;
       ">${rotulo}</button>`;
   };
 
@@ -6523,7 +6285,7 @@ align-items:center;
 justify-content:center;
 overflow:hidden;
 border-radius:14px;
-border:2px solid #4C8DFF;
+border:2px solid #ef4444;
 background:#f3f6fb;
 box-sizing:border-box;
 padding:4px;
@@ -6546,7 +6308,7 @@ display:flex;
 align-items:center;
 justify-content:center;
 border-radius:14px;
-border:2px solid #4C8DFF;
+border:2px solid #ef4444;
 background:#f3f6fb;
 box-sizing:border-box;
 font-size:30px;
@@ -6575,34 +6337,22 @@ font-size:30px;
           </div>
         </div>
       </div>
-      <div class="fichaAcoesCabecalho">
-        <button
-          id="personalizarFicha"
-          type="button"
-          title="Escolher o papel de parede desta ficha"
-        >
-          🎨 Personalizar
-        </button>
-        <button
-          id="trocarTipo"
-          style="
-            font-size:11px;
-            cursor:pointer;
-            white-space:nowrap;
-          "
-        >
-          Trocar tipo
-        </button>
-      </div>
+      <button
+        id="trocarTipo"
+        style="
+          font-size:11px;
+          cursor:pointer;
+          white-space:nowrap;
+        "
+      >
+        Trocar tipo
+      </button>
     </div>
     ${menuTreinador(paginaAtual)}
   `;
 }
-function ativarCabecalhoTreinador( token ) {
-  document.querySelector("#trocarTipo")?.addEventListener("click", () => trocarTipoFicha(token));
-  ativarPersonalizacaoFicha(token);
-  ativarMenuTreinador(token);
-}
+function ativarCabecalhoTreinador( token ) { document .querySelector( "#trocarTipo" ) .addEventListener( "click", () => trocarTipoFicha( token ) );
+ativarMenuTreinador( token ); }
 function ativarMenuTreinador(token) {
   const status = document.querySelector("#paginaTreinador1");
   const pkm = document.querySelector("#paginaTreinador2");
@@ -6661,7 +6411,7 @@ grid-template-columns:minmax(0,1fr) 42px 30px;
 align-items:center;
 gap:4px;
 padding:5px 6px;
-border:1px solid #dbe5f0;
+border:1px solid #e2bcbc;
 border-radius:8px;
 background:#fbfdff;
 "> <div style="
@@ -6790,23 +6540,23 @@ function mostrarFichaTreinadorPagina1(token) {
       .treinadorFormulaMini{display:block;margin-top:3px;font-size:8px;line-height:1.15;color:#718096;font-weight:800;text-align:center}
       .treinadorFerramentasStatus{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;align-items:stretch}
       .treinadorFerramentasStatus .pokemonCalculadoraCard{margin-top:0!important;height:100%;box-sizing:border-box}
-      .treinadorFerramentasStatus .iniciativaBloco{width:auto!important;margin-top:0!important;padding:8px!important;border:1px solid #d7e3f2!important;border-radius:11px!important;background:#fff!important;box-sizing:border-box}
-      .treinadorFerramentasStatus .iniciativaTitulo{margin:0 0 6px!important;color:#365a86!important;font-size:11px!important}
+      .treinadorFerramentasStatus .iniciativaBloco{width:auto!important;margin-top:0!important;padding:8px!important;border:1px solid #e0b0b0!important;border-radius:11px!important;background:#fff!important;box-sizing:border-box}
+      .treinadorFerramentasStatus .iniciativaTitulo{margin:0 0 6px!important;color:#8f1d1d!important;font-size:11px!important}
       .treinadorFerramentasStatus .iniciativaLinha{flex-wrap:nowrap!important;gap:4px!important;justify-content:stretch!important}
       .treinadorFerramentasStatus #iniciativa{width:auto!important;min-width:42px!important;flex:1 1 52px!important}
       .treinadorFerramentasStatus #rolarIniciativa{flex:0 0 34px!important;width:34px!important;min-height:34px!important}
-      .capturaTreinadorCard{margin-top:10px;padding:9px;border:1px solid #d7e3f2;border-radius:11px;background:#fff}
-      .capturaTreinadorTitulo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;color:#365a86;font-size:11px;font-weight:900}
-      .capturaAlvoCard{display:grid;grid-template-columns:50px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px;border:1px solid #d8e4f1;border-radius:10px;background:#f8fbff;margin-bottom:8px}
+      .capturaTreinadorCard{margin-top:10px;padding:9px;border:1px solid #e0b0b0;border-radius:11px;background:#fff}
+      .capturaTreinadorTitulo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;color:#8f1d1d;font-size:11px;font-weight:900}
+      .capturaAlvoCard{display:grid;grid-template-columns:50px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px;border:1px solid #d8e4f1;border-radius:10px;background:#fffafa;margin-bottom:8px}
       .capturaAlvoCard.vazio{grid-template-columns:minmax(0,1fr) auto}
       .capturaAlvoImagem{width:48px;height:48px;object-fit:contain;border:1px solid #cfdeee;border-radius:9px;background:#fff}
       .capturaAlvoNome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#263f60;font-size:11px;font-weight:1000}
       .capturaAlvoAjuda{margin:2px 0 0!important;font-size:8px!important;color:#7a8ea7!important;font-weight:800!important}
       .capturaAlvoSelecionar{min-height:34px!important;padding:6px 9px!important;font-size:9px!important;font-weight:900!important;cursor:pointer}
-      .capturaAlvoSelecionar.ativo{background:#315f9a!important;color:#fff!important;border-color:#315f9a!important}
+      .capturaAlvoSelecionar.ativo{background:#b71c1c!important;color:#fff!important;border-color:#b71c1c!important}
       .capturaAlvoLimpar{width:27px!important;height:27px!important;min-height:27px!important;padding:0!important;border-radius:50%!important;color:#b64141!important;background:#fff2f2!important;border:1px solid #e5aaaa!important;font-weight:1000!important}
       .capturaTreinadorLinha{display:grid;grid-template-columns:82px 92px minmax(0,1fr);gap:7px;align-items:end}
-      .capturaFormula{margin:6px 0 0;padding:5px 7px;border-radius:7px;background:#f4f7fb;color:#365a86;font-size:9px;font-weight:900;text-align:center}
+      .capturaFormula{margin:6px 0 0;padding:5px 7px;border-radius:7px;background:#f4f7fb;color:#8f1d1d;font-size:9px;font-weight:900;text-align:center}
       .capturaResultado{min-height:14px;margin:5px 0 0!important;font-size:9px!important;font-weight:900!important;text-align:center}
       @media(max-width:430px){
         .treinadorFerramentasStatus{grid-template-columns:1fr}
@@ -6842,7 +6592,7 @@ function mostrarFichaTreinadorPagina1(token) {
             <p>CA</p>
             <div class="treinadorCaAjuste">
               <button id="diminuirCaTreinador" type="button" title="Diminuir bônus manual de CA">−</button>
-              <div id="caTreinadorVisivel" aria-label="CA do Treinador" style="min-height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #a9c4e7;border-left:4px solid #4c8dff;border-radius:9px;background:#f7fbff;color:#18385f;font-size:16px;font-weight:1000;line-height:1;opacity:1;-webkit-text-fill-color:#18385f;">${ca}</div>
+              <div id="caTreinadorVisivel" aria-label="CA do Treinador" style="min-height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #dda0a0;border-left:4px solid #ef4444;border-radius:9px;background:#fffafa;color:#18385f;font-size:16px;font-weight:1000;line-height:1;opacity:1;-webkit-text-fill-color:#18385f;">${ca}</div>
               <button id="aumentarCaTreinador" type="button" title="Aumentar bônus manual de CA">+</button>
               <input id="ca" type="hidden" value="${ca}">
             </div>
@@ -7070,7 +6820,7 @@ function mostrarFichaTreinadorPagina1(token) {
       botao.textContent = "👆 Clique no Pokémon na mesa...";
     }
     if (textoResultadoCaptura) {
-      textoResultadoCaptura.style.color = "#315f9a";
+      textoResultadoCaptura.style.color = "#b71c1c";
       textoResultadoCaptura.textContent = "Modo de seleção ativo: clique em um token com ficha POKÉMON.";
     }
   });
@@ -7396,38 +7146,38 @@ function mostrarFichaTreinadorTalEsp(token) {
       .talEspCabecalho{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:9px}
       .talEspCabecalho h3{margin:0;color:#263f60;font-size:14px;font-weight:1000;text-transform:uppercase}
       .talEspCabecalho p{margin:3px 0 0;font-size:8.3px;color:#7a8da5;font-weight:700;line-height:1.3}
-      .talEspContador{flex:0 0 auto;padding:5px 8px;border-radius:999px;background:#eaf3ff;color:#2f6cb8;font-size:9px;font-weight:1000;border:1px solid #c8dcf4}
+      .talEspContador{flex:0 0 auto;padding:5px 8px;border-radius:999px;background:#fff0f0;color:#2f6cb8;font-size:9px;font-weight:1000;border:1px solid #dda7a7}
       .gradeTalEsp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
       .slotTalEsp{position:relative;min-width:0;border:1px solid #d3dfed;border-radius:11px;background:linear-gradient(180deg,#fff 0%,#f7faff 100%);box-shadow:0 3px 9px rgba(39,72,110,.06);box-sizing:border-box}
       button.slotTalEsp{width:100%;min-height:64px;padding:10px 8px;cursor:pointer;color:#647b98}
       .slotTalEsp.vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-style:dashed;background:#fbfdff}
-      .slotTalEsp.vazio:hover{border-color:#79a8e6;background:#f2f8ff}
+      .slotTalEsp.vazio:hover{border-color:#d45d5d;background:#fff6f6}
       .slotTalEsp.preenchido{min-height:64px;padding:9px 8px 7px;overflow:hidden}
-      .slotTalEspNumero{position:absolute;left:6px;top:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#edf4fc;color:#5e7898;font-size:8px;font-weight:1000}
-      .slotTalEspMais{font-size:21px;line-height:1;color:#4c8dff;font-weight:800}
+      .slotTalEspNumero{position:absolute;left:6px;top:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff5f5;color:#5e7898;font-size:8px;font-weight:1000}
+      .slotTalEspMais{font-size:21px;line-height:1;color:#ef4444;font-weight:800}
       .slotTalEspVazioTexto{font-size:8.5px;font-weight:900}
       .slotTalEspLinhaPrincipal{padding:2px 23px 6px 22px;border-bottom:1px solid #e7eef6;min-width:0}
       .slotTalEspLinhaPrincipal strong{display:block;color:#233d5e;font-size:9.8px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .slotTalEspAcoes{display:flex;align-items:center;justify-content:space-between;gap:5px;padding-top:6px}
       .slotTalEspFixo{min-width:0;color:#a4b0be;font-size:6.2px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .slotTalEspExpandir{flex:0 0 auto;width:auto!important;min-height:22px!important;padding:3px 6px!important;border-radius:7px!important;background:#edf5ff!important;color:#3973bb!important;border:1px solid #c9ddf4!important;font-size:7px!important;font-weight:1000!important;box-shadow:none!important;cursor:pointer}
+      .slotTalEspExpandir{flex:0 0 auto;width:auto!important;min-height:22px!important;padding:3px 6px!important;border-radius:7px!important;background:#fff3f3!important;color:#c62828!important;border:1px solid #dda7a7!important;font-size:7px!important;font-weight:1000!important;box-shadow:none!important;cursor:pointer}
       .slotTalEspExpandir:hover{background:#e2efff!important}
       .slotTalEspDetalhes{display:none;margin-top:6px;padding:7px 7px 6px;border-top:1px solid #e7eef6;background:#f9fbfe;border-radius:0 0 8px 8px}
       .slotTalEspDetalhes.aberto{display:block}
       .slotTalEspDetalhes p{margin:0;color:#52677f;font-size:8.15px;line-height:1.34;font-weight:700}
       .slotTalEspRemover{position:absolute;right:5px;top:5px;width:19px!important;height:19px!important;min-height:19px!important;padding:0!important;border-radius:50%!important;background:#fff1f1!important;color:#b44747!important;border:1px solid #e7bcbc!important;font-size:12px!important;line-height:17px!important;z-index:2;cursor:pointer}
       .talEspDivisor{height:1px;background:linear-gradient(90deg,transparent,#d5e2f0 18%,#d5e2f0 82%,transparent);margin:13px 0}
-      .guiaTalEspOverlay{display:none;position:fixed;inset:7px;z-index:99999;background:rgba(245,249,254,.985);border:1px solid #bcd0e6;border-radius:14px;box-shadow:0 14px 36px rgba(20,43,70,.24);overflow:hidden;flex-direction:column}
+      .guiaTalEspOverlay{display:none;position:fixed;inset:7px;z-index:99999;background:rgba(245,249,254,.985);border:1px solid #d49d9d;border-radius:14px;box-shadow:0 14px 36px rgba(20,43,70,.24);overflow:hidden;flex-direction:column}
       .guiaTalEspOverlay.aberto{display:flex}
       .guiaTalEspTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#fff;border-bottom:1px solid #dce6f1}
       .guiaTalEspTopo h3{margin:0;color:#263f60;font-size:13px}
       .guiaTalEspTopo p{margin:2px 0 0;color:#7b90aa;font-size:8px;font-weight:700}
       .guiaTalEspFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:17px!important;cursor:pointer}
       .guiaTalEspLista{padding:9px;overflow:auto;display:grid;grid-template-columns:1fr;gap:6px}
-      .guiaTalEspOpcao{width:100%;text-align:left;padding:8px 9px;border:1px solid #d6e2ef;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
-      .guiaTalEspOpcao:hover{border-color:#78a8e2;background:#f5f9ff}
+      .guiaTalEspOpcao{width:100%;text-align:left;padding:8px 9px;border:1px solid #dfb2b2;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
+      .guiaTalEspOpcao:hover{border-color:#d45d5d;background:#fff8f8}
       .guiaTalEspNome{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#263f60;font-size:9px;font-weight:1000;text-transform:uppercase}
-      .guiaTalEspTipo{flex:0 0 auto;padding:2px 5px;border-radius:999px;background:#eaf3ff;color:#3572bd;font-size:7px}
+      .guiaTalEspTipo{flex:0 0 auto;padding:2px 5px;border-radius:999px;background:#fff0f0;color:#c62828;font-size:7px}
       .guiaTalEspTexto{display:block;margin-top:4px;color:#5b6f87;font-size:8px;line-height:1.3;font-weight:700;text-transform:none}
       @media(max-width:410px){.gradeTalEsp{grid-template-columns:1fr}}
     </style>
@@ -7712,7 +7462,7 @@ align-items:center;
 justify-content:center;
 overflow:hidden;
 border-radius:14px;
-border:2px solid #4C8DFF;
+border:2px solid #ef4444;
 background:#f3f6fb;
 box-sizing:border-box;
 padding:4px;
@@ -7735,7 +7485,7 @@ display:flex;
 align-items:center;
 justify-content:center;
 border-radius:14px;
-border:2px solid #4C8DFF;
+border:2px solid #ef4444;
 background:#f3f6fb;
 box-sizing:border-box;
 font-size:30px;
@@ -7779,33 +7529,23 @@ font-size:30px;
           </div>
         </div>
       </div>
-      <div class="fichaAcoesCabecalho">
-        <button
-          id="personalizarFicha"
-          type="button"
-          title="Escolher o papel de parede desta ficha"
-        >
-          🎨 Personalizar
-        </button>
-        <button
-          id="trocarTipo"
-          style="
-            font-size:11px;
-            cursor:pointer;
-            flex:0 0 auto;
-            padding:6px 8px;
-          "
-        >
-          Trocar tipo
-        </button>
-      </div>
+      <button
+        id="trocarTipo"
+        style="
+          font-size:11px;
+          cursor:pointer;
+          flex:0 0 auto;
+          padding:6px 8px;
+        "
+      >
+        Trocar tipo
+      </button>
     </div>
     ${menuPokemon(paginaAtual)}
   `;
 }
 function ativarCabecalhoPokemon(token) {
   document.querySelector("#trocarTipo")?.addEventListener("click", () => trocarTipoFicha(token));
-  ativarPersonalizacaoFicha(token);
   const campoNome = document.querySelector("#nomeFichaPokemon");
   if (campoNome) {
     const salvar = async () => {
@@ -7849,7 +7589,7 @@ grid-template-columns:minmax(0,1fr) 42px 30px;
 align-items:center;
 gap:4px;
 padding:5px 6px;
-border:1px solid #dbe5f0;
+border:1px solid #e2bcbc;
 border-radius:8px;
 background:#fbfdff;
 " > <div style="
@@ -8559,7 +8299,7 @@ htmlGolpes += `
                   line-height:1.05;
                   cursor:pointer;
                   opacity:${tipoInicial === "macerto" ? "1" : "0.62"};
-                  border:${tipoInicial === "macerto" ? "2px solid #4C8DFF" : "1px solid #c9d5e3"};
+                  border:${tipoInicial === "macerto" ? "2px solid #ef4444" : "1px solid #c9d5e3"};
                 "
               >
                 M.ACERTO
@@ -8576,7 +8316,7 @@ htmlGolpes += `
                   line-height:1.05;
                   cursor:pointer;
                   opacity:${tipoInicial === "mcd" ? "1" : "0.62"};
-                  border:${tipoInicial === "mcd" ? "2px solid #4C8DFF" : "1px solid #c9d5e3"};
+                  border:${tipoInicial === "mcd" ? "2px solid #ef4444" : "1px solid #c9d5e3"};
                 "
               >
                 M.CD
@@ -8593,7 +8333,7 @@ htmlGolpes += `
                   line-height:1.05;
                   cursor:pointer;
                   opacity:${tipoInicial === "cura" ? "1" : "0.62"};
-                  border:${tipoInicial === "cura" ? "2px solid #4C8DFF" : "1px solid #c9d5e3"};
+                  border:${tipoInicial === "cura" ? "2px solid #ef4444" : "1px solid #c9d5e3"};
                 "
               >
                 CURAS
@@ -8610,7 +8350,7 @@ htmlGolpes += `
                   line-height:1.05;
                   cursor:pointer;
                   opacity:${tipoInicial === "buffdebuff" ? "1" : "0.62"};
-                  border:${tipoInicial === "buffdebuff" ? "2px solid #4C8DFF" : "1px solid #c9d5e3"};
+                  border:${tipoInicial === "buffdebuff" ? "2px solid #ef4444" : "1px solid #c9d5e3"};
                 "
               >
                 BUFFS / DEBUFFS
@@ -8879,10 +8619,10 @@ htmlGolpes += `
                     justify-content:center;
                     padding:5px 8px;
                     box-sizing:border-box;
-                    border:1px solid #a8c7ef;
+                    border:1px solid #e3a0a0;
                     border-radius:8px;
-                    background:#f4f9ff;
-                    color:#2865be;
+                    background:#fff7f7;
+                    color:#b71c1c;
                     font-size:10px;
                     font-weight:900;
                     text-align:center;
@@ -9122,7 +8862,7 @@ htmlGolpes += `
               </div>
               <div style="
                 padding:7px;
-                border:1px solid #dbe5f0;
+                border:1px solid #e2bcbc;
                 border-radius:8px;
                 margin-bottom:7px;
               ">
@@ -9147,7 +8887,7 @@ htmlGolpes += `
               </div>
               <div style="
                 padding:7px;
-                border:1px solid #dbe5f0;
+                border:1px solid #e2bcbc;
                 border-radius:8px;
               ">
                 <div style="
@@ -9286,7 +9026,7 @@ const campoTipo = document.querySelector(
 if (campoTipo) { campoTipo.value = tipoSeguro; }
 document .querySelectorAll(
 `.tipoMove[data-golpe="${numero}"]`
-) .forEach( (opcao) => { const ativo = opcao.dataset.tipo === tipoSeguro; opcao.style.opacity = ativo ? "1" : "0.62"; opcao.style.border = ativo ? "2px solid #4C8DFF" : "1px solid #c9d5e3"; opcao.style.background = ativo ? "#eaf3ff" : ""; } );
+) .forEach( (opcao) => { const ativo = opcao.dataset.tipo === tipoSeguro; opcao.style.opacity = ativo ? "1" : "0.62"; opcao.style.border = ativo ? "2px solid #ef4444" : "1px solid #c9d5e3"; opcao.style.background = ativo ? "#fff0f0" : ""; } );
 const blocoNome = document.querySelector(
 `#golpe${numero}BlocoNome`
 );
