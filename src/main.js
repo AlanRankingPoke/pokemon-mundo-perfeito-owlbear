@@ -1833,11 +1833,66 @@ async function definirTurnoIniciativa( tokenId, participantes = null ) { const i
 if (!itens.length) { return; }
 await OBR.scene.items.updateItems( itens.map((item) => item.id), (items) => { for (const item of items) { if (item.id === tokenId) { item.metadata[ META_TURNO_INICIATIVA ] = true; } else { delete item.metadata[ META_TURNO_INICIATIVA ]; } } } );
  }
+const filaEfeitosFimTurno = new Set();
+function statusQueimado() {
+  return STATUS_DEBUFFS.find((status) => status.id === "queimado") || null;
+}
+function pokemonEstaQueimado(item) {
+  const queimado = statusQueimado();
+  return Boolean(
+    queimado &&
+    item?.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    debuffAtivoNoToken(item, queimado)
+  );
+}
+async function aplicarQueimaduraFimDoTurno(item) {
+  if (!item?.id || !pokemonEstaQueimado(item)) return null;
+  if (filaEfeitosFimTurno.has(item.id)) return null;
+
+  filaEfeitosFimTurno.add(item.id);
+  try {
+    const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+    if (!pokemonEstaQueimado(atual)) return null;
+
+    const proficiencia = Math.max(
+      0,
+      Math.trunc(Number(atual.metadata?.[`${PREFIX}/proficiencia`] ?? 0) || 0)
+    );
+    const hpMax = Math.max(
+      1,
+      Math.trunc(Number(atual.metadata?.[`${PREFIX}/hpMax`] ?? 1) || 1)
+    );
+    const hpAnterior = Math.max(
+      0,
+      Math.min(hpMax, Math.trunc(Number(atual.metadata?.[`${PREFIX}/hpAtual`] ?? 0) || 0))
+    );
+    const dano = Math.min(hpAnterior, proficiencia);
+    const hpNovo = Math.max(0, hpAnterior - dano);
+
+    if (dano > 0) {
+      await OBR.scene.items.updateItems([atual.id], (items) => {
+        for (const alvo of items) alvo.metadata[`${PREFIX}/hpAtual`] = hpNovo;
+      });
+    }
+
+    const atualizado = (await OBR.scene.items.getItems([atual.id]))?.[0] || atual;
+    const caBase = Number(atualizado.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+    const evasao = normalizarEstagioBuff(atualizado.metadata?.[`${PREFIX}/buff-evas`] ?? 0, "evas");
+    const caEfetiva = caBase + evasao + bonusCaMegaDoToken(atualizado);
+    await criarStatusNoToken(atualizado, hpNovo, hpMax, caEfetiva);
+
+    return { dano, hpAnterior, hpNovo, hpMax, proficiencia };
+  } finally {
+    filaEfeitosFimTurno.delete(item.id);
+  }
+}
 async function avancarTurnoIniciativa(tokenId) { const iniciativas = iniciativasOrdenadas( await OBR.scene.items.getItems() );
 if (!iniciativas.length) { return; }
 let indice = iniciativas.findIndex( ({ item }) => item.id === tokenId );
 if (indice < 0) { indice = iniciativas.findIndex( ({ item }) => item.metadata?.[ META_TURNO_INICIATIVA ] === true ); }
 if (indice < 0) { indice = 0; }
+const atual = iniciativas[indice].item;
+await aplicarQueimaduraFimDoTurno(atual);
 const proximo = iniciativas[ (indice + 1) % iniciativas.length ].item;
 await definirTurnoIniciativa( proximo.id, iniciativas.map(({ item }) => item) ); }
 function statusAtivosDoOrganizador(item) { return STATUS_DEBUFFS.filter( (status) => debuffAtivoNoToken( item, status ) ); }
@@ -9597,6 +9652,11 @@ if (pokemonEhBoss(token)) {
   if (dadosBoss.rage) formulaFinal = adicionarMetadeDosDadosFormula(formulaFinal);
   if (dadosBoss.carinho > 0) formulaFinal = adicionarBonusNaFormula(formulaFinal, -(dadosBoss.carinho * 10));
 }
+// QUEIMADO: todo Move classificado como FÍSICO causa metade do dano total.
+// O Dice+ arredonda divisões para baixo, então (fórmula)/2 aplica a regra corretamente.
+if (categoria === "fisico" && pokemonEstaQueimado(token)) {
+  formulaFinal = `(${formulaFinal})/2`;
+}
 return formulaFinal; }
 function dobrarDadosPorVezes( formula, vezes ) { const quantidadeDobras = Math.max( 1, Math.min( 10, Number(vezes) || 1 ) );
 const multiplicador = Math.pow(2, quantidadeDobras);
@@ -11947,7 +12007,10 @@ function mostrarFichaPokemonDebuffs(token) {
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;">${cards}</div>
       <button id="limparDebuffsPokemon" type="button" style="width:100%;margin-top:8px;font-weight:900;">LIMPAR TODOS</button>
-      <div style="margin-top:7px;text-align:center;font-size:8px;line-height:1.3;font-weight:800;color:#555;">Os efeitos ativos continuam aparecendo abaixo da barra de HP. A automação por turno poderá usar esta mesma aba.</div>
+      <div style="margin-top:8px;border:1px solid #202020;border-radius:9px;padding:8px;background:#fff7f4;font-size:8px;line-height:1.35;font-weight:800;color:#333;">
+        <strong style="display:block;color:#c62828;font-size:9px;margin-bottom:3px;">🔥 QUEIMADO — AUTOMÁTICO</strong>
+        Moves FÍSICOS causam metade do dano total, arredondado para baixo. Ao finalizar o turno deste Pokémon no indicador de iniciativa, ele perde HP igual ao próprio bônus de Proficiência.
+      </div>
     </section>`;
   ativarCabecalhoPokemon(token);
   const atualizarHud = async () => {
