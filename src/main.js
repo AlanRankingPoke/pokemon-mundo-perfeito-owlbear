@@ -1969,7 +1969,49 @@ async function aplicarCongeladoInicioDoTurno(item) {
   }
 }
 
-async function avancarTurnoIniciativa(tokenId) { const iniciativas = iniciativasOrdenadas( await OBR.scene.items.getItems() );
+function statusParalizado() {
+  return STATUS_DEBUFFS.find((status) => status.id === "paralizado") || null;
+}
+function pokemonEstaParalizado(item) {
+  const paralizado = statusParalizado();
+  return Boolean(
+    paralizado &&
+    item?.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    debuffAtivoNoToken(item, paralizado)
+  );
+}
+async function aplicarParalisiaInicioDoTurno(item) {
+  if (!item?.id || !pokemonEstaParalizado(item)) return null;
+  if (filaEfeitosInicioTurno.has(item.id)) return null;
+
+  filaEfeitosInicioTurno.add(item.id);
+  try {
+    const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+    if (!pokemonEstaParalizado(atual)) return null;
+
+    const nomePokemon = nomeFichaPokemon(atual) || atual.name || "Pokémon";
+    const resultado = await rolarNoDicePlusComResultado(
+      "1d4",
+      "Teste Paralisado",
+      `${nomePokemon} • com resultado 1 perde o turno`
+    );
+
+    if (!Number.isFinite(resultado)) return null;
+    return {
+      resultado: Number(resultado),
+      perdeTurno: Number(resultado) === 1
+    };
+  } finally {
+    filaEfeitosInicioTurno.delete(item.id);
+  }
+}
+
+async function aplicarEfeitosInicioDoTurno(item) {
+  await aplicarCongeladoInicioDoTurno(item);
+  return aplicarParalisiaInicioDoTurno(item);
+}
+
+async function avancarTurnoIniciativa(tokenId, saltosAutomaticos = 0) { const iniciativas = iniciativasOrdenadas( await OBR.scene.items.getItems() );
 if (!iniciativas.length) { return; }
 let indice = iniciativas.findIndex( ({ item }) => item.id === tokenId );
 if (indice < 0) { indice = iniciativas.findIndex( ({ item }) => item.metadata?.[ META_TURNO_INICIATIVA ] === true ); }
@@ -1978,7 +2020,11 @@ const atual = iniciativas[indice].item;
 await aplicarQueimaduraFimDoTurno(atual);
 const proximo = iniciativas[ (indice + 1) % iniciativas.length ].item;
 await definirTurnoIniciativa( proximo.id, iniciativas.map(({ item }) => item) );
-await aplicarCongeladoInicioDoTurno(proximo); }
+const paralisia = await aplicarEfeitosInicioDoTurno(proximo);
+if (paralisia?.perdeTurno && iniciativas.length > 1 && saltosAutomaticos < iniciativas.length - 1) {
+  await avancarTurnoIniciativa(proximo.id, saltosAutomaticos + 1);
+}
+}
 function statusAtivosDoOrganizador(item) { return STATUS_DEBUFFS.filter( (status) => debuffAtivoNoToken( item, status ) ); }
 function assinaturaStatusOrganizador(item) { return statusAtivosDoOrganizador(item) .map((status) => status.id) .join(","); }
 function criarStatusOrganizador(item) { const ativos = statusAtivosDoOrganizador(item);
@@ -12098,6 +12144,9 @@ function mostrarFichaPokemonDebuffs(token) {
         <div style="height:1px;background:#202020;margin:7px 0;"></div>
         <strong style="display:block;color:#1688bd;font-size:9px;margin-bottom:3px;">❄️ CONGELADO — AUTOMÁTICO</strong>
         No início do turno, o plugin rola 1d6 como <b>Teste Congelado</b>. A primeira tentativa exige 6; depois 5+, 4+, 3+, 2+ e, na sexta tentativa, qualquer resultado descongela o Pokémon. Ao conseguir, o status é removido automaticamente.
+        <div style="height:1px;background:#202020;margin:7px 0;"></div>
+        <strong style="display:block;color:#c49a00;font-size:9px;margin-bottom:3px;">⚡ PARALIZADO — AUTOMÁTICO</strong>
+        No início do turno, o plugin rola 1d4 como <b>Teste Paralisado</b>. Se o resultado for 1, o Pokémon perde o turno e o indicador de iniciativa passa automaticamente para o próximo participante.
       </div>
     </section>`;
   ativarCabecalhoPokemon(token);
