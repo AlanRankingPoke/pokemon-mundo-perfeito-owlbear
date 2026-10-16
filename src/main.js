@@ -20,6 +20,15 @@ const META_TREINADOR_MOCHILA = `${PREFIX}/treinador-mochila`;
 const META_MESTRE_ENCONTROS = `${PREFIX}/mestre-encontros`;
 const META_MESTRE_REGRAS = `${PREFIX}/mestre-regras`;
 const META_MESTRE_BOSSES = `${PREFIX}/mestre-bosses`;
+const META_BOSS_ATIVO = `${PREFIX}/boss-ativo`;
+const META_BOSS_MESTRE_DONO = `${PREFIX}/boss-mestre-dono`;
+const META_BOSS_HP_ORIGINAL_ATUAL = `${PREFIX}/boss-hp-original-atual`;
+const META_BOSS_HP_ORIGINAL_MAX = `${PREFIX}/boss-hp-original-max`;
+const META_BOSS_CA_ORIGINAL = `${PREFIX}/boss-ca-original`;
+const META_BOSS_RESISTENCIA = `${PREFIX}/boss-resistencia-absoluta`;
+const META_BOSS_RAGE = `${PREFIX}/boss-rage`;
+const META_BOSS_CARINHO = `${PREFIX}/boss-carinho`;
+const META_BOSS_HUD_TOKEN = `${PREFIX}/boss-hud-token`;
 const META_NPC_MESTRE_DONO = `${PREFIX}/npc-mestre-dono`;
 const META_NPC_MESTRE_SLOT = `${PREFIX}/npc-mestre-slot`;
 const META_NPC_DADOS = `${PREFIX}/npc-dados`;
@@ -3260,6 +3269,12 @@ async function corrigirHudExistente() {
       continue;
     }
 
+    const tokenDonoHud = tokensPorId.get(tokenId);
+    if (tokenDonoHud && pokemonEhBoss(tokenDonoHud)) {
+      apagar.add(visual.id);
+      continue;
+    }
+
     const chave = `${tokenId}::${tipo}`;
     if (!porTokenETipo.has(chave)) porTokenETipo.set(chave, []);
     porTokenETipo.get(chave).push(visual);
@@ -3297,7 +3312,17 @@ async function executarEmFilaHud( tokenId, tarefa ) { const anterior = filaHudPo
 const atual = anterior .catch(() => {}) .then(tarefa);
 filaHudPorToken.set( tokenId, atual );
 try { return await atual; } finally { if ( filaHudPorToken.get(tokenId) === atual ) { filaHudPorToken.delete(tokenId); } } }
-async function criarStatusNoToken( token, hpAtual, hpMax, ca ) { return executarEmFilaHud( token.id, async () => { const antigos = await OBR.scene.items.getItems( (item) => item.metadata?.[
+async function criarStatusNoToken( token, hpAtual, hpMax, ca ) {
+if (pokemonEhBoss(token)) {
+  await apagarHudCompartilhadoBoss(token.id);
+  if (await usuarioAtualEhGm()) {
+    const dados = dadosBossDoToken(token);
+    const caPrivada = Number.isFinite(Number(ca)) ? Number(ca) : dados.caEfetiva;
+    await criarHudBossPrivado(token, hpAtual, hpMax, caPrivada);
+  }
+  return;
+}
+return executarEmFilaHud( token.id, async () => { const antigos = await OBR.scene.items.getItems( (item) => item.metadata?.[
 `${PREFIX}/statusToken`
 ] === token.id ); if (antigos.length) { await OBR.scene.items.deleteItems( antigos.map( (item) => item.id ) ); } const bounds = await OBR.scene.items.getItemBounds( [token.id] ); const larguraBarra = Math.max( 100, Math.min( 180, bounds.width * 0.85 ) ); const alturaBarra = Math.max( 20, Math.min( 30, larguraBarra * 0.16 ) ); const tamanhoCA = alturaBarra * 1.4; const espacoCA = alturaBarra * 0.35; const larguraTotal = larguraBarra + espacoCA + tamanhoCA; const inicioX = bounds.min.x + ( (bounds.width - larguraTotal) / 2 ); const barraY = bounds.max.y + Math.max( 8, bounds.height * 0.03 ); let porcentagem = hpMax > 0 ? hpAtual / hpMax : 0; porcentagem = Math.max( 0, Math.min( 1, porcentagem ) ); const larguraVida = larguraBarra * porcentagem; let corVida = "#34C759"; if (porcentagem <= 0.50) { corVida = "#FFD60A"; } if (porcentagem <= 0.25) { corVida = "#FF453A"; } const fundoBarra = prepararVisualHud( buildShape() .shapeType("RECTANGLE") .width(larguraBarra) .height(alturaBarra) .position({ x: inicioX, y: barraY }) .fillColor("#202020") .fillOpacity(1) .strokeColor("#000000") .strokeWidth(2) .layer("ATTACHMENT") .zIndex(0) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
 [`${PREFIX}/statusToken`]:
@@ -9567,6 +9592,11 @@ if (talentoCombateAtivo("investida-poderosa")) { bonusTalentos += 5; } }
 if ( incluirBonusMestres && categoria === "especial" && talentoCombateAtivo("mestre-distancia") ) { bonusTalentos += 10; }
 let formulaFinal = adicionarBonusNaFormula( formulaOriginal, bonusBuff + bonusTalentos );
 if ( categoria === "fisico" && talentoCombateAtivo("atacante-bestial") ) { formulaFinal = formulaComVantagem( formulaFinal ); }
+if (pokemonEhBoss(token)) {
+  const dadosBoss = dadosBossDoToken(token);
+  if (dadosBoss.rage) formulaFinal = adicionarMetadeDosDadosFormula(formulaFinal);
+  if (dadosBoss.carinho > 0) formulaFinal = adicionarBonusNaFormula(formulaFinal, -(dadosBoss.carinho * 10));
+}
 return formulaFinal; }
 function dobrarDadosPorVezes( formula, vezes ) { const quantidadeDobras = Math.max( 1, Math.min( 10, Number(vezes) || 1 ) );
 const multiplicador = Math.pow(2, quantidadeDobras);
@@ -11344,19 +11374,253 @@ function regrasMestreDoToken(token) {
   }));
 }
 
-function bossesMestreDoToken(token) {
+function idsBossMestreDoToken(token) {
   const valor = token?.metadata?.[META_MESTRE_BOSSES];
-  return Array.isArray(valor)
-    ? valor.slice(0, 6).map((item) => ({
-        nome: String(item?.nome || "Boss").slice(0, 80),
-        fase: Math.max(1, Math.trunc(Number(item?.fase) || 1)),
-        fasesMax: Math.max(1, Math.min(9, Math.trunc(Number(item?.fasesMax) || 1))),
-        acoes: Math.max(0, Math.trunc(Number(item?.acoes) || 0)),
-        acoesMax: Math.max(0, Math.min(20, Math.trunc(Number(item?.acoesMax) || 0))),
-        enrage: item?.enrage === true,
-        notas: String(item?.notas || "").slice(0, 1600)
-      }))
-    : [];
+  if (!Array.isArray(valor)) return [];
+  const ids = [];
+  for (const item of valor) {
+    const id = typeof item === "string" ? item : String(item?.tokenId || "");
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+function pokemonEhBoss(token) {
+  return token?.metadata?.[META_BOSS_ATIVO] === true;
+}
+
+function dadosBossDoToken(token) {
+  const hpAtual = Math.max(0, Math.trunc(Number(token?.metadata?.[`${PREFIX}/hpAtual`] ?? 0) || 0));
+  const hpMax = Math.max(1, Math.trunc(Number(token?.metadata?.[`${PREFIX}/hpMax`] ?? 1) || 1));
+  const caBase = Number(token?.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+  const evasao = normalizarEstagioBuff(token?.metadata?.[`${PREFIX}/buff-evas`] ?? 0, "evas");
+  const caEfetiva = caBase + evasao + bonusCaMegaDoToken(token);
+  return {
+    hpAtual,
+    hpMax,
+    caBase,
+    caEfetiva,
+    resistencia: Math.max(0, Math.min(3, Math.trunc(Number(token?.metadata?.[META_BOSS_RESISTENCIA] ?? 3) || 0))),
+    rage: token?.metadata?.[META_BOSS_RAGE] === true,
+    carinho: Math.max(0, Math.min(5, Math.trunc(Number(token?.metadata?.[META_BOSS_CARINHO] ?? 0) || 0)))
+  };
+}
+
+async function apagarHudCompartilhadoBoss(tokenId) {
+  try {
+    const antigos = await OBR.scene.items.getItems((item) => item.metadata?.[`${PREFIX}/statusToken`] === tokenId);
+    if (antigos.length) await OBR.scene.items.deleteItems(antigos.map((item) => item.id));
+  } catch (erro) {
+    console.warn("Não foi possível ocultar o HUD público do Boss:", erro);
+  }
+}
+
+async function apagarHudBossPrivado(tokenId) {
+  try {
+    const antigos = await OBR.scene.local.getItems((item) => item.metadata?.[META_BOSS_HUD_TOKEN] === tokenId);
+    if (antigos.length) await OBR.scene.local.deleteItems(antigos.map((item) => item.id));
+  } catch (_) {}
+}
+
+async function criarHudBossPrivado(token, hpAtual, hpMax, ca) {
+  if (!(await usuarioAtualEhGm())) return;
+  await apagarHudBossPrivado(token.id);
+  try {
+    const bounds = await OBR.scene.items.getItemBounds([token.id]);
+    const larguraBarra = Math.max(100, Math.min(180, bounds.width * 0.85));
+    const alturaBarra = Math.max(20, Math.min(30, larguraBarra * 0.16));
+    const tamanhoCA = alturaBarra * 1.4;
+    const espacoCA = alturaBarra * 0.35;
+    const larguraTotal = larguraBarra + espacoCA + tamanhoCA;
+    const inicioX = bounds.min.x + ((bounds.width - larguraTotal) / 2);
+    const barraY = bounds.max.y + Math.max(8, bounds.height * 0.03);
+    const porcentagem = Math.max(0, Math.min(1, hpMax > 0 ? hpAtual / hpMax : 0));
+    const larguraVida = larguraBarra * porcentagem;
+    let corVida = "#34C759";
+    if (porcentagem <= .50) corVida = "#FFD60A";
+    if (porcentagem <= .25) corVida = "#FF453A";
+    const meta = { [META_BOSS_HUD_TOKEN]: token.id };
+
+    const fundo = prepararVisualHud(buildShape()
+      .shapeType("RECTANGLE").width(larguraBarra).height(alturaBarra)
+      .position({ x: inicioX, y: barraY }).fillColor("#202020").fillOpacity(1)
+      .strokeColor("#000000").strokeWidth(2).layer("ATTACHMENT").zIndex(0)
+      .disableAutoZIndex(true).attachedTo(token.id).locked(true).disableHit(true)
+      .metadata({ ...meta, [`${PREFIX}/boss-hud-tipo`]: "fundo" }).build());
+
+    const elementos = [fundo];
+    if (larguraVida > 0) {
+      elementos.push(prepararVisualHud(buildShape()
+        .shapeType("RECTANGLE").width(larguraVida).height(alturaBarra)
+        .position({ x: inicioX, y: barraY }).fillColor(corVida).fillOpacity(1)
+        .strokeWidth(0).layer("ATTACHMENT").zIndex(1).disableAutoZIndex(true)
+        .attachedTo(token.id).locked(true).disableHit(true)
+        .metadata({ ...meta, [`${PREFIX}/boss-hud-tipo`]: "vida" }).build()));
+    }
+
+    const fonteHP = Math.max(16, alturaBarra * .72);
+    elementos.push(prepararVisualHud(buildText().textType("PLAIN").plainText(`${hpAtual}`)
+      .position({ x: inicioX, y: barraY + ((alturaBarra - fonteHP) / 2) })
+      .width(larguraBarra).height("AUTO").fontFamily("Arial").fontSize(fonteHP)
+      .fontWeight(700).lineHeight(1).fillColor("#FFFFFF").fillOpacity(1).strokeWidth(0)
+      .textAlign("CENTER").padding(0).layer("ATTACHMENT").zIndex(10).disableAutoZIndex(true)
+      .attachedTo(token.id).locked(true).disableHit(true)
+      .metadata({ ...meta, [`${PREFIX}/boss-hud-tipo`]: "hp" }).build()));
+
+    const caX = inicioX + larguraBarra + espacoCA + 8;
+    const caY = barraY - ((tamanhoCA - alturaBarra) / 2) + 3;
+    elementos.push(prepararVisualHud(buildShape().shapeType("CIRCLE")
+      .width(tamanhoCA).height(tamanhoCA).position({ x: caX, y: caY })
+      .fillColor("#8b0000").fillOpacity(1).strokeColor("#FFFFFF").strokeWidth(2)
+      .layer("ATTACHMENT").zIndex(1).disableAutoZIndex(true).attachedTo(token.id)
+      .locked(true).disableHit(true)
+      .metadata({ ...meta, [`${PREFIX}/boss-hud-tipo`]: "ca-circulo" }).build()));
+
+    const fonteCA = tamanhoCA * .45;
+    elementos.push(prepararVisualHud(buildText().textType("PLAIN").plainText(`${ca}`)
+      .position({ x: caX - (tamanhoCA / 2), y: caY - (tamanhoCA / 2) })
+      .width(tamanhoCA).height(tamanhoCA).fontFamily("Arial").fontSize(fonteCA)
+      .fontWeight(700).lineHeight(1).fillColor("#FFFFFF").fillOpacity(1).strokeWidth(0)
+      .textAlign("CENTER").textAlignVertical("MIDDLE").padding(0).layer("ATTACHMENT")
+      .zIndex(20).disableAutoZIndex(true).attachedTo(token.id).locked(true).disableHit(true)
+      .metadata({ ...meta, [`${PREFIX}/boss-hud-tipo`]: "ca-texto" }).build()));
+
+    const etiqueta = prepararVisualHud(buildText().textType("PLAIN").plainText("BOSS")
+      .position({ x: inicioX, y: barraY - 22 }).width(larguraBarra).height("AUTO")
+      .fontFamily("Arial").fontSize(Math.max(12, alturaBarra * .5)).fontWeight(900)
+      .lineHeight(1).fillColor("#b71c1c").fillOpacity(1).strokeColor("#FFFFFF").strokeWidth(2)
+      .textAlign("CENTER").padding(0).layer("ATTACHMENT").zIndex(20).disableAutoZIndex(true)
+      .attachedTo(token.id).locked(true).disableHit(true)
+      .metadata({ ...meta, [`${PREFIX}/boss-hud-tipo`]: "rotulo" }).build());
+    elementos.push(etiqueta);
+
+    await OBR.scene.local.addItems(elementos);
+  } catch (erro) {
+    console.warn("Não foi possível criar o HUD privado do Boss:", erro);
+  }
+}
+
+async function atualizarHudBossPrivado(token) {
+  if (!token || !pokemonEhBoss(token)) {
+    if (token?.id) await apagarHudBossPrivado(token.id);
+    return;
+  }
+  const dados = dadosBossDoToken(token);
+  await apagarHudCompartilhadoBoss(token.id);
+  await criarHudBossPrivado(token, dados.hpAtual, dados.hpMax, dados.caEfetiva);
+}
+
+let temporizadorHudsBossPrivados = null;
+function agendarSincronizacaoHudsBossPrivados(atraso = 250) {
+  if (temporizadorHudsBossPrivados) clearTimeout(temporizadorHudsBossPrivados);
+  temporizadorHudsBossPrivados = setTimeout(async () => {
+    temporizadorHudsBossPrivados = null;
+    try {
+      if (!(await usuarioAtualEhGm())) {
+        const locais = await OBR.scene.local.getItems((item) => item.metadata?.[META_BOSS_HUD_TOKEN]);
+        if (locais.length) await OBR.scene.local.deleteItems(locais.map((item) => item.id));
+        return;
+      }
+      const bosses = await OBR.scene.items.getItems((item) => pokemonEhBoss(item));
+      const idsAtivos = new Set(bosses.map((item) => item.id));
+      const locais = await OBR.scene.local.getItems((item) => item.metadata?.[META_BOSS_HUD_TOKEN]);
+      const obsoletos = locais.filter((item) => !idsAtivos.has(item.metadata?.[META_BOSS_HUD_TOKEN]));
+      if (obsoletos.length) await OBR.scene.local.deleteItems(obsoletos.map((item) => item.id));
+      for (const boss of bosses) await atualizarHudBossPrivado(boss);
+    } catch (erro) {
+      console.warn("Não foi possível sincronizar os HUDs privados dos Bosses:", erro);
+    }
+  }, atraso);
+}
+
+function mostrarFichaPokemonBossOculta(token) {
+  const app = document.querySelector("#app");
+  if (!app) return;
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    <div style="min-height:260px;display:flex;align-items:center;justify-content:center;padding:18px;">
+      <div style="width:100%;border:2px solid #202020;border-radius:16px;background:#fff;padding:24px 18px;text-align:center;box-shadow:0 8px 20px rgba(0,0,0,.08);">
+        <div style="font-size:40px;margin-bottom:8px;">🔒</div>
+        <div style="font-size:18px;font-weight:1000;color:#b71c1c;letter-spacing:.5px;">POKÉMON BOSS</div>
+        <div style="font-size:10px;font-weight:900;margin-top:8px;line-height:1.45;color:#222;">As informações deste Pokémon estão ocultas.<br>Somente o Mestre pode visualizar ou editar sua ficha.</div>
+      </div>
+    </div>`;
+}
+
+async function protegerFichaBossSelecionada() {
+  try {
+    if (await usuarioAtualEhGm()) return;
+    const selection = await OBR.player.getSelection();
+    if (!selection?.length) return;
+    const itens = await OBR.scene.items.getItems([selection[0]]);
+    const token = itens?.[0];
+    if (token && pokemonEhBoss(token)) mostrarFichaPokemonBossOculta(token);
+  } catch (_) {}
+}
+
+async function tornarPokemonBoss(mestre, alvo, hpBoss) {
+  if (!(await usuarioAtualEhGm())) throw new Error("Somente o GM pode transformar um Pokémon em Boss.");
+  if (!alvo || alvo.metadata?.[`${PREFIX}/tipoFicha`] !== "pokemon") throw new Error("Selecione um token com ficha de Pokémon.");
+  if (pokemonEhBoss(alvo)) throw new Error("Este Pokémon já é um Boss.");
+  const hpNovo = Math.max(1, Math.trunc(Number(hpBoss) || 1));
+  const hpOriginalAtual = Math.max(0, Math.trunc(Number(alvo.metadata?.[`${PREFIX}/hpAtual`] ?? 100) || 0));
+  const hpOriginalMax = Math.max(1, Math.trunc(Number(alvo.metadata?.[`${PREFIX}/hpMax`] ?? 100) || 1));
+  const caOriginal = Number(alvo.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+
+  await OBR.scene.items.updateItems([alvo.id], (items) => {
+    for (const item of items) {
+      item.metadata[META_BOSS_ATIVO] = true;
+      item.metadata[META_BOSS_MESTRE_DONO] = mestre.id;
+      item.metadata[META_BOSS_HP_ORIGINAL_ATUAL] = hpOriginalAtual;
+      item.metadata[META_BOSS_HP_ORIGINAL_MAX] = hpOriginalMax;
+      item.metadata[META_BOSS_CA_ORIGINAL] = caOriginal;
+      item.metadata[META_BOSS_RESISTENCIA] = 3;
+      item.metadata[META_BOSS_RAGE] = false;
+      item.metadata[META_BOSS_CARINHO] = 0;
+      item.metadata[`${PREFIX}/hpAtual`] = hpNovo;
+      item.metadata[`${PREFIX}/hpMax`] = hpNovo;
+      item.metadata[`${PREFIX}/ca`] = caOriginal + 4;
+    }
+  });
+
+  const ids = idsBossMestreDoToken(mestre);
+  if (!ids.includes(alvo.id)) ids.push(alvo.id);
+  await salvarMetadataMestre(mestre, META_MESTRE_BOSSES, ids);
+  const atualizado = (await OBR.scene.items.getItems([alvo.id]))?.[0];
+  if (atualizado) await atualizarHudBossPrivado(atualizado);
+}
+
+async function removerRotuloBoss(mestre, boss) {
+  if (!(await usuarioAtualEhGm())) throw new Error("Somente o GM pode remover o rótulo de Boss.");
+  if (!boss) return;
+  const hpOriginalAtual = Math.max(0, Math.trunc(Number(boss.metadata?.[META_BOSS_HP_ORIGINAL_ATUAL] ?? boss.metadata?.[`${PREFIX}/hpAtual`] ?? 100) || 0));
+  const hpOriginalMax = Math.max(1, Math.trunc(Number(boss.metadata?.[META_BOSS_HP_ORIGINAL_MAX] ?? boss.metadata?.[`${PREFIX}/hpMax`] ?? 100) || 1));
+  const caOriginal = Number(boss.metadata?.[META_BOSS_CA_ORIGINAL] ?? boss.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+
+  await OBR.scene.items.updateItems([boss.id], (items) => {
+    for (const item of items) {
+      item.metadata[`${PREFIX}/hpAtual`] = Math.min(hpOriginalAtual, hpOriginalMax);
+      item.metadata[`${PREFIX}/hpMax`] = hpOriginalMax;
+      item.metadata[`${PREFIX}/ca`] = caOriginal;
+      delete item.metadata[META_BOSS_ATIVO];
+      delete item.metadata[META_BOSS_MESTRE_DONO];
+      delete item.metadata[META_BOSS_HP_ORIGINAL_ATUAL];
+      delete item.metadata[META_BOSS_HP_ORIGINAL_MAX];
+      delete item.metadata[META_BOSS_CA_ORIGINAL];
+      delete item.metadata[META_BOSS_RESISTENCIA];
+      delete item.metadata[META_BOSS_RAGE];
+      delete item.metadata[META_BOSS_CARINHO];
+    }
+  });
+
+  const ids = idsBossMestreDoToken(mestre).filter((id) => id !== boss.id);
+  await salvarMetadataMestre(mestre, META_MESTRE_BOSSES, ids);
+  await apagarHudBossPrivado(boss.id);
+  const restaurado = (await OBR.scene.items.getItems([boss.id]))?.[0];
+  if (restaurado) {
+    const dados = dadosBossDoToken(restaurado);
+    await criarStatusNoToken(restaurado, dados.hpAtual, dados.hpMax, dados.caEfetiva);
+  }
 }
 
 async function salvarMetadataMestre(token, chave, valor) {
@@ -11482,59 +11746,178 @@ function mostrarFichaMestreRegras(token) {
   }));
 }
 
-function mostrarFichaMestreBoss(token) {
+async function mostrarFichaMestreBoss(token) {
   const app = document.querySelector("#app");
-  const bosses = bossesMestreDoToken(token);
-  const cards = bosses.length ? bosses.map((boss, indice) => `
-    <div style="border:1px solid #202020;border-radius:11px;background:#fff;padding:9px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:7px;"><strong style="font-size:12px;color:#b71c1c;">${esc(boss.nome)}</strong><button type="button" data-boss-acao="remover" data-boss-index="${indice}" style="padding:4px 7px!important;font-weight:900;">×</button></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;">
-        <div style="border:1px solid #202020;border-radius:9px;padding:7px;text-align:center;"><div style="font-size:8px;font-weight:900;">FASE</div><strong>${Math.min(boss.fase,boss.fasesMax)} / ${boss.fasesMax}</strong><div style="display:flex;gap:5px;margin-top:5px;"><button type="button" data-boss-acao="fase-" data-boss-index="${indice}" style="flex:1;padding:4px!important;">−</button><button type="button" data-boss-acao="fase+" data-boss-index="${indice}" style="flex:1;padding:4px!important;">+</button></div></div>
-        <div style="border:1px solid #202020;border-radius:9px;padding:7px;text-align:center;"><div style="font-size:8px;font-weight:900;">AÇÕES EXTRAS</div><strong>${boss.acoes} / ${boss.acoesMax}</strong><div style="display:flex;gap:5px;margin-top:5px;"><button type="button" data-boss-acao="usar-acao" data-boss-index="${indice}" style="flex:1;padding:4px!important;">USAR −1</button><button type="button" data-boss-acao="restaurar-acoes" data-boss-index="${indice}" style="flex:1;padding:4px!important;">↻</button></div></div>
-      </div>
-      <button type="button" data-boss-acao="enrage" data-boss-index="${indice}" style="width:100%;margin-top:7px;font-weight:900;background:${boss.enrage ? "#b71c1c" : "#fff"}!important;color:${boss.enrage ? "#fff" : "#111"}!important;border-color:#202020!important;">ENFURECER: ${boss.enrage ? "SIM" : "NÃO"}</button>
-      ${boss.notas ? `<div style="margin-top:7px;border-top:1px solid #202020;padding-top:7px;font-size:9px;line-height:1.35;white-space:pre-wrap;">${esc(boss.notas)}</div>` : ""}
-    </div>`).join("") : `<div style="text-align:center;padding:18px;border:1px dashed #202020;border-radius:10px;font-size:9px;font-weight:800;">Nenhum Boss cadastrado.</div>`;
+  if (!(await usuarioAtualEhGm())) {
+    app.innerHTML = `
+      ${ESTILO_FICHA}
+      ${cabecalhoMestre(token,3)}
+      <section style="border:1px solid #202020;border-radius:12px;background:#fff;padding:22px;text-align:center;">
+        <div style="font-size:34px;">🔒</div>
+        <h3 style="margin:8px 0 4px!important;color:#b71c1c!important;">POKÉMONS BOSS</h3>
+        <div style="font-size:10px;font-weight:900;line-height:1.45;">Esta área é exclusiva do GM.</div>
+      </section>`;
+    ativarCabecalhoMestre(token);
+    return;
+  }
+
+  const idsSalvos = idsBossMestreDoToken(token);
+  const itensBoss = idsSalvos.length ? await OBR.scene.items.getItems(idsSalvos) : [];
+  const mapaBoss = new Map(itensBoss.map((item) => [item.id, item]));
+  const bosses = idsSalvos.map((id) => mapaBoss.get(id)).filter((item) => item && pokemonEhBoss(item));
+  const idsValidos = bosses.map((item) => item.id);
+  if (idsValidos.length !== idsSalvos.length) {
+    await salvarMetadataMestre(token, META_MESTRE_BOSSES, idsValidos);
+  }
+
+  const candidatos = await OBR.scene.items.getItems((item) =>
+    item.type === "IMAGE" &&
+    item.layer === "CHARACTER" &&
+    item.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    !pokemonEhBoss(item)
+  );
+  candidatos.sort((a,b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
+
+  const opcoes = candidatos.length
+    ? candidatos.map((item) => `<option value="${esc(item.id)}">${esc(nomeFichaPokemon(item) || item.name || "Pokémon")}</option>`).join("")
+    : `<option value="">Nenhum Pokémon comum disponível</option>`;
+
+  const cards = bosses.length ? bosses.map((boss) => {
+    const dados = dadosBossDoToken(boss);
+    const nome = nomeFichaPokemon(boss) || boss.name || "Pokémon Boss";
+    const danoCarinho = dados.carinho * 10;
+    return `
+      <div style="border:2px solid #202020;border-radius:12px;background:#fff;padding:10px;box-shadow:0 3px 10px rgba(0,0,0,.05);">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div style="min-width:0;">
+            <div style="font-size:8px;font-weight:1000;color:#b71c1c;letter-spacing:.7px;">POKÉMON BOSS</div>
+            <strong style="display:block;font-size:13px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(nome)}</strong>
+          </div>
+          <button type="button" data-boss-acao="selecionar" data-boss-id="${esc(boss.id)}" style="padding:5px 7px!important;font-size:8px!important;font-weight:1000;">VER FICHA</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px;">
+          <div style="border:1px solid #202020;border-radius:9px;padding:8px;text-align:center;background:#fff;">
+            <div style="font-size:8px;font-weight:1000;">HP DO BOSS</div>
+            <strong style="font-size:16px;color:#b71c1c;">${dados.hpAtual} / ${dados.hpMax}</strong>
+            <div style="font-size:7.5px;font-weight:800;color:#555;margin-top:2px;">HUD PRIVADO DO GM</div>
+          </div>
+          <div style="border:1px solid #202020;border-radius:9px;padding:8px;text-align:center;background:#fff;">
+            <div style="font-size:8px;font-weight:1000;">CA DO BOSS</div>
+            <strong style="font-size:16px;color:#b71c1c;">${formatarDecimal(dados.caEfetiva)}</strong>
+            <div style="font-size:7.5px;font-weight:800;color:#555;margin-top:2px;">+4 CA AO VIRAR BOSS</div>
+          </div>
+        </div>
+
+        <div style="border:1px solid #202020;border-radius:9px;padding:8px;margin-top:7px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:7px;">
+            <div>
+              <div style="font-size:9px;font-weight:1000;">RESISTÊNCIA ABSOLUTA</div>
+              <div style="font-size:7.5px;font-weight:800;color:#555;">Anule automaticamente um efeito inimigo.</div>
+            </div>
+            <strong style="font-size:15px;color:#b71c1c;white-space:nowrap;">${dados.resistencia} / 3</strong>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
+            <button type="button" data-boss-acao="resistir" data-boss-id="${esc(boss.id)}" ${dados.resistencia <= 0 ? "disabled" : ""} style="font-size:8px!important;font-weight:1000;">USAR −1</button>
+            <button type="button" data-boss-acao="restaurar-resistencia" data-boss-id="${esc(boss.id)}" style="font-size:8px!important;font-weight:1000;">RESTAURAR 3</button>
+          </div>
+        </div>
+
+        <button type="button" data-boss-acao="rage" data-boss-id="${esc(boss.id)}" style="width:100%;margin-top:7px;font-weight:1000;background:${dados.rage ? "#b71c1c" : "#fff"}!important;color:${dados.rage ? "#fff" : "#111"}!important;border:1px solid #202020!important;">
+          RAGE: ${dados.rage ? "ATIVO" : "INATIVO"}
+        </button>
+        <div style="font-size:7.5px;font-weight:800;line-height:1.3;text-align:center;color:#555;margin-top:4px;">Quando ativo, todo dano rolado pelo Boss recebe + metade dos dados automaticamente.</div>
+
+        <div style="border:1px solid #202020;border-radius:9px;padding:8px;margin-top:7px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:7px;">
+            <div>
+              <div style="font-size:9px;font-weight:1000;">CARINHO</div>
+              <div style="font-size:7.5px;font-weight:800;color:#555;">Cada ponto reduz em 10 o dano de cada golpe.</div>
+            </div>
+            <strong style="font-size:15px;color:#b71c1c;white-space:nowrap;">${dados.carinho} / 5</strong>
+          </div>
+          <div style="display:grid;grid-template-columns:54px minmax(0,1fr) 54px;gap:6px;align-items:center;margin-top:6px;">
+            <button type="button" data-boss-acao="carinho-" data-boss-id="${esc(boss.id)}" ${dados.carinho <= 0 ? "disabled" : ""} style="font-weight:1000;">−</button>
+            <div style="text-align:center;font-size:9px;font-weight:1000;">DANO −${danoCarinho}</div>
+            <button type="button" data-boss-acao="carinho+" data-boss-id="${esc(boss.id)}" ${dados.carinho >= 5 ? "disabled" : ""} style="font-weight:1000;">+</button>
+          </div>
+        </div>
+
+        <button type="button" data-boss-acao="remover" data-boss-id="${esc(boss.id)}" style="width:100%;margin-top:8px;font-size:8px!important;font-weight:1000;background:#fff!important;color:#b71c1c!important;border:1px solid #b71c1c!important;">REMOVER RÓTULO DE BOSS</button>
+      </div>`;
+  }).join("") : `<div style="text-align:center;padding:18px;border:1px dashed #202020;border-radius:10px;font-size:9px;font-weight:800;">Nenhum Pokémon foi transformado em Boss ainda.</div>`;
+
   app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoMestre(token,3)}
-    <section style="border:1px solid #202020;border-radius:12px;background:rgba(255,255,255,.94);padding:11px;">
-      <h3 style="text-align:center!important;margin-top:0!important;">POKÉMONS BOSS</h3>
-      <div style="font-size:8px;text-align:center;font-weight:800;margin-bottom:9px;">Controle fases, ações extras, Enrage e anotações especiais sem alterar a ficha normal do Pokémon.</div>
-      <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 74px;gap:6px;">
-        <input id="mestreBossNome" placeholder="Nome do Boss">
-        <input id="mestreBossFases" type="number" min="1" max="9" value="1" title="Fases">
-        <input id="mestreBossAcoes" type="number" min="0" max="20" value="0" title="Ações extras">
+    <section style="border:1px solid #202020;border-radius:12px;background:rgba(255,255,255,.95);padding:11px;">
+      <h3 style="text-align:center!important;margin:0 0 4px!important;color:#b71c1c!important;">POKÉMONS BOSS</h3>
+      <div style="font-size:8.5px;text-align:center;font-weight:800;line-height:1.35;margin-bottom:10px;color:#333;">Escolha um Pokémon comum da cena. Ao virar Boss, sua ficha e seu HUD de HP/CA ficam privados para o GM.</div>
+
+      <div style="border:1px solid #202020;border-radius:10px;padding:9px;background:#fff;margin-bottom:10px;">
+        <div style="font-size:9px;font-weight:1000;margin-bottom:6px;">TRANSFORMAR POKÉMON EM BOSS</div>
+        <select id="mestreBossToken" style="width:100%;margin-bottom:6px;">${opcoes}</select>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:6px;align-items:end;">
+          <label style="font-size:8px;font-weight:1000;">NOVA VIDA DO BOSS
+            <input id="mestreBossHp" type="number" min="1" step="1" value="300" style="width:100%;margin-top:3px;">
+          </label>
+          <button id="mestreAdicionarBoss" type="button" ${candidatos.length ? "" : "disabled"} style="height:40px;font-size:8px!important;font-weight:1000;background:#b71c1c!important;color:#fff!important;border-color:#202020!important;">TORNAR BOSS</button>
+        </div>
+        <div style="font-size:7.5px;line-height:1.3;font-weight:800;color:#555;margin-top:6px;">O HP informado substitui temporariamente o HP do Pokémon. A CA recebe +4 automaticamente. Ao remover o rótulo de Boss, HP e CA originais são restaurados.</div>
       </div>
-      <textarea id="mestreBossNotas" maxlength="1600" placeholder="Mecânicas, gatilhos de HP, ações lendárias, mudança de campo..." style="width:100%;min-height:72px;margin-top:6px;resize:vertical;"></textarea>
-      <button id="mestreAdicionarBoss" type="button" style="width:100%;margin:7px 0 10px;font-weight:900;">+ ADICIONAR BOSS</button>
-      <div style="display:grid;gap:8px;">${cards}</div>
+
+      <div style="display:grid;gap:9px;">${cards}</div>
     </section>`;
+
   ativarCabecalhoMestre(token);
+
   document.querySelector("#mestreAdicionarBoss")?.addEventListener("click", async () => {
-    const lista = bossesMestreDoToken(token);
-    if (lista.length >= 6) { alert("A ficha do Mestre possui 6 slots de Boss."); return; }
-    const nome = document.querySelector("#mestreBossNome")?.value?.trim() || "";
-    if (!nome) { alert("Digite o nome do Boss."); return; }
-    const fasesMax = Math.max(1, Math.min(9, Math.trunc(Number(document.querySelector("#mestreBossFases")?.value) || 1)));
-    const acoesMax = Math.max(0, Math.min(20, Math.trunc(Number(document.querySelector("#mestreBossAcoes")?.value) || 0)));
-    const notas = document.querySelector("#mestreBossNotas")?.value?.trim() || "";
-    lista.push({ nome, fase:1, fasesMax, acoes:acoesMax, acoesMax, enrage:false, notas });
-    await salvarMetadataMestre(token, META_MESTRE_BOSSES, lista);
-    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreBoss(atual);
-  });
-  document.querySelectorAll("[data-boss-acao]").forEach((botao) => botao.addEventListener("click", async () => {
-    const lista = bossesMestreDoToken(token); const indice = Number(botao.dataset.bossIndex); const boss = lista[indice]; if (!boss) return;
-    switch (botao.dataset.bossAcao) {
-      case "fase-": boss.fase = Math.max(1, boss.fase - 1); break;
-      case "fase+": boss.fase = Math.min(boss.fasesMax, boss.fase + 1); break;
-      case "usar-acao": boss.acoes = Math.max(0, boss.acoes - 1); break;
-      case "restaurar-acoes": boss.acoes = boss.acoesMax; break;
-      case "enrage": boss.enrage = !boss.enrage; break;
-      case "remover": lista.splice(indice,1); break;
+    const id = document.querySelector("#mestreBossToken")?.value || "";
+    const hp = Number(document.querySelector("#mestreBossHp")?.value || 0);
+    if (!id) { alert("Escolha um Pokémon da cena."); return; }
+    if (!Number.isFinite(hp) || hp < 1) { alert("Informe uma vida válida para o Boss."); return; }
+    const alvo = candidatos.find((item) => item.id === id) || (await OBR.scene.items.getItems([id]))?.[0];
+    try {
+      await tornarPokemonBoss(token, alvo, hp);
+      const mestreAtual = await pegarTokenAtualizado(token.id);
+      if (mestreAtual) await mostrarFichaMestreBoss(mestreAtual);
+    } catch (erro) {
+      alert(erro?.message || "Não foi possível transformar o Pokémon em Boss.");
     }
-    await salvarMetadataMestre(token, META_MESTRE_BOSSES, lista);
-    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreBoss(atual);
+  });
+
+  document.querySelectorAll("[data-boss-acao]").forEach((botao) => botao.addEventListener("click", async () => {
+    const id = botao.dataset.bossId;
+    const boss = (await OBR.scene.items.getItems([id]))?.[0];
+    if (!boss) return;
+    const acao = botao.dataset.bossAcao;
+
+    if (acao === "selecionar") {
+      await OBR.player.select([id], true);
+      return;
+    }
+    if (acao === "remover") {
+      if (!confirm(`Remover o rótulo de Boss de ${nomeFichaPokemon(boss) || boss.name || "este Pokémon"}?`)) return;
+      await removerRotuloBoss(token, boss);
+      const mestreAtual = await pegarTokenAtualizado(token.id);
+      if (mestreAtual) await mostrarFichaMestreBoss(mestreAtual);
+      return;
+    }
+
+    const dados = dadosBossDoToken(boss);
+    const atualizacoes = {};
+    if (acao === "resistir") atualizacoes[META_BOSS_RESISTENCIA] = Math.max(0, dados.resistencia - 1);
+    if (acao === "restaurar-resistencia") atualizacoes[META_BOSS_RESISTENCIA] = 3;
+    if (acao === "rage") atualizacoes[META_BOSS_RAGE] = !dados.rage;
+    if (acao === "carinho-") atualizacoes[META_BOSS_CARINHO] = Math.max(0, dados.carinho - 1);
+    if (acao === "carinho+") atualizacoes[META_BOSS_CARINHO] = Math.min(5, dados.carinho + 1);
+    if (!Object.keys(atualizacoes).length) return;
+
+    await OBR.scene.items.updateItems([id], (items) => {
+      for (const item of items) Object.assign(item.metadata, atualizacoes);
+    });
+    const mestreAtual = await pegarTokenAtualizado(token.id);
+    if (mestreAtual) await mostrarFichaMestreBoss(mestreAtual);
   }));
 }
 
@@ -11736,6 +12119,10 @@ if (token.metadata?.[META_PAINEL_INICIATIVA] === true || token.metadata?.[META_P
 const tipoFicha = token.metadata[
 `${PREFIX}/tipoFicha`
 ];
+if (pokemonEhBoss(token) && !(await usuarioAtualEhGm())) {
+  mostrarFichaPokemonBossOculta(token);
+  return;
+}
 try { if ( tipoFicha === "pokemon" ) { mostrarFichaPokemon( token );
 return; }
 if ( tipoFicha === "treinador" ) { mostrarFichaTreinadorPagina1( token );
@@ -11775,7 +12162,7 @@ app.innerHTML = `
             `;
 } } }
 let pluginInicializado = false;
-OBR.onReady( async () => { if (pluginInicializado) return; pluginInicializado = true; if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); OBR.scene.items.onChange(() => { agendarSincronizacaoRosterEmCampo(); agendarCorrecaoHudExistente(); }); OBR.player.onChange( async () => {
+OBR.onReady( async () => { if (pluginInicializado) return; pluginInicializado = true; if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); agendarSincronizacaoHudsBossPrivados(50); OBR.scene.items.onChange(() => { agendarSincronizacaoRosterEmCampo(); agendarCorrecaoHudExistente(); agendarSincronizacaoHudsBossPrivados(); protegerFichaBossSelecionada(); }); OBR.player.onChange( async () => {
     try {
       if (await tratarSelecaoAlvoCaptura()) return;
     } catch (erro) {
