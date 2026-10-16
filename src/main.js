@@ -23,9 +23,8 @@ const META_MESTRE_BOSSES = `${PREFIX}/mestre-bosses`;
 const META_NPC_MESTRE_DONO = `${PREFIX}/npc-mestre-dono`;
 const META_NPC_MESTRE_SLOT = `${PREFIX}/npc-mestre-slot`;
 const META_NPC_DADOS = `${PREFIX}/npc-dados`;
-const QUANTIDADE_NPCS_MESTRE = 40;
+const QUANTIDADE_NPCS_MESTRE = 25;
 const mestreBancoNpcsAberto = new Map();
-const mestreNpcEditorSelecionado = new Map();
 const META_AS_MESTRE_BATALHA_USOS = `${PREFIX}/classe-as-mestre-batalha-usos`;
 const META_AS_RITMO_COMBATE_USOS = `${PREFIX}/classe-as-ritmo-combate-usos`;
 const META_AS_TROCA_RAPIDA_USOS = `${PREFIX}/classe-as-troca-rapida-usos`;
@@ -10406,11 +10405,114 @@ async function colarCopiaFichaPokemonNoToken(token, pacote) {
 // ============================================================
 // FICHA DO MESTRE
 // ============================================================
+const NOMES_NPCS_ALEATORIOS = [
+  "Aster Vale",
+  "Nilo Ferraz",
+  "Mira Solis",
+  "Theo Ramires",
+  "Yara Venturi",
+  "Noah Brant",
+  "Celia Vidal",
+  "Dante Lume",
+  "Ayla Campos",
+  "Gael Sato",
+  "Nina Valente",
+  "Ravi Nunes",
+  "Cora Bell",
+  "Ivo Maren",
+  "Maya Torres",
+  "Levi Rocha",
+  "Lena Aoki",
+  "Otto Vilar",
+  "Suri Prado",
+  "Enzo Calder",
+  "Zara Monte",
+  "Luca Farias",
+  "Tessa Morel",
+  "Breno Kato",
+  "Amara Reis"
+];
+
+const QUEM_E_NPCS_ALEATORIOS = [
+  "Dono de uma pequena venda itinerante que viaja entre cidades.",
+  "Treinador especializado em Pokémon do tipo Sombrio.",
+  "Aspirante a Líder de Ginásio tentando provar que merece uma chance.",
+  "Viajante que pesquisa Pokémon incomuns encontrados pelas rotas.",
+  "Biólogo Pokémon estudando as espécies que vivem na região.",
+  "Fotógrafo que registra batalhas e aparições de Pokémon raros.",
+  "Criador Pokémon especializado em ovos, filhotes e cuidados básicos.",
+  "Ex-integrante de uma equipe criminosa tentando começar uma vida nova.",
+  "Entregador que atravessa rotas perigosas todos os dias.",
+  "Mecânico que conserta bicicletas e equipamentos usados por treinadores.",
+  "Pesquisador de fósseis, ruínas antigas e espécies pré-históricas.",
+  "Pescador experiente que conhece os rios e lagos da região.",
+  "Cozinheiro ambulante que prepara refeições para pessoas e Pokémon.",
+  "Colecionador de TMs e técnicas pouco conhecidas.",
+  "Guarda florestal responsável por proteger Pokémon selvagens.",
+  "Estudante de uma academia Pokémon participando de uma viagem de campo.",
+  "Artista de rua que se apresenta ao lado do próprio Pokémon.",
+  "Enfermeiro itinerante que ajuda treinadores longe dos Centros Pokémon.",
+  "Minerador que trabalha nas cavernas e montanhas da região.",
+  "Guia turístico que conhece caminhos e atalhos pouco utilizados.",
+  "Comerciante de Berries e ingredientes difíceis de encontrar.",
+  "Investigador independente obcecado por rumores e acontecimentos estranhos.",
+  "Treinador veterano que abandonou as grandes competições.",
+  "Treinador novato prestes a iniciar sua primeira grande jornada.",
+  "Pesquisador do clima e de seus efeitos sobre os Pokémon."
+];
+
+const OBJETIVOS_NPCS_ALEATORIOS = [
+  "Encontrar um Pokémon que desapareceu nas redondezas.",
+  "Conseguir ajuda para recuperar um objeto perdido.",
+  "Testar a força de outro treinador em uma batalha amistosa.",
+  "Chegar à próxima cidade antes do anoitecer.",
+  "Investigar um barulho estranho vindo de uma área próxima.",
+  "Encontrar uma espécie rara que foi vista recentemente na região.",
+  "Entregar um pacote sem revelar quem é o destinatário.",
+  "Conseguir uma Berry específica para resolver um problema urgente.",
+  "Descobrir quem está assustando os Pokémon selvagens locais.",
+  "Encontrar alguém disposto a acompanhá-lo por uma rota perigosa.",
+  "Trocar uma informação valiosa por um pequeno favor.",
+  "Localizar uma mochila perdida durante uma viagem.",
+  "Conseguir ajuda para consertar um equipamento quebrado.",
+  "Fotografar ou observar um Pokémon difícil de encontrar.",
+  "Encontrar um parceiro para participar de uma pequena competição.",
+  "Descobrir a origem de pegadas incomuns encontradas por perto.",
+  "Convencer alguém a visitar um lugar que considera importante.",
+  "Encontrar pistas sobre uma ruína, caverna ou construção abandonada.",
+  "Recuperar algo que foi levado por um Pokémon selvagem.",
+  "Conseguir dinheiro rapidamente para pagar uma pequena dívida.",
+  "Encontrar um treinador que conheça bem um determinado tipo de Pokémon.",
+  "Pedir ajuda para atravessar uma área afetada por um clima perigoso.",
+  "Esconder um erro recente antes que alguém descubra.",
+  "Encontrar ingredientes especiais para uma receita ou pesquisa.",
+  "Descobrir se um rumor local sobre um Pokémon é verdadeiro."
+];
+
+const PERSONALIDADES_NPCS_ALEATORIOS = [
+  { nome: "Tímido", descricao: "Tem dificuldade para conversar e fica nervoso perto de desconhecidos." },
+  { nome: "Rabugento", descricao: "Reclama de praticamente tudo e perde a paciência facilmente." },
+  { nome: "Animado", descricao: "Extremamente energético, fala alto e se empolga com qualquer novidade." },
+  { nome: "Desconfiado", descricao: "Suspeita das intenções de todos e dificilmente confia em estranhos." },
+  { nome: "Medroso", descricao: "Evita perigos a qualquer custo e se assusta facilmente." },
+  { nome: "Misterioso", descricao: "Fala pouco, responde com enigmas e parece esconder alguma coisa." },
+  { nome: "Competitivo", descricao: "Transforma qualquer atividade em uma disputa e odeia perder." },
+  { nome: "Distraído", descricao: "Esquece informações importantes, perde objetos e vive no mundo da lua." },
+  { nome: "Ganancioso", descricao: "Está sempre procurando uma oportunidade de ganhar dinheiro ou conseguir algo valioso." },
+  { nome: "Brincalhão", descricao: "Adora fazer piadas, provocar os outros e pregar pequenas peças." },
+  { nome: "Curioso", descricao: "Quer saber como tudo funciona, faz perguntas demais e se interessa facilmente por novidades." },
+  { nome: "Impulsivo", descricao: "Age antes de pensar, aceita desafios rapidamente e costuma se meter em confusão." }
+];
+
+function itemAleatorio(lista) {
+  return lista[Math.floor(Math.random() * lista.length)];
+}
+
 function npcMestrePadrao() {
   return {
-    versao: 2,
+    versao: 3,
     banco: Array.from({ length: QUANTIDADE_NPCS_MESTRE }, () => null),
-    resultadoIndice: null
+    resultado: null
   };
 }
 
@@ -10421,30 +10523,62 @@ function normalizarSlotNpcMestre(valor) {
     : null;
   if (!forma?.url) return null;
   return {
-    versao: 1,
-    nomeToken: String(valor.nomeToken || valor.nome || "NPC").slice(0, 100),
+    versao: 2,
+    nomeToken: String(valor.nomeToken || valor.nome || "Token NPC").slice(0, 100),
     forma,
     rotation: Number(valor.rotation) || 0,
-    nome: String(valor.nome || valor.nomeToken || "NPC").slice(0, 100),
-    quem: String(valor.quem || "").slice(0, 420),
-    objetivo: String(valor.objetivo || "").slice(0, 420),
-    historia: String(valor.historia || "").slice(0, 900),
     atualizadoEm: Number(valor.atualizadoEm) || Date.now()
+  };
+}
+
+function normalizarResultadoNpcMestre(valor, banco) {
+  if (!valor || typeof valor !== "object") return null;
+  const slotIndice = Math.trunc(Number(valor.slotIndice));
+  if (!Number.isInteger(slotIndice) || slotIndice < 0 || slotIndice >= QUANTIDADE_NPCS_MESTRE || !banco[slotIndice]) return null;
+
+  const personalidadePadrao = PERSONALIDADES_NPCS_ALEATORIOS[slotIndice % PERSONALIDADES_NPCS_ALEATORIOS.length];
+  return {
+    versao: 1,
+    slotIndice,
+    nome: String(valor.nome || NOMES_NPCS_ALEATORIOS[slotIndice % NOMES_NPCS_ALEATORIOS.length]).slice(0, 100),
+    quem: String(valor.quem || QUEM_E_NPCS_ALEATORIOS[slotIndice % QUEM_E_NPCS_ALEATORIOS.length]).slice(0, 420),
+    objetivo: String(valor.objetivo || OBJETIVOS_NPCS_ALEATORIOS[slotIndice % OBJETIVOS_NPCS_ALEATORIOS.length]).slice(0, 420),
+    personalidadeNome: String(valor.personalidadeNome || personalidadePadrao.nome).slice(0, 80),
+    personalidadeTexto: String(valor.personalidadeTexto || personalidadePadrao.descricao).slice(0, 420),
+    sorteadoEm: Number(valor.sorteadoEm) || Date.now()
   };
 }
 
 function normalizarEncontrosMestre(valor) {
   const padrao = npcMestrePadrao();
   if (!valor || typeof valor !== "object") return padrao;
+
   const bancoOrigem = Array.isArray(valor.banco) ? valor.banco : [];
   const banco = Array.from({ length: QUANTIDADE_NPCS_MESTRE }, (_, indice) =>
     normalizarSlotNpcMestre(bancoOrigem[indice])
   );
-  const resultado = Number(valor.resultadoIndice);
-  const resultadoIndice = Number.isInteger(resultado) && resultado >= 0 && resultado < QUANTIDADE_NPCS_MESTRE && banco[resultado]
-    ? resultado
-    : null;
-  return { versao: 2, banco, resultadoIndice };
+
+  let resultado = normalizarResultadoNpcMestre(valor.resultado, banco);
+
+  // Migração suave da primeira versão do sistema de encontros.
+  if (!resultado) {
+    const antigoIndice = Math.trunc(Number(valor.resultadoIndice));
+    if (Number.isInteger(antigoIndice) && antigoIndice >= 0 && antigoIndice < QUANTIDADE_NPCS_MESTRE && banco[antigoIndice]) {
+      const antigo = bancoOrigem[antigoIndice] && typeof bancoOrigem[antigoIndice] === "object" ? bancoOrigem[antigoIndice] : {};
+      const personalidade = PERSONALIDADES_NPCS_ALEATORIOS[antigoIndice % PERSONALIDADES_NPCS_ALEATORIOS.length];
+      resultado = normalizarResultadoNpcMestre({
+        slotIndice: antigoIndice,
+        nome: antigo.nome || NOMES_NPCS_ALEATORIOS[antigoIndice % NOMES_NPCS_ALEATORIOS.length],
+        quem: antigo.quem || QUEM_E_NPCS_ALEATORIOS[antigoIndice % QUEM_E_NPCS_ALEATORIOS.length],
+        objetivo: antigo.objetivo || OBJETIVOS_NPCS_ALEATORIOS[antigoIndice % OBJETIVOS_NPCS_ALEATORIOS.length],
+        personalidadeNome: personalidade.nome,
+        personalidadeTexto: personalidade.descricao,
+        sorteadoEm: Date.now()
+      }, banco);
+    }
+  }
+
+  return { versao: 3, banco, resultado };
 }
 
 function encontroMestreDoToken(token) {
@@ -10462,14 +10596,10 @@ function snapshotTokenParaNpcMestre(item) {
   const forma = dadosFormaDoToken(item);
   if (!forma?.url) return null;
   return {
-    versao: 1,
-    nomeToken: String(item.name || "NPC").slice(0, 100),
+    versao: 2,
+    nomeToken: String(item.name || "Token NPC").slice(0, 100),
     forma: clonarDadosSimples(forma),
     rotation: Number(item.rotation) || 0,
-    nome: String(item.name || "NPC").slice(0, 100),
-    quem: "",
-    objetivo: "",
-    historia: "",
     atualizadoEm: Date.now()
   };
 }
@@ -10477,8 +10607,6 @@ function snapshotTokenParaNpcMestre(item) {
 function tokenDisponivelParaBancoNpc(item, mestreId) {
   if (!tokenEstaDisponivelNaMesa(item) || item.id === mestreId) return false;
   if (item.metadata?.[META_PAINEL_INICIATIVA] === true || item.metadata?.[META_PAINEL_INICIATIVA_FILHO]) return false;
-  // O banco usa tokens de personagem ainda sem ficha. Isso evita retirar por engano
-  // um Pokémon, treinador, mestre ou NPC já cadastrado da cena.
   return !item.metadata?.[`${PREFIX}/tipoFicha`];
 }
 
@@ -10495,10 +10623,19 @@ async function npcDoBancoEmCena(mestreId, indice) {
   return encontrados?.[0] || null;
 }
 
+async function indicesNpcDoBancoEmCena(mestreId) {
+  const encontrados = await OBR.scene.items.getItems((item) =>
+    item?.type === "IMAGE" &&
+    item.metadata?.[META_NPC_MESTRE_DONO] === mestreId
+  );
+  return new Set(encontrados.map((item) => Number(item.metadata?.[META_NPC_MESTRE_SLOT])).filter(Number.isInteger));
+}
+
 async function adicionarTokenAoBancoNpc(mestre, indice, tokenNpc) {
   const estado = encontroMestreDoToken(mestre);
   if (!Number.isInteger(indice) || indice < 0 || indice >= QUANTIDADE_NPCS_MESTRE) return;
   if (estado.banco[indice]) throw new Error("Esse slot já está ocupado.");
+
   const snapshot = snapshotTokenParaNpcMestre(tokenNpc);
   if (!snapshot) throw new Error("Não foi possível guardar a imagem desse NPC.");
 
@@ -10508,47 +10645,63 @@ async function adicionarTokenAoBancoNpc(mestre, indice, tokenNpc) {
   try {
     await OBR.scene.items.deleteItems([tokenNpc.id]);
   } catch (erro) {
-    // Se o token não puder ser retirado da cena, desfaz o cadastro para não criar duplicação.
     estado.banco[indice] = null;
     await salvarEncontroMestre(mestre, estado);
     throw erro;
   }
 
   mestreBancoNpcsAberto.set(mestre.id, true);
-  mestreNpcEditorSelecionado.set(mestre.id, indice);
 }
 
 async function removerNpcDoBanco(mestre, indice) {
   const estado = encontroMestreDoToken(mestre);
   if (!estado.banco[indice]) return;
+
   const emCena = await npcDoBancoEmCena(mestre.id, indice);
   if (emCena) await OBR.scene.items.deleteItems([emCena.id]);
+
   estado.banco[indice] = null;
-  if (estado.resultadoIndice === indice) estado.resultadoIndice = null;
+  if (estado.resultado?.slotIndice === indice) estado.resultado = null;
   await salvarEncontroMestre(mestre, estado);
-  if (mestreNpcEditorSelecionado.get(mestre.id) === indice) mestreNpcEditorSelecionado.delete(mestre.id);
 }
 
-function dadosNpcParaCena(slot) {
+function criarResultadoNpcAleatorio(slotIndice) {
+  const personalidade = itemAleatorio(PERSONALIDADES_NPCS_ALEATORIOS);
   return {
-    nome: String(slot?.nome || slot?.nomeToken || "NPC"),
-    quem: String(slot?.quem || ""),
-    objetivo: String(slot?.objetivo || ""),
-    historia: String(slot?.historia || "")
+    versao: 1,
+    slotIndice,
+    nome: itemAleatorio(NOMES_NPCS_ALEATORIOS),
+    quem: itemAleatorio(QUEM_E_NPCS_ALEATORIOS),
+    objetivo: itemAleatorio(OBJETIVOS_NPCS_ALEATORIOS),
+    personalidadeNome: personalidade.nome,
+    personalidadeTexto: personalidade.descricao,
+    sorteadoEm: Date.now()
   };
 }
 
-async function colocarNpcMestreNaCena(mestre, indice) {
+function dadosNpcParaCena(resultado) {
+  return {
+    nome: String(resultado?.nome || "NPC"),
+    quem: String(resultado?.quem || ""),
+    objetivo: String(resultado?.objetivo || ""),
+    personalidadeNome: String(resultado?.personalidadeNome || ""),
+    personalidadeTexto: String(resultado?.personalidadeTexto || "")
+  };
+}
+
+async function colocarNpcMestreNaCena(mestre) {
   const mestreAtual = await pegarTokenAtualizado(mestre.id) || mestre;
   const estado = encontroMestreDoToken(mestreAtual);
+  const resultado = estado.resultado;
+  if (!resultado) throw new Error("Faça um sorteio antes de colocar o NPC na cena.");
+
+  const indice = resultado.slotIndice;
   const slot = estado.banco[indice];
-  if (!slot?.forma?.url) throw new Error("Esse NPC não está mais cadastrado no banco.");
+  if (!slot?.forma?.url) throw new Error("O token sorteado não está mais cadastrado no banco.");
 
   const existente = await npcDoBancoEmCena(mestreAtual.id, indice);
   if (existente) {
-    await OBR.player.select([existente.id], true);
-    mostrarFichaNpcEncontro(existente);
-    return existente;
+    throw new Error(`Esse token-base já está na cena como ${existente.name || "NPC"}. Retire-o antes de usá-lo novamente.`);
   }
 
   const alvo = await pontoUmGridNaFrenteDoTreinador(mestreAtual);
@@ -10564,10 +10717,11 @@ async function colocarNpcMestreNaCena(mestre, indice) {
     [`${PREFIX}/tipoFicha`]: "npc",
     [META_NPC_MESTRE_DONO]: mestreAtual.id,
     [META_NPC_MESTRE_SLOT]: indice,
-    [META_NPC_DADOS]: dadosNpcParaCena(slot)
+    [META_NPC_DADOS]: dadosNpcParaCena(resultado)
   };
+
   const novo = buildImage(imagem, grid)
-    .name(slot.nome || slot.nomeToken || "NPC")
+    .name(resultado.nome || "NPC")
     .position(alvo)
     .rotation(Number(slot.rotation) || 0)
     .scale({ x: Number(forma.scale?.x) || 1, y: Number(forma.scale?.y) || 1 })
@@ -10591,15 +10745,18 @@ function fichaNpcDadosDoToken(token) {
     nome: String(base.nome || token?.name || "NPC").slice(0, 100),
     quem: String(base.quem || "").slice(0, 420),
     objetivo: String(base.objetivo || "").slice(0, 420),
-    historia: String(base.historia || "").slice(0, 900)
+    personalidadeNome: String(base.personalidadeNome || "").slice(0, 80),
+    personalidadeTexto: String(base.personalidadeTexto || "").slice(0, 420)
   };
 }
 
 function mostrarFichaNpcEncontro(token) {
   const app = document.querySelector("#app");
   if (!app) return;
+
   const dados = fichaNpcDadosDoToken(token);
   const imagem = token?.type === "IMAGE" ? token.image?.url || "" : "";
+
   app.innerHTML = `
     ${ESTILO_FICHA}
     <style>
@@ -10612,20 +10769,29 @@ function mostrarFichaNpcEncontro(token) {
       .npcInfo{border:1px solid #202020;border-radius:10px;background:#fff;padding:9px;margin-top:7px}
       .npcInfo strong{display:block;font-size:8px;letter-spacing:.8px;color:#b71c1c;margin-bottom:4px}
       .npcInfo div{font-size:11px;line-height:1.4;color:#161616;white-space:pre-wrap}
+      .npcPersonalidade{background:#fff8f8}
+      .npcPersonalidade strong{font-size:9px}
       .npcRetirar{width:100%;margin-top:10px!important;background:#202020!important;color:#fff!important;border-color:#202020!important;font-weight:900!important}
     </style>
     <section class="npcFicha">
       <div class="npcTopo">
         <div class="npcRetrato">${imagem ? `<img src="${esc(imagem)}" alt="${esc(dados.nome)}">` : "👤"}</div>
-        <div style="min-width:0;flex:1;"><div class="npcNome">${esc(dados.nome)}</div><div class="npcSub">NPC • ENCONTRO ALEATÓRIO</div></div>
+        <div style="min-width:0;flex:1;">
+          <div class="npcNome">${esc(dados.nome)}</div>
+          <div class="npcSub">NPC • ENCONTRO ALEATÓRIO</div>
+        </div>
       </div>
       <div class="npcInfo"><strong>QUEM É</strong><div>${esc(dados.quem || "—")}</div></div>
       <div class="npcInfo"><strong>OBJETIVO</strong><div>${esc(dados.objetivo || "—")}</div></div>
-      <div class="npcInfo"><strong>MINI-HISTÓRIA</strong><div>${esc(dados.historia || "—")}</div></div>
+      <div class="npcInfo npcPersonalidade">
+        <strong>PERSONALIDADE${dados.personalidadeNome ? ` • ${esc(dados.personalidadeNome.toUpperCase())}` : ""}</strong>
+        <div>${esc(dados.personalidadeTexto || "—")}</div>
+      </div>
       <button id="retirarNpcEncontro" class="npcRetirar" type="button">RETIRAR NPC DA CENA</button>
     </section>`;
 
   void aplicarPersonalizacaoFicha(token);
+
   document.querySelector("#retirarNpcEncontro")?.addEventListener("click", async () => {
     const mestreId = token.metadata?.[META_NPC_MESTRE_DONO];
     await OBR.scene.items.deleteItems([token.id]);
@@ -10635,6 +10801,240 @@ function mostrarFichaNpcEncontro(token) {
       await OBR.player.select([mestre.id], true);
       mostrarFichaMestreEncontros(mestre);
     }
+  });
+}
+
+function htmlSlotNpcMestre(slot, indice) {
+  const numero = String(indice + 1).padStart(2, "0");
+  if (!slot) return `
+    <button type="button" class="npcBancoSlot vazio" data-npc-slot-vazio="${indice}" title="Cadastrar token no slot ${numero}">
+      <span class="npcBancoMais">＋</span><span class="npcBancoNumero">${numero}</span>
+    </button>`;
+
+  return `
+    <div class="npcBancoSlot preenchido" data-npc-slot-wrap="${indice}">
+      <div class="npcBancoPrincipal" title="Token-base ${numero}: ${esc(slot.nomeToken || "NPC")}">
+        <div class="npcBancoRetrato"><img src="${esc(slot.forma?.url || "")}" alt="${esc(slot.nomeToken || "NPC")}"></div>
+        <div class="npcBancoNome">${esc(slot.nomeToken || `TOKEN ${numero}`)}</div>
+      </div>
+      <button type="button" class="npcBancoRemover" data-npc-remover="${indice}" title="Remover token do banco">×</button>
+    </div>`;
+}
+
+async function abrirSeletorNpcMestre(mestre, indice) {
+  const fundo = document.querySelector("#seletorNpcMestre");
+  const lista = document.querySelector("#listaSeletorNpcMestre");
+  if (!fundo || !lista) return;
+
+  lista.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:16px;font-size:10px;font-weight:800;">Procurando tokens...</div>`;
+  fundo.style.display = "flex";
+
+  const tokens = await tokensDisponiveisParaBancoNpc(mestre);
+  if (!tokens.length) {
+    lista.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:16px;font-size:10px;color:#666;">Nenhum token de personagem sem ficha está disponível na mesa.</div>`;
+    return;
+  }
+
+  lista.innerHTML = tokens.map((item) => `
+    <button type="button" class="npcSeletorItem" data-npc-token="${esc(item.id)}">
+      <img src="${esc(item.image?.url || "")}" alt="${esc(item.name || "NPC")}">
+      <span>${esc(item.name || "NPC")}</span>
+    </button>`).join("");
+
+  lista.querySelectorAll("[data-npc-token]").forEach((botao) => botao.addEventListener("click", async () => {
+    const id = botao.dataset.npcToken;
+    const item = (await OBR.scene.items.getItems([id]))?.[0];
+    if (!item || !tokenDisponivelParaBancoNpc(item, mestre.id)) {
+      alert("Esse token não está mais disponível para cadastro.");
+      return;
+    }
+
+    botao.disabled = true;
+    try {
+      await adicionarTokenAoBancoNpc(mestre, indice, item);
+      const atualizado = await pegarTokenAtualizado(mestre.id);
+      if (atualizado) mostrarFichaMestreEncontros(atualizado);
+    } catch (erro) {
+      console.error("Erro ao cadastrar token de NPC:", erro);
+      alert(erro?.message || "Não foi possível cadastrar esse token.");
+      botao.disabled = false;
+    }
+  }));
+}
+
+function mostrarFichaMestreEncontros(token) {
+  const app = document.querySelector("#app");
+  const estado = encontroMestreDoToken(token);
+  const preenchidos = estado.banco.reduce((total, slot) => total + (slot ? 1 : 0), 0);
+  const bancoAberto = mestreBancoNpcsAberto.get(token.id) === true;
+  const resultado = estado.resultado;
+  const slotResultado = resultado ? estado.banco[resultado.slotIndice] : null;
+
+  const slotsHtml = estado.banco.map((slot, indice) => htmlSlotNpcMestre(slot, indice)).join("");
+
+  const resultadoHtml = resultado && slotResultado ? `
+    <div class="npcResultadoCard">
+      <div class="npcResultadoEtiqueta">ENCONTRO SORTEADO</div>
+      <div class="npcResultadoTopo">
+        <div class="npcResultadoImagem"><img src="${esc(slotResultado.forma?.url || "")}" alt="${esc(resultado.nome || "NPC")}"></div>
+        <div style="min-width:0;flex:1;">
+          <div class="npcResultadoMini">NOME SORTEADO</div>
+          <div class="npcResultadoNome">${esc(resultado.nome || "NPC")}</div>
+        </div>
+      </div>
+      <div class="npcResultadoInfo"><strong>QUEM É</strong><span>${esc(resultado.quem || "—")}</span></div>
+      <div class="npcResultadoInfo"><strong>OBJETIVO</strong><span>${esc(resultado.objetivo || "—")}</span></div>
+      <div class="npcResultadoInfo personalidade">
+        <strong>PERSONALIDADE • ${esc(resultado.personalidadeNome || "—")}</strong>
+        <span>${esc(resultado.personalidadeTexto || "—")}</span>
+      </div>
+      <div class="npcResultadoAcoes">
+        <button id="npcColocarCena" type="button">COLOCAR NPC NA CENA</button>
+        <button id="npcLimparResultado" type="button">LIMPAR RESULTADO</button>
+      </div>
+      <div class="npcResultadoAviso">Ao entrar na cena, o token receberá o nome <strong>${esc(resultado.nome || "NPC")}</strong>.</div>
+    </div>` : `
+    <div class="npcResultadoVazio">
+      O sorteio combina <strong>1 TOKEN + 1 NOME + 1 QUEM É + 1 OBJETIVO + 1 PERSONALIDADE</strong>.
+    </div>`;
+
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoMestre(token,1)}
+    <style>
+      .npcEncontroPainel{border:1px solid #202020;border-radius:12px;background:rgba(255,255,255,.94);padding:11px}
+      .npcBancoBarra{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #202020;border-radius:10px;background:#fff;padding:8px 9px}
+      .npcBancoBarra strong{font-size:10px;display:block}.npcBancoBarra small{font-size:7.5px;color:#666;display:block;margin-top:2px}
+      .npcBancoToggle{font-size:8px!important;font-weight:900!important;padding:6px 8px!important;border:1px solid #202020!important;background:#fff!important;color:#111!important}
+      .npcBancoArea{display:${bancoAberto ? "block" : "none"};margin-top:8px}
+      .npcBancoGrade{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+      .npcBancoSlot{min-width:0;position:relative;border:1px solid #202020!important;border-radius:9px;background:#fff;min-height:70px;overflow:hidden}
+      button.npcBancoSlot.vazio{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:1px!important;padding:5px!important;background:#fff!important;color:#111!important;border:1px dashed #202020!important}
+      .npcBancoMais{font-size:18px;font-weight:900;line-height:1}.npcBancoNumero{font-size:7px;font-weight:900;color:#666}
+      .npcBancoSlot.preenchido{padding:0}.npcBancoPrincipal{height:100%;min-height:70px;padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:#fff;color:#111}
+      .npcBancoRetrato{width:43px;height:43px;border:1px solid #202020;border-radius:8px;overflow:hidden;padding:2px;background:#fff}.npcBancoRetrato img{width:100%;height:100%;object-fit:contain}
+      .npcBancoNome{width:100%;font-size:6.8px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+      .npcBancoRemover{position:absolute!important;right:2px!important;top:2px!important;width:19px!important;height:19px!important;min-height:19px!important;padding:0!important;border-radius:50%!important;background:#202020!important;color:#fff!important;border:1px solid #202020!important;font-size:10px!important}
+      .npcPoolResumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:8px}.npcPoolResumo div{border:1px solid #202020;border-radius:8px;background:#fff;padding:6px 3px;text-align:center}.npcPoolResumo strong{display:block;font-size:12px;color:#b71c1c;line-height:1}.npcPoolResumo span{display:block;font-size:6.5px;font-weight:900;margin-top:3px;color:#111}
+      .npcPoolNota{text-align:center;font-size:7.5px;line-height:1.35;color:#666;margin-top:6px}
+      .npcSortear{width:100%;margin-top:10px!important;min-height:45px!important;background:linear-gradient(135deg,#e53935,#b71c1c)!important;color:#fff!important;border:1px solid #202020!important;font-weight:900!important;font-size:11px!important}
+      .npcResultadoVazio{margin-top:9px;border:1px dashed #202020;border-radius:11px;padding:16px 10px;text-align:center;font-size:9px;line-height:1.45;color:#555;background:#fff}
+      .npcResultadoCard{margin-top:9px;border:2px solid #202020;border-radius:14px;padding:11px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.08)}
+      .npcResultadoEtiqueta{text-align:center;font-size:8px;font-weight:900;letter-spacing:1.2px;color:#b71c1c;margin-bottom:8px}
+      .npcResultadoTopo{display:flex;align-items:center;gap:10px;margin-bottom:8px}.npcResultadoImagem{width:92px;height:92px;flex:0 0 92px;border:2px solid #202020;border-radius:14px;padding:4px;overflow:hidden}.npcResultadoImagem img{width:100%;height:100%;object-fit:contain}.npcResultadoMini{font-size:7px;font-weight:900;letter-spacing:.7px;color:#b71c1c;margin-bottom:3px}.npcResultadoNome{font-size:22px;font-weight:900;color:#111;line-height:1.05;word-break:break-word}
+      .npcResultadoInfo{border-top:1px solid #202020;padding:7px 2px 4px;display:grid;gap:3px}.npcResultadoInfo strong{font-size:7px;color:#b71c1c;letter-spacing:.7px}.npcResultadoInfo span{font-size:10px;color:#111;line-height:1.35;white-space:pre-wrap}.npcResultadoInfo.personalidade{background:#fff8f8;margin:4px -4px 0;padding:8px 6px;border:1px solid #202020;border-radius:8px}
+      .npcResultadoAcoes{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.npcResultadoAcoes button{font-size:8px!important;font-weight:900!important;border-color:#202020!important}.npcResultadoAcoes button:first-child{background:#202020!important;color:#fff!important}
+      .npcResultadoAviso{font-size:7.5px;color:#666;text-align:center;margin-top:7px}.npcResultadoAviso strong{color:#111}
+      .npcSeletorFundo{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:14px}.npcSeletorPainel{width:min(390px,100%);max-height:86vh;overflow:auto;background:#fff;border:1px solid #202020;border-radius:14px;padding:11px}.npcSeletorTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:10px;font-weight:900}.npcSeletorTopo button{width:28px!important;height:28px!important;min-height:28px!important;padding:0!important}.npcSeletorGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.npcSeletorItem{display:grid!important;grid-template-columns:50px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;min-height:62px!important;padding:6px!important;text-align:left!important;border:1px solid #202020!important;background:#fff!important;color:#111!important}.npcSeletorItem img{width:48px;height:48px;object-fit:contain;border:1px solid #202020;border-radius:8px}.npcSeletorItem span{font-size:9px;font-weight:900;overflow:hidden;text-overflow:ellipsis}
+    </style>
+    <section class="npcEncontroPainel">
+      <h3 style="text-align:center!important;margin:0 0 9px!important;">ENCONTROS ALEATÓRIOS</h3>
+
+      <div class="npcBancoBarra">
+        <div>
+          <strong>BANCO DE TOKENS</strong>
+          <small>${preenchidos}/25 tokens cadastrados • banco recolhível</small>
+        </div>
+        <button id="npcBancoToggle" class="npcBancoToggle" type="button">${bancoAberto ? "RECOLHER ▴" : "MOSTRAR ▾"}</button>
+      </div>
+
+      <div id="npcBancoArea" class="npcBancoArea">
+        <div class="npcBancoGrade">${slotsHtml}</div>
+      </div>
+
+      <div class="npcPoolResumo">
+        <div><strong>25</strong><span>NOMES</span></div>
+        <div><strong>25</strong><span>QUEM É</span></div>
+        <div><strong>25</strong><span>OBJETIVOS</span></div>
+        <div><strong>12</strong><span>PERSONALIDADES</span></div>
+      </div>
+      <div class="npcPoolNota">Cada parte é sorteada separadamente. O mesmo token pode representar personagens completamente diferentes em encontros futuros.</div>
+
+      <button id="npcSortear" class="npcSortear" type="button" ${preenchidos ? "" : "disabled"}>🎲 SORTEAR ENCONTRO</button>
+      ${resultadoHtml}
+    </section>
+
+    <div id="seletorNpcMestre" class="npcSeletorFundo">
+      <div class="npcSeletorPainel">
+        <div class="npcSeletorTopo"><span>ESCOLHER TOKEN PARA O BANCO</span><button id="fecharSeletorNpcMestre" type="button">×</button></div>
+        <div id="listaSeletorNpcMestre" class="npcSeletorGrade"></div>
+      </div>
+    </div>`;
+
+  ativarCabecalhoMestre(token);
+
+  document.querySelector("#npcBancoToggle")?.addEventListener("click", () => {
+    mestreBancoNpcsAberto.set(token.id, !bancoAberto);
+    mostrarFichaMestreEncontros(token);
+  });
+
+  document.querySelectorAll("[data-npc-slot-vazio]").forEach((botao) => botao.addEventListener("click", () => {
+    abrirSeletorNpcMestre(token, Number(botao.dataset.npcSlotVazio));
+  }));
+
+  document.querySelectorAll("[data-npc-remover]").forEach((botao) => botao.addEventListener("click", async (evento) => {
+    evento.stopPropagation();
+    const indice = Number(botao.dataset.npcRemover);
+    const slot = encontroMestreDoToken(token).banco[indice];
+    if (!slot) return;
+    if (!confirm(`Remover o token ${slot.nomeToken || "NPC"} do banco? Se ele estiver na cena, o NPC também será retirado.`)) return;
+
+    await removerNpcDoBanco(token, indice);
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaMestreEncontros(atualizado);
+  }));
+
+  document.querySelector("#npcSortear")?.addEventListener("click", async () => {
+    const atual = encontroMestreDoToken(token);
+    const preenchidosIndices = atual.banco.map((slot, indice) => slot ? indice : -1).filter((indice) => indice >= 0);
+    if (!preenchidosIndices.length) {
+      alert("Cadastre pelo menos um token antes de sortear.");
+      return;
+    }
+
+    const ocupados = await indicesNpcDoBancoEmCena(token.id);
+    const disponiveis = preenchidosIndices.filter((indice) => !ocupados.has(indice));
+    if (!disponiveis.length) {
+      alert("Todos os tokens cadastrados já estão sendo usados por NPCs na cena. Retire pelo menos um NPC antes de sortear outro.");
+      return;
+    }
+
+    const slotIndice = itemAleatorio(disponiveis);
+    atual.resultado = criarResultadoNpcAleatorio(slotIndice);
+    await salvarEncontroMestre(token, atual);
+
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaMestreEncontros(atualizado);
+  });
+
+  document.querySelector("#npcLimparResultado")?.addEventListener("click", async () => {
+    const atual = encontroMestreDoToken(token);
+    atual.resultado = null;
+    await salvarEncontroMestre(token, atual);
+
+    const atualizado = await pegarTokenAtualizado(token.id);
+    if (atualizado) mostrarFichaMestreEncontros(atualizado);
+  });
+
+  document.querySelector("#npcColocarCena")?.addEventListener("click", async () => {
+    const botao = document.querySelector("#npcColocarCena");
+    if (botao) botao.disabled = true;
+    try {
+      await colocarNpcMestreNaCena(token);
+    } catch (erro) {
+      console.error("Erro ao colocar NPC na cena:", erro);
+      alert(erro?.message || "Não foi possível colocar o NPC na cena.");
+      if (botao) botao.disabled = false;
+    }
+  });
+
+  document.querySelector("#fecharSeletorNpcMestre")?.addEventListener("click", () => {
+    const fundo = document.querySelector("#seletorNpcMestre");
+    if (fundo) fundo.style.display = "none";
+  });
+
+  document.querySelector("#seletorNpcMestre")?.addEventListener("click", (evento) => {
+    if (evento.target === evento.currentTarget) evento.currentTarget.style.display = "none";
   });
 }
 
@@ -10717,232 +11117,6 @@ function ativarCabecalhoMestre(token) {
   });
   document.querySelector("#paginaMestre3")?.addEventListener("click", async () => {
     const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreBoss(atual);
-  });
-}
-
-function htmlSlotNpcMestre(slot, indice, selecionado = false) {
-  const numero = String(indice + 1).padStart(2, "0");
-  if (!slot) return `
-    <button type="button" class="npcBancoSlot vazio" data-npc-slot-vazio="${indice}" title="Cadastrar NPC no slot ${numero}">
-      <span class="npcBancoMais">＋</span><span class="npcBancoNumero">${numero}</span>
-    </button>`;
-  return `
-    <div class="npcBancoSlot preenchido ${selecionado ? "selecionado" : ""}" data-npc-slot-wrap="${indice}">
-      <button type="button" class="npcBancoPrincipal" data-npc-slot="${indice}" title="Editar NPC ${numero}">
-        <div class="npcBancoRetrato"><img src="${esc(slot.forma?.url || "")}" alt="${esc(slot.nome || slot.nomeToken || "NPC")}"></div>
-        <div class="npcBancoNome">${esc(slot.nome || slot.nomeToken || `NPC ${numero}`)}</div>
-      </button>
-      <button type="button" class="npcBancoRemover" data-npc-remover="${indice}" title="Remover NPC do banco">×</button>
-    </div>`;
-}
-
-async function abrirSeletorNpcMestre(mestre, indice) {
-  const fundo = document.querySelector("#seletorNpcMestre");
-  const lista = document.querySelector("#listaSeletorNpcMestre");
-  if (!fundo || !lista) return;
-  lista.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:16px;font-size:10px;font-weight:800;">Procurando tokens...</div>`;
-  fundo.style.display = "flex";
-  const tokens = await tokensDisponiveisParaBancoNpc(mestre);
-  if (!tokens.length) {
-    lista.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:16px;font-size:10px;color:#666;">Nenhum token de personagem sem ficha está disponível na mesa.</div>`;
-    return;
-  }
-  lista.innerHTML = tokens.map((item) => `
-    <button type="button" class="npcSeletorItem" data-npc-token="${esc(item.id)}">
-      <img src="${esc(item.image?.url || "")}" alt="${esc(item.name || "NPC")}">
-      <span>${esc(item.name || "NPC")}</span>
-    </button>`).join("");
-  lista.querySelectorAll("[data-npc-token]").forEach((botao) => botao.addEventListener("click", async () => {
-    const id = botao.dataset.npcToken;
-    const item = (await OBR.scene.items.getItems([id]))?.[0];
-    if (!item || !tokenDisponivelParaBancoNpc(item, mestre.id)) {
-      alert("Esse token não está mais disponível para cadastro.");
-      return;
-    }
-    botao.disabled = true;
-    try {
-      await adicionarTokenAoBancoNpc(mestre, indice, item);
-      const atualizado = await pegarTokenAtualizado(mestre.id);
-      if (atualizado) mostrarFichaMestreEncontros(atualizado);
-    } catch (erro) {
-      console.error("Erro ao cadastrar NPC:", erro);
-      alert(erro?.message || "Não foi possível cadastrar esse NPC.");
-      botao.disabled = false;
-    }
-  }));
-}
-
-function mostrarFichaMestreEncontros(token) {
-  const app = document.querySelector("#app");
-  const estado = encontroMestreDoToken(token);
-  const preenchidos = estado.banco.reduce((total, slot) => total + (slot ? 1 : 0), 0);
-  const bancoAberto = mestreBancoNpcsAberto.get(token.id) === true;
-  let selecionado = Number(mestreNpcEditorSelecionado.get(token.id));
-  if (!Number.isInteger(selecionado) || selecionado < 0 || selecionado >= QUANTIDADE_NPCS_MESTRE || !estado.banco[selecionado]) {
-    selecionado = estado.banco.findIndex(Boolean);
-    if (selecionado >= 0) mestreNpcEditorSelecionado.set(token.id, selecionado);
-  }
-  const slotSelecionado = selecionado >= 0 ? estado.banco[selecionado] : null;
-  const resultado = estado.resultadoIndice != null ? estado.banco[estado.resultadoIndice] : null;
-
-  const slotsHtml = estado.banco.map((slot, indice) => htmlSlotNpcMestre(slot, indice, indice === selecionado)).join("");
-  const editorHtml = slotSelecionado ? `
-    <div class="npcEditor">
-      <div class="npcEditorTopo">
-        <div class="npcEditorImagem"><img src="${esc(slotSelecionado.forma?.url || "")}" alt="NPC"></div>
-        <div style="min-width:0;flex:1;"><strong>NPC ${String(selecionado + 1).padStart(2, "0")}</strong><small>Preencha as informações usadas no sorteio.</small></div>
-      </div>
-      <label>NOME<input id="npcEditorNome" maxlength="100" value="${esc(slotSelecionado.nome || slotSelecionado.nomeToken || "NPC")}"></label>
-      <label>QUEM É<textarea id="npcEditorQuem" maxlength="420" rows="2" placeholder="Ex.: Vendedor ambulante muito supersticioso.">${esc(slotSelecionado.quem)}</textarea></label>
-      <label>OBJETIVO<textarea id="npcEditorObjetivo" maxlength="420" rows="2" placeholder="Ex.: Encontrar uma peça rara para consertar sua carroça.">${esc(slotSelecionado.objetivo)}</textarea></label>
-      <label>MINI-HISTÓRIA<textarea id="npcEditorHistoria" maxlength="900" rows="3" placeholder="Uma história curta para o mestre interpretar rapidamente.">${esc(slotSelecionado.historia)}</textarea></label>
-      <button id="npcSalvarEditor" type="button" class="npcSalvar">SALVAR NPC</button>
-    </div>` : `<div class="npcEditor vazio">Cadastre um token em um dos slots para editar NOME, QUEM É, OBJETIVO e MINI-HISTÓRIA.</div>`;
-
-  const resultadoHtml = resultado ? `
-    <div class="npcResultadoCard">
-      <div class="npcResultadoEtiqueta">ENCONTRO SORTEADO</div>
-      <div class="npcResultadoTopo">
-        <div class="npcResultadoImagem"><img src="${esc(resultado.forma?.url || "")}" alt="${esc(resultado.nome || "NPC")}"></div>
-        <div class="npcResultadoNome">${esc(resultado.nome || resultado.nomeToken || "NPC")}</div>
-      </div>
-      <div class="npcResultadoInfo"><strong>QUEM É</strong><span>${esc(resultado.quem || "—")}</span></div>
-      <div class="npcResultadoInfo"><strong>OBJETIVO</strong><span>${esc(resultado.objetivo || "—")}</span></div>
-      <div class="npcResultadoInfo"><strong>MINI-HISTÓRIA</strong><span>${esc(resultado.historia || "—")}</span></div>
-      <div class="npcResultadoAcoes">
-        <button id="npcColocarCena" type="button">COLOCAR NPC NA CENA</button>
-        <button id="npcLimparResultado" type="button">LIMPAR RESULTADO</button>
-      </div>
-    </div>` : `<div class="npcResultadoVazio">O NPC sorteado aparecerá aqui com imagem, nome, objetivo e história.</div>`;
-
-  app.innerHTML = `
-    ${ESTILO_FICHA}
-    ${cabecalhoMestre(token,1)}
-    <style>
-      .npcEncontroPainel{border:1px solid #202020;border-radius:13px;background:rgba(255,255,255,.96);padding:11px}
-      .npcBancoBarra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #202020;border-radius:10px;padding:8px 9px;background:#fff}
-      .npcBancoBarra strong{font-size:10px}.npcBancoBarra small{display:block;font-size:8px;color:#666;margin-top:2px}
-      .npcBancoToggle{min-width:120px!important;min-height:32px!important;padding:5px 8px!important;font-size:8px!important;font-weight:900!important;background:#202020!important;color:#fff!important;border-color:#202020!important}
-      .npcBancoArea{display:${bancoAberto ? "block" : "none"};margin-top:9px}
-      .npcBancoGrade{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-      .npcBancoSlot{position:relative;min-width:0;min-height:78px;border:1px solid #202020;border-radius:10px;background:#fff;overflow:hidden}
-      button.npcBancoSlot.vazio{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-style:dashed!important;color:#555!important;background:#fff!important;box-shadow:none!important}
-      .npcBancoMais{font-size:22px;line-height:1;color:#b71c1c}.npcBancoNumero{font-size:7px;font-weight:900;margin-top:3px}
-      .npcBancoPrincipal{width:100%;height:100%;min-height:78px;padding:5px!important;border:0!important;background:transparent!important;box-shadow:none!important;display:flex;flex-direction:column;align-items:center;justify-content:center}
-      .npcBancoRetrato{width:48px;height:48px;border:1px solid #202020;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}.npcBancoRetrato img{width:100%;height:100%;object-fit:contain}
-      .npcBancoNome{width:100%;margin-top:3px;font-size:7px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#111;text-align:center;padding:0 2px}
-      .npcBancoSlot.selecionado{box-shadow:0 0 0 2px #d32f2f;border-color:#202020}
-      .npcBancoRemover{position:absolute!important;top:2px;right:2px;width:18px!important;height:18px!important;min-height:18px!important;padding:0!important;border-radius:50%!important;background:#fff!important;color:#b71c1c!important;border:1px solid #202020!important;font-size:11px!important;font-weight:900!important;z-index:3}
-      .npcEditor{margin-top:9px;border:1px solid #202020;border-radius:11px;padding:9px;background:#fff;display:grid;gap:7px}.npcEditor.vazio{text-align:center;font-size:9px;color:#666;padding:15px}
-      .npcEditorTopo{display:flex;align-items:center;gap:8px}.npcEditorImagem{width:54px;height:54px;border:1px solid #202020;border-radius:10px;overflow:hidden;padding:3px}.npcEditorImagem img{width:100%;height:100%;object-fit:contain}.npcEditorTopo strong{display:block;font-size:10px}.npcEditorTopo small{display:block;font-size:8px;color:#777;margin-top:2px}
-      .npcEditor label{font-size:8px;font-weight:900;color:#111}.npcEditor input,.npcEditor textarea{width:100%;margin-top:3px;border:1px solid #202020!important;background:#fff!important;color:#111!important}.npcEditor textarea{resize:vertical;line-height:1.35}
-      .npcSalvar{width:100%;font-weight:900!important;background:#202020!important;color:#fff!important;border-color:#202020!important}
-      .npcSortear{width:100%;margin-top:10px!important;min-height:45px!important;background:linear-gradient(135deg,#e53935,#b71c1c)!important;color:#fff!important;border:1px solid #202020!important;font-weight:900!important;font-size:11px!important}
-      .npcResultadoVazio{margin-top:9px;border:1px dashed #202020;border-radius:11px;padding:16px 10px;text-align:center;font-size:9px;color:#666;background:#fff}
-      .npcResultadoCard{margin-top:9px;border:2px solid #202020;border-radius:14px;padding:11px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.08)}
-      .npcResultadoEtiqueta{text-align:center;font-size:8px;font-weight:900;letter-spacing:1.2px;color:#b71c1c;margin-bottom:8px}
-      .npcResultadoTopo{display:flex;align-items:center;gap:10px;margin-bottom:8px}.npcResultadoImagem{width:92px;height:92px;flex:0 0 92px;border:2px solid #202020;border-radius:14px;padding:4px;overflow:hidden}.npcResultadoImagem img{width:100%;height:100%;object-fit:contain}.npcResultadoNome{font-size:22px;font-weight:900;color:#111;line-height:1.05;word-break:break-word}
-      .npcResultadoInfo{border-top:1px solid #202020;padding:7px 2px 4px;display:grid;gap:3px}.npcResultadoInfo strong{font-size:7px;color:#b71c1c;letter-spacing:.7px}.npcResultadoInfo span{font-size:10px;color:#111;line-height:1.35;white-space:pre-wrap}
-      .npcResultadoAcoes{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.npcResultadoAcoes button{font-size:8px!important;font-weight:900!important;border-color:#202020!important}.npcResultadoAcoes button:first-child{background:#202020!important;color:#fff!important}
-      .npcSeletorFundo{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:14px}.npcSeletorPainel{width:min(390px,100%);max-height:86vh;overflow:auto;background:#fff;border:1px solid #202020;border-radius:14px;padding:11px}.npcSeletorTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:10px;font-weight:900}.npcSeletorTopo button{width:28px!important;height:28px!important;min-height:28px!important;padding:0!important}.npcSeletorGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.npcSeletorItem{display:grid!important;grid-template-columns:50px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;min-height:62px!important;padding:6px!important;text-align:left!important;border:1px solid #202020!important;background:#fff!important;color:#111!important}.npcSeletorItem img{width:48px;height:48px;object-fit:contain;border:1px solid #202020;border-radius:8px}.npcSeletorItem span{font-size:9px;font-weight:900;overflow:hidden;text-overflow:ellipsis}
-    </style>
-    <section class="npcEncontroPainel">
-      <h3 style="text-align:center!important;margin:0 0 9px!important;">ENCONTROS ALEATÓRIOS</h3>
-      <div class="npcBancoBarra">
-        <div><strong>BANCO DE NPCs</strong><small>${preenchidos}/40 NPCs cadastrados • os slots podem ficar recolhidos</small></div>
-        <button id="npcBancoToggle" class="npcBancoToggle" type="button">${bancoAberto ? "RECOLHER ▴" : "MOSTRAR ▾"}</button>
-      </div>
-      <div id="npcBancoArea" class="npcBancoArea">
-        <div class="npcBancoGrade">${slotsHtml}</div>
-        ${editorHtml}
-      </div>
-      <button id="npcSortear" class="npcSortear" type="button" ${preenchidos ? "" : "disabled"}>🎲 SORTEAR ENCONTRO</button>
-      ${resultadoHtml}
-    </section>
-    <div id="seletorNpcMestre" class="npcSeletorFundo">
-      <div class="npcSeletorPainel">
-        <div class="npcSeletorTopo"><span>ESCOLHER TOKEN PARA O BANCO</span><button id="fecharSeletorNpcMestre" type="button">×</button></div>
-        <div id="listaSeletorNpcMestre" class="npcSeletorGrade"></div>
-      </div>
-    </div>`;
-
-  ativarCabecalhoMestre(token);
-
-  document.querySelector("#npcBancoToggle")?.addEventListener("click", () => {
-    mestreBancoNpcsAberto.set(token.id, !bancoAberto);
-    mostrarFichaMestreEncontros(token);
-  });
-
-  document.querySelectorAll("[data-npc-slot-vazio]").forEach((botao) => botao.addEventListener("click", () => {
-    abrirSeletorNpcMestre(token, Number(botao.dataset.npcSlotVazio));
-  }));
-
-  document.querySelectorAll("[data-npc-slot]").forEach((botao) => botao.addEventListener("click", () => {
-    mestreNpcEditorSelecionado.set(token.id, Number(botao.dataset.npcSlot));
-    mestreBancoNpcsAberto.set(token.id, true);
-    mostrarFichaMestreEncontros(token);
-  }));
-
-  document.querySelectorAll("[data-npc-remover]").forEach((botao) => botao.addEventListener("click", async (evento) => {
-    evento.stopPropagation();
-    const indice = Number(botao.dataset.npcRemover);
-    const slot = encontroMestreDoToken(token).banco[indice];
-    if (!slot) return;
-    if (!confirm(`Remover ${slot.nome || slot.nomeToken || "este NPC"} do banco? Se ele estiver na cena, o token também será retirado.`)) return;
-    await removerNpcDoBanco(token, indice);
-    const atualizado = await pegarTokenAtualizado(token.id); if (atualizado) mostrarFichaMestreEncontros(atualizado);
-  }));
-
-  document.querySelector("#npcSalvarEditor")?.addEventListener("click", async () => {
-    const indice = Number(mestreNpcEditorSelecionado.get(token.id));
-    const estadoAtual = encontroMestreDoToken(token);
-    const slot = estadoAtual.banco[indice];
-    if (!slot) return;
-    slot.nome = document.querySelector("#npcEditorNome")?.value?.trim().slice(0,100) || slot.nomeToken || "NPC";
-    slot.quem = document.querySelector("#npcEditorQuem")?.value?.trim().slice(0,420) || "";
-    slot.objetivo = document.querySelector("#npcEditorObjetivo")?.value?.trim().slice(0,420) || "";
-    slot.historia = document.querySelector("#npcEditorHistoria")?.value?.trim().slice(0,900) || "";
-    slot.atualizadoEm = Date.now();
-    await salvarEncontroMestre(token, estadoAtual);
-    const atualizado = await pegarTokenAtualizado(token.id); if (atualizado) mostrarFichaMestreEncontros(atualizado);
-  });
-
-  document.querySelector("#npcSortear")?.addEventListener("click", async () => {
-    const atual = encontroMestreDoToken(token);
-    const indices = atual.banco.map((slot, indice) => slot ? indice : -1).filter((indice) => indice >= 0);
-    if (!indices.length) { alert("Cadastre pelo menos um NPC antes de sortear."); return; }
-    const indice = indices[Math.floor(Math.random() * indices.length)];
-    atual.resultadoIndice = indice;
-    await salvarEncontroMestre(token, atual);
-    const atualizado = await pegarTokenAtualizado(token.id); if (atualizado) mostrarFichaMestreEncontros(atualizado);
-  });
-
-  document.querySelector("#npcLimparResultado")?.addEventListener("click", async () => {
-    const atual = encontroMestreDoToken(token);
-    atual.resultadoIndice = null;
-    await salvarEncontroMestre(token, atual);
-    const atualizado = await pegarTokenAtualizado(token.id); if (atualizado) mostrarFichaMestreEncontros(atualizado);
-  });
-
-  document.querySelector("#npcColocarCena")?.addEventListener("click", async () => {
-    const indice = encontroMestreDoToken(token).resultadoIndice;
-    if (indice == null) return;
-    const botao = document.querySelector("#npcColocarCena");
-    if (botao) botao.disabled = true;
-    try {
-      await colocarNpcMestreNaCena(token, indice);
-    } catch (erro) {
-      console.error("Erro ao colocar NPC na cena:", erro);
-      alert(erro?.message || "Não foi possível colocar o NPC na cena.");
-      if (botao) botao.disabled = false;
-    }
-  });
-
-  document.querySelector("#fecharSeletorNpcMestre")?.addEventListener("click", () => {
-    const fundo = document.querySelector("#seletorNpcMestre"); if (fundo) fundo.style.display = "none";
-  });
-  document.querySelector("#seletorNpcMestre")?.addEventListener("click", (evento) => {
-    if (evento.target === evento.currentTarget) evento.currentTarget.style.display = "none";
   });
 }
 
