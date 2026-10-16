@@ -1331,8 +1331,362 @@ const ESTILO_FICHA = `
     color:#111111 !important;
     border-color:#202020 !important;
   }
+
+
+  /* ===== PERSONALIZAÇÃO LOCAL DO FUNDO DA FICHA ===== */
+  #app.fichaPersonalizada {
+    background-color:#ffffff !important;
+    background-image:
+      linear-gradient(
+        rgba(255,255,255,var(--ficha-overlay,.58)),
+        rgba(255,255,255,var(--ficha-overlay,.58))
+      ),
+      var(--ficha-bg-image) !important;
+    background-size:cover !important;
+    background-position:center !important;
+    background-repeat:no-repeat !important;
+  }
+  #app.fichaPersonalizada .fichaCabecalho,
+  #app.fichaPersonalizada .statusCard,
+  #app.fichaPersonalizada .pokemonStatusPrincipal,
+  #app.fichaPersonalizada .pokemonStatusCampo,
+  #app.fichaPersonalizada .pokemonCalculadoraCard,
+  #app.fichaPersonalizada .proficienciaLinha,
+  #app.fichaPersonalizada .treinadorPokemonSecao,
+  #app.fichaPersonalizada .treinadorPokemonSlot,
+  #app.fichaPersonalizada .seletorRosterPainel,
+  #app.fichaPersonalizada .classeCard,
+  #app.fichaPersonalizada .classeHab,
+  #app.fichaPersonalizada .classeRecurso,
+  #app.fichaPersonalizada .origemCard,
+  #app.fichaPersonalizada .origemHab,
+  #app.fichaPersonalizada details {
+    background:rgba(255,255,255,.90) !important;
+    backdrop-filter:blur(3px);
+    -webkit-backdrop-filter:blur(3px);
+  }
+  #app.fichaPersonalizada input,
+  #app.fichaPersonalizada textarea,
+  #app.fichaPersonalizada select {
+    background:rgba(255,255,255,.94) !important;
+  }
+  #app.fichaPersonalizada button:not([style*="background"]):not([class*="ativo"]) {
+    background:rgba(255,255,255,.92) !important;
+  }
+  .fichaAcoesCabecalho {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    gap:6px !important;
+    flex:0 0 auto !important;
+  }
+  #personalizarFicha {
+    flex:0 0 auto !important;
+    min-height:34px !important;
+    padding:7px 9px !important;
+    white-space:nowrap !important;
+    border:1px solid #202020 !important;
+    border-radius:9px !important;
+    font-size:9px !important;
+    font-weight:900 !important;
+    color:#b71c1c !important;
+    background:#ffffff !important;
+  }
+  #personalizarFicha:hover {
+    color:#ffffff !important;
+    background:#c62828 !important;
+    border-color:#8f1111 !important;
+  }
+  .painelPersonalizacaoFicha {
+    position:fixed;
+    top:72px;
+    right:12px;
+    z-index:99999;
+    width:min(300px, calc(100vw - 24px));
+    padding:12px;
+    border:1.5px solid #202020;
+    border-radius:14px;
+    background:rgba(255,255,255,.98);
+    box-shadow:0 18px 50px rgba(0,0,0,.22);
+  }
+  .painelPersonalizacaoTopo {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .painelPersonalizacaoTitulo {
+    font-size:11px;
+    font-weight:1000;
+    color:#b71c1c;
+    letter-spacing:.35px;
+  }
+  .painelPersonalizacaoFechar {
+    width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    padding:0!important;
+    border-radius:50%!important;
+  }
+  .painelPersonalizacaoAcoes {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:7px;
+  }
+  .painelPersonalizacaoAcoes button {
+    min-height:34px!important;
+    padding:7px 8px!important;
+    font-size:9px!important;
+  }
+  .painelPersonalizacaoLinha {
+    margin-top:10px;
+    padding-top:9px;
+    border-top:1px solid #202020;
+  }
+  .painelPersonalizacaoLinha label {
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:5px;
+  }
+  .painelPersonalizacaoLinha input[type="range"] {
+    width:100%;
+    padding:0!important;
+    min-height:24px!important;
+    box-shadow:none!important;
+  }
+  @media (max-width:430px) {
+    .fichaAcoesCabecalho { flex-direction:column !important; gap:4px !important; }
+    #personalizarFicha,
+    #trocarTipo {
+      min-height:30px !important;
+      padding:5px 7px !important;
+      font-size:8px !important;
+    }
+  }
+
 </style>
 `;
+
+const DB_PERSONALIZACAO_FICHA = "pokemon-mundo-perfeito-personalizacao";
+const STORE_PERSONALIZACAO_FICHA = "fundos";
+let promessaBancoPersonalizacaoFicha = null;
+
+function abrirBancoPersonalizacaoFicha() {
+  if (promessaBancoPersonalizacaoFicha) return promessaBancoPersonalizacaoFicha;
+  promessaBancoPersonalizacaoFicha = new Promise((resolve) => {
+    if (!("indexedDB" in window)) { resolve(null); return; }
+    try {
+      const requisicao = indexedDB.open(DB_PERSONALIZACAO_FICHA, 1);
+      requisicao.onupgradeneeded = () => {
+        const banco = requisicao.result;
+        if (!banco.objectStoreNames.contains(STORE_PERSONALIZACAO_FICHA)) {
+          banco.createObjectStore(STORE_PERSONALIZACAO_FICHA, { keyPath: "id" });
+        }
+      };
+      requisicao.onsuccess = () => resolve(requisicao.result);
+      requisicao.onerror = () => resolve(null);
+    } catch (_) { resolve(null); }
+  });
+  return promessaBancoPersonalizacaoFicha;
+}
+
+async function lerPersonalizacaoFicha(tokenId) {
+  const id = String(tokenId || "");
+  if (!id) return null;
+  const banco = await abrirBancoPersonalizacaoFicha();
+  if (banco) {
+    try {
+      return await new Promise((resolve) => {
+        const transacao = banco.transaction(STORE_PERSONALIZACAO_FICHA, "readonly");
+        const req = transacao.objectStore(STORE_PERSONALIZACAO_FICHA).get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+    } catch (_) {}
+  }
+  try {
+    const bruto = localStorage.getItem(`${PREFIX}/personalizacao-ficha/${id}`);
+    return bruto ? JSON.parse(bruto) : null;
+  } catch (_) { return null; }
+}
+
+async function salvarPersonalizacaoFicha(tokenId, dados) {
+  const id = String(tokenId || "");
+  if (!id) return;
+  const registro = { id, ...dados };
+  const banco = await abrirBancoPersonalizacaoFicha();
+  if (banco) {
+    try {
+      await new Promise((resolve) => {
+        const transacao = banco.transaction(STORE_PERSONALIZACAO_FICHA, "readwrite");
+        transacao.objectStore(STORE_PERSONALIZACAO_FICHA).put(registro);
+        transacao.oncomplete = resolve;
+        transacao.onerror = resolve;
+        transacao.onabort = resolve;
+      });
+      return;
+    } catch (_) {}
+  }
+  try { localStorage.setItem(`${PREFIX}/personalizacao-ficha/${id}`, JSON.stringify(registro)); } catch (_) {}
+}
+
+async function removerPersonalizacaoFicha(tokenId) {
+  const id = String(tokenId || "");
+  if (!id) return;
+  const banco = await abrirBancoPersonalizacaoFicha();
+  if (banco) {
+    try {
+      await new Promise((resolve) => {
+        const transacao = banco.transaction(STORE_PERSONALIZACAO_FICHA, "readwrite");
+        transacao.objectStore(STORE_PERSONALIZACAO_FICHA).delete(id);
+        transacao.oncomplete = resolve;
+        transacao.onerror = resolve;
+        transacao.onabort = resolve;
+      });
+    } catch (_) {}
+  }
+  try { localStorage.removeItem(`${PREFIX}/personalizacao-ficha/${id}`); } catch (_) {}
+}
+
+function lerArquivoComoDataUrl(arquivo) {
+  return new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onload = () => resolve(String(leitor.result || ""));
+    leitor.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+    leitor.readAsDataURL(arquivo);
+  });
+}
+
+function carregarImagemDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const imagem = new Image();
+    imagem.onload = () => resolve(imagem);
+    imagem.onerror = () => reject(new Error("Imagem inválida."));
+    imagem.src = dataUrl;
+  });
+}
+
+async function prepararImagemFundoFicha(arquivo) {
+  if (!arquivo || !String(arquivo.type || "").startsWith("image/")) {
+    throw new Error("Escolha uma imagem PNG, JPG ou WebP.");
+  }
+  const original = await lerArquivoComoDataUrl(arquivo);
+  const imagem = await carregarImagemDataUrl(original);
+  const limite = 1600;
+  const escala = Math.min(1, limite / Math.max(imagem.naturalWidth || 1, imagem.naturalHeight || 1));
+  const largura = Math.max(1, Math.round((imagem.naturalWidth || 1) * escala));
+  const altura = Math.max(1, Math.round((imagem.naturalHeight || 1) * escala));
+  const canvas = document.createElement("canvas");
+  canvas.width = largura;
+  canvas.height = altura;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Não foi possível preparar a imagem.");
+  ctx.drawImage(imagem, 0, 0, largura, altura);
+  const webp = canvas.toDataURL("image/webp", .82);
+  return webp && webp.startsWith("data:image/") ? webp : canvas.toDataURL("image/jpeg", .82);
+}
+
+function limparVisualPersonalizacaoFicha(app) {
+  if (!app) return;
+  app.classList.remove("fichaPersonalizada");
+  app.style.removeProperty("--ficha-bg-image");
+  app.style.removeProperty("--ficha-overlay");
+}
+
+async function aplicarPersonalizacaoFicha(token) {
+  const app = document.querySelector("#app");
+  if (!app || !token?.id) return;
+  const id = String(token.id);
+  app.dataset.personalizacaoToken = id;
+  const configuracao = await lerPersonalizacaoFicha(id);
+  if (!app.isConnected || app.dataset.personalizacaoToken !== id) return;
+  if (!configuracao?.imagem) { limparVisualPersonalizacaoFicha(app); return; }
+  const overlay = Math.max(.18, Math.min(.92, Number(configuracao.overlay ?? .58)));
+  app.classList.add("fichaPersonalizada");
+  app.style.setProperty("--ficha-bg-image", `url("${String(configuracao.imagem).replace(/"/g, "%22")}")`);
+  app.style.setProperty("--ficha-overlay", String(overlay));
+}
+
+async function abrirPainelPersonalizacaoFicha(token) {
+  const app = document.querySelector("#app");
+  if (!app || !token?.id) return;
+  document.querySelector("#painelPersonalizacaoFicha")?.remove();
+
+  const configuracao = await lerPersonalizacaoFicha(token.id);
+  const overlayInicial = Math.round(Math.max(.18, Math.min(.92, Number(configuracao?.overlay ?? .58))) * 100);
+  const painel = document.createElement("div");
+  painel.id = "painelPersonalizacaoFicha";
+  painel.className = "painelPersonalizacaoFicha";
+  painel.innerHTML = `
+    <div class="painelPersonalizacaoTopo">
+      <div class="painelPersonalizacaoTitulo">🎨 FUNDO DA FICHA</div>
+      <button type="button" class="painelPersonalizacaoFechar" id="fecharPersonalizacaoFicha">×</button>
+    </div>
+    <input id="arquivoFundoFicha" type="file" accept="image/png,image/jpeg,image/webp" style="display:none!important">
+    <div class="painelPersonalizacaoAcoes">
+      <button type="button" id="escolherFundoFicha">ESCOLHER IMAGEM</button>
+      <button type="button" id="removerFundoFicha">REMOVER FUNDO</button>
+    </div>
+    <div class="painelPersonalizacaoLinha">
+      <label for="overlayFundoFicha"><span>VÉU DE LEITURA</span><strong id="valorOverlayFundoFicha">${overlayInicial}%</strong></label>
+      <input id="overlayFundoFicha" type="range" min="18" max="92" step="1" value="${overlayInicial}">
+    </div>
+    <p style="margin:8px 0 0!important;font-size:8px!important;color:#555!important;font-weight:800!important;text-align:center;">
+      Fundo salvo apenas neste navegador e nesta ficha.
+    </p>`;
+  app.appendChild(painel);
+
+  const arquivo = painel.querySelector("#arquivoFundoFicha");
+  const escolher = painel.querySelector("#escolherFundoFicha");
+  const remover = painel.querySelector("#removerFundoFicha");
+  const slider = painel.querySelector("#overlayFundoFicha");
+  const valorSlider = painel.querySelector("#valorOverlayFundoFicha");
+
+  painel.querySelector("#fecharPersonalizacaoFicha")?.addEventListener("click", () => painel.remove());
+  escolher?.addEventListener("click", () => arquivo?.click());
+  arquivo?.addEventListener("change", async () => {
+    const selecionado = arquivo.files?.[0];
+    if (!selecionado) return;
+    escolher.disabled = true;
+    const original = escolher.textContent;
+    escolher.textContent = "PROCESSANDO...";
+    try {
+      const imagem = await prepararImagemFundoFicha(selecionado);
+      const overlay = Number(slider?.value || overlayInicial) / 100;
+      await salvarPersonalizacaoFicha(token.id, { imagem, overlay });
+      await aplicarPersonalizacaoFicha(token);
+    } catch (erro) {
+      alert(erro?.message || "Não foi possível usar essa imagem.");
+    } finally {
+      escolher.disabled = false;
+      escolher.textContent = original;
+      if (arquivo) arquivo.value = "";
+    }
+  });
+  slider?.addEventListener("input", () => {
+    const numero = Number(slider.value || overlayInicial);
+    if (valorSlider) valorSlider.textContent = `${numero}%`;
+    app.style.setProperty("--ficha-overlay", String(numero / 100));
+  });
+  slider?.addEventListener("change", async () => {
+    const atual = await lerPersonalizacaoFicha(token.id);
+    if (!atual?.imagem) return;
+    await salvarPersonalizacaoFicha(token.id, { imagem: atual.imagem, overlay: Number(slider.value || overlayInicial) / 100 });
+  });
+  remover?.addEventListener("click", async () => {
+    await removerPersonalizacaoFicha(token.id);
+    limparVisualPersonalizacaoFicha(app);
+    painel.remove();
+  });
+}
+
+function ativarPersonalizacaoFicha(token) {
+  document.querySelector("#personalizarFicha")?.addEventListener("click", () => void abrirPainelPersonalizacaoFicha(token));
+  void aplicarPersonalizacaoFicha(token);
+}
+
 function urlApresentadorIniciativa() { const url = new URL(window.location.href);
 url.searchParams.set( "view", "initiative" );
 return url.toString(); }
@@ -5650,7 +6004,7 @@ function htmlDetalheEspecialItemMochila(item) {
         align-items:end;
         padding-top:7px;
         margin-top:7px;
-        border-top:1px dashed #dbe5ef;
+        border-top:1px dashed #202020;
       ">
         <label style="min-width:0;font-size:7.5px;font-weight:1000;color:#6d8299;letter-spacing:.3px;">
           ROLAGEM
@@ -5664,7 +6018,7 @@ function htmlDetalheEspecialItemMochila(item) {
             placeholder="Ex.: 2d6+4"
             style="
               display:block;width:100%;box-sizing:border-box;margin-top:3px;padding:7px 8px;
-              border:1px solid #cfdbe8;border-radius:8px;background:#fbfdff;color:#294761;
+              border:1px solid #202020;border-radius:8px;background:#fbfdff;color:#294761;
               font-size:9px;font-weight:900;outline:none;
             "
           >
@@ -5674,7 +6028,7 @@ function htmlDetalheEspecialItemMochila(item) {
           data-item-id="${esc(item.id)}"
           data-item-nome="${esc(item.nome)}"
           style="
-            min-height:31px;padding:7px 9px;border:1px solid #e57373;border-radius:8px;
+            min-height:31px;padding:7px 9px;border:1px solid #202020;border-radius:8px;
             background:#fff4f4;color:#c62828;font-size:8px;font-weight:1000;cursor:pointer;white-space:nowrap;
           "
         >🎲 ROLAR</button>
@@ -5684,7 +6038,7 @@ function htmlDetalheEspecialItemMochila(item) {
   if (item.tipo === "pokebolas") {
     return `
       <div style="
-        display:flex;align-items:end;gap:6px;padding-top:7px;margin-top:7px;border-top:1px dashed #dbe5ef;
+        display:flex;align-items:end;gap:6px;padding-top:7px;margin-top:7px;border-top:1px dashed #202020;
       ">
         <label style="width:112px;max-width:100%;font-size:7.5px;font-weight:1000;color:#6d8299;letter-spacing:.3px;">
           BÔNUS DE CAPTURA
@@ -5697,7 +6051,7 @@ function htmlDetalheEspecialItemMochila(item) {
             placeholder="0"
             style="
               display:block;width:100%;box-sizing:border-box;margin-top:3px;padding:7px 8px;
-              border:1px solid #cfdbe8;border-radius:8px;background:#fbfdff;color:#294761;
+              border:1px solid #202020;border-radius:8px;background:#fbfdff;color:#294761;
               font-size:9px;font-weight:1000;text-align:center;outline:none;
             "
           >
@@ -5713,7 +6067,7 @@ function htmlCardItemMochila(item) {
   return `
     <div style="
       padding:8px;
-      border:1px solid #dce5ef;
+      border:1px solid #202020;
       border-radius:10px;
       background:#fff;
       box-shadow:0 2px 5px rgba(38,67,99,.035);
@@ -5733,7 +6087,7 @@ function htmlCardItemMochila(item) {
           data-item-id="${esc(item.id)}"
           title="Usar 1 ${esc(item.nome)}"
           style="
-            padding:6px 8px;border:1px solid #e4a8ad;border-radius:8px;background:#fff5f5;color:#a74952;
+            padding:6px 8px;border:1px solid #202020;border-radius:8px;background:#fff5f5;color:#a74952;
             font-size:8px;font-weight:1000;cursor:pointer;white-space:nowrap;
           "
         >USAR −1</button>
@@ -5755,7 +6109,7 @@ function htmlItensMochila(mochila) {
       <div style="
         margin-top:10px;
         padding:${temItens ? "10px" : "8px 10px"};
-        border:1px solid ${temItens ? "#d6e1ee" : "#e3eaf2"};
+        border:1px solid ${temItens ? "#202020" : "#202020"};
         border-radius:13px;
         background:${temItens ? "linear-gradient(180deg,#ffffff 0%,#fffafa 100%)" : "#fbfcfe"};
         box-shadow:${temItens ? "0 4px 10px rgba(32,67,108,.055)" : "none"};
@@ -5763,7 +6117,7 @@ function htmlItensMochila(mochila) {
         <div style="display:flex;align-items:center;gap:10px;min-height:38px;">
           <div style="
             width:39px;height:39px;flex:0 0 39px;display:flex;align-items:center;justify-content:center;
-            border:1px solid ${temItens ? "#d5e1ee" : "#e4eaf1"};border-radius:11px;
+            border:1px solid ${temItens ? "#202020" : "#202020"};border-radius:11px;
             background:#ffffff;box-shadow:0 2px 6px rgba(35,69,106,.06);overflow:hidden;
           ">
             <img
@@ -5815,7 +6169,7 @@ function mostrarFichaTreinadorMocDin(token) {
     ">
       <section style="
         padding:14px;
-        border:1px solid #cfdceb;
+        border:1px solid #202020;
         border-radius:14px;
         background:linear-gradient(180deg,#ffffff 0%,#f7faff 100%);
         box-shadow:0 3px 8px rgba(39,72,110,.06);
@@ -5851,7 +6205,7 @@ function mostrarFichaTreinadorMocDin(token) {
         <div id="controlesPokedolsGm" style="display:none;margin-top:12px;">
           <div style="
             padding:10px;
-            border:1px solid #d8e3ef;
+            border:1px solid #202020;
             border-radius:11px;
             background:#fffafa;
           ">
@@ -5863,7 +6217,7 @@ function mostrarFichaTreinadorMocDin(token) {
                 min-width:0;
                 width:100%;
                 padding:9px;
-                border:1px solid #cbd7e5;
+                border:1px solid #202020;
                 border-radius:9px;
                 font-size:10px;
                 font-weight:800;
@@ -5909,7 +6263,7 @@ function mostrarFichaTreinadorMocDin(token) {
 
       <section style="
         padding:14px;
-        border:1px solid #cfdceb;
+        border:1px solid #202020;
         border-radius:14px;
         background:#ffffff;
       ">
@@ -5928,7 +6282,7 @@ function mostrarFichaTreinadorMocDin(token) {
               width:100%;
               margin-top:4px;
               padding:10px;
-              border:1px solid #cbd7e5;
+              border:1px solid #202020;
               border-radius:10px;
               font-size:11px;
               font-weight:800;
@@ -5946,7 +6300,7 @@ function mostrarFichaTreinadorMocDin(token) {
                 width:100%;
                 margin-top:4px;
                 padding:10px;
-                border:1px solid #cbd7e5;
+                border:1px solid #202020;
                 border-radius:10px;
                 font-size:10px;
                 font-weight:900;
@@ -5964,7 +6318,7 @@ function mostrarFichaTreinadorMocDin(token) {
                 width:100%;
                 margin-top:4px;
                 padding:10px;
-                border:1px solid #cbd7e5;
+                border:1px solid #202020;
                 border-radius:10px;
                 font-size:11px;
                 font-weight:900;
@@ -5981,7 +6335,7 @@ function mostrarFichaTreinadorMocDin(token) {
                 width:100%;
                 margin-top:4px;
                 padding:10px;
-                border:1px solid #cbd7e5;
+                border:1px solid #202020;
                 border-radius:10px;
                 font-size:11px;
                 font-weight:900;
@@ -5995,7 +6349,7 @@ function mostrarFichaTreinadorMocDin(token) {
 
           <div id="totalCompraVendinha" style="
             padding:9px 10px;
-            border:1px solid #d8e3ef;
+            border:1px solid #202020;
             border-radius:10px;
             background:#fffafa;
             text-align:center;
@@ -6040,7 +6394,7 @@ function mostrarFichaTreinadorMocDin(token) {
 
       <section style="
         padding:14px;
-        border:1px solid #cfdceb;
+        border:1px solid #202020;
         border-radius:16px;
         background:linear-gradient(180deg,#fffafa 0%,#f3f7fc 100%);
         box-shadow:0 4px 11px rgba(35,66,103,.06);
@@ -6051,7 +6405,7 @@ function mostrarFichaTreinadorMocDin(token) {
           justify-content:center;
           gap:7px;
           padding-bottom:7px;
-          border-bottom:1px solid #dde6f0;
+          border-bottom:1px solid #202020;
         ">
           <span style="
             width:25px;
@@ -6393,22 +6747,28 @@ font-size:30px;
           </div>
         </div>
       </div>
-      <button
-        id="trocarTipo"
-        style="
-          font-size:11px;
-          cursor:pointer;
-          white-space:nowrap;
-        "
-      >
-        Trocar tipo
-      </button>
+      <div class="fichaAcoesCabecalho">
+        <button id="personalizarFicha" type="button" title="Escolher fundo desta ficha">🎨 PERSONALIZAR</button>
+        <button
+          id="trocarTipo"
+          style="
+            font-size:11px;
+            cursor:pointer;
+            white-space:nowrap;
+          "
+        >
+          Trocar tipo
+        </button>
+      </div>
     </div>
     ${menuTreinador(paginaAtual)}
   `;
 }
-function ativarCabecalhoTreinador( token ) { document .querySelector( "#trocarTipo" ) .addEventListener( "click", () => trocarTipoFicha( token ) );
-ativarMenuTreinador( token ); }
+function ativarCabecalhoTreinador( token ) {
+  document.querySelector("#trocarTipo")?.addEventListener("click", () => trocarTipoFicha(token));
+  ativarPersonalizacaoFicha(token);
+  ativarMenuTreinador(token);
+}
 function ativarMenuTreinador(token) {
   const status = document.querySelector("#paginaTreinador1");
   const pkm = document.querySelector("#paginaTreinador2");
@@ -7585,23 +7945,27 @@ font-size:30px;
           </div>
         </div>
       </div>
-      <button
-        id="trocarTipo"
-        style="
-          font-size:11px;
-          cursor:pointer;
-          flex:0 0 auto;
-          padding:6px 8px;
-        "
-      >
-        Trocar tipo
-      </button>
+      <div class="fichaAcoesCabecalho">
+        <button id="personalizarFicha" type="button" title="Escolher fundo desta ficha">🎨 PERSONALIZAR</button>
+        <button
+          id="trocarTipo"
+          style="
+            font-size:11px;
+            cursor:pointer;
+            flex:0 0 auto;
+            padding:6px 8px;
+          "
+        >
+          Trocar tipo
+        </button>
+      </div>
     </div>
     ${menuPokemon(paginaAtual)}
   `;
 }
 function ativarCabecalhoPokemon(token) {
   document.querySelector("#trocarTipo")?.addEventListener("click", () => trocarTipoFicha(token));
+  ativarPersonalizacaoFicha(token);
   const campoNome = document.querySelector("#nomeFichaPokemon");
   if (campoNome) {
     const salvar = async () => {
@@ -9435,14 +9799,14 @@ const megaNomesMovimentos = {
   "movimento-natacao": "Natação", "movimento-escavacao": "Escavação", "movimento-flutuacao": "Flutuação"
 };
 const htmlMegaAtributos = MEGA_ATRIBUTOS.map((id) => `
-  <div style="display:grid;grid-template-columns:32px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;">
+  <div style="display:grid;grid-template-columns:32px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #202020;border-radius:8px;background:#fff;">
     <strong style="font-size:9px;color:#604281;">${megaNomesAtributos[id]}</strong>
     <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
     <span id="megaAtributo-${id}" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.atributos[id]} Status</span>
     <button type="button" class="megaAjuste" data-mega-grupo="atributo" data-mega-id="${id}" data-mega-delta="1" style="min-height:28px!important;padding:2px!important;">+</button>
   </div>`).join("");
 const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
-  <div style="display:grid;grid-template-columns:minmax(62px,1fr) 30px 58px 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;">
+  <div style="display:grid;grid-template-columns:minmax(62px,1fr) 30px 58px 30px;gap:4px;align-items:center;padding:5px;border:1px solid #202020;border-radius:8px;background:#fff;">
     <strong style="font-size:8px;color:#604281;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${megaNomesMovimentos[id]}</strong>
     <button type="button" class="megaAjuste" data-mega-grupo="movimento" data-mega-id="${id}" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
     <span id="megaMovimento-${id}" style="text-align:center;font-size:9px;font-weight:900;color:#684895;">+${formatarDecimal(megaDistribuicaoInicial.movimentos[id] * MEGA_PASSO_MOVIMENTO)}m</span>
@@ -9456,7 +9820,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
       id="megaEvolucaoCard"
       style="
         padding:10px;
-        border:1px solid #ddd3f4;
+        border:1px solid #202020;
         border-radius:12px;
         background:linear-gradient(180deg,#fbf8ff 0%,#f6f0ff 100%);
         box-shadow:0 3px 10px rgba(91,53,140,.08);
@@ -9479,7 +9843,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
           overflow:hidden;
           border-radius:12px;
           background:#ffffff;
-          border:1px solid #ded3f1;
+          border:1px solid #202020;
           box-shadow:0 2px 7px rgba(91,53,140,.10);
           padding:4px;
         ">
@@ -9564,7 +9928,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
             font-size:10px;
             font-weight:900;
             color:#5f4485 !important;
-            border-color:#c9b7e6 !important;
+            border-color:#202020 !important;
             background:#ffffff !important;
           "
         >
@@ -9601,7 +9965,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
           cursor:pointer;
           background:linear-gradient(180deg,#ffffff 0%,#f0e9fb 100%) !important;
           color:#5f4485 !important;
-          border-color:#c9b7e6 !important;
+          border-color:#202020 !important;
         "
       >
         DEFINIR TOKEN COMO MEGA
@@ -9618,7 +9982,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
         Mostra somente tokens da mesa cujo nome começa com Mega.
       </div>
 
-      <div id="megaDistribuicaoCard" style="margin-top:10px;padding:8px;border:1px solid #d8caed;border-radius:10px;background:#fffaff;">
+      <div id="megaDistribuicaoCard" style="margin-top:10px;padding:8px;border:1px solid #202020;border-radius:10px;background:#fffaff;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;">
           <strong style="font-size:10px;color:#604281;">DISTRIBUIÇÃO DA MEGA</strong>
           <span id="megaPontosTexto" style="font-size:10px;font-weight:900;color:#6f52d9;">${Math.max(0, MEGA_PONTOS_TOTAL - megaPontosIniciais)} pts livres</span>
@@ -9627,7 +9991,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
           CA: 2 pts = +1 CA · Status: 1 pt = +1 atributo · Movimento: 1 pt = +1,5 m
         </div>
 
-        <div style="display:grid;grid-template-columns:48px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #e2d8f2;border-radius:8px;background:#fff;margin-bottom:6px;">
+        <div style="display:grid;grid-template-columns:48px 30px 1fr 30px;gap:4px;align-items:center;padding:5px;border:1px solid #202020;border-radius:8px;background:#fff;margin-bottom:6px;">
           <strong style="font-size:9px;color:#604281;">CA</strong>
           <button type="button" class="megaAjuste" data-mega-grupo="ca" data-mega-delta="-1" style="min-height:28px!important;padding:2px!important;">−</button>
           <span id="megaCaValor" style="text-align:center;font-size:10px;font-weight:900;color:#684895;">+${megaDistribuicaoInicial.ca} CA</span>
@@ -9664,7 +10028,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
             cursor:pointer;
             background:linear-gradient(135deg,#9b7cff 0%,#6f52d9 100%) !important;
             color:#fff !important;
-            border-color:#6045c6 !important;
+            border-color:#202020 !important;
           "
         >
           MEGA EVOLUÇÃO
@@ -9683,7 +10047,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
             cursor:pointer;
             background:linear-gradient(135deg,#ef7676 0%,#ce4f4f 100%) !important;
             color:#fff !important;
-            border-color:#bb4545 !important;
+            border-color:#202020 !important;
           "
         >
           RETIRAR EVOLUÇÃO
