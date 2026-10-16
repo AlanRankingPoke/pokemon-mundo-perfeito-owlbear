@@ -17,6 +17,15 @@ const META_TREINADOR_ORIGEM = `${PREFIX}/treinador-origem`;
 const META_TREINADOR_CLASSE = `${PREFIX}/treinador-classe`;
 const META_TREINADOR_POKEDOLS = `${PREFIX}/treinador-pokedols`;
 const META_TREINADOR_MOCHILA = `${PREFIX}/treinador-mochila`;
+const META_MESTRE_ENCONTROS = `${PREFIX}/mestre-encontros`;
+const META_MESTRE_REGRAS = `${PREFIX}/mestre-regras`;
+const META_MESTRE_BOSSES = `${PREFIX}/mestre-bosses`;
+const META_NPC_MESTRE_DONO = `${PREFIX}/npc-mestre-dono`;
+const META_NPC_MESTRE_SLOT = `${PREFIX}/npc-mestre-slot`;
+const META_NPC_DADOS = `${PREFIX}/npc-dados`;
+const QUANTIDADE_NPCS_MESTRE = 40;
+const mestreBancoNpcsAberto = new Map();
+const mestreNpcEditorSelecionado = new Map();
 const META_AS_MESTRE_BATALHA_USOS = `${PREFIX}/classe-as-mestre-batalha-usos`;
 const META_AS_RITMO_COMBATE_USOS = `${PREFIX}/classe-as-ritmo-combate-usos`;
 const META_AS_TROCA_RAPIDA_USOS = `${PREFIX}/classe-as-troca-rapida-usos`;
@@ -512,6 +521,7 @@ const ESTILO_FICHA = `
   #paginaPokemon2,
   #paginaPokemon3,
   #paginaPokemon4,
+  #paginaPokemon5,
   #paginaTreinador1,
   #paginaTreinador2,
   #paginaTreinador3,
@@ -532,6 +542,7 @@ const ESTILO_FICHA = `
   #paginaPokemon2[style*="opacity:1"],
   #paginaPokemon3[style*="opacity:1"],
   #paginaPokemon4[style*="opacity:1"],
+  #paginaPokemon5[style*="opacity:1"],
   #paginaTreinador1[style*="opacity:1"],
   #paginaTreinador2[style*="opacity:1"],
   #paginaTreinador3[style*="opacity:1"],
@@ -1211,14 +1222,16 @@ const ESTILO_FICHA = `
   #paginaPokemon1,
   #paginaPokemon2,
   #paginaPokemon3,
-  #paginaPokemon4 {
+  #paginaPokemon4,
+  #paginaPokemon5 {
     color:#111111 !important;
     border-color:#202020 !important;
   }
   #paginaPokemon1[style*="opacity:1"],
   #paginaPokemon2[style*="opacity:1"],
   #paginaPokemon3[style*="opacity:1"],
-  #paginaPokemon4[style*="opacity:1"] {
+  #paginaPokemon4[style*="opacity:1"],
+  #paginaPokemon5[style*="opacity:1"] {
     color:#ffffff !important;
     background:linear-gradient(135deg,#e53935 0%,#b71c1c 100%) !important;
     border-color:#8f1111 !important;
@@ -3862,6 +3875,7 @@ app.innerHTML = `
         style="
           width:100%;
           padding:14px;
+          margin-bottom:10px;
           font-size:16px;
           font-weight:bold;
           cursor:pointer;
@@ -3869,10 +3883,23 @@ app.innerHTML = `
       >
         👤 TREINADOR
       </button>
+      <button
+        id="abrirMestre"
+        style="
+          width:100%;
+          padding:14px;
+          font-size:16px;
+          font-weight:bold;
+          cursor:pointer;
+        "
+      >
+        🎲 MESTRE
+      </button>
     </div>
   `;
 document .querySelector( "#abrirPokemon" ) .addEventListener( "click", async () => { await definirTipoFicha( token, "pokemon" ); const tokenAtualizado = await pegarTokenAtualizado( token.id ); mostrarFichaPokemon( tokenAtualizado || token ); } );
-document .querySelector( "#abrirTreinador" ) .addEventListener( "click", async () => { await definirTipoFicha( token, "treinador" ); mostrarFichaTreinadorPagina1( token ); } ); }
+document .querySelector( "#abrirTreinador" ) .addEventListener( "click", async () => { await definirTipoFicha( token, "treinador" ); mostrarFichaTreinadorPagina1( token ); } );
+document .querySelector( "#abrirMestre" ) .addEventListener( "click", async () => { await definirTipoFicha( token, "mestre" ); await desduplicarHudToken(token.id, []); const tokenAtualizado = await pegarTokenAtualizado(token.id); mostrarFichaMestreEncontros(tokenAtualizado || token); } ); }
 async function trocarTipoFicha( token ) { await OBR.scene.items.updateItems( [token.id], (items) => { for (const item of items) { delete item.metadata[
 `${PREFIX}/tipoFicha`
 ]; } } );
@@ -7763,79 +7790,61 @@ function mostrarFichaTreinadorTalEsp(token) {
 }
 
 function menuPokemon(paginaAtual) {
-return `
-    <div class="fichaAbas" style="
-      display:flex;
-      gap:6px;
-      margin-bottom:15px;
-      flex-wrap:wrap;
-    ">
-      <button
-        id="paginaPokemon1"
-        style="
-          flex:1;
-          min-width:70px;
-          padding:8px 4px;
-          font-size:11px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 1 ? "1" : "0.65"};
-        "
-      >
-        STATUS
-      </button>
-      <button
-        id="paginaPokemon2"
-        style="
-          flex:1;
-          min-width:95px;
-          padding:8px 4px;
-          font-size:11px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 2 ? "1" : "0.65"};
-        "
-      >
-        MOVES / BUFFS
-      </button>
-      <button
-        id="paginaPokemon3"
-        style="
-          flex:1;
-          min-width:110px;
-          padding:8px 4px;
-          font-size:10px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 3 ? "1" : "0.65"};
-        "
-      >
-        PERÍCIAS / DEBUFF
-      </button>
-      <button
-        id="paginaPokemon4"
-        style="
-          flex:1;
-          min-width:70px;
-          padding:8px 4px;
-          font-size:10px;
-          font-weight:bold;
-          cursor:pointer;
-          opacity:${paginaAtual === 4 ? "1" : "0.65"};
-        "
-      >
-        MEGA
-      </button>
+  const aba = (id, pagina, rotulo) => `
+    <button id="${id}" style="
+      flex:1;
+      min-width:78px;
+      min-height:40px!important;
+      padding:6px 4px!important;
+      font-size:9.5px!important;
+      line-height:1.1!important;
+      font-weight:900!important;
+      cursor:pointer;
+      opacity:${paginaAtual === pagina ? "1" : "0.72"};
+      border-radius:9px!important;
+      white-space:normal!important;
+    ">${rotulo}</button>`;
+  return `
+    <div class="fichaAbas" style="display:flex;gap:6px;margin-bottom:15px;flex-wrap:wrap;">
+      ${aba("paginaPokemon1", 1, "STATUS")}
+      ${aba("paginaPokemon2", 2, "MOVES / BUFFS")}
+      ${aba("paginaPokemon3", 3, "PERÍCIAS")}
+      ${aba("paginaPokemon4", 4, "DEBUFFS")}
+      ${aba("paginaPokemon5", 5, "MEGA")}
     </div>
   `;
 }
 async function pegarTokenAtualizado(tokenId) { const items = await OBR.scene.items.getItems( [tokenId] );
 if ( !items || items.length === 0 ) { return null; }
 return items[0]; }
-function ativarMenuPokemon(token) { document .querySelector("#paginaPokemon1") .addEventListener( "click", async () => { await salvamentoBuffPendente.catch(() => {}); await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemon( tokenAtualizado ); } );
-document .querySelector("#paginaPokemon2") .addEventListener( "click", async () => { await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonMoves( tokenAtualizado ); } );
-document .querySelector("#paginaPokemon3") .addEventListener( "click", async () => { await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonPericias( tokenAtualizado ); } );
-document .querySelector("#paginaPokemon4") .addEventListener( "click", async () => { await salvamentoBuffPendente.catch(() => {}); await salvamentoMovimentoPendente.catch(() => {}); const tokenAtualizado = await pegarTokenAtualizado( token.id ); if (!tokenAtualizado) { return; } mostrarFichaPokemonMega( tokenAtualizado ); } ); }
+function ativarMenuPokemon(token) {
+  document.querySelector("#paginaPokemon1")?.addEventListener("click", async () => {
+    await salvamentoBuffPendente.catch(() => {});
+    await salvamentoMovimentoPendente.catch(() => {});
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaPokemon(tokenAtualizado);
+  });
+  document.querySelector("#paginaPokemon2")?.addEventListener("click", async () => {
+    await salvamentoMovimentoPendente.catch(() => {});
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaPokemonMoves(tokenAtualizado);
+  });
+  document.querySelector("#paginaPokemon3")?.addEventListener("click", async () => {
+    await salvamentoMovimentoPendente.catch(() => {});
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaPokemonPericias(tokenAtualizado);
+  });
+  document.querySelector("#paginaPokemon4")?.addEventListener("click", async () => {
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaPokemonDebuffs(tokenAtualizado);
+  });
+  document.querySelector("#paginaPokemon5")?.addEventListener("click", async () => {
+    await salvamentoBuffPendente.catch(() => {});
+    await salvamentoMovimentoPendente.catch(() => {});
+    const tokenAtualizado = await pegarTokenAtualizado(token.id);
+    if (tokenAtualizado) mostrarFichaPokemonMega(tokenAtualizado);
+  });
+}
 
 function nomeFichaPokemon(token) {
   const personalizado = String(token?.metadata?.[META_POKEMON_APELIDO] ?? "").trim();
@@ -9814,7 +9823,7 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
   </div>`).join("");
   app.innerHTML = `
     ${ESTILO_FICHA}
-    ${cabecalhoPokemon(token, 4)}
+    ${cabecalhoPokemon(token, 5)}
     <div style="margin-top:2px;">
     <div
       id="megaEvolucaoCard"
@@ -10393,45 +10402,748 @@ async function colarCopiaFichaPokemonNoToken(token, pacote) {
   return atualizado || token;
 }
 
+
+// ============================================================
+// FICHA DO MESTRE
+// ============================================================
+function npcMestrePadrao() {
+  return {
+    versao: 2,
+    banco: Array.from({ length: QUANTIDADE_NPCS_MESTRE }, () => null),
+    resultadoIndice: null
+  };
+}
+
+function normalizarSlotNpcMestre(valor) {
+  if (!valor || typeof valor !== "object") return null;
+  const forma = valor.forma && typeof valor.forma === "object"
+    ? clonarDadosSimples(valor.forma)
+    : null;
+  if (!forma?.url) return null;
+  return {
+    versao: 1,
+    nomeToken: String(valor.nomeToken || valor.nome || "NPC").slice(0, 100),
+    forma,
+    rotation: Number(valor.rotation) || 0,
+    nome: String(valor.nome || valor.nomeToken || "NPC").slice(0, 100),
+    quem: String(valor.quem || "").slice(0, 420),
+    objetivo: String(valor.objetivo || "").slice(0, 420),
+    historia: String(valor.historia || "").slice(0, 900),
+    atualizadoEm: Number(valor.atualizadoEm) || Date.now()
+  };
+}
+
+function normalizarEncontrosMestre(valor) {
+  const padrao = npcMestrePadrao();
+  if (!valor || typeof valor !== "object") return padrao;
+  const bancoOrigem = Array.isArray(valor.banco) ? valor.banco : [];
+  const banco = Array.from({ length: QUANTIDADE_NPCS_MESTRE }, (_, indice) =>
+    normalizarSlotNpcMestre(bancoOrigem[indice])
+  );
+  const resultado = Number(valor.resultadoIndice);
+  const resultadoIndice = Number.isInteger(resultado) && resultado >= 0 && resultado < QUANTIDADE_NPCS_MESTRE && banco[resultado]
+    ? resultado
+    : null;
+  return { versao: 2, banco, resultadoIndice };
+}
+
+function encontroMestreDoToken(token) {
+  return normalizarEncontrosMestre(token?.metadata?.[META_MESTRE_ENCONTROS]);
+}
+
+async function salvarEncontroMestre(token, estado) {
+  const valor = normalizarEncontrosMestre(estado);
+  await salvarMetadataMestre(token, META_MESTRE_ENCONTROS, valor);
+  return valor;
+}
+
+function snapshotTokenParaNpcMestre(item) {
+  if (!item || item.type !== "IMAGE" || !item.image?.url) return null;
+  const forma = dadosFormaDoToken(item);
+  if (!forma?.url) return null;
+  return {
+    versao: 1,
+    nomeToken: String(item.name || "NPC").slice(0, 100),
+    forma: clonarDadosSimples(forma),
+    rotation: Number(item.rotation) || 0,
+    nome: String(item.name || "NPC").slice(0, 100),
+    quem: "",
+    objetivo: "",
+    historia: "",
+    atualizadoEm: Date.now()
+  };
+}
+
+function tokenDisponivelParaBancoNpc(item, mestreId) {
+  if (!tokenEstaDisponivelNaMesa(item) || item.id === mestreId) return false;
+  if (item.metadata?.[META_PAINEL_INICIATIVA] === true || item.metadata?.[META_PAINEL_INICIATIVA_FILHO]) return false;
+  // O banco usa tokens de personagem ainda sem ficha. Isso evita retirar por engano
+  // um Pokémon, treinador, mestre ou NPC já cadastrado da cena.
+  return !item.metadata?.[`${PREFIX}/tipoFicha`];
+}
+
+async function tokensDisponiveisParaBancoNpc(mestre) {
+  return OBR.scene.items.getItems((item) => tokenDisponivelParaBancoNpc(item, mestre.id));
+}
+
+async function npcDoBancoEmCena(mestreId, indice) {
+  const encontrados = await OBR.scene.items.getItems((item) =>
+    item?.type === "IMAGE" &&
+    item.metadata?.[META_NPC_MESTRE_DONO] === mestreId &&
+    Number(item.metadata?.[META_NPC_MESTRE_SLOT]) === Number(indice)
+  );
+  return encontrados?.[0] || null;
+}
+
+async function adicionarTokenAoBancoNpc(mestre, indice, tokenNpc) {
+  const estado = encontroMestreDoToken(mestre);
+  if (!Number.isInteger(indice) || indice < 0 || indice >= QUANTIDADE_NPCS_MESTRE) return;
+  if (estado.banco[indice]) throw new Error("Esse slot já está ocupado.");
+  const snapshot = snapshotTokenParaNpcMestre(tokenNpc);
+  if (!snapshot) throw new Error("Não foi possível guardar a imagem desse NPC.");
+
+  estado.banco[indice] = snapshot;
+  await salvarEncontroMestre(mestre, estado);
+
+  try {
+    await OBR.scene.items.deleteItems([tokenNpc.id]);
+  } catch (erro) {
+    // Se o token não puder ser retirado da cena, desfaz o cadastro para não criar duplicação.
+    estado.banco[indice] = null;
+    await salvarEncontroMestre(mestre, estado);
+    throw erro;
+  }
+
+  mestreBancoNpcsAberto.set(mestre.id, true);
+  mestreNpcEditorSelecionado.set(mestre.id, indice);
+}
+
+async function removerNpcDoBanco(mestre, indice) {
+  const estado = encontroMestreDoToken(mestre);
+  if (!estado.banco[indice]) return;
+  const emCena = await npcDoBancoEmCena(mestre.id, indice);
+  if (emCena) await OBR.scene.items.deleteItems([emCena.id]);
+  estado.banco[indice] = null;
+  if (estado.resultadoIndice === indice) estado.resultadoIndice = null;
+  await salvarEncontroMestre(mestre, estado);
+  if (mestreNpcEditorSelecionado.get(mestre.id) === indice) mestreNpcEditorSelecionado.delete(mestre.id);
+}
+
+function dadosNpcParaCena(slot) {
+  return {
+    nome: String(slot?.nome || slot?.nomeToken || "NPC"),
+    quem: String(slot?.quem || ""),
+    objetivo: String(slot?.objetivo || ""),
+    historia: String(slot?.historia || "")
+  };
+}
+
+async function colocarNpcMestreNaCena(mestre, indice) {
+  const mestreAtual = await pegarTokenAtualizado(mestre.id) || mestre;
+  const estado = encontroMestreDoToken(mestreAtual);
+  const slot = estado.banco[indice];
+  if (!slot?.forma?.url) throw new Error("Esse NPC não está mais cadastrado no banco.");
+
+  const existente = await npcDoBancoEmCena(mestreAtual.id, indice);
+  if (existente) {
+    await OBR.player.select([existente.id], true);
+    mostrarFichaNpcEncontro(existente);
+    return existente;
+  }
+
+  const alvo = await pontoUmGridNaFrenteDoTreinador(mestreAtual);
+  const forma = slot.forma;
+  const imagem = {
+    width: Math.max(1, Number(forma.width) || 1),
+    height: Math.max(1, Number(forma.height) || 1),
+    url: forma.url,
+    mime: forma.mime || "image/webp"
+  };
+  const grid = copiarGridMega(forma.grid, imagem);
+  const metadata = {
+    [`${PREFIX}/tipoFicha`]: "npc",
+    [META_NPC_MESTRE_DONO]: mestreAtual.id,
+    [META_NPC_MESTRE_SLOT]: indice,
+    [META_NPC_DADOS]: dadosNpcParaCena(slot)
+  };
+  const novo = buildImage(imagem, grid)
+    .name(slot.nome || slot.nomeToken || "NPC")
+    .position(alvo)
+    .rotation(Number(slot.rotation) || 0)
+    .scale({ x: Number(forma.scale?.x) || 1, y: Number(forma.scale?.y) || 1 })
+    .layer("CHARACTER")
+    .locked(false)
+    .metadata(metadata)
+    .build();
+
+  await OBR.scene.items.addItems([novo]);
+  await centralizarItemNoPonto(novo.id, alvo);
+  const atualizado = (await OBR.scene.items.getItems([novo.id]))?.[0] || novo;
+  await OBR.player.select([novo.id], true);
+  mostrarFichaNpcEncontro(atualizado);
+  return atualizado;
+}
+
+function fichaNpcDadosDoToken(token) {
+  const dados = token?.metadata?.[META_NPC_DADOS];
+  const base = dados && typeof dados === "object" ? dados : {};
+  return {
+    nome: String(base.nome || token?.name || "NPC").slice(0, 100),
+    quem: String(base.quem || "").slice(0, 420),
+    objetivo: String(base.objetivo || "").slice(0, 420),
+    historia: String(base.historia || "").slice(0, 900)
+  };
+}
+
+function mostrarFichaNpcEncontro(token) {
+  const app = document.querySelector("#app");
+  if (!app) return;
+  const dados = fichaNpcDadosDoToken(token);
+  const imagem = token?.type === "IMAGE" ? token.image?.url || "" : "";
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    <style>
+      .npcFicha{border:1px solid #202020;border-radius:14px;background:#fff;padding:12px;box-shadow:0 5px 20px rgba(0,0,0,.08)}
+      .npcTopo{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+      .npcRetrato{width:92px;height:92px;flex:0 0 92px;border:2px solid #202020;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:5px}
+      .npcRetrato img{width:100%;height:100%;object-fit:contain;display:block}
+      .npcNome{font-size:25px;font-weight:900;line-height:1.05;color:#111;word-break:break-word}
+      .npcSub{font-size:9px;font-weight:900;letter-spacing:1.2px;color:#b71c1c;margin-top:4px}
+      .npcInfo{border:1px solid #202020;border-radius:10px;background:#fff;padding:9px;margin-top:7px}
+      .npcInfo strong{display:block;font-size:8px;letter-spacing:.8px;color:#b71c1c;margin-bottom:4px}
+      .npcInfo div{font-size:11px;line-height:1.4;color:#161616;white-space:pre-wrap}
+      .npcRetirar{width:100%;margin-top:10px!important;background:#202020!important;color:#fff!important;border-color:#202020!important;font-weight:900!important}
+    </style>
+    <section class="npcFicha">
+      <div class="npcTopo">
+        <div class="npcRetrato">${imagem ? `<img src="${esc(imagem)}" alt="${esc(dados.nome)}">` : "👤"}</div>
+        <div style="min-width:0;flex:1;"><div class="npcNome">${esc(dados.nome)}</div><div class="npcSub">NPC • ENCONTRO ALEATÓRIO</div></div>
+      </div>
+      <div class="npcInfo"><strong>QUEM É</strong><div>${esc(dados.quem || "—")}</div></div>
+      <div class="npcInfo"><strong>OBJETIVO</strong><div>${esc(dados.objetivo || "—")}</div></div>
+      <div class="npcInfo"><strong>MINI-HISTÓRIA</strong><div>${esc(dados.historia || "—")}</div></div>
+      <button id="retirarNpcEncontro" class="npcRetirar" type="button">RETIRAR NPC DA CENA</button>
+    </section>`;
+
+  void aplicarPersonalizacaoFicha(token);
+  document.querySelector("#retirarNpcEncontro")?.addEventListener("click", async () => {
+    const mestreId = token.metadata?.[META_NPC_MESTRE_DONO];
+    await OBR.scene.items.deleteItems([token.id]);
+    if (!mestreId) return;
+    const mestre = (await OBR.scene.items.getItems([mestreId]))?.[0];
+    if (mestre) {
+      await OBR.player.select([mestre.id], true);
+      mostrarFichaMestreEncontros(mestre);
+    }
+  });
+}
+
+function regrasMestreDoToken(token) {
+  const valor = token?.metadata?.[META_MESTRE_REGRAS];
+  return Array.isArray(valor)
+    ? valor.slice(0, 20).map((item) => ({ titulo: String(item?.titulo || "").slice(0, 90), texto: String(item?.texto || "").slice(0, 1800) }))
+    : [];
+}
+
+function bossesMestreDoToken(token) {
+  const valor = token?.metadata?.[META_MESTRE_BOSSES];
+  return Array.isArray(valor)
+    ? valor.slice(0, 6).map((item) => ({
+        nome: String(item?.nome || "Boss").slice(0, 80),
+        fase: Math.max(1, Math.trunc(Number(item?.fase) || 1)),
+        fasesMax: Math.max(1, Math.min(9, Math.trunc(Number(item?.fasesMax) || 1))),
+        acoes: Math.max(0, Math.trunc(Number(item?.acoes) || 0)),
+        acoesMax: Math.max(0, Math.min(20, Math.trunc(Number(item?.acoesMax) || 0))),
+        enrage: item?.enrage === true,
+        notas: String(item?.notas || "").slice(0, 1600)
+      }))
+    : [];
+}
+
+async function salvarMetadataMestre(token, chave, valor) {
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) item.metadata[chave] = valor;
+  });
+  token.metadata[chave] = valor;
+}
+
+function menuMestre(paginaAtual) {
+  const aba = (id, pagina, rotulo) => `
+    <button id="${id}" style="
+      min-width:0!important;width:100%!important;height:42px!important;padding:5px 7px!important;
+      font-size:9.5px!important;line-height:1.1!important;font-weight:900!important;cursor:pointer!important;
+      border-radius:9px!important;opacity:1!important;text-align:center!important;
+      background:${paginaAtual === pagina ? "linear-gradient(135deg,#e53935 0%,#b71c1c 100%)" : "#ffffff"}!important;
+      color:${paginaAtual === pagina ? "#ffffff" : "#111111"}!important;
+      border:${paginaAtual === pagina ? "1px solid #8f1111" : "1px solid #202020"}!important;
+    ">${rotulo}</button>`;
+  return `<div class="fichaAbas" style="display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;margin-bottom:13px!important;">
+    ${aba("paginaMestre1",1,"ENCONTROS")}
+    ${aba("paginaMestre2",2,"REGRAS")}
+    ${aba("paginaMestre3",3,"POKÉMONS BOSS")}
+  </div>`;
+}
+
+function cabecalhoMestre(token, paginaAtual) {
+  const imagemToken = token.type === "IMAGE" ? token.image?.url || "" : "";
+  return `
+    <div class="fichaCabecalho" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+        <div style="width:72px;height:72px;flex:0 0 72px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:14px;border:2px solid #e53935;background:#fff;padding:4px;">
+          ${imagemToken ? `<img src="${esc(imagemToken)}" alt="Mestre" style="width:100%;height:100%;object-fit:contain;display:block;">` : `<span style="font-size:30px">🎲</span>`}
+        </div>
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:24px;font-weight:800;line-height:1.1;word-break:break-word;">${esc(token.name || "Mestre")}</div>
+          <div style="font-size:12px;opacity:.75;margin-top:2px;letter-spacing:.4px;">MESTRE</div>
+        </div>
+      </div>
+      <div class="fichaAcoesCabecalho">
+        <button id="personalizarFicha" type="button" title="Escolher fundo desta ficha">🎨 PERSONALIZAR</button>
+        <button id="trocarTipo" type="button" style="font-size:11px;cursor:pointer;white-space:nowrap;">Trocar tipo</button>
+      </div>
+    </div>
+    ${menuMestre(paginaAtual)}
+  `;
+}
+
+function ativarCabecalhoMestre(token) {
+  document.querySelector("#trocarTipo")?.addEventListener("click", () => trocarTipoFicha(token));
+  ativarPersonalizacaoFicha(token);
+  document.querySelector("#paginaMestre1")?.addEventListener("click", async () => {
+    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreEncontros(atual);
+  });
+  document.querySelector("#paginaMestre2")?.addEventListener("click", async () => {
+    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreRegras(atual);
+  });
+  document.querySelector("#paginaMestre3")?.addEventListener("click", async () => {
+    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreBoss(atual);
+  });
+}
+
+function htmlSlotNpcMestre(slot, indice, selecionado = false) {
+  const numero = String(indice + 1).padStart(2, "0");
+  if (!slot) return `
+    <button type="button" class="npcBancoSlot vazio" data-npc-slot-vazio="${indice}" title="Cadastrar NPC no slot ${numero}">
+      <span class="npcBancoMais">＋</span><span class="npcBancoNumero">${numero}</span>
+    </button>`;
+  return `
+    <div class="npcBancoSlot preenchido ${selecionado ? "selecionado" : ""}" data-npc-slot-wrap="${indice}">
+      <button type="button" class="npcBancoPrincipal" data-npc-slot="${indice}" title="Editar NPC ${numero}">
+        <div class="npcBancoRetrato"><img src="${esc(slot.forma?.url || "")}" alt="${esc(slot.nome || slot.nomeToken || "NPC")}"></div>
+        <div class="npcBancoNome">${esc(slot.nome || slot.nomeToken || `NPC ${numero}`)}</div>
+      </button>
+      <button type="button" class="npcBancoRemover" data-npc-remover="${indice}" title="Remover NPC do banco">×</button>
+    </div>`;
+}
+
+async function abrirSeletorNpcMestre(mestre, indice) {
+  const fundo = document.querySelector("#seletorNpcMestre");
+  const lista = document.querySelector("#listaSeletorNpcMestre");
+  if (!fundo || !lista) return;
+  lista.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:16px;font-size:10px;font-weight:800;">Procurando tokens...</div>`;
+  fundo.style.display = "flex";
+  const tokens = await tokensDisponiveisParaBancoNpc(mestre);
+  if (!tokens.length) {
+    lista.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:16px;font-size:10px;color:#666;">Nenhum token de personagem sem ficha está disponível na mesa.</div>`;
+    return;
+  }
+  lista.innerHTML = tokens.map((item) => `
+    <button type="button" class="npcSeletorItem" data-npc-token="${esc(item.id)}">
+      <img src="${esc(item.image?.url || "")}" alt="${esc(item.name || "NPC")}">
+      <span>${esc(item.name || "NPC")}</span>
+    </button>`).join("");
+  lista.querySelectorAll("[data-npc-token]").forEach((botao) => botao.addEventListener("click", async () => {
+    const id = botao.dataset.npcToken;
+    const item = (await OBR.scene.items.getItems([id]))?.[0];
+    if (!item || !tokenDisponivelParaBancoNpc(item, mestre.id)) {
+      alert("Esse token não está mais disponível para cadastro.");
+      return;
+    }
+    botao.disabled = true;
+    try {
+      await adicionarTokenAoBancoNpc(mestre, indice, item);
+      const atualizado = await pegarTokenAtualizado(mestre.id);
+      if (atualizado) mostrarFichaMestreEncontros(atualizado);
+    } catch (erro) {
+      console.error("Erro ao cadastrar NPC:", erro);
+      alert(erro?.message || "Não foi possível cadastrar esse NPC.");
+      botao.disabled = false;
+    }
+  }));
+}
+
+function mostrarFichaMestreEncontros(token) {
+  const app = document.querySelector("#app");
+  const estado = encontroMestreDoToken(token);
+  const preenchidos = estado.banco.reduce((total, slot) => total + (slot ? 1 : 0), 0);
+  const bancoAberto = mestreBancoNpcsAberto.get(token.id) === true;
+  let selecionado = Number(mestreNpcEditorSelecionado.get(token.id));
+  if (!Number.isInteger(selecionado) || selecionado < 0 || selecionado >= QUANTIDADE_NPCS_MESTRE || !estado.banco[selecionado]) {
+    selecionado = estado.banco.findIndex(Boolean);
+    if (selecionado >= 0) mestreNpcEditorSelecionado.set(token.id, selecionado);
+  }
+  const slotSelecionado = selecionado >= 0 ? estado.banco[selecionado] : null;
+  const resultado = estado.resultadoIndice != null ? estado.banco[estado.resultadoIndice] : null;
+
+  const slotsHtml = estado.banco.map((slot, indice) => htmlSlotNpcMestre(slot, indice, indice === selecionado)).join("");
+  const editorHtml = slotSelecionado ? `
+    <div class="npcEditor">
+      <div class="npcEditorTopo">
+        <div class="npcEditorImagem"><img src="${esc(slotSelecionado.forma?.url || "")}" alt="NPC"></div>
+        <div style="min-width:0;flex:1;"><strong>NPC ${String(selecionado + 1).padStart(2, "0")}</strong><small>Preencha as informações usadas no sorteio.</small></div>
+      </div>
+      <label>NOME<input id="npcEditorNome" maxlength="100" value="${esc(slotSelecionado.nome || slotSelecionado.nomeToken || "NPC")}"></label>
+      <label>QUEM É<textarea id="npcEditorQuem" maxlength="420" rows="2" placeholder="Ex.: Vendedor ambulante muito supersticioso.">${esc(slotSelecionado.quem)}</textarea></label>
+      <label>OBJETIVO<textarea id="npcEditorObjetivo" maxlength="420" rows="2" placeholder="Ex.: Encontrar uma peça rara para consertar sua carroça.">${esc(slotSelecionado.objetivo)}</textarea></label>
+      <label>MINI-HISTÓRIA<textarea id="npcEditorHistoria" maxlength="900" rows="3" placeholder="Uma história curta para o mestre interpretar rapidamente.">${esc(slotSelecionado.historia)}</textarea></label>
+      <button id="npcSalvarEditor" type="button" class="npcSalvar">SALVAR NPC</button>
+    </div>` : `<div class="npcEditor vazio">Cadastre um token em um dos slots para editar NOME, QUEM É, OBJETIVO e MINI-HISTÓRIA.</div>`;
+
+  const resultadoHtml = resultado ? `
+    <div class="npcResultadoCard">
+      <div class="npcResultadoEtiqueta">ENCONTRO SORTEADO</div>
+      <div class="npcResultadoTopo">
+        <div class="npcResultadoImagem"><img src="${esc(resultado.forma?.url || "")}" alt="${esc(resultado.nome || "NPC")}"></div>
+        <div class="npcResultadoNome">${esc(resultado.nome || resultado.nomeToken || "NPC")}</div>
+      </div>
+      <div class="npcResultadoInfo"><strong>QUEM É</strong><span>${esc(resultado.quem || "—")}</span></div>
+      <div class="npcResultadoInfo"><strong>OBJETIVO</strong><span>${esc(resultado.objetivo || "—")}</span></div>
+      <div class="npcResultadoInfo"><strong>MINI-HISTÓRIA</strong><span>${esc(resultado.historia || "—")}</span></div>
+      <div class="npcResultadoAcoes">
+        <button id="npcColocarCena" type="button">COLOCAR NPC NA CENA</button>
+        <button id="npcLimparResultado" type="button">LIMPAR RESULTADO</button>
+      </div>
+    </div>` : `<div class="npcResultadoVazio">O NPC sorteado aparecerá aqui com imagem, nome, objetivo e história.</div>`;
+
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoMestre(token,1)}
+    <style>
+      .npcEncontroPainel{border:1px solid #202020;border-radius:13px;background:rgba(255,255,255,.96);padding:11px}
+      .npcBancoBarra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #202020;border-radius:10px;padding:8px 9px;background:#fff}
+      .npcBancoBarra strong{font-size:10px}.npcBancoBarra small{display:block;font-size:8px;color:#666;margin-top:2px}
+      .npcBancoToggle{min-width:120px!important;min-height:32px!important;padding:5px 8px!important;font-size:8px!important;font-weight:900!important;background:#202020!important;color:#fff!important;border-color:#202020!important}
+      .npcBancoArea{display:${bancoAberto ? "block" : "none"};margin-top:9px}
+      .npcBancoGrade{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+      .npcBancoSlot{position:relative;min-width:0;min-height:78px;border:1px solid #202020;border-radius:10px;background:#fff;overflow:hidden}
+      button.npcBancoSlot.vazio{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-style:dashed!important;color:#555!important;background:#fff!important;box-shadow:none!important}
+      .npcBancoMais{font-size:22px;line-height:1;color:#b71c1c}.npcBancoNumero{font-size:7px;font-weight:900;margin-top:3px}
+      .npcBancoPrincipal{width:100%;height:100%;min-height:78px;padding:5px!important;border:0!important;background:transparent!important;box-shadow:none!important;display:flex;flex-direction:column;align-items:center;justify-content:center}
+      .npcBancoRetrato{width:48px;height:48px;border:1px solid #202020;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}.npcBancoRetrato img{width:100%;height:100%;object-fit:contain}
+      .npcBancoNome{width:100%;margin-top:3px;font-size:7px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#111;text-align:center;padding:0 2px}
+      .npcBancoSlot.selecionado{box-shadow:0 0 0 2px #d32f2f;border-color:#202020}
+      .npcBancoRemover{position:absolute!important;top:2px;right:2px;width:18px!important;height:18px!important;min-height:18px!important;padding:0!important;border-radius:50%!important;background:#fff!important;color:#b71c1c!important;border:1px solid #202020!important;font-size:11px!important;font-weight:900!important;z-index:3}
+      .npcEditor{margin-top:9px;border:1px solid #202020;border-radius:11px;padding:9px;background:#fff;display:grid;gap:7px}.npcEditor.vazio{text-align:center;font-size:9px;color:#666;padding:15px}
+      .npcEditorTopo{display:flex;align-items:center;gap:8px}.npcEditorImagem{width:54px;height:54px;border:1px solid #202020;border-radius:10px;overflow:hidden;padding:3px}.npcEditorImagem img{width:100%;height:100%;object-fit:contain}.npcEditorTopo strong{display:block;font-size:10px}.npcEditorTopo small{display:block;font-size:8px;color:#777;margin-top:2px}
+      .npcEditor label{font-size:8px;font-weight:900;color:#111}.npcEditor input,.npcEditor textarea{width:100%;margin-top:3px;border:1px solid #202020!important;background:#fff!important;color:#111!important}.npcEditor textarea{resize:vertical;line-height:1.35}
+      .npcSalvar{width:100%;font-weight:900!important;background:#202020!important;color:#fff!important;border-color:#202020!important}
+      .npcSortear{width:100%;margin-top:10px!important;min-height:45px!important;background:linear-gradient(135deg,#e53935,#b71c1c)!important;color:#fff!important;border:1px solid #202020!important;font-weight:900!important;font-size:11px!important}
+      .npcResultadoVazio{margin-top:9px;border:1px dashed #202020;border-radius:11px;padding:16px 10px;text-align:center;font-size:9px;color:#666;background:#fff}
+      .npcResultadoCard{margin-top:9px;border:2px solid #202020;border-radius:14px;padding:11px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.08)}
+      .npcResultadoEtiqueta{text-align:center;font-size:8px;font-weight:900;letter-spacing:1.2px;color:#b71c1c;margin-bottom:8px}
+      .npcResultadoTopo{display:flex;align-items:center;gap:10px;margin-bottom:8px}.npcResultadoImagem{width:92px;height:92px;flex:0 0 92px;border:2px solid #202020;border-radius:14px;padding:4px;overflow:hidden}.npcResultadoImagem img{width:100%;height:100%;object-fit:contain}.npcResultadoNome{font-size:22px;font-weight:900;color:#111;line-height:1.05;word-break:break-word}
+      .npcResultadoInfo{border-top:1px solid #202020;padding:7px 2px 4px;display:grid;gap:3px}.npcResultadoInfo strong{font-size:7px;color:#b71c1c;letter-spacing:.7px}.npcResultadoInfo span{font-size:10px;color:#111;line-height:1.35;white-space:pre-wrap}
+      .npcResultadoAcoes{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.npcResultadoAcoes button{font-size:8px!important;font-weight:900!important;border-color:#202020!important}.npcResultadoAcoes button:first-child{background:#202020!important;color:#fff!important}
+      .npcSeletorFundo{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:14px}.npcSeletorPainel{width:min(390px,100%);max-height:86vh;overflow:auto;background:#fff;border:1px solid #202020;border-radius:14px;padding:11px}.npcSeletorTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:10px;font-weight:900}.npcSeletorTopo button{width:28px!important;height:28px!important;min-height:28px!important;padding:0!important}.npcSeletorGrade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.npcSeletorItem{display:grid!important;grid-template-columns:50px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;min-height:62px!important;padding:6px!important;text-align:left!important;border:1px solid #202020!important;background:#fff!important;color:#111!important}.npcSeletorItem img{width:48px;height:48px;object-fit:contain;border:1px solid #202020;border-radius:8px}.npcSeletorItem span{font-size:9px;font-weight:900;overflow:hidden;text-overflow:ellipsis}
+    </style>
+    <section class="npcEncontroPainel">
+      <h3 style="text-align:center!important;margin:0 0 9px!important;">ENCONTROS ALEATÓRIOS</h3>
+      <div class="npcBancoBarra">
+        <div><strong>BANCO DE NPCs</strong><small>${preenchidos}/40 NPCs cadastrados • os slots podem ficar recolhidos</small></div>
+        <button id="npcBancoToggle" class="npcBancoToggle" type="button">${bancoAberto ? "RECOLHER ▴" : "MOSTRAR ▾"}</button>
+      </div>
+      <div id="npcBancoArea" class="npcBancoArea">
+        <div class="npcBancoGrade">${slotsHtml}</div>
+        ${editorHtml}
+      </div>
+      <button id="npcSortear" class="npcSortear" type="button" ${preenchidos ? "" : "disabled"}>🎲 SORTEAR ENCONTRO</button>
+      ${resultadoHtml}
+    </section>
+    <div id="seletorNpcMestre" class="npcSeletorFundo">
+      <div class="npcSeletorPainel">
+        <div class="npcSeletorTopo"><span>ESCOLHER TOKEN PARA O BANCO</span><button id="fecharSeletorNpcMestre" type="button">×</button></div>
+        <div id="listaSeletorNpcMestre" class="npcSeletorGrade"></div>
+      </div>
+    </div>`;
+
+  ativarCabecalhoMestre(token);
+
+  document.querySelector("#npcBancoToggle")?.addEventListener("click", () => {
+    mestreBancoNpcsAberto.set(token.id, !bancoAberto);
+    mostrarFichaMestreEncontros(token);
+  });
+
+  document.querySelectorAll("[data-npc-slot-vazio]").forEach((botao) => botao.addEventListener("click", () => {
+    abrirSeletorNpcMestre(token, Number(botao.dataset.npcSlotVazio));
+  }));
+
+  document.querySelectorAll("[data-npc-slot]").forEach((botao) => botao.addEventListener("click", () => {
+    mestreNpcEditorSelecionado.set(token.id, Number(botao.dataset.npcSlot));
+    mestreBancoNpcsAberto.set(token.id, true);
+    mostrarFichaMestreEncontros(token);
+  }));
+
+  document.querySelectorAll("[data-npc-remover]").forEach((botao) => botao.addEventListener("click", async (evento) => {
+    evento.stopPropagation();
+    const indice = Number(botao.dataset.npcRemover);
+    const slot = encontroMestreDoToken(token).banco[indice];
+    if (!slot) return;
+    if (!confirm(`Remover ${slot.nome || slot.nomeToken || "este NPC"} do banco? Se ele estiver na cena, o token também será retirado.`)) return;
+    await removerNpcDoBanco(token, indice);
+    const atualizado = await pegarTokenAtualizado(token.id); if (atualizado) mostrarFichaMestreEncontros(atualizado);
+  }));
+
+  document.querySelector("#npcSalvarEditor")?.addEventListener("click", async () => {
+    const indice = Number(mestreNpcEditorSelecionado.get(token.id));
+    const estadoAtual = encontroMestreDoToken(token);
+    const slot = estadoAtual.banco[indice];
+    if (!slot) return;
+    slot.nome = document.querySelector("#npcEditorNome")?.value?.trim().slice(0,100) || slot.nomeToken || "NPC";
+    slot.quem = document.querySelector("#npcEditorQuem")?.value?.trim().slice(0,420) || "";
+    slot.objetivo = document.querySelector("#npcEditorObjetivo")?.value?.trim().slice(0,420) || "";
+    slot.historia = document.querySelector("#npcEditorHistoria")?.value?.trim().slice(0,900) || "";
+    slot.atualizadoEm = Date.now();
+    await salvarEncontroMestre(token, estadoAtual);
+    const atualizado = await pegarTokenAtualizado(token.id); if (atualizado) mostrarFichaMestreEncontros(atualizado);
+  });
+
+  document.querySelector("#npcSortear")?.addEventListener("click", async () => {
+    const atual = encontroMestreDoToken(token);
+    const indices = atual.banco.map((slot, indice) => slot ? indice : -1).filter((indice) => indice >= 0);
+    if (!indices.length) { alert("Cadastre pelo menos um NPC antes de sortear."); return; }
+    const indice = indices[Math.floor(Math.random() * indices.length)];
+    atual.resultadoIndice = indice;
+    await salvarEncontroMestre(token, atual);
+    const atualizado = await pegarTokenAtualizado(token.id); if (atualizado) mostrarFichaMestreEncontros(atualizado);
+  });
+
+  document.querySelector("#npcLimparResultado")?.addEventListener("click", async () => {
+    const atual = encontroMestreDoToken(token);
+    atual.resultadoIndice = null;
+    await salvarEncontroMestre(token, atual);
+    const atualizado = await pegarTokenAtualizado(token.id); if (atualizado) mostrarFichaMestreEncontros(atualizado);
+  });
+
+  document.querySelector("#npcColocarCena")?.addEventListener("click", async () => {
+    const indice = encontroMestreDoToken(token).resultadoIndice;
+    if (indice == null) return;
+    const botao = document.querySelector("#npcColocarCena");
+    if (botao) botao.disabled = true;
+    try {
+      await colocarNpcMestreNaCena(token, indice);
+    } catch (erro) {
+      console.error("Erro ao colocar NPC na cena:", erro);
+      alert(erro?.message || "Não foi possível colocar o NPC na cena.");
+      if (botao) botao.disabled = false;
+    }
+  });
+
+  document.querySelector("#fecharSeletorNpcMestre")?.addEventListener("click", () => {
+    const fundo = document.querySelector("#seletorNpcMestre"); if (fundo) fundo.style.display = "none";
+  });
+  document.querySelector("#seletorNpcMestre")?.addEventListener("click", (evento) => {
+    if (evento.target === evento.currentTarget) evento.currentTarget.style.display = "none";
+  });
+}
+
+function mostrarFichaMestreRegras(token) {
+  const app = document.querySelector("#app");
+  const regras = regrasMestreDoToken(token);
+  const cards = regras.length ? regras.map((regra, indice) => `
+    <div style="border:1px solid #202020;border-radius:10px;background:#fff;padding:8px;">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:6px;align-items:center;">
+        <strong style="font-size:10px;">${esc(regra.titulo || `Regra ${indice+1}`)}</strong>
+        <button type="button" data-ver-regra="${indice}" style="padding:5px 7px!important;font-size:8px!important;font-weight:900;">VER ▾</button>
+        <button type="button" data-editar-regra="${indice}" style="padding:5px 7px!important;font-size:8px!important;font-weight:900;">EDITAR</button>
+        <button type="button" data-remover-regra="${indice}" style="padding:5px 7px!important;font-size:9px!important;font-weight:900;">×</button>
+      </div>
+      <div data-texto-regra="${indice}" style="display:none;margin-top:7px;padding-top:7px;border-top:1px solid #202020;font-size:9px;line-height:1.4;white-space:pre-wrap;">${esc(regra.texto)}</div>
+    </div>`).join("") : `<div style="text-align:center;padding:18px;border:1px dashed #202020;border-radius:10px;font-size:9px;font-weight:800;">Nenhuma regra cadastrada ainda.</div>`;
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoMestre(token,2)}
+    <section style="border:1px solid #202020;border-radius:12px;background:rgba(255,255,255,.94);padding:11px;">
+      <h3 style="text-align:center!important;margin-top:0!important;">REGRAS IMPORTANTES</h3>
+      <input id="mestreRegraEditando" type="hidden" value="">
+      <input id="mestreRegraTitulo" maxlength="90" placeholder="Título da regra" style="width:100%;margin-bottom:6px;">
+      <textarea id="mestreRegraTexto" maxlength="1800" placeholder="Escreva a regra, lembrete ou decisão da mesa..." style="width:100%;min-height:90px;resize:vertical;"></textarea>
+      <button id="mestreSalvarRegra" type="button" style="width:100%;margin:7px 0 10px;font-weight:900;">+ SALVAR REGRA</button>
+      <div style="display:grid;gap:7px;">${cards}</div>
+    </section>`;
+  ativarCabecalhoMestre(token);
+  document.querySelector("#mestreSalvarRegra")?.addEventListener("click", async () => {
+    const titulo = document.querySelector("#mestreRegraTitulo")?.value?.trim() || "";
+    const texto = document.querySelector("#mestreRegraTexto")?.value?.trim() || "";
+    if (!titulo || !texto) { alert("Preencha o título e o texto da regra."); return; }
+    const lista = regrasMestreDoToken(token);
+    const indiceBruto = document.querySelector("#mestreRegraEditando")?.value ?? "";
+    const indice = indiceBruto === "" ? -1 : Number(indiceBruto);
+    const nova = { titulo, texto };
+    if (Number.isInteger(indice) && indice >= 0 && indice < lista.length) lista[indice] = nova;
+    else {
+      if (lista.length >= 20) { alert("Limite de 20 regras atingido."); return; }
+      lista.push(nova);
+    }
+    await salvarMetadataMestre(token, META_MESTRE_REGRAS, lista);
+    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreRegras(atual);
+  });
+  document.querySelectorAll("[data-ver-regra]").forEach((botao) => botao.addEventListener("click", () => {
+    const painel = document.querySelector(`[data-texto-regra="${botao.dataset.verRegra}"]`);
+    if (!painel) return;
+    const aberto = painel.style.display !== "none";
+    painel.style.display = aberto ? "none" : "block";
+    botao.textContent = aberto ? "VER ▾" : "RECOLHER ▴";
+  }));
+  document.querySelectorAll("[data-editar-regra]").forEach((botao) => botao.addEventListener("click", () => {
+    const indice = Number(botao.dataset.editarRegra); const regra = regras[indice]; if (!regra) return;
+    document.querySelector("#mestreRegraEditando").value = String(indice);
+    document.querySelector("#mestreRegraTitulo").value = regra.titulo;
+    document.querySelector("#mestreRegraTexto").value = regra.texto;
+    document.querySelector("#mestreRegraTitulo")?.scrollIntoView({ behavior:"smooth", block:"center" });
+  }));
+  document.querySelectorAll("[data-remover-regra]").forEach((botao) => botao.addEventListener("click", async () => {
+    const lista = regrasMestreDoToken(token); lista.splice(Number(botao.dataset.removerRegra),1);
+    await salvarMetadataMestre(token, META_MESTRE_REGRAS, lista);
+    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreRegras(atual);
+  }));
+}
+
+function mostrarFichaMestreBoss(token) {
+  const app = document.querySelector("#app");
+  const bosses = bossesMestreDoToken(token);
+  const cards = bosses.length ? bosses.map((boss, indice) => `
+    <div style="border:1px solid #202020;border-radius:11px;background:#fff;padding:9px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:7px;"><strong style="font-size:12px;color:#b71c1c;">${esc(boss.nome)}</strong><button type="button" data-boss-acao="remover" data-boss-index="${indice}" style="padding:4px 7px!important;font-weight:900;">×</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;">
+        <div style="border:1px solid #202020;border-radius:9px;padding:7px;text-align:center;"><div style="font-size:8px;font-weight:900;">FASE</div><strong>${Math.min(boss.fase,boss.fasesMax)} / ${boss.fasesMax}</strong><div style="display:flex;gap:5px;margin-top:5px;"><button type="button" data-boss-acao="fase-" data-boss-index="${indice}" style="flex:1;padding:4px!important;">−</button><button type="button" data-boss-acao="fase+" data-boss-index="${indice}" style="flex:1;padding:4px!important;">+</button></div></div>
+        <div style="border:1px solid #202020;border-radius:9px;padding:7px;text-align:center;"><div style="font-size:8px;font-weight:900;">AÇÕES EXTRAS</div><strong>${boss.acoes} / ${boss.acoesMax}</strong><div style="display:flex;gap:5px;margin-top:5px;"><button type="button" data-boss-acao="usar-acao" data-boss-index="${indice}" style="flex:1;padding:4px!important;">USAR −1</button><button type="button" data-boss-acao="restaurar-acoes" data-boss-index="${indice}" style="flex:1;padding:4px!important;">↻</button></div></div>
+      </div>
+      <button type="button" data-boss-acao="enrage" data-boss-index="${indice}" style="width:100%;margin-top:7px;font-weight:900;background:${boss.enrage ? "#b71c1c" : "#fff"}!important;color:${boss.enrage ? "#fff" : "#111"}!important;border-color:#202020!important;">ENFURECER: ${boss.enrage ? "SIM" : "NÃO"}</button>
+      ${boss.notas ? `<div style="margin-top:7px;border-top:1px solid #202020;padding-top:7px;font-size:9px;line-height:1.35;white-space:pre-wrap;">${esc(boss.notas)}</div>` : ""}
+    </div>`).join("") : `<div style="text-align:center;padding:18px;border:1px dashed #202020;border-radius:10px;font-size:9px;font-weight:800;">Nenhum Boss cadastrado.</div>`;
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoMestre(token,3)}
+    <section style="border:1px solid #202020;border-radius:12px;background:rgba(255,255,255,.94);padding:11px;">
+      <h3 style="text-align:center!important;margin-top:0!important;">POKÉMONS BOSS</h3>
+      <div style="font-size:8px;text-align:center;font-weight:800;margin-bottom:9px;">Controle fases, ações extras, Enrage e anotações especiais sem alterar a ficha normal do Pokémon.</div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 74px;gap:6px;">
+        <input id="mestreBossNome" placeholder="Nome do Boss">
+        <input id="mestreBossFases" type="number" min="1" max="9" value="1" title="Fases">
+        <input id="mestreBossAcoes" type="number" min="0" max="20" value="0" title="Ações extras">
+      </div>
+      <textarea id="mestreBossNotas" maxlength="1600" placeholder="Mecânicas, gatilhos de HP, ações lendárias, mudança de campo..." style="width:100%;min-height:72px;margin-top:6px;resize:vertical;"></textarea>
+      <button id="mestreAdicionarBoss" type="button" style="width:100%;margin:7px 0 10px;font-weight:900;">+ ADICIONAR BOSS</button>
+      <div style="display:grid;gap:8px;">${cards}</div>
+    </section>`;
+  ativarCabecalhoMestre(token);
+  document.querySelector("#mestreAdicionarBoss")?.addEventListener("click", async () => {
+    const lista = bossesMestreDoToken(token);
+    if (lista.length >= 6) { alert("A ficha do Mestre possui 6 slots de Boss."); return; }
+    const nome = document.querySelector("#mestreBossNome")?.value?.trim() || "";
+    if (!nome) { alert("Digite o nome do Boss."); return; }
+    const fasesMax = Math.max(1, Math.min(9, Math.trunc(Number(document.querySelector("#mestreBossFases")?.value) || 1)));
+    const acoesMax = Math.max(0, Math.min(20, Math.trunc(Number(document.querySelector("#mestreBossAcoes")?.value) || 0)));
+    const notas = document.querySelector("#mestreBossNotas")?.value?.trim() || "";
+    lista.push({ nome, fase:1, fasesMax, acoes:acoesMax, acoesMax, enrage:false, notas });
+    await salvarMetadataMestre(token, META_MESTRE_BOSSES, lista);
+    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreBoss(atual);
+  });
+  document.querySelectorAll("[data-boss-acao]").forEach((botao) => botao.addEventListener("click", async () => {
+    const lista = bossesMestreDoToken(token); const indice = Number(botao.dataset.bossIndex); const boss = lista[indice]; if (!boss) return;
+    switch (botao.dataset.bossAcao) {
+      case "fase-": boss.fase = Math.max(1, boss.fase - 1); break;
+      case "fase+": boss.fase = Math.min(boss.fasesMax, boss.fase + 1); break;
+      case "usar-acao": boss.acoes = Math.max(0, boss.acoes - 1); break;
+      case "restaurar-acoes": boss.acoes = boss.acoesMax; break;
+      case "enrage": boss.enrage = !boss.enrage; break;
+      case "remover": lista.splice(indice,1); break;
+    }
+    await salvarMetadataMestre(token, META_MESTRE_BOSSES, lista);
+    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreBoss(atual);
+  }));
+}
+
+// ============================================================
+// ABA EXCLUSIVA DE DEBUFFS DO POKÉMON
+// ============================================================
+function mostrarFichaPokemonDebuffs(token) {
+  const app = document.querySelector("#app");
+  const ativos = new Set(STATUS_DEBUFFS.filter((status) => debuffAtivoNoToken(token,status)).map((status) => status.id));
+  const cards = STATUS_DEBUFFS.map((status) => {
+    const ativo = ativos.has(status.id);
+    return `<button type="button" class="botaoDebuffPokemon" data-debuff="${esc(status.id)}" style="
+      min-height:70px!important;padding:7px!important;border:1px solid #202020!important;border-radius:10px!important;
+      display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;
+      background:${ativo ? status.cor : "#ffffff"}!important;color:${ativo ? "#ffffff" : "#111111"}!important;font-weight:900!important;cursor:pointer!important;">
+      <img src="${esc(urlDebuff(status))}" alt="${esc(status.nome)}" style="width:54px;height:24px;object-fit:cover;object-position:center;pointer-events:none;">
+      <span style="font-size:9px;pointer-events:none;">${esc(status.nome)}${ativo ? " ✓" : ""}</span>
+    </button>`;
+  }).join("");
+  app.innerHTML = `
+    ${ESTILO_FICHA}
+    ${cabecalhoPokemon(token,4)}
+    <section style="border:1px solid #202020;border-radius:12px;background:rgba(255,255,255,.94);padding:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+        <h3 style="margin:0!important;">EFEITOS NEGATIVOS</h3>
+        <span style="font-size:8px;font-weight:900;">${ativos.size} ATIVO${ativos.size === 1 ? "" : "S"}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;">${cards}</div>
+      <button id="limparDebuffsPokemon" type="button" style="width:100%;margin-top:8px;font-weight:900;">LIMPAR TODOS</button>
+      <div style="margin-top:7px;text-align:center;font-size:8px;line-height:1.3;font-weight:800;color:#555;">Os efeitos ativos continuam aparecendo abaixo da barra de HP. A automação por turno poderá usar esta mesma aba.</div>
+    </section>`;
+  ativarCabecalhoPokemon(token);
+  const atualizarHud = async () => {
+    const atual = await pegarTokenAtualizado(token.id) || token;
+    const hpAtual = Number(atual.metadata?.[`${PREFIX}/hpAtual`] ?? 100) || 0;
+    const hpMax = Math.max(1, Number(atual.metadata?.[`${PREFIX}/hpMax`] ?? 100) || 1);
+    const caBase = Number(atual.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+    const evasao = Number(atual.metadata?.[`${PREFIX}/buff-evas`] ?? 0) || 0;
+    await criarStatusNoToken(atual, hpAtual, hpMax, caBase + evasao);
+  };
+  document.querySelectorAll(".botaoDebuffPokemon").forEach((botao) => botao.addEventListener("click", async () => {
+    const id = botao.dataset.debuff;
+    const status = STATUS_DEBUFFS.find((item) => item.id === id);
+    if (!status) return;
+    const chave = chaveDebuff(id);
+    const novoEstado = !debuffAtivoNoToken(token,status);
+    botao.disabled = true;
+    try {
+      await OBR.scene.items.updateItems([token.id], (items) => {
+        for (const item of items) {
+          item.metadata[chave] = novoEstado;
+          if (status.legacyId) delete item.metadata[chaveDebuff(status.legacyId)];
+        }
+      });
+      token.metadata[chave] = novoEstado;
+      if (status.legacyId) delete token.metadata[chaveDebuff(status.legacyId)];
+      await atualizarHud();
+      const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaPokemonDebuffs(atual);
+    } catch (erro) {
+      console.error(`Erro ao alternar ${status.nome}:`, erro);
+      botao.disabled = false;
+    }
+  }));
+  document.querySelector("#limparDebuffsPokemon")?.addEventListener("click", async () => {
+    await OBR.scene.items.updateItems([token.id], (items) => {
+      for (const item of items) {
+        for (const status of STATUS_DEBUFFS) {
+          item.metadata[chaveDebuff(status.id)] = false;
+          if (status.legacyId) delete item.metadata[chaveDebuff(status.legacyId)];
+        }
+      }
+    });
+    for (const status of STATUS_DEBUFFS) token.metadata[chaveDebuff(status.id)] = false;
+    await atualizarHud();
+    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaPokemonDebuffs(atual);
+  });
+}
+
 function mostrarFichaPokemonPericias( token ) { const app = document.querySelector("#app");
 const valoresPericias = {};
 PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = token.metadata[
 `${PREFIX}/pokemon-pericia-${pericia.id}`
 ] ?? ""; } ); } );
-const debuffsAtivos = new Set( STATUS_DEBUFFS .filter( (status) => debuffAtivoNoToken( token, status ) ) .map( (status) => status.id ) );
-const htmlDebuffs = STATUS_DEBUFFS .map( (status) => { const ativo = debuffsAtivos.has( status.id );
-return `
-                      <button
-                        type="button"
-                        class="botaoDebuffPokemon"
-                        data-debuff="${esc(status.id)}"
-                        title="Liga/desliga ${esc(status.nome)}"
-                        style="
-                          width:100%;
-                          min-width:0;
-                          min-height:31px !important;
-                          padding:4px 5px !important;
-                          border-radius:8px;
-                          font-size:8px;
-                          line-height:1.05;
-                          font-weight:900;
-                          cursor:pointer;
-                          white-space:nowrap;
-                          overflow:hidden;
-                          text-overflow:ellipsis;
-                          ${
-                              ativo
-                                  ? `background:${status.cor} !important;color:#fff !important;border-color:${status.cor} !important;`
-                                  : ""
-                          }
-                        "
-                      >
-                        ${esc(status.sigla)}
-                        ${esc(status.nome)}
-                        ${ativo ? " ✓" : ""}
-                      </button>
-                    `;
-} ) .join("");
 app.innerHTML = `
       ${ESTILO_FICHA}
       ${cabecalhoPokemon(token, 3)}
@@ -10462,35 +11174,7 @@ app.innerHTML = `
           valoresPericias
       )}
 
-      <h3 style="
-        margin-top:9px !important;
-        margin-bottom:5px !important;
-      ">
-        Debuffs
-      </h3>
-
-      <div style="
-        display:grid;
-        grid-template-columns:repeat(3,minmax(0,1fr));
-        gap:5px;
-        padding:6px;
-        border:1px solid #e4d8f5;
-        border-radius:9px;
-        background:#fbf8ff;
-      ">
-        ${htmlDebuffs}
-      </div>
-
-      <div style="
-        margin-top:5px;
-        font-size:8px;
-        line-height:1.2;
-        color:#7b698f;
-        font-weight:700;
-        text-align:center;
-      ">
-        Os ícones ativos aparecem logo abaixo da barra de HP.
-      </div>
+      <div style="height:8px"></div>
 
       <button
         id="salvarPokemonPericias"
@@ -10512,26 +11196,6 @@ app.innerHTML = `
     `;
 ativarCabecalhoPokemon(token);
 ativarRolagensPericiasPokemon();
-const atualizarHudDebuffs = async () => { const hpAtual = Number( token.metadata[
-`${PREFIX}/hpAtual`
-] ?? 100 ) || 0;
-const hpMax = Math.max( 1, Number( token.metadata[
-`${PREFIX}/hpMax`
-] ?? 100 ) || 1 );
-const caBase = Number( token.metadata[
-`${PREFIX}/ca`
-] ?? 10 ) || 0;
-const evasao = Number( token.metadata[
-`${PREFIX}/buff-evas`
-] ?? 0 ) || 0;
-await criarStatusNoToken( token, hpAtual, hpMax, caBase + evasao ); };
-document .querySelectorAll( ".botaoDebuffPokemon" ) .forEach( (botao) => { botao.addEventListener( "click", async () => { const id = botao.dataset.debuff; const status = STATUS_DEBUFFS.find( (item) => item.id === id ); if (!status) { return; } const chave = chaveDebuff(id); const novoEstado = !( token.metadata[ chave ] === true ); token.metadata[ chave ] = novoEstado; if ( status.legacyId ) { delete token.metadata[ chaveDebuff( status.legacyId ) ]; } botao.disabled = true; try { await OBR.scene.items.updateItems( [token.id], (items) => { for ( const item of items ) { item.metadata[ chave ] = novoEstado; if ( status.legacyId ) { delete item.metadata[ chaveDebuff( status.legacyId ) ]; } } } ); if (novoEstado) { botao.textContent =
-`${status.sigla} ${status.nome} ✓`;
-botao.style.setProperty( "background", status.cor, "important" ); botao.style.setProperty( "color", "#ffffff", "important" ); botao.style.setProperty( "border-color", status.cor, "important" ); } else { botao.textContent =
-`${status.sigla} ${status.nome}`;
-botao.style.removeProperty( "background" ); botao.style.removeProperty( "color" ); botao.style.removeProperty( "border-color" ); } await atualizarHudDebuffs(); } catch (erro) { console.error(
-`Erro ao alternar ${status.nome}:`,
-erro ); } finally { botao.disabled = false; } } ); } );
 const salvarPericiasPokemonDaTela = async () => {
   const novasPericias = {};
   PERICIAS.forEach((grupo) => {
@@ -10601,6 +11265,10 @@ const tipoFicha = token.metadata[
 try { if ( tipoFicha === "pokemon" ) { mostrarFichaPokemon( token );
 return; }
 if ( tipoFicha === "treinador" ) { mostrarFichaTreinadorPagina1( token );
+return; }
+if ( tipoFicha === "mestre" ) { mostrarFichaMestreEncontros( token );
+return; }
+if ( tipoFicha === "npc" ) { mostrarFichaNpcEncontro( token );
 return; }
 mostrarEscolhaFicha( token ); } catch (erro) { console.error( "Erro ao abrir a ficha:", erro );
 const app = document.querySelector("#app");
