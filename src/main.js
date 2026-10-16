@@ -8,6 +8,7 @@ const META_INICIATIVA_TRACKER =
 `${PREFIX}/initiative-tracker`;
 const META_TURNO_INICIATIVA =
 `${PREFIX}/initiative-turn`;
+const META_CONGELADO_TURNOS = `${PREFIX}/debuff-congelado-turnos`;
 const META_PAINEL_INICIATIVA = `${PREFIX}/painel-iniciativa`;
 const META_PAINEL_INICIATIVA_FILHO = `${PREFIX}/painel-iniciativa-filho`;
 const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
@@ -1886,6 +1887,88 @@ async function aplicarQueimaduraFimDoTurno(item) {
     filaEfeitosFimTurno.delete(item.id);
   }
 }
+const filaEfeitosInicioTurno = new Set();
+function statusCongelado() {
+  return STATUS_DEBUFFS.find((status) => status.id === "congelado") || null;
+}
+function pokemonEstaCongelado(item) {
+  const congelado = statusCongelado();
+  return Boolean(
+    congelado &&
+    item?.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    debuffAtivoNoToken(item, congelado)
+  );
+}
+async function atualizarHudAposDebuff(item) {
+  if (!item?.id) return;
+  const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+  const hpAtual = Math.max(0, Number(atual.metadata?.[`${PREFIX}/hpAtual`] ?? 0) || 0);
+  const hpMax = Math.max(1, Number(atual.metadata?.[`${PREFIX}/hpMax`] ?? 1) || 1);
+  const caBase = Number(atual.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+  const evasao = normalizarEstagioBuff(atual.metadata?.[`${PREFIX}/buff-evas`] ?? 0, "evas");
+  const caEfetiva = caBase + evasao + bonusCaMegaDoToken(atual);
+  await criarStatusNoToken(atual, hpAtual, hpMax, caEfetiva);
+}
+async function aplicarCongeladoInicioDoTurno(item) {
+  if (!item?.id || !pokemonEstaCongelado(item)) return null;
+  if (filaEfeitosInicioTurno.has(item.id)) return null;
+
+  filaEfeitosInicioTurno.add(item.id);
+  try {
+    const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+    if (!pokemonEstaCongelado(atual)) return null;
+
+    const tentativasAnteriores = Math.max(
+      0,
+      Math.min(5, Math.trunc(Number(atual.metadata?.[META_CONGELADO_TURNOS] ?? 0) || 0))
+    );
+    const numeroTurnoCongelado = tentativasAnteriores + 1;
+    const minimoNecessario = Math.max(1, 6 - tentativasAnteriores);
+    const nomePokemon = nomeFichaPokemon(atual) || atual.name || "Pokémon";
+
+    const resultado = await rolarNoDicePlusComResultado(
+      "1d6",
+      "Teste Congelado",
+      `${nomePokemon} • precisa ${minimoNecessario}+`
+    );
+
+    // Se o Dice+ não retornou um resultado, não consumimos a tentativa.
+    if (!Number.isFinite(resultado)) return null;
+
+    const sucesso = Number(resultado) >= minimoNecessario;
+    if (sucesso) {
+      await OBR.scene.items.updateItems([atual.id], (items) => {
+        for (const alvo of items) {
+          alvo.metadata[chaveDebuff("congelado")] = false;
+          delete alvo.metadata[META_CONGELADO_TURNOS];
+        }
+      });
+      await atualizarHudAposDebuff(atual);
+      return {
+        sucesso: true,
+        resultado: Number(resultado),
+        minimoNecessario,
+        numeroTurnoCongelado
+      };
+    }
+
+    await OBR.scene.items.updateItems([atual.id], (items) => {
+      for (const alvo of items) {
+        alvo.metadata[META_CONGELADO_TURNOS] = Math.min(5, tentativasAnteriores + 1);
+      }
+    });
+
+    return {
+      sucesso: false,
+      resultado: Number(resultado),
+      minimoNecessario,
+      numeroTurnoCongelado
+    };
+  } finally {
+    filaEfeitosInicioTurno.delete(item.id);
+  }
+}
+
 async function avancarTurnoIniciativa(tokenId) { const iniciativas = iniciativasOrdenadas( await OBR.scene.items.getItems() );
 if (!iniciativas.length) { return; }
 let indice = iniciativas.findIndex( ({ item }) => item.id === tokenId );
@@ -1894,7 +1977,8 @@ if (indice < 0) { indice = 0; }
 const atual = iniciativas[indice].item;
 await aplicarQueimaduraFimDoTurno(atual);
 const proximo = iniciativas[ (indice + 1) % iniciativas.length ].item;
-await definirTurnoIniciativa( proximo.id, iniciativas.map(({ item }) => item) ); }
+await definirTurnoIniciativa( proximo.id, iniciativas.map(({ item }) => item) );
+await aplicarCongeladoInicioDoTurno(proximo); }
 function statusAtivosDoOrganizador(item) { return STATUS_DEBUFFS.filter( (status) => debuffAtivoNoToken( item, status ) ); }
 function assinaturaStatusOrganizador(item) { return statusAtivosDoOrganizador(item) .map((status) => status.id) .join(","); }
 function criarStatusOrganizador(item) { const ativos = statusAtivosDoOrganizador(item);
@@ -2778,6 +2862,7 @@ async function guardarPokemonCapturadoNoPc(treinador, pokemon) {
             item.metadata[chaveDebuff(status.id)] = false;
             if (status.legacyId) item.metadata[chaveDebuff(status.legacyId)] = false;
           }
+          delete item.metadata[META_CONGELADO_TURNOS];
         }
       });
       pokemonAtual = (await OBR.scene.items.getItems([pokemonAtual.id]))?.[0] || pokemonAtual;
@@ -12010,6 +12095,9 @@ function mostrarFichaPokemonDebuffs(token) {
       <div style="margin-top:8px;border:1px solid #202020;border-radius:9px;padding:8px;background:#fff7f4;font-size:8px;line-height:1.35;font-weight:800;color:#333;">
         <strong style="display:block;color:#c62828;font-size:9px;margin-bottom:3px;">🔥 QUEIMADO — AUTOMÁTICO</strong>
         Moves FÍSICOS causam metade do dano total, arredondado para baixo. Ao finalizar o turno deste Pokémon no indicador de iniciativa, ele perde HP igual ao próprio bônus de Proficiência.
+        <div style="height:1px;background:#202020;margin:7px 0;"></div>
+        <strong style="display:block;color:#1688bd;font-size:9px;margin-bottom:3px;">❄️ CONGELADO — AUTOMÁTICO</strong>
+        No início do turno, o plugin rola 1d6 como <b>Teste Congelado</b>. A primeira tentativa exige 6; depois 5+, 4+, 3+, 2+ e, na sexta tentativa, qualquer resultado descongela o Pokémon. Ao conseguir, o status é removido automaticamente.
       </div>
     </section>`;
   ativarCabecalhoPokemon(token);
@@ -12032,10 +12120,18 @@ function mostrarFichaPokemonDebuffs(token) {
       await OBR.scene.items.updateItems([token.id], (items) => {
         for (const item of items) {
           item.metadata[chave] = novoEstado;
+          if (status.id === "congelado") {
+            if (novoEstado) item.metadata[META_CONGELADO_TURNOS] = 0;
+            else delete item.metadata[META_CONGELADO_TURNOS];
+          }
           if (status.legacyId) delete item.metadata[chaveDebuff(status.legacyId)];
         }
       });
       token.metadata[chave] = novoEstado;
+      if (status.id === "congelado") {
+        if (novoEstado) token.metadata[META_CONGELADO_TURNOS] = 0;
+        else delete token.metadata[META_CONGELADO_TURNOS];
+      }
       if (status.legacyId) delete token.metadata[chaveDebuff(status.legacyId)];
       await atualizarHud();
       const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaPokemonDebuffs(atual);
@@ -12051,9 +12147,11 @@ function mostrarFichaPokemonDebuffs(token) {
           item.metadata[chaveDebuff(status.id)] = false;
           if (status.legacyId) delete item.metadata[chaveDebuff(status.legacyId)];
         }
+        delete item.metadata[META_CONGELADO_TURNOS];
       }
     });
     for (const status of STATUS_DEBUFFS) token.metadata[chaveDebuff(status.id)] = false;
+    delete token.metadata[META_CONGELADO_TURNOS];
     await atualizarHud();
     const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaPokemonDebuffs(atual);
   });
