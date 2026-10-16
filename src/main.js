@@ -14,6 +14,7 @@ const META_ENVENENADO_TURNOS = `${PREFIX}/debuff-envenenado-turnos`;
 const META_SONOLENTO_TURNOS = `${PREFIX}/debuff-sonolento-turnos`;
 const META_SONOLENTO_BLOQUEIA_MOVES = `${PREFIX}/debuff-sonolento-bloqueia-moves`;
 const META_DORMINDO_TURNOS = `${PREFIX}/debuff-dormindo-turnos`;
+const META_CONFUSO_TURNOS = `${PREFIX}/debuff-confuso-turnos`;
 const META_PAINEL_INICIATIVA = `${PREFIX}/painel-iniciativa`;
 const META_PAINEL_INICIATIVA_FILHO = `${PREFIX}/painel-iniciativa-filho`;
 const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
@@ -2085,6 +2086,135 @@ async function aplicarParalisiaInicioDoTurno(item) {
   }
 }
 
+function statusAtordoado() {
+  return STATUS_DEBUFFS.find((status) => status.id === "atordoado") || null;
+}
+function pokemonEstaAtordoado(item) {
+  const atordoado = statusAtordoado();
+  return Boolean(
+    atordoado &&
+    item?.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    debuffAtivoNoToken(item, atordoado)
+  );
+}
+async function aplicarAtordoadoInicioDoTurno(item) {
+  if (!item?.id || !pokemonEstaAtordoado(item)) return null;
+  if (filaEfeitosInicioTurno.has(item.id)) return null;
+
+  filaEfeitosInicioTurno.add(item.id);
+  try {
+    const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+    if (!pokemonEstaAtordoado(atual)) return null;
+
+    await OBR.scene.items.updateItems([atual.id], (items) => {
+      for (const alvo of items) alvo.metadata[chaveDebuff("atordoado")] = false;
+    });
+    atual.metadata[chaveDebuff("atordoado")] = false;
+    await atualizarHudAposDebuff(atual);
+
+    return { perdeTurno: true, motivo: "atordoado" };
+  } finally {
+    filaEfeitosInicioTurno.delete(item.id);
+  }
+}
+
+function statusConfuso() {
+  return STATUS_DEBUFFS.find((status) => status.id === "confuso") || null;
+}
+function pokemonEstaConfuso(item) {
+  const confuso = statusConfuso();
+  return Boolean(
+    confuso &&
+    item?.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    debuffAtivoNoToken(item, confuso)
+  );
+}
+function turnosConfusaoRestantes(item) {
+  return Math.max(0, Math.trunc(Number(item?.metadata?.[META_CONFUSO_TURNOS] ?? 0) || 0));
+}
+async function aplicarConfusaoFimDoTurno(item) {
+  if (!item?.id || !pokemonEstaConfuso(item)) return null;
+  if (filaEfeitosFimTurno.has(item.id)) return null;
+
+  filaEfeitosFimTurno.add(item.id);
+  try {
+    const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+    if (!pokemonEstaConfuso(atual)) return null;
+
+    const restantesAntes = turnosConfusaoRestantes(atual);
+    if (restantesAntes <= 1) {
+      await OBR.scene.items.updateItems([atual.id], (items) => {
+        for (const alvo of items) {
+          alvo.metadata[chaveDebuff("confuso")] = false;
+          delete alvo.metadata[META_CONFUSO_TURNOS];
+        }
+      });
+      atual.metadata[chaveDebuff("confuso")] = false;
+      delete atual.metadata[META_CONFUSO_TURNOS];
+      await atualizarHudAposDebuff(atual);
+      return { terminou: true, restantes: 0 };
+    }
+
+    const restantes = restantesAntes - 1;
+    await OBR.scene.items.updateItems([atual.id], (items) => {
+      for (const alvo of items) alvo.metadata[META_CONFUSO_TURNOS] = restantes;
+    });
+    atual.metadata[META_CONFUSO_TURNOS] = restantes;
+    await atualizarHudAposDebuff(atual);
+    return { terminou: false, restantes };
+  } finally {
+    filaEfeitosFimTurno.delete(item.id);
+  }
+}
+
+function statusEncantado() {
+  return STATUS_DEBUFFS.find((status) => status.id === "encantado") || null;
+}
+function pokemonEstaEncantado(item) {
+  const encantado = statusEncantado();
+  return Boolean(
+    encantado &&
+    item?.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    debuffAtivoNoToken(item, encantado)
+  );
+}
+
+async function aplicarDanoDiretoDebuff(item, valor) {
+  if (!item?.id) return { dano: 0, hpAnterior: 0, hpNovo: 0, hpMax: 1 };
+  const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+  const hpMax = Math.max(1, Math.trunc(Number(atual.metadata?.[`${PREFIX}/hpMax`] ?? 1) || 1));
+  const hpAnterior = Math.max(0, Math.min(hpMax, Math.trunc(Number(atual.metadata?.[`${PREFIX}/hpAtual`] ?? 0) || 0)));
+  const dano = Math.min(hpAnterior, Math.max(0, Math.trunc(Number(valor) || 0)));
+  const hpNovo = Math.max(0, hpAnterior - dano);
+
+  if (hpNovo !== hpAnterior) {
+    await OBR.scene.items.updateItems([atual.id], (items) => {
+      for (const alvo of items) alvo.metadata[`${PREFIX}/hpAtual`] = hpNovo;
+    });
+  }
+  atual.metadata[`${PREFIX}/hpAtual`] = hpNovo;
+  const caBase = Number(atual.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+  const evasao = normalizarEstagioBuff(atual.metadata?.[`${PREFIX}/buff-evas`] ?? 0, "evas");
+  await criarStatusNoToken(atual, hpNovo, hpMax, caBase + evasao + bonusCaMegaDoToken(atual));
+  return { dano, hpAnterior, hpNovo, hpMax };
+}
+
+const liberacoesDebuffMove = new Map();
+function chaveLiberacaoDebuffMove(tokenId, numeroGolpe) {
+  return `${tokenId || ""}:${numeroGolpe || ""}`;
+}
+function consumirLiberacaoDebuffMove(tokenId, numeroGolpe) {
+  const chave = chaveLiberacaoDebuffMove(tokenId, numeroGolpe);
+  const dados = liberacoesDebuffMove.get(chave);
+  liberacoesDebuffMove.delete(chave);
+  return Boolean(dados && Number(dados.expiraEm) > Date.now());
+}
+function guardarLiberacaoDebuffMove(tokenId, numeroGolpe) {
+  liberacoesDebuffMove.set(chaveLiberacaoDebuffMove(tokenId, numeroGolpe), {
+    expiraEm: Date.now() + 30000
+  });
+}
+
 function statusSonolento() {
   return STATUS_DEBUFFS.find((status) => status.id === "sonolento") || null;
 }
@@ -2110,8 +2240,12 @@ function pokemonEstaDormindo(item) {
 function pokemonSonolentoBloqueiaMoves(item) {
   return pokemonEstaSonolento(item) && item?.metadata?.[META_SONOLENTO_BLOQUEIA_MOVES] === true;
 }
-async function bloquearMoveSeDebuffImpede(item) {
+async function bloquearMoveSeDebuffImpede(item, opcoes = {}) {
   if (!item?.id) return false;
+  const numeroGolpe = String(opcoes.numeroGolpe ?? "");
+  const usarLiberacao = opcoes.usarLiberacao === true;
+  const guardarLiberacao = opcoes.guardarLiberacao === true;
+
   const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
   if (pokemonEstaDormindo(atual)) {
     alert("Este Pokémon está DORMINDO e não pode utilizar Moves.");
@@ -2120,6 +2254,51 @@ async function bloquearMoveSeDebuffImpede(item) {
   if (pokemonSonolentoBloqueiaMoves(atual)) {
     alert("Este Pokémon está SONOLENTO neste turno e não pode utilizar Moves. No próximo turno sob Sonolento ele poderá agir normalmente.");
     return true;
+  }
+
+  // Para Moves com rolagem de Acerto + Dano, Confusão/Encanto são checados
+  // apenas uma vez ao iniciar o Move. A rolagem de dano consome essa liberação.
+  if (usarLiberacao && numeroGolpe && consumirLiberacaoDebuffMove(atual.id, numeroGolpe)) {
+    return false;
+  }
+  if (guardarLiberacao && numeroGolpe) {
+    liberacoesDebuffMove.delete(chaveLiberacaoDebuffMove(atual.id, numeroGolpe));
+  }
+
+  // Ordem oficial usada pelo plugin: Paralisia (no início do turno),
+  // depois Confusão e, por último, Encanto antes do Move.
+  if (pokemonEstaConfuso(atual)) {
+    const nomePokemon = nomeFichaPokemon(atual) || atual.name || "Pokémon";
+    const resultado = await rolarNoDicePlusComResultado(
+      "1d20",
+      "Teste Confuso",
+      `${nomePokemon} • 10+ consegue agir`
+    );
+    if (!Number.isFinite(resultado)) return true;
+    if (Number(resultado) < 10) {
+      const proficiencia = Math.max(0, Math.trunc(Number(atual.metadata?.[`${PREFIX}/proficiencia`] ?? 0) || 0));
+      const dano = await aplicarDanoDiretoDebuff(atual, proficiencia);
+      alert(`${nomePokemon} não atacou porque está tonto. Sofreu ${dano.dano} de dano pela Confusão.`);
+      return true;
+    }
+  }
+
+  if (pokemonEstaEncantado(atual)) {
+    const nomePokemon = nomeFichaPokemon(atual) || atual.name || "Pokémon";
+    const resultado = await rolarNoDicePlusComResultado(
+      "1d20",
+      "Teste Encantado",
+      `${nomePokemon} • 11+ consegue agir`
+    );
+    if (!Number.isFinite(resultado)) return true;
+    if (Number(resultado) <= 10) {
+      alert(`${nomePokemon} não conseguiu atacar por estar apaixonado.`);
+      return true;
+    }
+  }
+
+  if (guardarLiberacao && numeroGolpe) {
+    guardarLiberacaoDebuffMove(atual.id, numeroGolpe);
   }
   return false;
 }
@@ -2223,6 +2402,10 @@ async function aplicarDormindoFimDoTurno(item) {
 }
 
 async function aplicarEfeitosInicioDoTurno(item) {
+  // Atordoado tem prioridade: perde o turno imediatamente e o estado é retirado.
+  const atordoado = await aplicarAtordoadoInicioDoTurno(item);
+  if (atordoado?.perdeTurno) return atordoado;
+
   await aplicarCongeladoInicioDoTurno(item);
   await aplicarSonolentoInicioDoTurno(item);
   return aplicarParalisiaInicioDoTurno(item);
@@ -2237,10 +2420,11 @@ const atual = iniciativas[indice].item;
 await aplicarQueimaduraFimDoTurno(atual);
 await aplicarEnvenenamentoFimDoTurno(atual);
 await aplicarDormindoFimDoTurno(atual);
+await aplicarConfusaoFimDoTurno(atual);
 const proximo = iniciativas[ (indice + 1) % iniciativas.length ].item;
 await definirTurnoIniciativa( proximo.id, iniciativas.map(({ item }) => item) );
-const paralisia = await aplicarEfeitosInicioDoTurno(proximo);
-if (paralisia?.perdeTurno && iniciativas.length > 1 && saltosAutomaticos < iniciativas.length - 1) {
+const efeitoInicio = await aplicarEfeitosInicioDoTurno(proximo);
+if (efeitoInicio?.perdeTurno && iniciativas.length > 1 && saltosAutomaticos < iniciativas.length - 1) {
   await avancarTurnoIniciativa(proximo.id, saltosAutomaticos + 1);
 }
 }
@@ -3782,9 +3966,31 @@ status.id }) .build();
 // IMPORTANTE:
 // herdamos movimento do token,
 // mas NÃO herdamos escala nem rotação.
-const comportamentos = new Set( visual .disableAttachmentBehavior || [] ); comportamentos.add("SCALE"); comportamentos.add("ROTATION"); visual.disableAttachmentBehavior = [...comportamentos]; visuaisDebuff.push(visual); } } const elementos = [ fundoBarra ]; if (barraVida) { elementos.push( barraVida ); } elementos.push( circuloCA, textoHP, textoCA, ...visuaisDebuff ); await OBR.scene.items.addItems( elementos ); const tiposAtivos = [ "fundo", "hp-texto", "ca-circulo", "ca-texto" ]; if (barraVida) { tiposAtivos.push("vida"); } for ( const status of debuffsAtivos ) { tiposAtivos.push(
+const comportamentos = new Set( visual .disableAttachmentBehavior || [] ); comportamentos.add("SCALE"); comportamentos.add("ROTATION"); visual.disableAttachmentBehavior = [...comportamentos]; visuaisDebuff.push(visual);
+if (status.id === "confuso") {
+  const restantes = turnosConfusaoRestantes(token);
+  if (restantes > 0) {
+    const tamanhoContador = Math.max(20, Math.min(26, larguraBadge * 0.30));
+    const contador = prepararVisualHud(buildText().textType("PLAIN").plainText(`${restantes}`)
+      .position({ x: x + (larguraBadge * 0.30), y: y - (alturaBadge * 0.42) })
+      .width(tamanhoContador).height(tamanhoContador).fontFamily("Arial").fontSize(tamanhoContador * .72)
+      .fontWeight(900).lineHeight(1).fillColor("#FFFFFF").fillOpacity(1).strokeColor("#000000").strokeWidth(4)
+      .textAlign("CENTER").textAlignVertical("MIDDLE").padding(0).layer("ATTACHMENT").zIndex(70 + indice)
+      .disableAutoZIndex(true).attachedTo(token.id).locked(true).disableHit(true)
+      .metadata({
+        [`${PREFIX}/statusToken`]: token.id,
+        [`${PREFIX}/tipoVisual`]: "debuff-confuso-contador",
+        [`${PREFIX}/debuffId`]: "confuso"
+      }).build());
+    const comportamentosContador = new Set(contador.disableAttachmentBehavior || []);
+    comportamentosContador.add("SCALE"); comportamentosContador.add("ROTATION");
+    contador.disableAttachmentBehavior = [...comportamentosContador];
+    visuaisDebuff.push(contador);
+  }
+}
+} } const elementos = [ fundoBarra ]; if (barraVida) { elementos.push( barraVida ); } elementos.push( circuloCA, textoHP, textoCA, ...visuaisDebuff ); await OBR.scene.items.addItems( elementos ); const tiposAtivos = [ "fundo", "hp-texto", "ca-circulo", "ca-texto" ]; if (barraVida) { tiposAtivos.push("vida"); } for ( const status of debuffsAtivos ) { tiposAtivos.push(
 `debuff-${status.id}`
-); } await esperar(80); await desduplicarHudToken( token.id, tiposAtivos ); await esperar(220); await desduplicarHudToken( token.id, tiposAtivos ); } ); }
+); if (status.id === "confuso" && turnosConfusaoRestantes(token) > 0) tiposAtivos.push("debuff-confuso-contador"); } await esperar(80); await desduplicarHudToken( token.id, tiposAtivos ); await esperar(220); await desduplicarHudToken( token.id, tiposAtivos ); } ); }
 async function pegarHpCaDaTela(aplicarCalculadora = false) { let hpAtual = Number( document .querySelector("#hpAtual") .value );
 let hpMax = Number( document .querySelector("#hpMax") .value );
 const ca = Number( document .querySelector("#ca") .value );
@@ -10048,9 +10254,10 @@ return `${prefixo}${qtdOriginal + acrescimo}d${faces}`;
 } ); }
 document.querySelectorAll(".metadeDadosMove").forEach((botao) => {
   botao.addEventListener("click", async () => {
-    if (await bloquearMoveSeDebuffImpede(token)) return;
     const numero = botao.dataset.golpe;
     const tipo = document.querySelector(`#golpe${numero}Tipo`)?.value || "";
+    const usaLiberacao = tipo === "macerto";
+    if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero, usarLiberacao: usaLiberacao })) return;
 
     botao.disabled = true;
     try {
@@ -10121,33 +10328,33 @@ document.querySelectorAll(".metadeDadosMove").forEach((botao) => {
     }
   });
 });
-document .querySelectorAll(".rolarAcerto") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formula = document .querySelector(
+document .querySelectorAll(".rolarAcerto") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero, guardarLiberacao: true })) return; const formula = document .querySelector(
 `#golpe${numero}Acerto`
 ) .value .trim(); if (!formula) { alert( "A fórmula de acerto está vazia." ); return; } const formulaFinal = formulaAcertoComTalentos( numero, formula ); await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Acerto" ); } ); } );
-document .querySelectorAll(".rolarDano") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarDano") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero, usarLiberacao: true })) return; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Dano" ); } ); } );
-document .querySelectorAll(".rolarDobrarDados") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarDobrarDados") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero, usarLiberacao: true })) return; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const campoDobras = document.querySelector(
 `#golpe${numero}DobrarDadosVezes`
 ); const vezes = Math.max( 1, Math.min( 10, Number(campoDobras?.value) || 1 ) ); const formulaDadosDobrados = dobrarDadosPorVezes( formulaOriginal, vezes ); const formulaFinal = formulaDanoComBuff( numero, formulaDadosDobrados ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero),
 `Dobrar Dados ${vezes}x`
 ); } ); } );
-document .querySelectorAll(".rolarCritico") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarCritico") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero, usarLiberacao: true })) return; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
 `#golpe${numero}Categoria`
 ) ?.value || ""; if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico." ); return; } const formulaCritica = duplicarDadosFormula( formulaOriginal ); const formulaFinal = formulaDanoComBuff( numero, formulaCritica ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Crítico" ); } ); } );
-document .querySelectorAll(".rolarPassouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarPassouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero })) return; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaComBuff = formulaDanoComBuff( numero, formulaOriginal, { incluirBonusMestres: false } ); if (!formulaComBuff) { return; } const formulaFinal =
 `(${formulaComBuff})/2`;
 await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Passou na CD" ); } ); } );
-document .querySelectorAll(".rolarReprovouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarReprovouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero })) return; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Reprovou CD" ); } ); } );
-document .querySelectorAll(".rolarCriticoCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarCriticoCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero })) return; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
 `#golpe${numero}Categoria`
@@ -10174,7 +10381,7 @@ const evasao = normalizarEstagioBuff( token.metadata[
 ] ?? 0, "evas" );
 await criarStatusNoToken( token, hpAtualNovo, hpMax, caBase + evasao );
 return { curaRolada: cura, curaAplicada: Math.max( 0, hpAtualNovo - hpAtualAnterior ), hpAnterior: hpAtualAnterior, hpAtual: hpAtualNovo, hpMax }; }
-document .querySelectorAll(".rolarCura") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formula = document .querySelector(
+document .querySelectorAll(".rolarCura") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero })) return; const formula = document .querySelector(
 `#golpe${numero}Cura`
 ) ?.value .trim(); if (!formula) { alert( "A fórmula de cura está vazia." ); return; } botao.disabled = true; try { const resultado = await rolarNoDicePlusComResultado( formula, nomeGolpe(numero), "Cura" ); if (resultado === null) { return; } const dadosCura = await aplicarCuraNoHp( resultado ); const info = document.querySelector(
 `#golpe${numero}CuraInfo`
@@ -10183,7 +10390,7 @@ document .querySelectorAll(".rolarCura") .forEach( (botao) => { botao.addEventLi
 `Curou +${dadosCura.curaAplicada} · ` +
 `HP ${dadosCura.hpAnterior} → ${dadosCura.hpAtual}/${dadosCura.hpMax}`;
 } } finally { botao.disabled = false; } } ); } );
-document .querySelectorAll(".rolarAcertoBuffDebuff") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formula = document .querySelector(
+document .querySelectorAll(".rolarAcertoBuffDebuff") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero })) return; const formula = document .querySelector(
 `#golpe${numero}BuffAcerto`
 ) ?.value .trim(); if (!formula) { alert( "A fórmula de acerto está vazia." ); return; } const statusNome = document .querySelector(
 `#golpe${numero}StatusNome`
@@ -12365,16 +12572,19 @@ function mostrarFichaPokemonDebuffs(token) {
   const app = document.querySelector("#app");
   const ativos = new Set(STATUS_DEBUFFS.filter((status) => debuffAtivoNoToken(token,status)).map((status) => status.id));
   const envenenadoGrave = ativos.has("envenenado") && token.metadata?.[META_ENVENENADO_GRAVE] === true;
+  const confusoTurnos = ativos.has("confuso") ? turnosConfusaoRestantes(token) : 0;
   const cards = STATUS_DEBUFFS.map((status) => {
     const ativo = ativos.has(status.id);
     const grave = status.id === "envenenado" && envenenadoGrave;
+    const confusoComContador = status.id === "confuso" && ativo && confusoTurnos > 0;
     return `<button type="button" class="botaoDebuffPokemon" data-debuff="${esc(status.id)}" style="
-      min-height:${grave ? "84px" : "70px"}!important;padding:7px!important;border:1px solid #202020!important;border-radius:10px!important;
+      min-height:${grave || confusoComContador ? "84px" : "70px"}!important;padding:7px!important;border:1px solid #202020!important;border-radius:10px!important;
       display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;
       background:${ativo ? status.cor : "#ffffff"}!important;color:${ativo ? "#ffffff" : "#111111"}!important;font-weight:900!important;cursor:pointer!important;">
       <img src="${esc(urlDebuff(status))}" alt="${esc(status.nome)}" style="width:54px;height:24px;object-fit:cover;object-position:center;pointer-events:none;">
       <span style="font-size:9px;pointer-events:none;">${esc(status.nome)}${ativo ? " ✓" : ""}</span>
       ${grave ? `<span style="font-size:7px;line-height:1.15;padding:3px 5px;border:1px solid rgba(255,255,255,.9);border-radius:999px;background:rgba(25,0,35,.38);color:#fff;pointer-events:none;">GRAVEMENTE ENVENENADO</span>` : ""}
+      ${confusoComContador ? `<span style="font-size:7px;line-height:1.15;padding:3px 6px;border:1px solid rgba(255,255,255,.9);border-radius:999px;background:rgba(0,45,45,.38);color:#fff;pointer-events:none;">${confusoTurnos} TURNO${confusoTurnos === 1 ? "" : "S"}</span>` : ""}
     </button>`;
   }).join("");
   app.innerHTML = `
@@ -12405,6 +12615,15 @@ function mostrarFichaPokemonDebuffs(token) {
         <div style="height:1px;background:#202020;margin:7px 0;"></div>
         <strong style="display:block;color:#404bc9;font-size:9px;margin-bottom:3px;">😴 DORMINDO — AUTOMÁTICO</strong>
         Enquanto Dormindo, os botões de Moves são bloqueados e as Salvaguardas são roladas com desvantagem. Ao final do 1º turno, rola 1d6 e acorda com 5+; ao final do 2º, acorda com 4+; ao final do 3º, acorda automaticamente.
+        <div style="height:1px;background:#202020;margin:7px 0;"></div>
+        <strong style="display:block;color:#b88600;font-size:9px;margin-bottom:3px;">💫 ATORDOADO — AUTOMÁTICO</strong>
+        Quando o turno deste Pokémon chega, ele perde o turno automaticamente, o indicador passa para o próximo participante e o estado Atordoado é removido.
+        <div style="height:1px;background:#202020;margin:7px 0;"></div>
+        <strong style="display:block;color:#16aaa5;font-size:9px;margin-bottom:3px;">🌀 CONFUSO — AUTOMÁTICO</strong>
+        Ao aplicar, rola 1d4+1 para definir a duração e o número de turnos restantes aparece no token. Antes de usar um Move, rola 1d20: com resultado menor que 10, o Move falha e o próprio Pokémon sofre dano igual à Proficiência.
+        <div style="height:1px;background:#202020;margin:7px 0;"></div>
+        <strong style="display:block;color:#df3889;font-size:9px;margin-bottom:3px;">💗 ENCANTADO — AUTOMÁTICO</strong>
+        Antes de usar um Move, rola 1d20. Com 10 ou menos, o Move falha e o Pokémon não ataca por estar apaixonado. Se Confuso e Encantado estiverem juntos, a Confusão é verificada primeiro.
       </div>
     </section>`;
   ativarCabecalhoPokemon(token);
@@ -12425,6 +12644,25 @@ function mostrarFichaPokemonDebuffs(token) {
     const estavaGrave = status.id === "envenenado" && token.metadata?.[META_ENVENENADO_GRAVE] === true;
     let novoEstado = !estavaAtivo;
     let novoGrave = false;
+    let novosTurnosConfuso = null;
+
+    if (status.id === "confuso") {
+      if (!estavaAtivo) {
+        botao.disabled = true;
+        const nomePokemon = nomeFichaPokemon(token) || token.name || "Pokémon";
+        const resultado = await rolarNoDicePlusComResultado(
+          "1d4+1",
+          "Duração da Confusão",
+          `${nomePokemon} • turnos Confuso`
+        );
+        if (!Number.isFinite(resultado)) { botao.disabled = false; return; }
+        novoEstado = true;
+        novosTurnosConfuso = Math.max(2, Math.min(5, Math.trunc(Number(resultado) || 2)));
+      } else {
+        novoEstado = false;
+        novosTurnosConfuso = 0;
+      }
+    }
 
     if (status.id === "envenenado") {
       if (!estavaAtivo) {
@@ -12461,6 +12699,10 @@ function mostrarFichaPokemonDebuffs(token) {
             if (novoEstado) item.metadata[META_DORMINDO_TURNOS] = 0;
             else delete item.metadata[META_DORMINDO_TURNOS];
           }
+          if (status.id === "confuso") {
+            if (novoEstado && Number.isFinite(novosTurnosConfuso)) item.metadata[META_CONFUSO_TURNOS] = novosTurnosConfuso;
+            else delete item.metadata[META_CONFUSO_TURNOS];
+          }
           if (status.id === "envenenado") {
             item.metadata[META_ENVENENADO_GRAVE] = novoGrave;
             delete item.metadata[META_ENVENENADO_TURNOS];
@@ -12485,6 +12727,10 @@ function mostrarFichaPokemonDebuffs(token) {
       if (status.id === "dormindo") {
         if (novoEstado) token.metadata[META_DORMINDO_TURNOS] = 0;
         else delete token.metadata[META_DORMINDO_TURNOS];
+      }
+      if (status.id === "confuso") {
+        if (novoEstado && Number.isFinite(novosTurnosConfuso)) token.metadata[META_CONFUSO_TURNOS] = novosTurnosConfuso;
+        else delete token.metadata[META_CONFUSO_TURNOS];
       }
       if (status.id === "envenenado") {
         token.metadata[META_ENVENENADO_GRAVE] = novoGrave;
@@ -12511,6 +12757,7 @@ function mostrarFichaPokemonDebuffs(token) {
         delete item.metadata[META_SONOLENTO_TURNOS];
         delete item.metadata[META_SONOLENTO_BLOQUEIA_MOVES];
         delete item.metadata[META_DORMINDO_TURNOS];
+        delete item.metadata[META_CONFUSO_TURNOS];
       }
     });
     for (const status of STATUS_DEBUFFS) token.metadata[chaveDebuff(status.id)] = false;
@@ -12520,6 +12767,7 @@ function mostrarFichaPokemonDebuffs(token) {
     delete token.metadata[META_SONOLENTO_TURNOS];
     delete token.metadata[META_SONOLENTO_BLOQUEIA_MOVES];
     delete token.metadata[META_DORMINDO_TURNOS];
+    delete token.metadata[META_CONFUSO_TURNOS];
     await atualizarHud();
     const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaPokemonDebuffs(atual);
   });
