@@ -1255,10 +1255,12 @@ const ESTILO_FICHA = `
     border-left-color:#e53935 !important;
   }
   #app hr,
-  .pokemonDetalhesCompactos,
   .registrarPokemonNovoLista {
     border-color:#202020 !important;
-    background-color:#202020;
+  }
+  .pokemonDetalhesCompactos {
+    border-color:#202020 !important;
+    background:transparent !important;
   }
   .treinadorPokemonMais,
   .treinadorPokemonMoverAviso,
@@ -1274,6 +1276,60 @@ const ESTILO_FICHA = `
     background:#b71c1c !important;
     color:#ffffff !important;
     border-color:#8f1111 !important;
+  }
+
+  /* POLIMENTO VISUAL — linhas fortes e leitura limpa */
+  #app h3 {
+    border-color:#202020 !important;
+  }
+  #app input,
+  #app textarea,
+  #app select,
+  #app button {
+    border-color:#202020 !important;
+  }
+  #app input:hover,
+  #app textarea:hover,
+  #app select:hover,
+  #app button:hover {
+    border-color:#111111 !important;
+  }
+  .statusCard,
+  .pokemonStatusPrincipal,
+  .pokemonStatusCampo,
+  .pokemonCalculadoraCard,
+  .proficienciaLinha,
+  .treinadorPokemonSecao,
+  .treinadorPokemonSlot,
+  .seletorRosterPainel,
+  .classeCard,
+  .classeHab,
+  .classeRecurso,
+  .origemCard,
+  .origemHab {
+    border-color:#202020 !important;
+  }
+  .pokemonPericiasCompactas > div {
+    border:1px solid #202020 !important;
+    background:#ffffff !important;
+  }
+  .pokemonPericiasCompactas input,
+  .pokemonPericiasCompactas button {
+    border-color:#202020 !important;
+  }
+  .pokemonDetalhesCompactos {
+    background:transparent !important;
+    border-top:1px solid #202020 !important;
+    padding:9px 0 0 !important;
+  }
+  .pokemonDetalhesCompactos p {
+    color:#111111 !important;
+  }
+  #habilidadePokemon,
+  #itemPokemon {
+    background:#ffffff !important;
+    color:#111111 !important;
+    border-color:#202020 !important;
   }
 </style>
 `;
@@ -7142,39 +7198,39 @@ function mostrarFichaTreinadorTalEsp(token) {
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(token, 4)}
     <style>
-      .talEspSecao{margin-bottom:15px}
-      .talEspCabecalho{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:9px}
-      .talEspCabecalho h3{margin:0;color:#263f60;font-size:14px;font-weight:1000;text-transform:uppercase}
-      .talEspCabecalho p{margin:3px 0 0;font-size:8.3px;color:#7a8da5;font-weight:700;line-height:1.3}
-      .talEspContador{flex:0 0 auto;padding:5px 8px;border-radius:999px;background:#fff0f0;color:#2f6cb8;font-size:9px;font-weight:1000;border:1px solid #dda7a7}
+      .talEspSecao{margin-bottom:15px;text-align:center}
+      .talEspCabecalho{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:48px;margin-bottom:10px;padding:0 44px;text-align:center}
+      .talEspCabecalho h3{width:100%;margin:0!important;color:#b71c1c!important;font-size:14px;font-weight:1000;text-transform:uppercase;text-align:center;border:1px solid #202020!important;background:#fff!important}
+      .talEspCabecalho p{margin:4px auto 0!important;font-size:8.5px;color:#111!important;font-weight:800;line-height:1.35;text-align:center;max-width:320px}
+      .talEspContador{position:absolute;right:0;top:50%;transform:translateY(-50%);flex:0 0 auto;padding:5px 8px;border-radius:999px;background:#fff;color:#b71c1c;font-size:9px;font-weight:1000;border:1px solid #202020}
       .gradeTalEsp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-      .slotTalEsp{position:relative;min-width:0;border:1px solid #d3dfed;border-radius:11px;background:linear-gradient(180deg,#fff 0%,#f7faff 100%);box-shadow:0 3px 9px rgba(39,72,110,.06);box-sizing:border-box}
+      .slotTalEsp{position:relative;min-width:0;border:1px solid #202020;border-radius:11px;background:#fff;box-shadow:0 3px 9px rgba(0,0,0,.08);box-sizing:border-box}
       button.slotTalEsp{width:100%;min-height:64px;padding:10px 8px;cursor:pointer;color:#647b98}
-      .slotTalEsp.vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-style:dashed;background:#fbfdff}
+      .slotTalEsp.vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px dashed #202020;background:#fff}
       .slotTalEsp.vazio:hover{border-color:#d45d5d;background:#fff6f6}
       .slotTalEsp.preenchido{min-height:64px;padding:9px 8px 7px;overflow:hidden}
       .slotTalEspNumero{position:absolute;left:6px;top:6px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff5f5;color:#5e7898;font-size:8px;font-weight:1000}
       .slotTalEspMais{font-size:21px;line-height:1;color:#ef4444;font-weight:800}
       .slotTalEspVazioTexto{font-size:8.5px;font-weight:900}
-      .slotTalEspLinhaPrincipal{padding:2px 23px 6px 22px;border-bottom:1px solid #e7eef6;min-width:0}
-      .slotTalEspLinhaPrincipal strong{display:block;color:#233d5e;font-size:9.8px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .slotTalEspLinhaPrincipal{padding:2px 23px 6px 22px;border-bottom:1px solid #202020;min-width:0;text-align:center}
+      .slotTalEspLinhaPrincipal strong{display:block;color:#111;font-size:9.8px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
       .slotTalEspAcoes{display:flex;align-items:center;justify-content:space-between;gap:5px;padding-top:6px}
-      .slotTalEspFixo{min-width:0;color:#a4b0be;font-size:6.2px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .slotTalEspExpandir{flex:0 0 auto;width:auto!important;min-height:22px!important;padding:3px 6px!important;border-radius:7px!important;background:#fff3f3!important;color:#c62828!important;border:1px solid #dda7a7!important;font-size:7px!important;font-weight:1000!important;box-shadow:none!important;cursor:pointer}
+      .slotTalEspFixo{min-width:0;color:#555;font-size:6.2px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .slotTalEspExpandir{flex:0 0 auto;width:auto!important;min-height:22px!important;padding:3px 6px!important;border-radius:7px!important;background:#fff!important;color:#b71c1c!important;border:1px solid #202020!important;font-size:7px!important;font-weight:1000!important;box-shadow:none!important;cursor:pointer}
       .slotTalEspExpandir:hover{background:#e2efff!important}
-      .slotTalEspDetalhes{display:none;margin-top:6px;padding:7px 7px 6px;border-top:1px solid #e7eef6;background:#f9fbfe;border-radius:0 0 8px 8px}
+      .slotTalEspDetalhes{display:none;margin-top:6px;padding:7px 7px 6px;border-top:1px solid #202020;background:#fff;border-radius:0 0 8px 8px}
       .slotTalEspDetalhes.aberto{display:block}
       .slotTalEspDetalhes p{margin:0;color:#52677f;font-size:8.15px;line-height:1.34;font-weight:700}
-      .slotTalEspRemover{position:absolute;right:5px;top:5px;width:19px!important;height:19px!important;min-height:19px!important;padding:0!important;border-radius:50%!important;background:#fff1f1!important;color:#b44747!important;border:1px solid #e7bcbc!important;font-size:12px!important;line-height:17px!important;z-index:2;cursor:pointer}
-      .talEspDivisor{height:1px;background:linear-gradient(90deg,transparent,#d5e2f0 18%,#d5e2f0 82%,transparent);margin:13px 0}
+      .slotTalEspRemover{position:absolute;right:5px;top:5px;width:19px!important;height:19px!important;min-height:19px!important;padding:0!important;border-radius:50%!important;background:#fff!important;color:#b71c1c!important;border:1px solid #202020!important;font-size:12px!important;line-height:17px!important;z-index:2;cursor:pointer}
+      .talEspDivisor{height:1px;background:linear-gradient(90deg,transparent,#202020 18%,#202020 82%,transparent);margin:13px 0}
       .guiaTalEspOverlay{display:none;position:fixed;inset:7px;z-index:99999;background:rgba(245,249,254,.985);border:1px solid #d49d9d;border-radius:14px;box-shadow:0 14px 36px rgba(20,43,70,.24);overflow:hidden;flex-direction:column}
       .guiaTalEspOverlay.aberto{display:flex}
-      .guiaTalEspTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#fff;border-bottom:1px solid #dce6f1}
+      .guiaTalEspTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 11px;background:#fff;border-bottom:1px solid #202020}
       .guiaTalEspTopo h3{margin:0;color:#263f60;font-size:13px}
       .guiaTalEspTopo p{margin:2px 0 0;color:#7b90aa;font-size:8px;font-weight:700}
       .guiaTalEspFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:17px!important;cursor:pointer}
       .guiaTalEspLista{padding:9px;overflow:auto;display:grid;grid-template-columns:1fr;gap:6px}
-      .guiaTalEspOpcao{width:100%;text-align:left;padding:8px 9px;border:1px solid #dfb2b2;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
+      .guiaTalEspOpcao{width:100%;text-align:left;padding:8px 9px;border:1px solid #202020;border-radius:10px;background:#fff;cursor:pointer;box-shadow:none!important}
       .guiaTalEspOpcao:hover{border-color:#d45d5d;background:#fff8f8}
       .guiaTalEspNome{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#263f60;font-size:9px;font-weight:1000;text-transform:uppercase}
       .guiaTalEspTipo{flex:0 0 auto;padding:2px 5px;border-radius:999px;background:#fff0f0;color:#c62828;font-size:7px}
