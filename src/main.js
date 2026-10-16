@@ -11100,12 +11100,244 @@ Um Pokémon voador que seja acertado durante esse tipo de confronto pode perder 
 
 • Golpes muito fortes ou super efetivos:
 Se o golpe for super efetivo OU causar dano igual ou superior à metade do HP Máximo do Pokémon voador, ele deve realizar um teste de Acrobacia CD 20 para não cair no chão. Se passar, consegue recuperar o controle do voo, mas permanece a apenas 3 metros de altura. Se falhar, cai normalmente e as regras de queda são aplicadas quando couberem.`
+  },
+  {
+    titulo: "Asfixia",
+    texto: `Uma criatura pode segurar a respiração por um número de minutos igual a 1 + seu modificador de Constituição, com duração mínima de 30 segundos.
+
+Quando uma criatura ficar sem respirar, ela ainda pode sobreviver por um número de rodadas igual ao seu modificador de Constituição, com o mínimo de 1 rodada.
+
+No início do turno seguinte ao fim desse período, a criatura cai a 0 pontos de vida e está morrendo.`
+  },
+  {
+    titulo: "Furtividade e Cobertura",
+    texto: `ESCONDER-SE
+
+Se estiver em combate, a criatura deve primeiro usar Desengajar antes de tentar se esconder.
+
+• Quando alguém estiver procurando ativamente: Furtividade vs. Percepção.
+• Quando ninguém estiver procurando ativamente: Furtividade vs. Percepção Passiva.
+• Levemente Oculto: quem tenta perceber a criatura faz o teste de Percepção com desvantagem.
+• Fortemente Oculto: a criatura é tratada como não visível para esse observador, conforme as regras de Cegueira.
+
+COBERTURA
+
+• ½ Cobertura: +2 na CA e nas jogadas de salvamento de Destreza.
+• ¼ Cobertura: +5 na CA e nas jogadas de salvamento de Destreza.
+• Cobertura Total: a criatura não pode ser alvo direto de um ataque.`
+  },
+  {
+    titulo: "Fugindo de um Pokémon Selvagem",
+    texto: `FUGINDO
+
+Fugir de um Pokémon selvagem é uma tentativa em grupo realizada durante o turno de um dos jogadores.
+
+• O grupo realiza um teste de Destreza, contestado pelo valor de Destreza do Pokémon selvagem.
+• Em caso de empate, o grupo consegue fugir.
+• Depois de uma tentativa de fuga, os Treinadores não podem tentar fugir novamente até que um turno completo tenha passado.`
+  },
+  {
+    titulo: "Moves de Concentração",
+    texto: `CONCENTRAÇÃO
+
+Alguns Moves de Pokémon exigem Concentração para que seus efeitos permaneçam ativos. Se o Pokémon perder a Concentração, o efeito termina imediatamente.
+
+Um Move que exige Concentração permanece ativo até que sua duração termine, até que o Pokémon perca a Concentração ou até que escolha encerrar o Move.
+
+Atividades normais — como mover-se, atacar ou usar um Move que não exija Concentração — não interferem na Concentração.
+
+A Concentração é quebrada imediatamente quando:
+
+1. O Pokémon usa outro Move que também exige Concentração.
+2. O Pokémon fica incapacitado ou desmaia.
+
+DANO DURANTE A CONCENTRAÇÃO
+
+Quando um Pokémon sofre dano enquanto está se concentrando, ele deve realizar uma jogada de salvamento de Constituição contra CD 10 ou metade do dano recebido, usando o maior dos dois valores.
+
+Se sofrer dano de múltiplas fontes, deve realizar uma jogada de salvamento de Constituição separada para cada fonte de dano.`
+  },
+  {
+    titulo: "Pokémon Alpha e Pokémon Totem",
+    texto: `POKÉMON ALPHA
+
+• Seu tamanho é aumentado em duas escalas em relação ao tamanho normal da espécie.
+• Possuem nível superior aos encontros normalmente encontrados na natureza.
+• Recebem +2 em três atributos, sendo Constituição obrigatoriamente um deles.
+• Possuem 1 Move de nível avançado.
+• Possuem naturalmente o talento Aumento de CA.
+• Possuem +5 na CD de Captura.
+• Demonstram uma natureza orgulhosa e dominante, sendo mais difíceis de conquistar e mais propensos a perder lealdade caso se sintam desrespeitados.
+
+Habilidade — Liderança:
+Pokémon do mesmo tipo em um raio de 18 metros do Alpha recebem +1 em jogadas de ataque e +1 no dano. Quando dois ou mais Alphas aliados estão em campo, todos perdem a habilidade Liderança, pois entram em conflito pela supremacia.
+
+POKÉMON ALPHA SELVAGENS
+
+• Seus olhos brilham em vermelho intenso.
+• Recebem +1 em todos os atributos.
+• Sofrem metade do dano causado por Condições de Status.
+
+POKÉMON TOTEM
+
+• Seu tamanho é aumentado em duas escalas em relação ao tamanho normal da espécie.
+• Possuem nível superior aos encontros normalmente encontrados na natureza.
+• Recebem +2 em três atributos, sendo Constituição obrigatoriamente um deles.
+• Possuem naturalmente o talento Aumento de CA.
+• Podem encontrar entre 3 e 5 Totem Moves, criados pelo Mestre Pokémon.
+
+Habilidade — Aura Totêmica:
+Pokémon da mesma espécie, independentemente do estágio evolutivo, que estejam a até 18 metros do Pokémon Totem recebem +1 em jogadas de ataque e +1 no dano.
+
+O Pokémon Totem possui vantagem em todos os testes de perícia realizados contra outros Pokémon de sua espécie, incluindo suas evoluções ou formas pré-evoluídas.
+
+POKÉMON TOTEM SELVAGENS
+
+Como uma ação bônus, role 1d20. Apenas 2 aliados para cada Treinador enfrentando o Totem podem ser invocados por batalha.
+
+• 1–10: nada acontece.
+• 11–18: surge 1 aliado.
+• 19–20: surgem 2 aliados.`
+  },
+  {
+    titulo: "Tipos de Terreno",
+    texto: `Cada tipo de terreno afeta o deslocamento e as ações das criaturas de uma forma diferente.
+
+PERIGOSO
+Atravessá-lo faz com que a criatura receba dano igual ao próprio nível. Cruzar múltiplos terrenos perigosos durante o mesmo turno causa esse dano apenas uma vez. O tipo de dano sofrido depende do terreno.
+
+MACIO
+Criaturas que caem sobre esse tipo de terreno sofrem metade do dano de queda.
+
+SÓLIDO
+Nesse tipo de terreno não é possível utilizar deslocamento de escavação, e Moves que envolvam cavar, como Dig, não podem ser executados.
+
+ESCORREGADIO
+Criaturas só podem se mover em linha reta sobre esse terreno. Golpes corpo a corpo fazem com que o atacante e o alvo se afastem 1,5 metro para trás, caso não exista obstáculo. Usar a ação Disparada exige um teste de Acrobacia CD 15 para não ficar Caído ao final do deslocamento.
+
+OCULTO
+Criaturas nesse tipo de terreno podem se esconder como se estivessem em uma área fortemente obscurecida.
+
+MOLHADO
+Moves do tipo Elétrico de alvo único que atinjam uma criatura em contato com a água também causam dano em área num raio de 1,5 metro ao redor do alvo. As criaturas ao redor realizam um teste de Destreza CD 10 e, em caso de sucesso, recebem apenas metade do dano.
+
+Criaturas atingidas por Moves do tipo Gelo devem realizar um teste de Força CD 10. Em caso de falha, ficam impedidas até o final do próximo turno. Se forem atingidas por um Move do tipo Fogo antes disso, libertam-se do gelo imediatamente.
+
+Se o terreno molhado for muito profundo, ele também passa a contar como terreno Macio e Difícil.
+
+LAMACENTO
+Moves do tipo Elétrico causam metade do dano contra criaturas que estejam sobre esse tipo de terreno.
+
+MOVEDIÇO
+Criaturas sobre terreno movediço devem se mover pelo menos 1,5 metro durante o próprio turno. Caso permaneçam paradas, ficam impedidas ao final do turno. Criaturas impedidas podem tentar se libertar gastando sua ação.`
+  },
+  {
+    titulo: "Disparada e Corrida",
+    texto: `DISPARADA
+
+Quando uma criatura realiza a ação Disparada, ganha deslocamento adicional no turno atual. Esse aumento é igual ao seu valor de deslocamento depois de aplicar quaisquer modificadores.
+
+Exemplo: com deslocamento de 9 metros, uma criatura pode se mover até 18 metros no turno em que realiza uma Disparada.
+
+Qualquer aumento ou redução do deslocamento altera o movimento adicional na mesma proporção. Se o deslocamento de 9 metros for reduzido para 4,5 metros, a criatura poderá se mover até 9 metros ao realizar uma Disparada.
+
+CORRIDA
+
+Quando quiser correr além das próprias capacidades normais, a criatura pode gastar uma ação completa e realizar um teste de Atletismo CD 15.
+
+Ao fazer isso, ela automaticamente realiza uma Disparada — dobrando o deslocamento — e ainda avança +1,5 metro adicional para cada ponto obtido acima da CD.
+
+• A corrida deve acontecer em linha reta.
+• Não é possível correr através de terreno difícil.
+• A criatura pode manter a corrida por um número de rodadas igual a 1 + seu modificador de Constituição.
+• Depois desse limite, deve realizar um teste de Constituição a cada rodada, começando em CD 15 e aumentando a CD em +1 para cada teste anterior.
+• Se falhar nesse teste, fica exausta.`
+  },
+  {
+    titulo: "Engajar, Ataques à Distância e Desengajar",
+    texto: `ENGAJAR
+
+Uma criatura está engajada quando existe uma criatura hostil adjacente a ela, normalmente a até 1,5 metro, capaz de vê-la e que não esteja incapacitada.
+
+ATAQUES À DISTÂNCIA ENGAJADOS
+
+É mais difícil mirar ataques à distância quando um inimigo está adjacente. Enquanto houver uma criatura hostil a até 1,5 metro que possa ver o atacante e não esteja incapacitada, as jogadas de ataque à distância do atacante sofrem desvantagem.
+
+ATAQUES DE OPORTUNIDADE
+
+Quando uma criatura inimiga sai do alcance corpo a corpo de outra criatura sem se Desengajar, ela pode provocar um Ataque de Oportunidade. Esse ataque é um ataque corpo a corpo realizado contra a criatura que está deixando o alcance.
+
+DESENGAJAR
+
+Quando uma criatura realiza a ação Desengajar, seu movimento não provoca Ataques de Oportunidade pelo restante daquele turno.`
+  },
+  {
+    titulo: "Agarrar, Empurrar, Caído e Levantar",
+    texto: `AGARRAR
+
+Como uma ação padrão, uma criatura pode tentar agarrar um alvo ao seu alcance. Agarrar é um ataque corpo a corpo especial, mas não substitui um ataque concedido por talento, habilidade, reação ou outro efeito, salvo quando esse efeito mencionar Agarrar expressamente. Além disso, um Agarrão não ativa efeitos que dependam de realizar, atingir ou sofrer um ataque.
+
+• O alvo pode possuir, no máximo, uma categoria de tamanho acima da criatura que está tentando agarrá-lo, exceto quando um Move disser o contrário.
+• Para tentar agarrar, é necessário possuir pelo menos uma mão, membro ou apêndice apropriado livre.
+• Faça um teste de Força (Atletismo) resistido por Força (Atletismo) ou Destreza (Acrobacia) do alvo, à escolha dele.
+• Se o atacante vencer, o alvo fica Agarrado.
+
+Enquanto mantém um Agarrão:
+• Durante o próprio turno, a criatura pode soltar o alvo a qualquer momento como uma ação livre. Fora do próprio turno, pode usar sua reação para soltá-lo imediatamente.
+• Cada Agarrão é independente. Uma criatura agarrada por vários oponentes deve escapar separadamente de cada um deles.
+• É possível agarrar até duas criaturas simultaneamente, realizando uma ação separada para cada uma, desde que ambas sejam pelo menos dois passos de tamanho menores que a criatura que está agarrando.
+• Moves podem estabelecer alcance, limites de tamanho, testes ou condições diferentes.
+• Pokémon do tipo Fantasma são imunes a Agarrão, a menos que a criatura que esteja agarrando seja do tipo Fantasma ou Sombrio.
+
+ESCAPANDO DE UM AGARRÃO
+
+Uma criatura agarrada pode usar sua ação padrão para tentar escapar. Ela realiza um teste de Força (Atletismo) ou Destreza (Acrobacia), à escolha dela, resistido por um novo teste de Força (Atletismo) da criatura que está agarrando. Se a criatura agarrada vencer, o Agarrão termina.
+
+MOVENDO UMA CRIATURA AGARRADA
+
+Ao se mover, uma criatura pode arrastar ou carregar um alvo agarrado consigo.
+
+• Mesmo tamanho: pode movê-lo por até 6 metros.
+• Para cada categoria de tamanho acima do alvo agarrado: o limite aumenta em 3 metros, até o máximo do deslocamento normal.
+• Para cada categoria de tamanho abaixo do alvo agarrado: o limite diminui em 3 metros.
+
+Exemplo: uma criatura Média pode mover uma criatura Pequena por até 9 metros, outra criatura Média por até 6 metros ou uma criatura Grande por até 3 metros.
+
+A criatura agarrada se move junto e deve permanecer em um espaço ao alcance de quem a está agarrando durante todo o movimento. Caso não exista um espaço válido para colocá-la, o movimento não pode continuar naquela direção.
+
+EMPURRAR
+
+Usando a ação Atacar, uma criatura pode realizar um ataque corpo a corpo para derrubar ou empurrar um alvo.
+
+• O alvo pode ter, no máximo, uma categoria de tamanho acima do atacante e deve estar ao alcance.
+• Faça um teste de Força (Atletismo) resistido por Força (Atletismo) ou Destreza (Acrobacia) do alvo, à escolha dele.
+• Se vencer, o atacante escolhe entre derrubar o alvo, deixando-o Caído, ou empurrá-lo 1,5 metro para longe.
+• Pokémon do tipo Fantasma são imunes a Empurrão, a menos que quem esteja empurrando seja do tipo Fantasma ou Sombrio.
+
+CAÍDO E LEVANTAR
+
+• Enquanto estiver Caída, a única forma normal de movimento de uma criatura é rastejar. Cada 1,5 metro percorrido rastejando custa 1,5 metro adicional de deslocamento.
+• Levantar-se encerra a condição Caído e custa metade do deslocamento da criatura.
+• Uma criatura Caída sofre desvantagem nas jogadas de ataque.
+• Uma jogada de ataque contra uma criatura Caída possui vantagem se o atacante estiver a até 1,5 metro dela. De qualquer outra distância, a jogada de ataque sofre desvantagem.`
   }
 ];
 
 function regrasMestreDoToken(token) {
   const valor = token?.metadata?.[META_MESTRE_REGRAS];
-  const fonte = Array.isArray(valor) ? valor : REGRAS_MESTRE_INICIAIS;
+  let fonte = Array.isArray(valor) ? valor : REGRAS_MESTRE_INICIAIS;
+
+  // Migração visual: fichas de Mestre criadas na versão inicial tinham apenas
+  // as duas primeiras regras padrão. Ao abrir a nova versão, elas recebem o
+  // pacote completo sem interferir em listas personalizadas maiores.
+  if (Array.isArray(valor) && valor.length === 2) {
+    const titulos = valor.map((item) => String(item?.titulo || ""));
+    const conjuntoInicial =
+      titulos[0] === "Voo, Flutuação, Escavação e Dano de Queda" &&
+      titulos[1] === "Saltos e Combate Corpo a Corpo contra Voadores";
+    if (conjuntoInicial) fonte = REGRAS_MESTRE_INICIAIS;
+  }
+
   return fonte.slice(0, 20).map((item) => ({
     titulo: String(item?.titulo || "").slice(0, 90),
     texto: String(item?.texto || "").slice(0, 5000)
