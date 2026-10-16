@@ -9,6 +9,11 @@ const META_INICIATIVA_TRACKER =
 const META_TURNO_INICIATIVA =
 `${PREFIX}/initiative-turn`;
 const META_CONGELADO_TURNOS = `${PREFIX}/debuff-congelado-turnos`;
+const META_ENVENENADO_GRAVE = `${PREFIX}/debuff-envenenado-grave`;
+const META_ENVENENADO_TURNOS = `${PREFIX}/debuff-envenenado-turnos`;
+const META_SONOLENTO_TURNOS = `${PREFIX}/debuff-sonolento-turnos`;
+const META_SONOLENTO_BLOQUEIA_MOVES = `${PREFIX}/debuff-sonolento-bloqueia-moves`;
+const META_DORMINDO_TURNOS = `${PREFIX}/debuff-dormindo-turnos`;
 const META_PAINEL_INICIATIVA = `${PREFIX}/painel-iniciativa`;
 const META_PAINEL_INICIATIVA_FILHO = `${PREFIX}/painel-iniciativa-filho`;
 const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
@@ -1887,6 +1892,80 @@ async function aplicarQueimaduraFimDoTurno(item) {
     filaEfeitosFimTurno.delete(item.id);
   }
 }
+function statusEnvenenado() {
+  return STATUS_DEBUFFS.find((status) => status.id === "envenenado") || null;
+}
+function pokemonEstaEnvenenado(item) {
+  const envenenado = statusEnvenenado();
+  return Boolean(
+    envenenado &&
+    item?.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    debuffAtivoNoToken(item, envenenado)
+  );
+}
+function pokemonEstaGravementeEnvenenado(item) {
+  return pokemonEstaEnvenenado(item) && item?.metadata?.[META_ENVENENADO_GRAVE] === true;
+}
+async function aplicarEnvenenamentoFimDoTurno(item) {
+  if (!item?.id || !pokemonEstaEnvenenado(item)) return null;
+  if (filaEfeitosFimTurno.has(item.id)) return null;
+
+  filaEfeitosFimTurno.add(item.id);
+  try {
+    const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+    if (!pokemonEstaEnvenenado(atual)) return null;
+
+    const nivel = Math.max(
+      0,
+      Math.trunc(Number(atual.metadata?.[`${PREFIX}/pokemon-level`] ?? 0) || 0)
+    );
+    const danoBase = Math.floor(nivel / 2);
+    const grave = pokemonEstaGravementeEnvenenado(atual);
+    const turnosAnteriores = grave
+      ? Math.max(0, Math.trunc(Number(atual.metadata?.[META_ENVENENADO_TURNOS] ?? 0) || 0))
+      : 0;
+    const turnoVeneno = grave ? turnosAnteriores + 1 : 1;
+    const danoCalculado = grave ? danoBase * turnoVeneno : danoBase;
+
+    const hpMax = Math.max(
+      1,
+      Math.trunc(Number(atual.metadata?.[`${PREFIX}/hpMax`] ?? 1) || 1)
+    );
+    const hpAnterior = Math.max(
+      0,
+      Math.min(hpMax, Math.trunc(Number(atual.metadata?.[`${PREFIX}/hpAtual`] ?? 0) || 0))
+    );
+    const dano = Math.min(hpAnterior, Math.max(0, danoCalculado));
+    const hpNovo = Math.max(0, hpAnterior - dano);
+
+    await OBR.scene.items.updateItems([atual.id], (items) => {
+      for (const alvo of items) {
+        alvo.metadata[`${PREFIX}/hpAtual`] = hpNovo;
+        if (grave) alvo.metadata[META_ENVENENADO_TURNOS] = turnoVeneno;
+        else delete alvo.metadata[META_ENVENENADO_TURNOS];
+      }
+    });
+
+    const atualizado = (await OBR.scene.items.getItems([atual.id]))?.[0] || atual;
+    const caBase = Number(atualizado.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+    const evasao = normalizarEstagioBuff(atualizado.metadata?.[`${PREFIX}/buff-evas`] ?? 0, "evas");
+    const caEfetiva = caBase + evasao + bonusCaMegaDoToken(atualizado);
+    await criarStatusNoToken(atualizado, hpNovo, hpMax, caEfetiva);
+
+    return {
+      dano,
+      danoBase,
+      hpAnterior,
+      hpNovo,
+      hpMax,
+      nivel,
+      grave,
+      turnoVeneno
+    };
+  } finally {
+    filaEfeitosFimTurno.delete(item.id);
+  }
+}
 const filaEfeitosInicioTurno = new Set();
 function statusCongelado() {
   return STATUS_DEBUFFS.find((status) => status.id === "congelado") || null;
@@ -2006,8 +2085,146 @@ async function aplicarParalisiaInicioDoTurno(item) {
   }
 }
 
+function statusSonolento() {
+  return STATUS_DEBUFFS.find((status) => status.id === "sonolento") || null;
+}
+function pokemonEstaSonolento(item) {
+  const sonolento = statusSonolento();
+  return Boolean(
+    sonolento &&
+    item?.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    debuffAtivoNoToken(item, sonolento)
+  );
+}
+function statusDormindo() {
+  return STATUS_DEBUFFS.find((status) => status.id === "dormindo") || null;
+}
+function pokemonEstaDormindo(item) {
+  const dormindo = statusDormindo();
+  return Boolean(
+    dormindo &&
+    item?.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" &&
+    debuffAtivoNoToken(item, dormindo)
+  );
+}
+function pokemonSonolentoBloqueiaMoves(item) {
+  return pokemonEstaSonolento(item) && item?.metadata?.[META_SONOLENTO_BLOQUEIA_MOVES] === true;
+}
+async function bloquearMoveSeDebuffImpede(item) {
+  if (!item?.id) return false;
+  const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+  if (pokemonEstaDormindo(atual)) {
+    alert("Este Pokémon está DORMINDO e não pode utilizar Moves.");
+    return true;
+  }
+  if (pokemonSonolentoBloqueiaMoves(atual)) {
+    alert("Este Pokémon está SONOLENTO neste turno e não pode utilizar Moves. No próximo turno sob Sonolento ele poderá agir normalmente.");
+    return true;
+  }
+  return false;
+}
+async function aplicarSonolentoInicioDoTurno(item) {
+  if (!item?.id || !pokemonEstaSonolento(item)) return null;
+  if (filaEfeitosInicioTurno.has(item.id)) return null;
+
+  filaEfeitosInicioTurno.add(item.id);
+  try {
+    const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+    if (!pokemonEstaSonolento(atual)) return null;
+
+    const turnosAnteriores = Math.max(
+      0,
+      Math.trunc(Number(atual.metadata?.[META_SONOLENTO_TURNOS] ?? 0) || 0)
+    );
+    const numeroTurno = turnosAnteriores + 1;
+    // 1º turno: normal. A partir do 2º, alterna: bloqueia no 2º, libera no 3º, bloqueia no 4º...
+    const bloqueiaMoves = numeroTurno >= 2 && numeroTurno % 2 === 0;
+
+    await OBR.scene.items.updateItems([atual.id], (items) => {
+      for (const alvo of items) {
+        alvo.metadata[META_SONOLENTO_TURNOS] = numeroTurno;
+        alvo.metadata[META_SONOLENTO_BLOQUEIA_MOVES] = bloqueiaMoves;
+      }
+    });
+
+    return { numeroTurno, bloqueiaMoves };
+  } finally {
+    filaEfeitosInicioTurno.delete(item.id);
+  }
+}
+async function aplicarDormindoFimDoTurno(item) {
+  if (!item?.id || !pokemonEstaDormindo(item)) return null;
+  if (filaEfeitosFimTurno.has(item.id)) return null;
+
+  filaEfeitosFimTurno.add(item.id);
+  try {
+    const atual = (await OBR.scene.items.getItems([item.id]))?.[0] || item;
+    if (!pokemonEstaDormindo(atual)) return null;
+
+    const turnosAnteriores = Math.max(
+      0,
+      Math.min(2, Math.trunc(Number(atual.metadata?.[META_DORMINDO_TURNOS] ?? 0) || 0))
+    );
+    const numeroTurnoDormindo = turnosAnteriores + 1;
+    const nomePokemon = nomeFichaPokemon(atual) || atual.name || "Pokémon";
+
+    // Ao final do 3º turno dormindo, acorda automaticamente sem precisar de rolagem.
+    if (numeroTurnoDormindo >= 3) {
+      await OBR.scene.items.updateItems([atual.id], (items) => {
+        for (const alvo of items) {
+          alvo.metadata[chaveDebuff("dormindo")] = false;
+          delete alvo.metadata[META_DORMINDO_TURNOS];
+        }
+      });
+      await atualizarHudAposDebuff(atual);
+      return { sucesso: true, automatico: true, numeroTurnoDormindo };
+    }
+
+    const minimoNecessario = numeroTurnoDormindo === 1 ? 5 : 4;
+    const resultado = await rolarNoDicePlusComResultado(
+      "1d6",
+      "Teste Dormindo",
+      `${nomePokemon} • precisa ${minimoNecessario}+ para acordar`
+    );
+
+    // Sem resultado do Dice+, não consumimos o turno de sono.
+    if (!Number.isFinite(resultado)) return null;
+
+    const sucesso = Number(resultado) >= minimoNecessario;
+    if (sucesso) {
+      await OBR.scene.items.updateItems([atual.id], (items) => {
+        for (const alvo of items) {
+          alvo.metadata[chaveDebuff("dormindo")] = false;
+          delete alvo.metadata[META_DORMINDO_TURNOS];
+        }
+      });
+      await atualizarHudAposDebuff(atual);
+      return {
+        sucesso: true,
+        automatico: false,
+        resultado: Number(resultado),
+        minimoNecessario,
+        numeroTurnoDormindo
+      };
+    }
+
+    await OBR.scene.items.updateItems([atual.id], (items) => {
+      for (const alvo of items) alvo.metadata[META_DORMINDO_TURNOS] = numeroTurnoDormindo;
+    });
+    return {
+      sucesso: false,
+      resultado: Number(resultado),
+      minimoNecessario,
+      numeroTurnoDormindo
+    };
+  } finally {
+    filaEfeitosFimTurno.delete(item.id);
+  }
+}
+
 async function aplicarEfeitosInicioDoTurno(item) {
   await aplicarCongeladoInicioDoTurno(item);
+  await aplicarSonolentoInicioDoTurno(item);
   return aplicarParalisiaInicioDoTurno(item);
 }
 
@@ -2018,6 +2235,8 @@ if (indice < 0) { indice = iniciativas.findIndex( ({ item }) => item.metadata?.[
 if (indice < 0) { indice = 0; }
 const atual = iniciativas[indice].item;
 await aplicarQueimaduraFimDoTurno(atual);
+await aplicarEnvenenamentoFimDoTurno(atual);
+await aplicarDormindoFimDoTurno(atual);
 const proximo = iniciativas[ (indice + 1) % iniciativas.length ].item;
 await definirTurnoIniciativa( proximo.id, iniciativas.map(({ item }) => item) );
 const paralisia = await aplicarEfeitosInicioDoTurno(proximo);
@@ -2909,6 +3128,11 @@ async function guardarPokemonCapturadoNoPc(treinador, pokemon) {
             if (status.legacyId) item.metadata[chaveDebuff(status.legacyId)] = false;
           }
           delete item.metadata[META_CONGELADO_TURNOS];
+          delete item.metadata[META_ENVENENADO_GRAVE];
+          delete item.metadata[META_ENVENENADO_TURNOS];
+          delete item.metadata[META_SONOLENTO_TURNOS];
+          delete item.metadata[META_SONOLENTO_BLOQUEIA_MOVES];
+          delete item.metadata[META_DORMINDO_TURNOS];
         }
       });
       pokemonAtual = (await OBR.scene.items.getItems([pokemonAtual.id]))?.[0] || pokemonAtual;
@@ -3693,11 +3917,16 @@ function ativarCalculoStatusPokemon() {
 
 function ativarRolagensSalvaguarda(token) { document .querySelectorAll(".rolarAtributo") .forEach( (botao) => { botao.addEventListener( "click", async () => { const atributo = botao.dataset.atributo; const tipoRolagem = botao.dataset.tipoRolagem || "Modificador"; const campo = document.querySelector(
 `#${botao.dataset.campo}`
-); let valorRolagem = campo?.value; if (tipoRolagem === "Salvaguarda") { const valorBase = Number( String(campo?.value ?? "") .trim() .replace(",", ".") ); if (Number.isNaN(valorBase)) { alert( "Valor de salvaguarda inválido." ); return; } const estagioEvasao = normalizarEstagioBuff( token?.metadata?.[
+ ); let valorRolagem = campo?.value; if (tipoRolagem === "Salvaguarda") { const valorBase = Number( String(campo?.value ?? "") .trim() .replace(",", ".") ); if (Number.isNaN(valorBase)) { alert( "Valor de salvaguarda inválido." ); return; } const estagioEvasao = normalizarEstagioBuff( token?.metadata?.[
 `${PREFIX}/buff-evas`
-] ?? 0, "evas" ); valorRolagem = valorBase + estagioEvasao; } const formula = formulaSalvaguarda( valorRolagem ); if (!formula) { alert(
+] ?? 0, "evas" ); valorRolagem = valorBase + estagioEvasao; } let formula = formulaSalvaguarda( valorRolagem ); if (!formula) { alert(
 `Valor de ${tipoRolagem.toLowerCase()} inválido.`
-); return; } await rolarNoDicePlus( formula,
+); return; }
+if (tipoRolagem === "Salvaguarda" && token?.id) {
+  const atual = (await OBR.scene.items.getItems([token.id]))?.[0] || token;
+  if (pokemonEstaDormindo(atual)) formula = formulaComDesvantagem(formula);
+}
+await rolarNoDicePlus( formula,
 `${tipoRolagem} de ${
                 NOMES_ATRIBUTOS[atributo] ||
                 atributo.toUpperCase()
@@ -3986,6 +4215,7 @@ salvamentoMovimentoPendente = salvamentoMovimentoPendente .catch(() => {}) .then
 return salvamentoMovimentoPendente; }
 function ativarMovimentacaoComVelocidade( token, estagioVelocidade, movimentosMega = {} ) {
   const bonusVelocidade = bonusMovimentoPorVelocidade(estagioVelocidade);
+  const movimentoReduzidoPorSonolento = pokemonEstaSonolento(token);
   const atualizarMeta = (campo, meta, chave) => {
     if (!meta) return;
     const base = normalizarMovimentoBase(campo.dataset.base);
@@ -3994,6 +4224,7 @@ function ativarMovimentacaoComVelocidade( token, estagioVelocidade, movimentosMe
     const partes = [`Base ${formatarDecimal(base)}`];
     if (bonusMega) partes.push(`Mega +${formatarDecimal(bonusMega)}`);
     if (bonusVelocidade) partes.push(`VEL ${bonusVelocidade > 0 ? "+" : ""}${formatarDecimal(bonusVelocidade)}`);
+    if (movimentoReduzidoPorSonolento) partes.push("SONOLENTO ÷2");
     meta.textContent = partes.join(" · ");
   };
   const mostrarBase = (campo, meta, chave) => {
@@ -4005,7 +4236,9 @@ function ativarMovimentacaoComVelocidade( token, estagioVelocidade, movimentosMe
     const base = normalizarMovimentoBase(campo.dataset.base);
     if (base === null) { campo.value = ""; atualizarMeta(campo, meta, chave); return; }
     const bonusMega = (Number(movimentosMega?.[chave]) || 0) * MEGA_PASSO_MOVIMENTO;
-    campo.value = formatarDecimal(movimentoComVelocidade(base + bonusMega, estagioVelocidade));
+    const totalNormal = movimentoComVelocidade(base + bonusMega, estagioVelocidade);
+    const totalExibido = movimentoReduzidoPorSonolento ? Math.max(0, totalNormal / 2) : totalNormal;
+    campo.value = formatarDecimal(totalExibido);
     atualizarMeta(campo, meta, chave);
   };
   CAMPOS_MOVIMENTACAO.forEach(({ id, metaId, chave }) => {
@@ -9553,9 +9786,17 @@ htmlGolpes += `
         </details>
       `;
 } );
+const dormindoBloqueiaMoves = pokemonEstaDormindo(token);
+const sonolentoBloqueiaMoves = pokemonSonolentoBloqueiaMoves(token);
+const avisoBloqueioMoves = dormindoBloqueiaMoves
+  ? `<div style="margin:0 0 7px;padding:7px 8px;border:1px solid #202020;border-radius:8px;background:#eef0ff;color:#292f8b;font-size:8px;font-weight:900;text-align:center;">😴 DORMINDO — Moves bloqueados até acordar.</div>`
+  : sonolentoBloqueiaMoves
+    ? `<div style="margin:0 0 7px;padding:7px 8px;border:1px solid #202020;border-radius:8px;background:#f2f0ff;color:#5e57ad;font-size:8px;font-weight:900;text-align:center;">💤 SONOLENTO — neste turno não pode utilizar Moves.</div>`
+    : "";
 app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 2)}
+    ${avisoBloqueioMoves}
     <h3 style="
       text-align:center;
       margin:4px 0 5px;
@@ -9756,6 +9997,10 @@ function formulaComVantagem(formula) { const base = String(formula || "").trim()
 if (!base) { return base; }
 return `(${base},${base})kh1`;
 }
+function formulaComDesvantagem(formula) { const base = String(formula || "").trim();
+if (!base) { return base; }
+return `(${base},${base})kl1`;
+}
 function formulaAcertoComTalentos( numero, formulaOriginal ) { const categoria = categoriaGolpeAtual(numero);
 let bonusTalento = estagioPrecisaoAtual();
 if ( categoria === "fisico" && talentoCombateAtivo("mestre-corpo") ) { bonusTalento -= 5; }
@@ -9803,6 +10048,7 @@ return `${prefixo}${qtdOriginal + acrescimo}d${faces}`;
 } ); }
 document.querySelectorAll(".metadeDadosMove").forEach((botao) => {
   botao.addEventListener("click", async () => {
+    if (await bloquearMoveSeDebuffImpede(token)) return;
     const numero = botao.dataset.golpe;
     const tipo = document.querySelector(`#golpe${numero}Tipo`)?.value || "";
 
@@ -9875,33 +10121,33 @@ document.querySelectorAll(".metadeDadosMove").forEach((botao) => {
     }
   });
 });
-document .querySelectorAll(".rolarAcerto") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formula = document .querySelector(
+document .querySelectorAll(".rolarAcerto") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formula = document .querySelector(
 `#golpe${numero}Acerto`
 ) .value .trim(); if (!formula) { alert( "A fórmula de acerto está vazia." ); return; } const formulaFinal = formulaAcertoComTalentos( numero, formula ); await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Acerto" ); } ); } );
-document .querySelectorAll(".rolarDano") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarDano") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Dano" ); } ); } );
-document .querySelectorAll(".rolarDobrarDados") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarDobrarDados") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const campoDobras = document.querySelector(
 `#golpe${numero}DobrarDadosVezes`
 ); const vezes = Math.max( 1, Math.min( 10, Number(campoDobras?.value) || 1 ) ); const formulaDadosDobrados = dobrarDadosPorVezes( formulaOriginal, vezes ); const formulaFinal = formulaDanoComBuff( numero, formulaDadosDobrados ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero),
 `Dobrar Dados ${vezes}x`
 ); } ); } );
-document .querySelectorAll(".rolarCritico") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarCritico") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
 `#golpe${numero}Categoria`
 ) ?.value || ""; if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico." ); return; } const formulaCritica = duplicarDadosFormula( formulaOriginal ); const formulaFinal = formulaDanoComBuff( numero, formulaCritica ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Crítico" ); } ); } );
-document .querySelectorAll(".rolarPassouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarPassouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaComBuff = formulaDanoComBuff( numero, formulaOriginal, { incluirBonusMestres: false } ); if (!formulaComBuff) { return; } const formulaFinal =
 `(${formulaComBuff})/2`;
 await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Passou na CD" ); } ); } );
-document .querySelectorAll(".rolarReprovouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarReprovouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Reprovou CD" ); } ); } );
-document .querySelectorAll(".rolarCriticoCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
+document .querySelectorAll(".rolarCriticoCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
 `#golpe${numero}Categoria`
@@ -9928,7 +10174,7 @@ const evasao = normalizarEstagioBuff( token.metadata[
 ] ?? 0, "evas" );
 await criarStatusNoToken( token, hpAtualNovo, hpMax, caBase + evasao );
 return { curaRolada: cura, curaAplicada: Math.max( 0, hpAtualNovo - hpAtualAnterior ), hpAnterior: hpAtualAnterior, hpAtual: hpAtualNovo, hpMax }; }
-document .querySelectorAll(".rolarCura") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formula = document .querySelector(
+document .querySelectorAll(".rolarCura") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formula = document .querySelector(
 `#golpe${numero}Cura`
 ) ?.value .trim(); if (!formula) { alert( "A fórmula de cura está vazia." ); return; } botao.disabled = true; try { const resultado = await rolarNoDicePlusComResultado( formula, nomeGolpe(numero), "Cura" ); if (resultado === null) { return; } const dadosCura = await aplicarCuraNoHp( resultado ); const info = document.querySelector(
 `#golpe${numero}CuraInfo`
@@ -9937,7 +10183,7 @@ document .querySelectorAll(".rolarCura") .forEach( (botao) => { botao.addEventLi
 `Curou +${dadosCura.curaAplicada} · ` +
 `HP ${dadosCura.hpAnterior} → ${dadosCura.hpAtual}/${dadosCura.hpMax}`;
 } } finally { botao.disabled = false; } } ); } );
-document .querySelectorAll(".rolarAcertoBuffDebuff") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; const formula = document .querySelector(
+document .querySelectorAll(".rolarAcertoBuffDebuff") .forEach( (botao) => { botao.addEventListener( "click", async () => { if (await bloquearMoveSeDebuffImpede(token)) return; const numero = botao.dataset.golpe; const formula = document .querySelector(
 `#golpe${numero}BuffAcerto`
 ) ?.value .trim(); if (!formula) { alert( "A fórmula de acerto está vazia." ); return; } const statusNome = document .querySelector(
 `#golpe${numero}StatusNome`
@@ -12118,14 +12364,17 @@ async function mostrarFichaMestreBoss(token) {
 function mostrarFichaPokemonDebuffs(token) {
   const app = document.querySelector("#app");
   const ativos = new Set(STATUS_DEBUFFS.filter((status) => debuffAtivoNoToken(token,status)).map((status) => status.id));
+  const envenenadoGrave = ativos.has("envenenado") && token.metadata?.[META_ENVENENADO_GRAVE] === true;
   const cards = STATUS_DEBUFFS.map((status) => {
     const ativo = ativos.has(status.id);
+    const grave = status.id === "envenenado" && envenenadoGrave;
     return `<button type="button" class="botaoDebuffPokemon" data-debuff="${esc(status.id)}" style="
-      min-height:70px!important;padding:7px!important;border:1px solid #202020!important;border-radius:10px!important;
+      min-height:${grave ? "84px" : "70px"}!important;padding:7px!important;border:1px solid #202020!important;border-radius:10px!important;
       display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;
       background:${ativo ? status.cor : "#ffffff"}!important;color:${ativo ? "#ffffff" : "#111111"}!important;font-weight:900!important;cursor:pointer!important;">
       <img src="${esc(urlDebuff(status))}" alt="${esc(status.nome)}" style="width:54px;height:24px;object-fit:cover;object-position:center;pointer-events:none;">
       <span style="font-size:9px;pointer-events:none;">${esc(status.nome)}${ativo ? " ✓" : ""}</span>
+      ${grave ? `<span style="font-size:7px;line-height:1.15;padding:3px 5px;border:1px solid rgba(255,255,255,.9);border-radius:999px;background:rgba(25,0,35,.38);color:#fff;pointer-events:none;">GRAVEMENTE ENVENENADO</span>` : ""}
     </button>`;
   }).join("");
   app.innerHTML = `
@@ -12139,6 +12388,9 @@ function mostrarFichaPokemonDebuffs(token) {
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;">${cards}</div>
       <button id="limparDebuffsPokemon" type="button" style="width:100%;margin-top:8px;font-weight:900;">LIMPAR TODOS</button>
       <div style="margin-top:8px;border:1px solid #202020;border-radius:9px;padding:8px;background:#fff7f4;font-size:8px;line-height:1.35;font-weight:800;color:#333;">
+        <strong style="display:block;color:#7b1fa2;font-size:9px;margin-bottom:3px;">☠️ ENVENENADO — AUTOMÁTICO</strong>
+        Ao finalizar o turno, sofre dano sem tipo igual à metade do próprio nível, arredondada para baixo. Clique em <b>Envenenado</b> uma segunda vez para torná-lo <b>Gravemente Envenenado</b>: o dano passa a ser cumulativo, multiplicando essa metade pelo número de turnos consecutivos sob a condição.
+        <div style="height:1px;background:#202020;margin:7px 0;"></div>
         <strong style="display:block;color:#c62828;font-size:9px;margin-bottom:3px;">🔥 QUEIMADO — AUTOMÁTICO</strong>
         Moves FÍSICOS causam metade do dano total, arredondado para baixo. Ao finalizar o turno deste Pokémon no indicador de iniciativa, ele perde HP igual ao próprio bônus de Proficiência.
         <div style="height:1px;background:#202020;margin:7px 0;"></div>
@@ -12147,6 +12399,12 @@ function mostrarFichaPokemonDebuffs(token) {
         <div style="height:1px;background:#202020;margin:7px 0;"></div>
         <strong style="display:block;color:#c49a00;font-size:9px;margin-bottom:3px;">⚡ PARALIZADO — AUTOMÁTICO</strong>
         No início do turno, o plugin rola 1d4 como <b>Teste Paralisado</b>. Se o resultado for 1, o Pokémon perde o turno e o indicador de iniciativa passa automaticamente para o próximo participante.
+        <div style="height:1px;background:#202020;margin:7px 0;"></div>
+        <strong style="display:block;color:#6f68c9;font-size:9px;margin-bottom:3px;">💤 SONOLENTO — AUTOMÁTICO</strong>
+        O deslocamento exibido na ficha fica pela metade. No 1º turno sob o efeito, age normalmente; a partir do 2º, alterna turnos sem poder usar Moves: 2º bloqueado, 3º normal, 4º bloqueado e assim por diante.
+        <div style="height:1px;background:#202020;margin:7px 0;"></div>
+        <strong style="display:block;color:#404bc9;font-size:9px;margin-bottom:3px;">😴 DORMINDO — AUTOMÁTICO</strong>
+        Enquanto Dormindo, os botões de Moves são bloqueados e as Salvaguardas são roladas com desvantagem. Ao final do 1º turno, rola 1d6 e acorda com 5+; ao final do 2º, acorda com 4+; ao final do 3º, acorda automaticamente.
       </div>
     </section>`;
   ativarCabecalhoPokemon(token);
@@ -12163,7 +12421,24 @@ function mostrarFichaPokemonDebuffs(token) {
     const status = STATUS_DEBUFFS.find((item) => item.id === id);
     if (!status) return;
     const chave = chaveDebuff(id);
-    const novoEstado = !debuffAtivoNoToken(token,status);
+    const estavaAtivo = debuffAtivoNoToken(token,status);
+    const estavaGrave = status.id === "envenenado" && token.metadata?.[META_ENVENENADO_GRAVE] === true;
+    let novoEstado = !estavaAtivo;
+    let novoGrave = false;
+
+    if (status.id === "envenenado") {
+      if (!estavaAtivo) {
+        novoEstado = true;
+        novoGrave = false;
+      } else if (!estavaGrave) {
+        novoEstado = true;
+        novoGrave = true;
+      } else {
+        novoEstado = false;
+        novoGrave = false;
+      }
+    }
+
     botao.disabled = true;
     try {
       await OBR.scene.items.updateItems([token.id], (items) => {
@@ -12173,6 +12448,23 @@ function mostrarFichaPokemonDebuffs(token) {
             if (novoEstado) item.metadata[META_CONGELADO_TURNOS] = 0;
             else delete item.metadata[META_CONGELADO_TURNOS];
           }
+          if (status.id === "sonolento") {
+            if (novoEstado) {
+              item.metadata[META_SONOLENTO_TURNOS] = 0;
+              item.metadata[META_SONOLENTO_BLOQUEIA_MOVES] = false;
+            } else {
+              delete item.metadata[META_SONOLENTO_TURNOS];
+              delete item.metadata[META_SONOLENTO_BLOQUEIA_MOVES];
+            }
+          }
+          if (status.id === "dormindo") {
+            if (novoEstado) item.metadata[META_DORMINDO_TURNOS] = 0;
+            else delete item.metadata[META_DORMINDO_TURNOS];
+          }
+          if (status.id === "envenenado") {
+            item.metadata[META_ENVENENADO_GRAVE] = novoGrave;
+            delete item.metadata[META_ENVENENADO_TURNOS];
+          }
           if (status.legacyId) delete item.metadata[chaveDebuff(status.legacyId)];
         }
       });
@@ -12180,6 +12472,23 @@ function mostrarFichaPokemonDebuffs(token) {
       if (status.id === "congelado") {
         if (novoEstado) token.metadata[META_CONGELADO_TURNOS] = 0;
         else delete token.metadata[META_CONGELADO_TURNOS];
+      }
+      if (status.id === "sonolento") {
+        if (novoEstado) {
+          token.metadata[META_SONOLENTO_TURNOS] = 0;
+          token.metadata[META_SONOLENTO_BLOQUEIA_MOVES] = false;
+        } else {
+          delete token.metadata[META_SONOLENTO_TURNOS];
+          delete token.metadata[META_SONOLENTO_BLOQUEIA_MOVES];
+        }
+      }
+      if (status.id === "dormindo") {
+        if (novoEstado) token.metadata[META_DORMINDO_TURNOS] = 0;
+        else delete token.metadata[META_DORMINDO_TURNOS];
+      }
+      if (status.id === "envenenado") {
+        token.metadata[META_ENVENENADO_GRAVE] = novoGrave;
+        delete token.metadata[META_ENVENENADO_TURNOS];
       }
       if (status.legacyId) delete token.metadata[chaveDebuff(status.legacyId)];
       await atualizarHud();
@@ -12197,10 +12506,20 @@ function mostrarFichaPokemonDebuffs(token) {
           if (status.legacyId) delete item.metadata[chaveDebuff(status.legacyId)];
         }
         delete item.metadata[META_CONGELADO_TURNOS];
+        delete item.metadata[META_ENVENENADO_GRAVE];
+        delete item.metadata[META_ENVENENADO_TURNOS];
+        delete item.metadata[META_SONOLENTO_TURNOS];
+        delete item.metadata[META_SONOLENTO_BLOQUEIA_MOVES];
+        delete item.metadata[META_DORMINDO_TURNOS];
       }
     });
     for (const status of STATUS_DEBUFFS) token.metadata[chaveDebuff(status.id)] = false;
     delete token.metadata[META_CONGELADO_TURNOS];
+    delete token.metadata[META_ENVENENADO_GRAVE];
+    delete token.metadata[META_ENVENENADO_TURNOS];
+    delete token.metadata[META_SONOLENTO_TURNOS];
+    delete token.metadata[META_SONOLENTO_BLOQUEIA_MOVES];
+    delete token.metadata[META_DORMINDO_TURNOS];
     await atualizarHud();
     const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaPokemonDebuffs(atual);
   });
