@@ -11038,11 +11038,78 @@ function mostrarFichaMestreEncontros(token) {
   });
 }
 
+const REGRAS_MESTRE_INICIAIS = [
+  {
+    titulo: "Voo, Flutuação, Escavação e Dano de Queda",
+    texto: `VOO E FLUTUAÇÃO
+
+• Ataques à distância durante o voo:
+Manter o voo enquanto se ataca com precisão exige bastante foco e energia. Quando um Pokémon estiver voando, qualquer ataque à distância realizado contra um alvo que esteja além da metade do alcance máximo do Move é feito com desvantagem. Se o Move exigir um teste de resistência em vez de uma rolagem de ataque, o alvo recebe vantagem nesse teste quando estiver além da metade do alcance máximo do Move.
+
+• Flutuação e altura:
+Um Pokémon com Flutuação só é considerado em “meio voo” quando estiver a mais de 3 metros do chão. Abaixo disso, ele ainda está próximo o bastante do solo para não receber essa consideração especial.
+
+• Quando o voo é interrompido:
+Se a velocidade de voo ou de flutuação de um Pokémon for reduzida a 0 — por estar impedido, incapacitado por um status, atingido por um Move que force uma queda ou por outro efeito semelhante — ele cai.
+
+• Dano de queda:
+Pokémon com velocidade de voo sofrem 1d6 de dano para cada 3 metros de queda, até o máximo de 20d6. Pokémon que se deslocam por Flutuação também descem quando perdem seu movimento aéreo, mas caem lentamente o bastante para não sofrer dano de queda.
+
+ESCAVAÇÃO
+
+• Totalmente sob a terra:
+Enquanto estiver completamente escavado, o Pokémon tem vantagem em testes de resistência contra ataques e efeitos que não alcancem o subterrâneo. Ataques realizados contra ele têm desvantagem, a menos que o atacante possua uma forma capaz de detectar criaturas sob o solo, como percepção sísmica ou efeito semelhante.
+
+• Linha de visão:
+Enquanto estiver totalmente sob a terra, a criatura não pode realizar ataques nem usar Moves que exijam linha de visão. Para isso, deve emergir parcialmente, deixando pelo menos metade do corpo exposta.
+
+• Sentidos sísmicos e ataque ao emergir:
+Criaturas escavadoras normalmente percebem o ambiente por vibrações e sentidos sísmicos. Por isso, se estiverem no subterrâneo e tentarem emergir e atacar no mesmo turno, fazem seus ataques com desvantagem contra alvos que não estejam sob a terra. Se o Move exigir um teste de resistência, o alvo recebe vantagem nesse teste.`
+  },
+  {
+    titulo: "Saltos e Combate Corpo a Corpo contra Voadores",
+    texto: `SALTO
+
+A Força determina a distância que um Treinador ou Pokémon consegue alcançar em um salto. Todo metro percorrido durante o salto consome normalmente a mesma quantidade de deslocamento.
+
+• Salto em distância:
+Com uma corrida de pelo menos 3 metros antes do salto, a criatura pode saltar horizontalmente 2 metros + 1 metro para cada ponto positivo do seu modificador de Força. Sem essa corrida, a distância é reduzida pela metade.
+
+Essa regra considera um salto comum. Quando houver um obstáculo relevante — como uma cerca, muro baixo, córrego, vão ou outro elemento do cenário — o Mestre pode exigir um teste de Força (Atletismo). Como referência, um obstáculo baixo pode utilizar CD 10, mas a dificuldade pode ser alterada conforme a situação. Em caso de falha, a criatura não supera o obstáculo da forma pretendida.
+
+Ao aterrissar em terreno difícil, o Mestre pode exigir um teste de Destreza (Acrobacia) CD 10 para permanecer de pé. Em caso de falha, a criatura cai no chão.
+
+• Salto em altura com corrida:
+Quando houver uma parede, pilar ou superfície semelhante para ajudar no impulso, e a criatura tiver percorrido ao menos 3 metros antes do salto, ela pode alcançar verticalmente 1 metro + 0,5 metro para cada ponto positivo do modificador de Força. Se não houver corrida suficiente ou uma superfície adequada para o impulso, a altura é reduzida pela metade.
+
+• Salto parado:
+Quando a criatura salta do lugar, sem corrida, sua altura máxima é metade da altura que alcançaria utilizando a regra acima.
+
+• Situações especiais:
+O Mestre pode pedir um teste de Força (Atletismo) quando o personagem tentar alcançar uma altura acima do salto normal, atravessar um trecho especialmente difícil ou realizar uma manobra incomum. A CD deve considerar a distância, o terreno e a forma como a ação foi narrada.
+
+COMBATE CORPO A CORPO CONTRA POKÉMON VOADORES
+
+• Recomendação do Mestre Alan:
+Caso o Mestre considere que os Pokémon voadores estão obtendo uma vantagem excessiva na mesa apenas por permanecerem fora do alcance, ele pode permitir que um Pokémon corpo a corpo tente alcançá-los através de um salto.
+
+Primeiro, o atacante realiza um teste de Atletismo. A CD é definida pelo Mestre de acordo com a altura do alvo, a distância, o terreno, o impulso disponível e a situação narrada. Se o atacante conseguir alcançar o Pokémon voador, o alvo realiza um teste de Acrobacia para tentar se esquivar da investida. A CD dessa Acrobacia também é definida pelo Mestre de acordo com a situação.
+
+• Perda de altitude após ser atingido:
+Um Pokémon voador que seja acertado durante esse tipo de confronto pode perder parte da sua altitude. O Mestre pode exigir um novo teste de Acrobacia, com CD determinada pela força do impacto e pelas circunstâncias da cena. Em uma falha, o Mestre decide quantos metros de voo são perdidos ou se o Pokémon é forçado a descer.
+
+• Golpes muito fortes ou super efetivos:
+Se o golpe for super efetivo OU causar dano igual ou superior à metade do HP Máximo do Pokémon voador, ele deve realizar um teste de Acrobacia CD 20 para não cair no chão. Se passar, consegue recuperar o controle do voo, mas permanece a apenas 3 metros de altura. Se falhar, cai normalmente e as regras de queda são aplicadas quando couberem.`
+  }
+];
+
 function regrasMestreDoToken(token) {
   const valor = token?.metadata?.[META_MESTRE_REGRAS];
-  return Array.isArray(valor)
-    ? valor.slice(0, 20).map((item) => ({ titulo: String(item?.titulo || "").slice(0, 90), texto: String(item?.texto || "").slice(0, 1800) }))
-    : [];
+  const fonte = Array.isArray(valor) ? valor : REGRAS_MESTRE_INICIAIS;
+  return fonte.slice(0, 20).map((item) => ({
+    titulo: String(item?.titulo || "").slice(0, 90),
+    texto: String(item?.texto || "").slice(0, 5000)
+  }));
 }
 
 function bossesMestreDoToken(token) {
@@ -11131,16 +11198,17 @@ function mostrarFichaMestreRegras(token) {
         <button type="button" data-editar-regra="${indice}" style="padding:5px 7px!important;font-size:8px!important;font-weight:900;">EDITAR</button>
         <button type="button" data-remover-regra="${indice}" style="padding:5px 7px!important;font-size:9px!important;font-weight:900;">×</button>
       </div>
-      <div data-texto-regra="${indice}" style="display:none;margin-top:7px;padding-top:7px;border-top:1px solid #202020;font-size:9px;line-height:1.4;white-space:pre-wrap;">${esc(regra.texto)}</div>
+      <div data-texto-regra="${indice}" style="display:none;margin-top:8px;padding:10px 9px 2px;border-top:1px solid #202020;font-size:10px;line-height:1.55;white-space:pre-wrap;color:#111;">${esc(regra.texto)}</div>
     </div>`).join("") : `<div style="text-align:center;padding:18px;border:1px dashed #202020;border-radius:10px;font-size:9px;font-weight:800;">Nenhuma regra cadastrada ainda.</div>`;
   app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoMestre(token,2)}
     <section style="border:1px solid #202020;border-radius:12px;background:rgba(255,255,255,.94);padding:11px;">
-      <h3 style="text-align:center!important;margin-top:0!important;">REGRAS IMPORTANTES</h3>
+      <h3 style="text-align:center!important;margin:0 0 4px!important;color:#b71c1c!important;">REGRAS IMPORTANTES</h3>
+      <div style="text-align:center;font-size:8.5px;font-weight:800;margin-bottom:10px;color:#333;">Regras de consulta rápida para situações que costumam gerar dúvidas durante a sessão.</div>
       <input id="mestreRegraEditando" type="hidden" value="">
       <input id="mestreRegraTitulo" maxlength="90" placeholder="Título da regra" style="width:100%;margin-bottom:6px;">
-      <textarea id="mestreRegraTexto" maxlength="1800" placeholder="Escreva a regra, lembrete ou decisão da mesa..." style="width:100%;min-height:90px;resize:vertical;"></textarea>
+      <textarea id="mestreRegraTexto" maxlength="5000" placeholder="Escreva a regra, lembrete ou decisão da mesa..." style="width:100%;min-height:90px;resize:vertical;"></textarea>
       <button id="mestreSalvarRegra" type="button" style="width:100%;margin:7px 0 10px;font-weight:900;">+ SALVAR REGRA</button>
       <div style="display:grid;gap:7px;">${cards}</div>
     </section>`;
