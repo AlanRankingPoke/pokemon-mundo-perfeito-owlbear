@@ -8,6 +8,7 @@ const META_INICIATIVA_TRACKER =
 `${PREFIX}/initiative-tracker`;
 const META_TURNO_INICIATIVA =
 `${PREFIX}/initiative-turn`;
+const META_SAIU_DO_CAMPO = `${PREFIX}/initiative-out-of-field`;
 const META_CONGELADO_TURNOS = `${PREFIX}/debuff-congelado-turnos`;
 const META_ENVENENADO_GRAVE = `${PREFIX}/debuff-envenenado-grave`;
 const META_ENVENENADO_TURNOS = `${PREFIX}/debuff-envenenado-turnos`;
@@ -1817,7 +1818,7 @@ await OBR.scene.items.updateItems([tokenId], (items) => {
   }
 });
 }
-async function removerDaIniciativa(tokenId) { await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { delete item.metadata[ META_INICIATIVA_TRACKER ]; delete item.metadata[ META_TURNO_INICIATIVA ]; } } );
+async function removerDaIniciativa(tokenId) { await OBR.scene.items.updateItems( [tokenId], (items) => { for (const item of items) { delete item.metadata[ META_INICIATIVA_TRACKER ]; delete item.metadata[ META_TURNO_INICIATIVA ]; delete item.metadata[ META_SAIU_DO_CAMPO ]; } } );
  }
 function dadosIniciativaDoItem(item) { const dados = item?.metadata?.[ META_INICIATIVA_TRACKER ];
 if (!dados) { return null; }
@@ -1831,11 +1832,61 @@ return {
   dobrado: typeof dados === "object" ? dados.dobrado === true : false,
   ajusteManual: Number(typeof dados === "object" ? dados.ajusteManual : 0) || 0
 }; }
+function iniciativaForaDoCampo(item) {
+  return item?.metadata?.[META_SAIU_DO_CAMPO] === true;
+}
 function iniciativasOrdenadas(items) { const iniciativas = [];
 for (const item of items || []) { const dados = dadosIniciativaDoItem(item);
 if (dados) { iniciativas.push({ item, dados }); } }
-iniciativas.sort((a, b) => b.dados.total - a.dados.total || a.dados.atualizadoEm - b.dados.atualizadoEm || String(a.item.name || "").localeCompare( String(b.item.name || "") ) );
+iniciativas.sort((a, b) =>
+  (iniciativaForaDoCampo(a.item) ? 1 : 0) - (iniciativaForaDoCampo(b.item) ? 1 : 0) ||
+  b.dados.total - a.dados.total ||
+  a.dados.atualizadoEm - b.dados.atualizadoEm ||
+  String(a.item.name || "").localeCompare( String(b.item.name || "") )
+);
 return iniciativas; }
+function iniciativasAtivasOrdenadas(items) {
+  return iniciativasOrdenadas(items).filter(({ item }) => !iniciativaForaDoCampo(item));
+}
+async function alternarSaiuDoCampo(tokenId) {
+  const itens = await OBR.scene.items.getItems();
+  const iniciativas = iniciativasOrdenadas(itens);
+  const alvo = iniciativas.find(({ item }) => item.id === tokenId)?.item;
+  if (!alvo) return;
+
+  const vaiSair = !iniciativaForaDoCampo(alvo);
+  const ativasAntes = iniciativas.filter(({ item }) => !iniciativaForaDoCampo(item));
+  const turnoMarcado = ativasAntes.find(({ item }) => item.metadata?.[META_TURNO_INICIATIVA] === true);
+  const turnoAtualId = turnoMarcado?.item.id || ativasAntes[0]?.item.id || "";
+  const eraTurnoAtual = vaiSair && turnoAtualId === tokenId;
+
+  let proximoId = "";
+  if (eraTurnoAtual && ativasAntes.length > 1) {
+    const indice = ativasAntes.findIndex(({ item }) => item.id === tokenId);
+    proximoId = ativasAntes[(indice + 1) % ativasAntes.length]?.item.id || "";
+  }
+
+  await OBR.scene.items.updateItems([tokenId], (items) => {
+    for (const item of items) {
+      if (vaiSair) {
+        item.metadata[META_SAIU_DO_CAMPO] = true;
+        delete item.metadata[META_TURNO_INICIATIVA];
+      } else {
+        delete item.metadata[META_SAIU_DO_CAMPO];
+      }
+    }
+  });
+
+  if (eraTurnoAtual && proximoId) {
+    const participantes = await OBR.scene.items.getItems((item) => dadosIniciativaDoItem(item) !== null);
+    await definirTurnoIniciativa(proximoId, participantes);
+    const proximo = participantes.find((item) => item.id === proximoId);
+    if (proximo) {
+      const efeitoInicio = await aplicarEfeitosInicioDoTurno(proximo);
+      if (efeitoInicio?.perdeTurno) await avancarTurnoIniciativa(proximoId, 0);
+    }
+  }
+}
 async function definirTurnoIniciativa( tokenId, participantes = null ) { const itens = participantes || await OBR.scene.items.getItems( (item) => dadosIniciativaDoItem(item) !== null );
 if (!itens.length) { return; }
 await OBR.scene.items.updateItems( itens.map((item) => item.id), (items) => { for (const item of items) { if (item.id === tokenId) { item.metadata[ META_TURNO_INICIATIVA ] = true; } else { delete item.metadata[ META_TURNO_INICIATIVA ]; } } } );
@@ -2411,7 +2462,10 @@ async function aplicarEfeitosInicioDoTurno(item) {
   return aplicarParalisiaInicioDoTurno(item);
 }
 
-async function avancarTurnoIniciativa(tokenId, saltosAutomaticos = 0) { const iniciativas = iniciativasOrdenadas( await OBR.scene.items.getItems() );
+async function avancarTurnoIniciativa(tokenId, saltosAutomaticos = 0) {
+const todosItens = await OBR.scene.items.getItems();
+const todasIniciativas = iniciativasOrdenadas(todosItens);
+const iniciativas = todasIniciativas.filter(({ item }) => !iniciativaForaDoCampo(item));
 if (!iniciativas.length) { return; }
 let indice = iniciativas.findIndex( ({ item }) => item.id === tokenId );
 if (indice < 0) { indice = iniciativas.findIndex( ({ item }) => item.metadata?.[ META_TURNO_INICIATIVA ] === true ); }
@@ -2422,7 +2476,7 @@ await aplicarEnvenenamentoFimDoTurno(atual);
 await aplicarDormindoFimDoTurno(atual);
 await aplicarConfusaoFimDoTurno(atual);
 const proximo = iniciativas[ (indice + 1) % iniciativas.length ].item;
-await definirTurnoIniciativa( proximo.id, iniciativas.map(({ item }) => item) );
+await definirTurnoIniciativa( proximo.id, todasIniciativas.map(({ item }) => item) );
 const efeitoInicio = await aplicarEfeitosInicioDoTurno(proximo);
 if (efeitoInicio?.perdeTurno && iniciativas.length > 1 && saltosAutomaticos < iniciativas.length - 1) {
   await avancarTurnoIniciativa(proximo.id, saltosAutomaticos + 1);
@@ -2460,6 +2514,7 @@ return `
 }) .join(""); }
 function criarCardApresentadorIniciativa( item, dados, turnoAtual = false ) { const imagem = item.type === "IMAGE" ? item.image?.url || "" : "";
 const nome = item.name || "Token";
+const saiuDoCampo = iniciativaForaDoCampo(item);
 const quantidadeStatus = statusAtivosDoOrganizador( item ).length;
 const linhasStatus = Math.ceil( quantidadeStatus / 3 );
 const alturaStatus = quantidadeStatus === 0 ? 0 : ( linhasStatus * 9 + Math.max( 0, linhasStatus - 1 ) * 2 );
@@ -2469,8 +2524,8 @@ const alturaStatus = quantidadeStatus === 0 ? 0 : ( linhasStatus * 9 + Math.max(
 const margemTurno = quantidadeStatus === 0 ? 1 : alturaStatus + 2;
 return `
         <div
-            class="initCard${turnoAtual ? " turnoAtual" : ""}"
-            title="${esc(nome)}"
+            class="initCard${turnoAtual ? " turnoAtual" : ""}${saiuDoCampo ? " foraCampo" : ""}"
+            title="${esc(nome)}${saiuDoCampo ? " • Saiu do campo" : ""}"
         >
             <div class="initImagemWrap">
                 ${
@@ -2485,6 +2540,12 @@ alt="${esc(nome)}" >
 <div class="initImagemFallback"> 🐾 </div>
 `
                 }
+                <button
+                    class="initCampoToggle${saiuDoCampo ? " ativo" : ""}"
+                    type="button"
+                    data-alternar-campo="${esc(item.id)}"
+                    title="${saiuDoCampo ? "Voltar ao campo" : "Saiu do campo"}"
+                >👁</button>
                 <button
                     class="initRemover"
                     type="button"
@@ -2605,6 +2666,13 @@ papel.innerHTML = `
             }
             .initCard:first-child .initImagemWrap{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.2)}
             .initCard.turnoAtual .initImagemWrap{border-color:#35c978;box-shadow:0 0 0 2px rgba(53,201,120,.22),0 0 12px rgba(53,201,120,.20)}
+            .initCard.foraCampo .initImagemWrap{border-color:#aab0b8!important;background:#e2e5e9!important;box-shadow:none!important}
+            .initCard.foraCampo .initImagem{filter:grayscale(1);opacity:.48}
+            .initCard.foraCampo .initImagemFallback{filter:grayscale(1);opacity:.48}
+            .initCard.foraCampo .initValor{background:#9ca3ad!important;color:#f5f6f7}
+            .initCard.foraCampo .initAjustar{background:#3d4652;border-color:#68717c;opacity:.72}
+            .initCard.foraCampo .initNome{color:#aeb5bf}
+            .initCard.foraCampo .initStatusArea{opacity:.45;filter:grayscale(1)}
             .initImagem{width:100%;height:100%;object-fit:contain;display:block;border-radius:9px}
             .initImagemFallback{font-size:27px;line-height:1}
 
@@ -2675,6 +2743,13 @@ papel.innerHTML = `
             }
             .initAjustar:hover{background:#365273;border-color:#a9c7ef}
             .initNome{width:70px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#eef4ff;font-size:9px;font-weight:800;text-align:center;line-height:1.05}
+            .initCampoToggle{
+                width:20px;height:20px;min-width:20px;min-height:20px;padding:0;position:absolute;top:-7px;left:-8px;z-index:8;
+                display:flex;align-items:center;justify-content:center;border:1px solid #b8c5d6;border-radius:50%;
+                background:#243247;color:#fff;font-size:11px;line-height:1;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.28)
+            }
+            .initCampoToggle:hover{background:#364c69;border-color:#e5edf7}
+            .initCampoToggle.ativo{background:#b8bec6;border-color:#eef1f4;color:#4f5865;filter:grayscale(1)}
             .initRemover{
                 width:18px;height:18px;min-height:18px;padding:0;position:absolute;top:-6px;right:-7px;display:flex;align-items:center;justify-content:center;
                 border:1px solid #ff8585;border-radius:50%;background:#cc3d3d;color:#fff;font-size:13px;font-weight:900;line-height:1;cursor:pointer
@@ -2695,10 +2770,11 @@ const largura = Math.min(920, Math.max(170, viewport - 30), Math.max(170, quanti
 await OBR.popover.setWidth(ID_POPOVER_INICIATIVA, largura);
 await OBR.popover.setHeight(ID_POPOVER_INICIATIVA, 150); } catch (_) {} };
 const renderizar = (items) => { const iniciativas = iniciativasOrdenadas(items);
-const turnoMarcado = iniciativas.find( ({ item }) => item.metadata?.[ META_TURNO_INICIATIVA ] === true );
-const turnoId = turnoMarcado?.item.id || iniciativas[0]?.item.id || "";
+const ativas = iniciativas.filter(({ item }) => !iniciativaForaDoCampo(item));
+const turnoMarcado = ativas.find( ({ item }) => item.metadata?.[ META_TURNO_INICIATIVA ] === true );
+const turnoId = turnoMarcado?.item.id || ativas[0]?.item.id || "";
 const assinatura = iniciativas.map(({item,dados}) =>
-`${item.id}|${dados.total}|${dados.atualizadoEm}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}|${item.id === turnoId ? 1 : 0}|${assinaturaStatusOrganizador(item)}`
+`${item.id}|${dados.total}|${dados.atualizadoEm}|${item.name || ""}|${item.type === "IMAGE" ? item.image?.url || "" : ""}|${item.id === turnoId ? 1 : 0}|${iniciativaForaDoCampo(item) ? 1 : 0}|${assinaturaStatusOrganizador(item)}`
 ).join("§");
 if (assinatura === assinaturaAnterior) return;
 assinaturaAnterior = assinatura;
@@ -2710,7 +2786,7 @@ return; }
 jaTeveParticipantes = true;
 lista.innerHTML = iniciativas .map( ({ item, dados }) => criarCardApresentadorIniciativa( item, dados, item.id === turnoId ) ) .join("");
 ajustarTamanho(iniciativas.length); };
-app.addEventListener("click", async (evento) => { const avancarTurno = evento.target.closest?.( "[data-avancar-turno]" ); if (avancarTurno) { const id = avancarTurno.dataset.avancarTurno; if (id) { avancarTurno.disabled = true; try { await avancarTurnoIniciativa(id); } catch (erro) { console.warn( "Não foi possível avançar o turno:", erro ); } finally { avancarTurno.disabled = false; } } return; } const ajustar = evento.target.closest?.("[data-ajustar-iniciativa]"); if (ajustar) { const id = ajustar.dataset.ajustarIniciativa; const delta = Number(ajustar.dataset.delta); if (id && Number.isFinite(delta) && delta !== 0) { try { await ajustarResultadoIniciativa(id, delta); } catch (erro) { console.warn("Não foi possível ajustar a iniciativa:", erro); } } return; } const remover = evento.target.closest?.("[data-remover-iniciativa]"); const id = remover?.dataset.removerIniciativa; if (!id) return; try { await removerDaIniciativa(id); } catch (erro) { console.warn("Não foi possível remover o participante da iniciativa:", erro); } });
+app.addEventListener("click", async (evento) => { const alternarCampo = evento.target.closest?.("[data-alternar-campo]"); if (alternarCampo) { const id = alternarCampo.dataset.alternarCampo; if (id) { alternarCampo.disabled = true; try { await alternarSaiuDoCampo(id); } catch (erro) { console.warn("Não foi possível alternar o modo Saiu do Campo:", erro); } finally { alternarCampo.disabled = false; } } return; } const avancarTurno = evento.target.closest?.( "[data-avancar-turno]" ); if (avancarTurno) { const id = avancarTurno.dataset.avancarTurno; if (id) { avancarTurno.disabled = true; try { await avancarTurnoIniciativa(id); } catch (erro) { console.warn( "Não foi possível avançar o turno:", erro ); } finally { avancarTurno.disabled = false; } } return; } const ajustar = evento.target.closest?.("[data-ajustar-iniciativa]"); if (ajustar) { const id = ajustar.dataset.ajustarIniciativa; const delta = Number(ajustar.dataset.delta); if (id && Number.isFinite(delta) && delta !== 0) { try { await ajustarResultadoIniciativa(id, delta); } catch (erro) { console.warn("Não foi possível ajustar a iniciativa:", erro); } } return; } const remover = evento.target.closest?.("[data-remover-iniciativa]"); const id = remover?.dataset.removerIniciativa; if (!id) return; try { await removerDaIniciativa(id); } catch (erro) { console.warn("Não foi possível remover o participante da iniciativa:", erro); } });
 renderizar(await OBR.scene.items.getItems());
 OBR.scene.items.onChange(renderizar); }
 const ATRIBUTOS = ["for", "des", "con", "int", "sab", "car"];
