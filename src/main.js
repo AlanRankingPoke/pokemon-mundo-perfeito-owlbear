@@ -2788,11 +2788,37 @@ lista.innerHTML = iniciativas .map( ({ item, dados }) => criarCardApresentadorIn
 ajustarTamanho(iniciativas.length); };
 app.addEventListener("click", async (evento) => { const alternarCampo = evento.target.closest?.("[data-alternar-campo]"); if (alternarCampo) { const id = alternarCampo.dataset.alternarCampo; if (id) { alternarCampo.disabled = true; try { await alternarSaiuDoCampo(id); } catch (erro) { console.warn("Não foi possível alternar o modo Saiu do Campo:", erro); } finally { alternarCampo.disabled = false; } } return; } const avancarTurno = evento.target.closest?.( "[data-avancar-turno]" ); if (avancarTurno) { const id = avancarTurno.dataset.avancarTurno; if (id) { avancarTurno.disabled = true; try { await avancarTurnoIniciativa(id); } catch (erro) { console.warn( "Não foi possível avançar o turno:", erro ); } finally { avancarTurno.disabled = false; } } return; } const ajustar = evento.target.closest?.("[data-ajustar-iniciativa]"); if (ajustar) { const id = ajustar.dataset.ajustarIniciativa; const delta = Number(ajustar.dataset.delta); if (id && Number.isFinite(delta) && delta !== 0) { try { await ajustarResultadoIniciativa(id, delta); } catch (erro) { console.warn("Não foi possível ajustar a iniciativa:", erro); } } return; } const remover = evento.target.closest?.("[data-remover-iniciativa]"); const id = remover?.dataset.removerIniciativa; if (!id) return; try { await removerDaIniciativa(id); } catch (erro) { console.warn("Não foi possível remover o participante da iniciativa:", erro); } });
 renderizar(await OBR.scene.items.getItems());
-OBR.scene.items.onChange(renderizar); }
+let itensPresenterPendentes = null;
+let timerPresenter = null;
+OBR.scene.items.onChange((items) => {
+  itensPresenterPendentes = items;
+  if (timerPresenter) return;
+  timerPresenter = setTimeout(() => {
+    timerPresenter = null;
+    const atuais = itensPresenterPendentes;
+    itensPresenterPendentes = null;
+    if (Array.isArray(atuais)) renderizar(atuais);
+  }, 35);
+}); }
 const ATRIBUTOS = ["for", "des", "con", "int", "sab", "car"];
 const NOMES_ATRIBUTOS = { for: "Força", des: "Destreza", con: "Constituição", int: "Inteligência", sab: "Sabedoria", car: "Carisma" };
 const BUFFS = [ { id: "atq", nome: "ATQ" }, { id: "atqsp", nome: "ATQSP" }, { id: "def", nome: "DEF" }, { id: "defsp", nome: "DEFSP" }, { id: "vel", nome: "VEL" }, { id: "pres", nome: "PRES" }, { id: "evas", nome: "EVAS" }, { id: "crit", nome: "CRIT" } ];
 const PERICIAS = [ { atributo: "FOR", nomeAtributo: "Força", pericias: [ { id: "atletismo", nome: "Atletismo" } ] }, { atributo: "DES", nomeAtributo: "Destreza", pericias: [ { id: "acrobacia", nome: "Acrobacia" }, { id: "furtividade", nome: "Furtividade" }, { id: "prestidigitacao", nome: "Prestidigitação" } ] }, { atributo: "CON", nomeAtributo: "Constituição", pericias: [] }, { atributo: "INT", nomeAtributo: "Inteligência", pericias: [ { id: "arcanismo", nome: "Arcanismo" }, { id: "historia", nome: "História" }, { id: "investigacao", nome: "Investigação" }, { id: "natureza", nome: "Natureza" }, { id: "religiao", nome: "Religião" } ] }, { atributo: "SAB", nomeAtributo: "Sabedoria", pericias: [ { id: "adestrar-animais", nome: "Adestrar Animais" }, { id: "intuicao", nome: "Intuição" }, { id: "medicina", nome: "Medicina" }, { id: "percepcao", nome: "Percepção" }, { id: "sobrevivencia", nome: "Sobrevivência" } ] }, { atributo: "CAR", nomeAtributo: "Carisma", pericias: [ { id: "atuacao", nome: "Atuação" }, { id: "enganacao", nome: "Enganação" }, { id: "intimidacao", nome: "Intimidação" }, { id: "persuasao", nome: "Persuasão" } ] } ];
+const ATRIBUTO_PERICIA_ID = { FOR: "for", DES: "des", CON: "con", INT: "int", SAB: "sab", CAR: "car" };
+function atributoIdDaPericia(atributo) { return ATRIBUTO_PERICIA_ID[String(atributo || "").toUpperCase()] || ""; }
+function bonusAutomaticoPericiaTreinador(token, atributo) {
+  const id = atributoIdDaPericia(atributo);
+  return formatarBonus(id ? modificadorTreinador(token, id) : 0);
+}
+function bonusAutomaticoPericiaPokemon(token, atributo) {
+  const id = atributoIdDaPericia(atributo);
+  return formatarBonus(id ? modificadorPorStatus(statusBaseDoToken(token, id)) : 0);
+}
+function valorPericiaComPadrao(valorSalvo, valorAutomatico) {
+  const texto = String(valorSalvo ?? "").trim();
+  return texto !== "" ? texto : valorAutomatico;
+}
+
 function esc(valor) { return String(valor ?? "") .replaceAll("&", "&amp;") .replaceAll('"', "&quot;") .replaceAll("<", "&lt;") .replaceAll(">", "&gt;"); }
 function limparRotuloDice(texto) { return String(texto || "") .replace(/[#+\-*/(),]/g, " ") .replace(/\s+/g, " ") .trim(); }
 function formatarBonus(valor) { const numero = Number(valor) || 0;
@@ -3253,8 +3279,15 @@ function resumoAlvoCapturaPokemon(item) {
   };
 }
 
+function tokenEstaDisponivelParaCaptura(item) {
+  if (!item || item.type !== "IMAGE") return false;
+  if (!["CHARACTER", "MOUNT"].includes(item.layer)) return false;
+  if (item.visible === false || !item.image?.url) return false;
+  return true;
+}
+
 function pokemonPodeSerAlvoCaptura(item) {
-  if (!tokenEstaDisponivelNaMesa(item)) return false;
+  if (!tokenEstaDisponivelParaCaptura(item)) return false;
   if (item.metadata?.[`${PREFIX}/tipoFicha`] !== "pokemon") return false;
   if (item.metadata?.[META_POKEMON_DONO_TREINADOR]) return false;
   if (String(item.name || "").trim().toLowerCase().startsWith("mega")) return false;
@@ -3298,7 +3331,7 @@ async function tratarSelecaoAlvoCaptura() {
     if (alvo.metadata?.[META_POKEMON_DONO_TREINADOR]) {
       alert("Esse Pokémon já pertence ao roster de um treinador e não pode ser usado como alvo de captura.");
     } else if (tipo !== "pokemon") {
-      alert("Selecione um token que esteja cadastrado como POKÉMON no plugin.");
+      alert("Selecione um Pokémon cadastrado no plugin. O alvo pode estar como PERSONAGEM ou MONTARIA no Owlbear.");
     } else {
       alert("Esse token não pode ser usado como alvo de captura.");
     }
@@ -3884,6 +3917,7 @@ const dataB = Date.parse(b.lastModified || "") || 0;
 if (dataA !== dataB) { return dataB - dataA; }
 return String(a.id).localeCompare(String(b.id)); }
 async function desduplicarHudToken( tokenId, tiposAtivos = TIPOS_VISUAIS_HUD ) { const ativos = new Set(tiposAtivos);
+if (ativos.size === 0) assinaturaHudPublicoPorToken?.delete?.(tokenId);
 const visuais = await OBR.scene.items.getItems( (item) => item.metadata?.[
 `${PREFIX}/statusToken`
 ] === tokenId );
@@ -3977,11 +4011,31 @@ function agendarCorrecaoHudExistente(atraso = 450) {
     });
   }, atraso);
 }
+const temporizadoresDesduplicacaoHud = new Map();
+function agendarDesduplicacaoHudToken(tokenId, tiposAtivos, atraso = 900) {
+  const anterior = temporizadoresDesduplicacaoHud.get(tokenId);
+  if (anterior) clearTimeout(anterior);
+  const timer = setTimeout(() => {
+    temporizadoresDesduplicacaoHud.delete(tokenId);
+    desduplicarHudToken(tokenId, tiposAtivos).catch((erro) =>
+      console.warn("Não foi possível conferir o HUD deste token:", erro)
+    );
+  }, atraso);
+  temporizadoresDesduplicacaoHud.set(tokenId, timer);
+}
 
 async function executarEmFilaHud( tokenId, tarefa ) { const anterior = filaHudPorToken.get(tokenId) || Promise.resolve();
 const atual = anterior .catch(() => {}) .then(tarefa);
 filaHudPorToken.set( tokenId, atual );
 try { return await atual; } finally { if ( filaHudPorToken.get(tokenId) === atual ) { filaHudPorToken.delete(tokenId); } } }
+const assinaturaHudPublicoPorToken = new Map();
+function assinaturaEstadoHudPublico(token, hpAtual, hpMax, ca) {
+  const debuffs = STATUS_DEBUFFS.filter((status) => debuffAtivoNoToken(token, status)).map((status) => status.id);
+  return JSON.stringify([
+    Number(hpAtual) || 0, Number(hpMax) || 0, Number(ca) || 0, debuffs,
+    turnosConfusaoRestantes(token), token?.scale?.x || 1, token?.scale?.y || 1, token?.image?.width || 0, token?.image?.height || 0
+  ]);
+}
 async function criarStatusNoToken( token, hpAtual, hpMax, ca ) {
 if (pokemonEhBoss(token)) {
   await apagarHudCompartilhadoBoss(token.id);
@@ -3992,6 +4046,8 @@ if (pokemonEhBoss(token)) {
   }
   return;
 }
+const assinaturaHud = assinaturaEstadoHudPublico(token, hpAtual, hpMax, ca);
+if (assinaturaHudPublicoPorToken.get(token.id) === assinaturaHud) return;
 return executarEmFilaHud( token.id, async () => { const antigos = await OBR.scene.items.getItems( (item) => item.metadata?.[
 `${PREFIX}/statusToken`
 ] === token.id ); if (antigos.length) { await OBR.scene.items.deleteItems( antigos.map( (item) => item.id ) ); } const bounds = await OBR.scene.items.getItemBounds( [token.id] ); const larguraBarra = Math.max( 100, Math.min( 180, bounds.width * 0.85 ) ); const alturaBarra = Math.max( 20, Math.min( 30, larguraBarra * 0.16 ) ); const tamanhoCA = alturaBarra * 1.4; const espacoCA = alturaBarra * 0.35; const larguraTotal = larguraBarra + espacoCA + tamanhoCA; const inicioX = bounds.min.x + ( (bounds.width - larguraTotal) / 2 ); const barraY = bounds.max.y + Math.max( 8, bounds.height * 0.03 ); let porcentagem = hpMax > 0 ? hpAtual / hpMax : 0; porcentagem = Math.max( 0, Math.min( 1, porcentagem ) ); const larguraVida = larguraBarra * porcentagem; let corVida = "#34C759"; if (porcentagem <= 0.50) { corVida = "#FFD60A"; } if (porcentagem <= 0.25) { corVida = "#FF453A"; } const fundoBarra = prepararVisualHud( buildShape() .shapeType("RECTANGLE") .width(larguraBarra) .height(alturaBarra) .position({ x: inicioX, y: barraY }) .fillColor("#202020") .fillOpacity(1) .strokeColor("#000000") .strokeWidth(2) .layer("ATTACHMENT") .zIndex(0) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
@@ -4066,7 +4122,7 @@ if (status.id === "confuso") {
 }
 } } const elementos = [ fundoBarra ]; if (barraVida) { elementos.push( barraVida ); } elementos.push( circuloCA, textoHP, textoCA, ...visuaisDebuff ); await OBR.scene.items.addItems( elementos ); const tiposAtivos = [ "fundo", "hp-texto", "ca-circulo", "ca-texto" ]; if (barraVida) { tiposAtivos.push("vida"); } for ( const status of debuffsAtivos ) { tiposAtivos.push(
 `debuff-${status.id}`
-); if (status.id === "confuso" && turnosConfusaoRestantes(token) > 0) tiposAtivos.push("debuff-confuso-contador"); } await esperar(80); await desduplicarHudToken( token.id, tiposAtivos ); await esperar(220); await desduplicarHudToken( token.id, tiposAtivos ); } ); }
+); if (status.id === "confuso" && turnosConfusaoRestantes(token) > 0) tiposAtivos.push("debuff-confuso-contador"); } assinaturaHudPublicoPorToken.set(token.id, assinaturaHud); agendarDesduplicacaoHudToken(token.id, tiposAtivos); } ); }
 async function pegarHpCaDaTela(aplicarCalculadora = false) { let hpAtual = Number( document .querySelector("#hpAtual") .value );
 let hpMax = Number( document .querySelector("#hpMax") .value );
 const ca = Number( document .querySelector("#ca") .value );
@@ -4478,10 +4534,10 @@ if (!botaoSalvar || botaoSalvar.dataset.autosaveAtivo === "1") { return; }
 botaoSalvar.dataset.autosaveAtivo = "1";
 botaoSalvar.style.display = "none";
 let temporizador = null;
-const programarSalvamento = (atraso = 650) => { if (temporizador) { clearTimeout(temporizador); }
+const programarSalvamento = (atraso = 700) => { if (temporizador) { clearTimeout(temporizador); }
 temporizador = setTimeout(() => { if (!document.body.contains(botaoSalvar)) { return; } botaoSalvar.click(); }, atraso); };
-app.querySelectorAll("input, textarea, select") .forEach((campo) => { if (campo.id === "alterarHp") { return; } if (campo.classList.contains("movimentoValor")) { return; } if (campo.classList.contains("megaConfigCampo")) { return; } campo.addEventListener("input", () => { programarSalvamento(180); }); campo.addEventListener("change", () => { programarSalvamento(0); }); campo.addEventListener("blur", () => { programarSalvamento(0); }); });
-app.querySelectorAll(".categoriaGolpe") .forEach((botao) => { botao.addEventListener("click", () => { programarSalvamento(120); }); }); }
+app.querySelectorAll("input, textarea, select") .forEach((campo) => { if (campo.id === "alterarHp") { return; } if (campo.classList.contains("movimentoValor")) { return; } if (campo.classList.contains("megaConfigCampo")) { return; } campo.addEventListener("input", () => { programarSalvamento(500); }); campo.addEventListener("change", () => { programarSalvamento(40); }); campo.addEventListener("blur", () => { programarSalvamento(0); }); });
+app.querySelectorAll(".categoriaGolpe") .forEach((botao) => { botao.addEventListener("click", () => { programarSalvamento(220); }); }); }
 const CAMPOS_MOVIMENTACAO = [ { id: "movimentoCaminhada", metaId: "metaMovimentoCaminhada", chave: "movimento-caminhada" }, { id: "movimentoEscalada", metaId: "metaMovimentoEscalada", chave: "movimento-escalada" }, { id: "movimentoVoo", metaId: "metaMovimentoVoo", chave: "movimento-voo" }, { id: "movimentoNatacao", metaId: "metaMovimentoNatacao", chave: "movimento-natacao" }, { id: "movimentoEscavacao", metaId: "metaMovimentoEscavacao", chave: "movimento-escavacao" }, { id: "movimentoFlutuacao", metaId: "metaMovimentoFlutuacao", chave: "movimento-flutuacao" } ];
 function normalizarMovimentoBase(valor) { const numero = numeroDecimal(valor);
 if (numero === null) { return null; }
@@ -6585,11 +6641,17 @@ function nomeTipoMochila(id) {
   return TIPOS_ITEM_MOCHILA.find((tipo) => tipo.id === id)?.nome || "EXTRAS";
 }
 
+let cachePapelJogador = null;
+let cachePapelJogadorEm = 0;
 async function usuarioAtualEhGm() {
+  const agora = Date.now();
+  if (cachePapelJogador && agora - cachePapelJogadorEm < 10000) return cachePapelJogador === "GM";
   try {
-    return (await OBR.player.getRole()) === "GM";
+    cachePapelJogador = await OBR.player.getRole();
+    cachePapelJogadorEm = agora;
+    return cachePapelJogador === "GM";
   } catch (_) {
-    return false;
+    return cachePapelJogador === "GM";
   }
 }
 
@@ -8205,7 +8267,10 @@ function mostrarFichaTreinadorPerNot(token) {
   const valoresPericias = {};
   PERICIAS.forEach((grupo) => {
     grupo.pericias.forEach((pericia) => {
-      valoresPericias[pericia.id] = token.metadata[`${PREFIX}/pericia-${pericia.id}`] ?? "";
+      valoresPericias[pericia.id] = valorPericiaComPadrao(
+        token.metadata[`${PREFIX}/pericia-${pericia.id}`],
+        bonusAutomaticoPericiaTreinador(token, grupo.atributo)
+      );
     });
   });
   const anotacoes = token.metadata[`${PREFIX}/treinador-anotacoes`] ?? "";
@@ -8240,7 +8305,12 @@ function mostrarFichaTreinadorPerNot(token) {
       for (const item of items) {
         PERICIAS.forEach((grupo) => {
           grupo.pericias.forEach((pericia) => {
-            item.metadata[`${PREFIX}/pericia-${pericia.id}`] = novasPericias[pericia.id];
+            const chave = `${PREFIX}/pericia-${pericia.id}`;
+            const valor = String(novasPericias[pericia.id] ?? "").trim();
+            const automatico = bonusAutomaticoPericiaTreinador(token, grupo.atributo);
+            const jaPersonalizada = String(token.metadata?.[chave] ?? "").trim() !== "";
+            if (!valor || (!jaPersonalizada && valor === automatico)) delete item.metadata[chave];
+            else item.metadata[chave] = valor;
           });
         });
         item.metadata[`${PREFIX}/treinador-anotacoes`] = novasAnotacoes;
@@ -12127,6 +12197,7 @@ function dadosBossDoToken(token) {
 }
 
 async function apagarHudCompartilhadoBoss(tokenId) {
+  assinaturaHudPublicoPorToken.delete(tokenId);
   try {
     const antigos = await OBR.scene.items.getItems((item) => item.metadata?.[`${PREFIX}/statusToken`] === tokenId);
     if (antigos.length) await OBR.scene.items.deleteItems(antigos.map((item) => item.id));
@@ -12851,9 +12922,10 @@ function mostrarFichaPokemonDebuffs(token) {
 
 function mostrarFichaPokemonPericias( token ) { const app = document.querySelector("#app");
 const valoresPericias = {};
-PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = token.metadata[
-`${PREFIX}/pokemon-pericia-${pericia.id}`
-] ?? ""; } ); } );
+PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = valorPericiaComPadrao(
+  token.metadata[`${PREFIX}/pokemon-pericia-${pericia.id}`],
+  bonusAutomaticoPericiaPokemon(token, grupo.atributo)
+); } ); } );
 app.innerHTML = `
       ${ESTILO_FICHA}
       ${cabecalhoPokemon(token, 3)}
@@ -12917,7 +12989,12 @@ const salvarPericiasPokemonDaTela = async () => {
     for (const item of items) {
       PERICIAS.forEach((grupo) => {
         grupo.pericias.forEach((pericia) => {
-          item.metadata[`${PREFIX}/pokemon-pericia-${pericia.id}`] = novasPericias[pericia.id];
+          const chave = `${PREFIX}/pokemon-pericia-${pericia.id}`;
+          const valor = String(novasPericias[pericia.id] ?? "").trim();
+          const automatico = bonusAutomaticoPericiaPokemon(token, grupo.atributo);
+          const jaPersonalizada = String(token.metadata?.[chave] ?? "").trim() !== "";
+          if (!valor || (!jaPersonalizada && valor === automatico)) delete item.metadata[chave];
+          else item.metadata[chave] = valor;
         });
       });
     }
@@ -13014,8 +13091,73 @@ app.innerHTML = `
               </div>
             `;
 } } }
+let assinaturaRosterCenaAnterior = "";
+let assinaturaBossCenaAnterior = "";
+let timerMudancaCenaOtimizada = null;
+let itensMudancaCenaPendentes = null;
+
+function metadataRelevanteParaRoster(item) {
+  const resultado = {};
+  const ignorar = new Set([META_INICIATIVA_TRACKER, META_TURNO_INICIATIVA, META_SAIU_DO_CAMPO, META_POKEMON_DONO_TREINADOR, META_POKEMON_SLOT_TREINADOR, META_CAPTURA_LOCK]);
+  for (const [chave, valor] of Object.entries(item?.metadata || {})) {
+    if (!chave.startsWith(`${PREFIX}/`) || ignorar.has(chave)) continue;
+    resultado[chave] = valor;
+  }
+  return resultado;
+}
+
+function assinaturaRosterDaCena(items) {
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => item?.type === "IMAGE" && item.metadata?.[META_POKEMON_DONO_TREINADOR] && item.metadata?.[META_POKEMON_SLOT_TREINADOR])
+    .map((item) => JSON.stringify([
+      item.id, item.metadata[META_POKEMON_DONO_TREINADOR], item.metadata[META_POKEMON_SLOT_TREINADOR],
+      item.name || "", item.image?.url || "", item.image?.width || 0, item.image?.height || 0,
+      item.rotation || 0, item.scale?.x || 1, item.scale?.y || 1, metadataRelevanteParaRoster(item)
+    ]))
+    .sort()
+    .join("§");
+}
+
+function assinaturaBossDaCena(items) {
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => pokemonEhBoss(item))
+    .map((item) => JSON.stringify([
+      item.id, item.metadata?.[`${PREFIX}/hpAtual`], item.metadata?.[`${PREFIX}/hpMax`], item.metadata?.[`${PREFIX}/ca`],
+      item.metadata?.[`${PREFIX}/buff-evas`], item.metadata?.[META_BOSS_ATIVO], item.metadata?.[META_BOSS_RAGE],
+      item.metadata?.[META_BOSS_CARINHO], item.metadata?.[META_BOSS_RESISTENCIA], item.image?.url || "",
+      item.image?.width || 0, item.image?.height || 0, item.scale?.x || 1, item.scale?.y || 1
+    ]))
+    .sort()
+    .join("§");
+}
+
+function processarMudancaCenaOtimizada(items) {
+  const assinaturaRoster = assinaturaRosterDaCena(items);
+  if (assinaturaRoster !== assinaturaRosterCenaAnterior) {
+    assinaturaRosterCenaAnterior = assinaturaRoster;
+    agendarSincronizacaoRosterEmCampo();
+  }
+  const assinaturaBoss = assinaturaBossDaCena(items);
+  if (assinaturaBoss !== assinaturaBossCenaAnterior) {
+    assinaturaBossCenaAnterior = assinaturaBoss;
+    agendarSincronizacaoHudsBossPrivados(120);
+    protegerFichaBossSelecionada();
+  }
+}
+
+function agendarMudancaCenaOtimizada(items) {
+  itensMudancaCenaPendentes = items;
+  if (timerMudancaCenaOtimizada) clearTimeout(timerMudancaCenaOtimizada);
+  timerMudancaCenaOtimizada = setTimeout(() => {
+    timerMudancaCenaOtimizada = null;
+    const atuais = itensMudancaCenaPendentes;
+    itensMudancaCenaPendentes = null;
+    if (Array.isArray(atuais)) processarMudancaCenaOtimizada(atuais);
+  }, 80);
+}
+
 let pluginInicializado = false;
-OBR.onReady( async () => { if (pluginInicializado) return; pluginInicializado = true; if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: true } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); agendarSincronizacaoHudsBossPrivados(50); OBR.scene.items.onChange(() => { agendarSincronizacaoRosterEmCampo(); agendarCorrecaoHudExistente(); agendarSincronizacaoHudsBossPrivados(); protegerFichaBossSelecionada(); }); OBR.player.onChange( async () => {
+OBR.onReady( async () => { if (pluginInicializado) return; pluginInicializado = true; if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: false } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); agendarSincronizacaoHudsBossPrivados(50); OBR.scene.items.onChange((items) => { agendarMudancaCenaOtimizada(items); }); OBR.player.onChange( async () => {
     try {
       if (await tratarSelecaoAlvoCaptura()) return;
     } catch (erro) {
