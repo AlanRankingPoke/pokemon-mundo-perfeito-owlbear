@@ -26,6 +26,13 @@ const META_TREINADOR_CLASSE = `${PREFIX}/treinador-classe`;
 const META_TREINADOR_POKEDOLS = `${PREFIX}/treinador-pokedols`;
 const META_TREINADOR_MOCHILA = `${PREFIX}/treinador-mochila`;
 const META_MESTRE_ENCONTROS = `${PREFIX}/mestre-encontros`;
+const META_MESTRE_POKEMON_SELVAGENS = `${PREFIX}/mestre-pokemon-selvagens`;
+const META_SELVAGEM_MESTRE_DONO = `${PREFIX}/selvagem-mestre-dono`;
+const META_SELVAGEM_SLOT = `${PREFIX}/selvagem-slot`;
+const META_SELVAGEM_POKEDEX = `${PREFIX}/selvagem-pokedex`;
+const META_SELVAGEM_COMPORTAMENTO = `${PREFIX}/selvagem-comportamento`;
+const META_SELVAGEM_NATURE = `${PREFIX}/selvagem-nature`;
+const QUANTIDADE_POKEMON_SELVAGENS = 16;
 const META_MESTRE_REGRAS = `${PREFIX}/mestre-regras`;
 const META_MESTRE_BOSSES = `${PREFIX}/mestre-bosses`;
 const META_BOSS_ATIVO = `${PREFIX}/boss-ativo`;
@@ -11858,6 +11865,262 @@ function mostrarFichaMestreEncontros(token) {
   });
 }
 
+
+// ============================================================
+// ENCONTROS COM POKÉMON SELVAGENS — 16 SLOTS / POKÉDEX
+// A tabela de Natures será adicionada quando for fornecida.
+// ============================================================
+const COMPORTAMENTOS_POKEMON_SELVAGENS = [
+  {nome:"Tímido e guloso", texto:"Evita contato visual, mas se aproxima devagar quando sente cheiro de Berries."},
+  {nome:"Faminto", texto:"Está magrinho e fraco; procura desesperadamente alguma coisa para comer."},
+  {nome:"Bem alimentado", texto:"Está bem gordinho, satisfeito e pouco disposto a se movimentar."},
+  {nome:"Machucado", texto:"Apresenta pequenos ferimentos e observa qualquer aproximação com cautela."},
+  {nome:"Brincalhão", texto:"Corre em círculos e tenta convidar outros Pokémon para brincar."},
+  {nome:"Protetor", texto:"Fica entre os viajantes e algo que claramente está tentando proteger."},
+  {nome:"Assustado", texto:"Se esconde ao menor ruído e parece ter fugido de algum perigo."},
+  {nome:"Curioso", texto:"Aproxima-se de mochilas e objetos desconhecidos para investigá-los."},
+  {nome:"Sonolento", texto:"Boceja bastante e procura um lugar seguro para tirar uma soneca."},
+  {nome:"Territorial", texto:"Marca seu espaço e tenta afastar qualquer intruso."},
+  {nome:"Carinhoso", texto:"Procura atenção, companhia e carinho de quem pareça amigável."},
+  {nome:"Arisco", texto:"Não confia em ninguém e recua sempre que alguém chega perto."},
+  {nome:"Agitado", texto:"Está cheio de energia e não consegue ficar parado por muito tempo."},
+  {nome:"Triste", texto:"Parece abatido e procura alguma coisa ou alguém que perdeu."},
+  {nome:"Competitivo", texto:"Provoca outros Pokémon e busca qualquer oportunidade para disputar algo."},
+  {nome:"Travesso", texto:"Rouba pequenos objetos e foge para ver se alguém o persegue."},
+  {nome:"Desorientado", texto:"Caminha sem rumo, como se estivesse perdido ou longe de seu habitat."},
+  {nome:"Sociável", texto:"Tenta se integrar ao grupo e imitar as ações de quem está por perto."},
+  {nome:"Agressivo", texto:"Rosna e assume uma postura de combate diante de aproximações bruscas."},
+  {nome:"Colecionador", texto:"Reúne pedrinhas, folhas e pequenos objetos para guardar em um esconderijo."}
+];
+
+// Preencher futuramente com a tabela oficial enviada pelo mestre.
+// Exemplo de formato: { nome: "Nature", atributos: { for: 2, des: -2 } }
+const NATURES_POKEMON_SELVAGENS = [];
+
+function normalizarBancoPokemonSelvagem(valor) {
+  const origem = valor && typeof valor === "object" ? valor : {};
+  return {
+    versao: 1,
+    banco: Array.from({length: QUANTIDADE_POKEMON_SELVAGENS}, (_, i) => {
+      const slot = Array.isArray(origem.banco) ? origem.banco[i] : null;
+      if (!slot?.forma?.url || !slot?.metadata || typeof slot.metadata !== "object") return null;
+      return {
+        nome: String(slot.nome || "Pokémon").slice(0, 100),
+        forma: clonarDadosSimples(slot.forma),
+        rotation: Number(slot.rotation) || 0,
+        metadata: clonarDadosSimples(slot.metadata),
+        pokedex: String(slot.pokedex || "").slice(0, 5000)
+      };
+    }),
+    resultado: origem.resultado && typeof origem.resultado === "object" ? clonarDadosSimples(origem.resultado) : null
+  };
+}
+function bancoPokemonSelvagem(mestre) {
+  return normalizarBancoPokemonSelvagem(mestre?.metadata?.[META_MESTRE_POKEMON_SELVAGENS]);
+}
+async function salvarBancoPokemonSelvagem(mestre, estado) {
+  const normal = normalizarBancoPokemonSelvagem(estado);
+  await salvarMetadataMestre(mestre, META_MESTRE_POKEMON_SELVAGENS, normal);
+  return normal;
+}
+function naturePokemonSelvagem() {
+  if (!NATURES_POKEMON_SELVAGENS.length) return null;
+  return clonarDadosSimples(itemAleatorio(NATURES_POKEMON_SELVAGENS));
+}
+function aplicarNatureSelvagem(metadata, nature) {
+  if (!nature?.atributos) return;
+  for (const atributo of ["for", "des", "con", "int", "sab", "car"]) {
+    const delta = Number(nature.atributos[atributo] || 0);
+    if (!Number.isFinite(delta) || !delta) continue;
+    const chave = `${PREFIX}/status-${atributo}`;
+    const atual = Number(metadata[chave]);
+    const modAntigo = Number(metadata[`${PREFIX}/mod-${atributo}`] || 0);
+    const base = Number.isFinite(atual) ? atual : 10 + (Number.isFinite(modAntigo) ? modAntigo * 2 : 0);
+    metadata[chave] = Math.trunc(base + delta);
+    metadata[`${PREFIX}/mod-${atributo}`] = modificadorPorStatus(metadata[chave]);
+  }
+}
+async function pokemonSelvagensEmCena(mestreId) {
+  return OBR.scene.items.getItems(item => item.type === "IMAGE" && item.metadata?.[META_SELVAGEM_MESTRE_DONO] === mestreId);
+}
+async function refrescarFichaPokemonSelvagem(mestre) {
+  const atualizado = await pegarTokenAtualizado(mestre.id);
+  if (atualizado) mostrarFichaMestrePokemonSelvagens(atualizado);
+}
+async function colocarPokemonSelvagemNaCena(mestre) {
+  const mestreAtual = await pegarTokenAtualizado(mestre.id) || mestre;
+  const estado = bancoPokemonSelvagem(mestreAtual);
+  const resultado = estado.resultado;
+  const indice = Number(resultado?.slotIndice);
+  if (!resultado || !Number.isInteger(indice) || indice < 0 || indice >= QUANTIDADE_POKEMON_SELVAGENS)
+    throw new Error("Sorteie um Pokémon antes de colocá-lo na cena.");
+  const slot = estado.banco[indice];
+  if (!slot?.forma?.url) throw new Error("O Pokémon sorteado não está mais no banco.");
+  const emCena = await pokemonSelvagensEmCena(mestreAtual.id);
+  if (emCena.some(item => Number(item.metadata?.[META_SELVAGEM_SLOT]) === indice))
+    throw new Error("Esse slot já está em uso na cena. Retire o Pokémon antes de sortear novamente.");
+  const alvo = await pontoUmGridNaFrenteDoTreinador(mestreAtual);
+  const forma = slot.forma;
+  const imagem = {url: forma.url, mime: forma.mime || "image/webp", width: Math.max(1, Number(forma.width) || 1), height: Math.max(1, Number(forma.height) || 1)};
+  const metadata = clonarDadosSimples(slot.metadata) || {};
+  metadata[`${PREFIX}/tipoFicha`] = "pokemon";
+  metadata[META_MEGA_ATIVA] = false;
+  metadata[META_SELVAGEM_MESTRE_DONO] = mestreAtual.id;
+  metadata[META_SELVAGEM_SLOT] = indice;
+  metadata[META_SELVAGEM_POKEDEX] = slot.pokedex;
+  metadata[META_SELVAGEM_COMPORTAMENTO] = clonarDadosSimples(resultado.comportamento);
+  metadata[META_SELVAGEM_NATURE] = clonarDadosSimples(resultado.nature);
+  aplicarNatureSelvagem(metadata, resultado.nature);
+  const novo = buildImage(imagem, copiarGridMega(forma.grid, imagem))
+    .name(slot.nome).position(alvo).rotation(slot.rotation)
+    .scale({x: Number(forma.scale?.x) || 1, y: Number(forma.scale?.y) || 1})
+    .layer("CHARACTER").locked(false).metadata(metadata).build();
+  await OBR.scene.items.addItems([novo]);
+  try {
+    await centralizarItemNoPonto(novo.id, alvo);
+    const atualizado = (await OBR.scene.items.getItems([novo.id]))?.[0] || novo;
+    await criarStatusNoToken(atualizado, Number(metadata[`${PREFIX}/hpAtual`] ?? 100) || 0,
+      Math.max(1, Number(metadata[`${PREFIX}/hpMax`] ?? 100) || 1),
+      (Number(metadata[`${PREFIX}/ca`] ?? 10) || 0) + (Number(metadata[`${PREFIX}/buff-evas`] ?? 0) || 0));
+  } catch(erro) { console.error("Aviso: HUD do Pokémon selvagem:", erro); }
+  estado.resultado = {...resultado, campoId: novo.id};
+  await salvarBancoPokemonSelvagem(mestreAtual, estado);
+  await refrescarFichaPokemonSelvagem(mestreAtual);
+  return novo;
+}
+function mostrarFichaMestrePokemonSelvagens(mestre) {
+  const app = document.querySelector("#app");
+  if (!app) return;
+  const estado = bancoPokemonSelvagem(mestre);
+  const ocupados = estado.banco.filter(Boolean).length;
+  const r = estado.resultado;
+  const slotResultado = r && estado.banco[r.slotIndice];
+  app.innerHTML = `${ESTILO_FICHA}${cabecalhoMestre(mestre, 4)}
+    <style>
+    .selvPainel{border:1px solid #202020;border-radius:12px;padding:12px;background:#fff}
+    .selvGrade{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+    .selvSlot{position:relative;min-width:0;border:1px solid #222;border-radius:9px;min-height:94px;background:#fff8f8;text-align:center;padding:7px 2px}
+    .selvSlot img{width:54px;height:54px;object-fit:contain;display:block;margin:auto}
+    .selvSlot small{font-size:9px;font-weight:900;display:block;overflow:hidden;text-overflow:ellipsis}
+    .selvSlot button{font-size:10px!important;min-height:30px!important}
+    .selvBotao{width:100%;margin-top:10px!important;padding:12px!important}
+    .selvCard{border:1px solid #202020;border-radius:10px;background:#fff8f8;padding:10px;margin-top:10px}
+    .selvCard p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px!important;font-weight:500!important}
+    .selvModal{position:fixed;inset:0;background:#000a;z-index:9999;display:none;align-items:center;justify-content:center;padding:10px}
+    .selvModal>div{background:#fff;border:2px solid #222;border-radius:12px;max-height:85vh;overflow-y:auto;padding:12px;width:min(430px,100%)}
+    .selvEscolha{display:flex;align-items:center;gap:9px;width:100%;margin:6px 0!important;padding:6px!important;text-align:left}
+    .selvEscolha img{width:52px;height:52px;object-fit:contain}
+    </style>
+    <section class="selvPainel">
+    <h3>🌿 ENCONTROS COM POKÉMON SELVAGENS</h3>
+    <p>${ocupados}/${QUANTIDADE_POKEMON_SELVAGENS} Pokémon cadastrados. Escolha tokens que já possuem uma ficha Pokémon preenchida.</p>
+    <div class="selvGrade">${estado.banco.map((slot,i) => `<div class="selvSlot">
+      ${slot ? `<img src="${esc(slot.forma.url)}" alt=""><small>${esc(slot.nome)}</small>
+      <button data-selv-edit="${i}" type="button">POKÉDEX</button><button data-selv-remove="${i}" type="button" title="Remover">×</button>`
+      : `<button data-selv-add="${i}" type="button" style="width:100%;height:85px;">＋<br>SLOT ${i+1}</button>`}
+      </div>`).join("")}</div>
+    <button class="selvBotao" id="selvSortear" type="button" ${ocupados ? "" : "disabled"}>🎲 SORTEAR POKÉMON</button>
+    ${slotResultado ? `<div class="selvCard"><strong>🎲 ${esc(slotResultado.nome)}</strong>
+      <p><b>Comportamento:</b> ${esc(r.comportamento?.nome || "—")} — ${esc(r.comportamento?.texto || "—")}</p>
+      <p><b>Nature:</b> ${esc(r.nature?.nome || "Aguardando tabela de Natures")}</p>
+      <p><b>POKÉDEX:</b> ${esc(slotResultado.pokedex || "Nenhuma anotação cadastrada.")}</p>
+      <button id="selvSoltar" type="button">COLOCAR POKÉMON NO MAPA</button>
+      <button id="selvLimpar" type="button">LIMPAR RESULTADO</button></div>` : ""}
+    <div id="selvMensagem" class="selvCard" style="display:none"></div>
+    </section>
+    <div id="selvModal" class="selvModal"><div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><strong id="selvModalTitulo">POKÉMON</strong><button id="selvFechar" type="button">✕</button></div>
+      <div id="selvModalConteudo"></div>
+    </div></div>`;
+  ativarCabecalhoMestre(mestre);
+  const modal = document.querySelector("#selvModal");
+  const titulo = document.querySelector("#selvModalTitulo");
+  const conteudo = document.querySelector("#selvModalConteudo");
+  const fechar = () => { modal.style.display = "none"; };
+  document.querySelector("#selvFechar")?.addEventListener("click", fechar);
+  modal.addEventListener("click", e => { if(e.target === modal) fechar(); });
+  function editarPokedex(indice) {
+    const slot = bancoPokemonSelvagem(mestre).banco[indice];
+    if (!slot) return;
+    titulo.textContent = `POKÉDEX — ${slot.nome}`;
+    conteudo.innerHTML = `<p>Escreva curiosidades e informações para aparecerem na ficha do mestre quando esse Pokémon for sorteado.</p>
+      <textarea id="selvPokedexTexto" rows="9" maxlength="5000" style="width:100%;"></textarea>
+      <button id="selvPokedexSalvar" type="button" style="width:100%;margin-top:8px">SALVAR POKÉDEX</button>`;
+    document.querySelector("#selvPokedexTexto").value = slot.pokedex;
+    modal.style.display = "flex";
+    document.querySelector("#selvPokedexSalvar").addEventListener("click", async e => {
+      e.currentTarget.disabled = true;
+      try {
+        const novo = bancoPokemonSelvagem(mestre);
+        if (!novo.banco[indice]) throw new Error("Slot não encontrado.");
+        novo.banco[indice].pokedex = document.querySelector("#selvPokedexTexto").value;
+        await salvarBancoPokemonSelvagem(mestre, novo);
+        await refrescarFichaPokemonSelvagem(mestre);
+      } catch(err) { alert(err.message); e.currentTarget.disabled = false; }
+    });
+  }
+  document.querySelectorAll("[data-selv-add]").forEach(btn => btn.addEventListener("click", async () => {
+    const indice = Number(btn.dataset.selvAdd);
+    titulo.textContent = `REGISTRAR POKÉMON — SLOT ${indice+1}`;
+    conteudo.textContent = "Procurando Pokémon com ficha no mapa...";
+    modal.style.display = "flex";
+    try {
+      const tokens = await OBR.scene.items.getItems(item => item.type === "IMAGE" && item.id !== mestre.id &&
+        item.metadata?.[`${PREFIX}/tipoFicha`] === "pokemon" && !item.metadata?.[META_SELVAGEM_MESTRE_DONO]);
+      conteudo.innerHTML = tokens.length ? tokens.map(t => `<button class="selvEscolha" type="button" data-selv-token="${esc(t.id)}">
+        <img src="${esc(t.image?.url || "")}" alt=""><span>${esc(t.name || "Pokémon")}</span></button>`).join("")
+        : "Nenhum token com ficha Pokémon encontrado na cena.";
+      conteudo.querySelectorAll("[data-selv-token]").forEach(b => b.addEventListener("click", async () => {
+        b.disabled = true;
+        try {
+          const item = (await OBR.scene.items.getItems([b.dataset.selvToken]))?.[0];
+          if (!item || item.metadata?.[`${PREFIX}/tipoFicha`] !== "pokemon") throw new Error("Pokémon indisponível.");
+          const snapshot = snapshotPokemonParaTreinador(item);
+          if (!snapshot) throw new Error("Não foi possível armazenar esse Pokémon.");
+          const novo = bancoPokemonSelvagem(mestre);
+          if (novo.banco[indice]) throw new Error("Esse slot já está ocupado.");
+          novo.banco[indice] = {nome:snapshot.nome, forma:snapshot.forma, rotation:snapshot.rotation,
+            metadata:snapshot.metadata, pokedex:""};
+          await salvarBancoPokemonSelvagem(mestre, novo);
+          // O original permanece na mesa para não apagar fichas já criadas.
+          await refrescarFichaPokemonSelvagem(mestre);
+          document.querySelector(`[data-selv-edit="${indice}"]`)?.click();
+        } catch(err) { alert(err.message); b.disabled = false; }
+      }));
+    } catch(err) { conteudo.textContent = err.message; }
+  }));
+  document.querySelectorAll("[data-selv-edit]").forEach(b => b.addEventListener("click", () => editarPokedex(Number(b.dataset.selvEdit))));
+  document.querySelectorAll("[data-selv-remove]").forEach(b => b.addEventListener("click", async () => {
+    const indice = Number(b.dataset.selvRemove);
+    if (!confirm("Remover Pokémon deste slot? O token original será preservado.")) return;
+    const novo = bancoPokemonSelvagem(mestre);
+    novo.banco[indice] = null;
+    if (novo.resultado?.slotIndice === indice) novo.resultado = null;
+    await salvarBancoPokemonSelvagem(mestre, novo);
+    await refrescarFichaPokemonSelvagem(mestre);
+  }));
+  document.querySelector("#selvSortear")?.addEventListener("click", async () => {
+    const novo = bancoPokemonSelvagem(mestre);
+    const emCena = await pokemonSelvagensEmCena(mestre.id);
+    const usados = new Set(emCena.map(t => Number(t.metadata?.[META_SELVAGEM_SLOT])));
+    const indices = novo.banco.map((s,i) => s && !usados.has(i) ? i : -1).filter(i => i >= 0);
+    if (!indices.length) { alert("Não há Pokémon livres nos slots. Remova algum encontro do mapa para sortear novamente."); return; }
+    novo.resultado = {slotIndice:itemAleatorio(indices), comportamento:itemAleatorio(COMPORTAMENTOS_POKEMON_SELVAGENS),
+      nature:naturePokemonSelvagem(), sorteadoEm:Date.now(), campoId:null};
+    await salvarBancoPokemonSelvagem(mestre, novo);
+    await refrescarFichaPokemonSelvagem(mestre);
+  });
+  document.querySelector("#selvSoltar")?.addEventListener("click", async e => {
+    e.currentTarget.disabled = true;
+    try { await colocarPokemonSelvagemNaCena(mestre); }
+    catch(err) { console.error(err); alert(err.message || "Erro ao criar Pokémon."); e.currentTarget.disabled = false; }
+  });
+  document.querySelector("#selvLimpar")?.addEventListener("click", async () => {
+    const novo = bancoPokemonSelvagem(mestre); novo.resultado = null;
+    await salvarBancoPokemonSelvagem(mestre, novo); await refrescarFichaPokemonSelvagem(mestre);
+  });
+}
+
 const REGRAS_MESTRE_INICIAIS = [
   {
     titulo: "Voo, Flutuação, Escavação e Dano de Queda",
@@ -12431,8 +12694,9 @@ function menuMestre(paginaAtual) {
       color:${paginaAtual === pagina ? "#ffffff" : "#111111"}!important;
       border:${paginaAtual === pagina ? "1px solid #8f1111" : "1px solid #202020"}!important;
     ">${rotulo}</button>`;
-  return `<div class="fichaAbas" style="display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;margin-bottom:13px!important;">
+  return `<div class="fichaAbas" style="display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important;margin-bottom:13px!important;">
     ${aba("paginaMestre1",1,"ENCONTROS")}
+    ${aba("paginaMestre4",4,"SELVAGENS")}
     ${aba("paginaMestre2",2,"REGRAS")}
     ${aba("paginaMestre3",3,"POKÉMONS BOSS")}
   </div>`;
@@ -12465,6 +12729,9 @@ function ativarCabecalhoMestre(token) {
   ativarPersonalizacaoFicha(token);
   document.querySelector("#paginaMestre1")?.addEventListener("click", async () => {
     const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreEncontros(atual);
+  });
+  document.querySelector("#paginaMestre4")?.addEventListener("click", async () => {
+    const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestrePokemonSelvagens(atual);
   });
   document.querySelector("#paginaMestre2")?.addEventListener("click", async () => {
     const atual = await pegarTokenAtualizado(token.id); if (atual) mostrarFichaMestreRegras(atual);
