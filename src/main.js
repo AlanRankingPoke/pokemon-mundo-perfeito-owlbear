@@ -11868,7 +11868,7 @@ function mostrarFichaMestreEncontros(token) {
 
 // ============================================================
 // ENCONTROS COM POKÉMON SELVAGENS — 16 SLOTS / POKÉDEX
-// A tabela de Natures será adicionada quando for fornecida.
+// Natures oficiais fornecidas pelo mestre. Alteram os valores brutos de status e a CA.
 // ============================================================
 const COMPORTAMENTOS_POKEMON_SELVAGENS = [
   {nome:"Tímido e guloso", texto:"Evita contato visual, mas se aproxima devagar quando sente cheiro de Berries."},
@@ -11893,9 +11893,152 @@ const COMPORTAMENTOS_POKEMON_SELVAGENS = [
   {nome:"Colecionador", texto:"Reúne pedrinhas, folhas e pequenos objetos para guardar em um esconderijo."}
 ];
 
-// Preencher futuramente com a tabela oficial enviada pelo mestre.
-// Exemplo de formato: { nome: "Nature", atributos: { for: 2, des: -2 } }
-const NATURES_POKEMON_SELVAGENS = [];
+const NATURES_POKEMON_SELVAGENS = [
+  {
+    "nome": "Alegre",
+    "atributos": {
+      "for": -2,
+      "car": 2
+    }
+  },
+  {
+    "nome": "Apático",
+    "atributos": {
+      "con": 2,
+      "car": -2
+    }
+  },
+  {
+    "nome": "Apressado",
+    "atributos": {
+      "con": -2,
+      "des": 2
+    }
+  },
+  {
+    "nome": "Arrogante",
+    "atributos": {
+      "des": -2,
+      "for": 2
+    }
+  },
+  {
+    "nome": "Astuto",
+    "atributos": {
+      "for": -2,
+      "ca": 1
+    }
+  },
+  {
+    "nome": "Corajoso",
+    "atributos": {
+      "sab": -2,
+      "for": 2
+    }
+  },
+  {
+    "nome": "Curioso",
+    "atributos": {
+      "sab": -2,
+      "des": 2
+    }
+  },
+  {
+    "nome": "Determinado",
+    "atributos": {
+      "for": -2,
+      "des": 2
+    }
+  },
+  {
+    "nome": "Energético",
+    "atributos": {
+      "car": -2,
+      "des": 2
+    }
+  },
+  {
+    "nome": "Impulsivo",
+    "atributos": {
+      "con": -2,
+      "for": 2
+    }
+  },
+  {
+    "nome": "Ingênuo",
+    "atributos": {
+      "sab": -2,
+      "car": 2
+    }
+  },
+  {
+    "nome": "No Nature",
+    "atributos": {}
+  },
+  {
+    "nome": "Preguiçoso",
+    "atributos": {
+      "con": 2,
+      "for": -2
+    }
+  },
+  {
+    "nome": "Prudente",
+    "atributos": {
+      "sab": 2,
+      "for": -2
+    }
+  },
+  {
+    "nome": "Sábio",
+    "atributos": {
+      "sab": 2,
+      "con": -2
+    }
+  },
+  {
+    "nome": "Sereno",
+    "atributos": {
+      "con": 2,
+      "des": -2
+    }
+  },
+  {
+    "nome": "Sério",
+    "atributos": {
+      "car": -2,
+      "for": 2
+    }
+  },
+  {
+    "nome": "Sociável",
+    "atributos": {
+      "des": -2,
+      "car": 2
+    }
+  },
+  {
+    "nome": "Teimoso",
+    "atributos": {
+      "con": 2,
+      "sab": -2
+    }
+  },
+  {
+    "nome": "Tímido",
+    "atributos": {
+      "des": -2,
+      "ca": 1
+    }
+  },
+  {
+    "nome": "Travesso",
+    "atributos": {
+      "sab": 2,
+      "car": -2
+    }
+  }
+];
 
 function normalizarBancoPokemonSelvagem(valor) {
   const origem = valor && typeof valor === "object" ? valor : {};
@@ -11927,19 +12070,39 @@ function naturePokemonSelvagem() {
   if (!NATURES_POKEMON_SELVAGENS.length) return null;
   return clonarDadosSimples(itemAleatorio(NATURES_POKEMON_SELVAGENS));
 }
+function detalhesNatureSelvagem(nature) {
+  if (!nature) return "—";
+  const nomes = {for:"STR", des:"DEX", con:"CON", int:"INT", sab:"WIS", car:"CHA", ca:"AC"};
+  const alteracoes = Object.entries(nature.atributos || {})
+    .filter(([id, valor]) => nomes[id] && Number.isFinite(Number(valor)) && Number(valor) !== 0)
+    .map(([id, valor]) => `${nomes[id]} ${Number(valor) > 0 ? "+" : ""}${Number(valor)}`);
+  return alteracoes.length ? alteracoes.join(" • ") : "Sem alterações";
+}
 function aplicarNatureSelvagem(metadata, nature) {
-  if (!nature?.atributos) return;
+  if (!nature || !metadata || typeof metadata !== "object") return;
+  // Marcador de aplicação torna a operação idempotente: nunca duplica bônus.
+  if (metadata[`${PREFIX}/selvagem-nature-aplicada`] === true) return;
+  const atributos = nature.atributos || {};
   for (const atributo of ["for", "des", "con", "int", "sab", "car"]) {
-    const delta = Number(nature.atributos[atributo] || 0);
-    if (!Number.isFinite(delta) || !delta) continue;
+    const delta = Number(atributos[atributo] ?? 0);
+    if (!Number.isFinite(delta) || delta === 0) continue;
     const chave = `${PREFIX}/status-${atributo}`;
-    const atual = Number(metadata[chave]);
-    const modAntigo = Number(metadata[`${PREFIX}/mod-${atributo}`] || 0);
-    const base = Number.isFinite(atual) ? atual : 10 + (Number.isFinite(modAntigo) ? modAntigo * 2 : 0);
+    const bruto = metadata[chave];
+    const salvo = bruto === undefined || bruto === null || String(bruto).trim() === "" ? NaN : Number(bruto);
+    const legado = Number(metadata[`${PREFIX}/mod-${atributo}`] ?? 0);
+    const base = Number.isFinite(salvo) ? salvo : 10 + (Number.isFinite(legado) ? legado * 2 : 0);
     metadata[chave] = Math.trunc(base + delta);
     metadata[`${PREFIX}/mod-${atributo}`] = modificadorPorStatus(metadata[chave]);
   }
+  const ca = Number(atributos.ca ?? 0);
+  if (Number.isFinite(ca) && ca !== 0) {
+    const chaveCa = `${PREFIX}/ca`;
+    const original = Number(metadata[chaveCa]);
+    metadata[chaveCa] = (Number.isFinite(original) ? original : 10) + ca;
+  }
+  metadata[`${PREFIX}/selvagem-nature-aplicada`] = true;
 }
+
 async function pokemonSelvagensEmCena(mestreId) {
   return OBR.scene.items.getItems(item => item.type === "IMAGE" && item.metadata?.[META_SELVAGEM_MESTRE_DONO] === mestreId);
 }
@@ -11970,6 +12133,7 @@ async function colocarPokemonSelvagemNaCena(mestre) {
   metadata[META_SELVAGEM_POKEDEX] = slot.pokedex;
   metadata[META_SELVAGEM_COMPORTAMENTO] = clonarDadosSimples(resultado.comportamento);
   metadata[META_SELVAGEM_NATURE] = clonarDadosSimples(resultado.nature);
+  delete metadata[`${PREFIX}/selvagem-nature-aplicada`];
   aplicarNatureSelvagem(metadata, resultado.nature);
   const novo = buildImage(imagem, copiarGridMega(forma.grid, imagem))
     .name(slot.nome).position(alvo).rotation(slot.rotation)
@@ -12022,7 +12186,7 @@ function mostrarFichaMestrePokemonSelvagens(mestre) {
     <button class="selvBotao" id="selvSortear" type="button" ${ocupados ? "" : "disabled"}>🎲 SORTEAR POKÉMON</button>
     ${slotResultado ? `<div class="selvCard"><strong>🎲 ${esc(slotResultado.nome)}</strong>
       <p><b>Comportamento:</b> ${esc(r.comportamento?.nome || "—")} — ${esc(r.comportamento?.texto || "—")}</p>
-      <p><b>Nature:</b> ${esc(r.nature?.nome || "Aguardando tabela de Natures")}</p>
+      <p><b>Nature:</b> ${esc(r.nature?.nome || "Não sorteada")} — ${esc(detalhesNatureSelvagem(r.nature))}</p>
       <p><b>POKÉDEX:</b> ${esc(slotResultado.pokedex || "Nenhuma anotação cadastrada.")}</p>
       <button id="selvSoltar" type="button">COLOCAR POKÉMON NO MAPA</button>
       <button id="selvLimpar" type="button">LIMPAR RESULTADO</button></div>` : ""}
@@ -12099,16 +12263,25 @@ function mostrarFichaMestrePokemonSelvagens(mestre) {
     await salvarBancoPokemonSelvagem(mestre, novo);
     await refrescarFichaPokemonSelvagem(mestre);
   }));
-  document.querySelector("#selvSortear")?.addEventListener("click", async () => {
-    const novo = bancoPokemonSelvagem(mestre);
-    const emCena = await pokemonSelvagensEmCena(mestre.id);
-    const usados = new Set(emCena.map(t => Number(t.metadata?.[META_SELVAGEM_SLOT])));
-    const indices = novo.banco.map((s,i) => s && !usados.has(i) ? i : -1).filter(i => i >= 0);
-    if (!indices.length) { alert("Não há Pokémon livres nos slots. Remova algum encontro do mapa para sortear novamente."); return; }
-    novo.resultado = {slotIndice:itemAleatorio(indices), comportamento:itemAleatorio(COMPORTAMENTOS_POKEMON_SELVAGENS),
-      nature:naturePokemonSelvagem(), sorteadoEm:Date.now(), campoId:null};
-    await salvarBancoPokemonSelvagem(mestre, novo);
-    await refrescarFichaPokemonSelvagem(mestre);
+  document.querySelector("#selvSortear")?.addEventListener("click", async (evento) => {
+    const botao = evento.currentTarget;
+    botao.disabled = true;
+    try {
+      const mestreAtual = await pegarTokenAtualizado(mestre.id) || mestre;
+      const novo = bancoPokemonSelvagem(mestreAtual);
+      const emCena = await pokemonSelvagensEmCena(mestre.id);
+      const usados = new Set(emCena.map(t => Number(t.metadata?.[META_SELVAGEM_SLOT])));
+      const indices = novo.banco.map((s,i) => s && !usados.has(i) ? i : -1).filter(i => i >= 0);
+      if (!indices.length) throw new Error("Não há Pokémon livres nos slots. Retire um encontro do mapa para sortear novamente.");
+      novo.resultado = {slotIndice:itemAleatorio(indices), comportamento:itemAleatorio(COMPORTAMENTOS_POKEMON_SELVAGENS),
+        nature:naturePokemonSelvagem(), sorteadoEm:Date.now(), campoId:null};
+      await salvarBancoPokemonSelvagem(mestreAtual, novo);
+      await refrescarFichaPokemonSelvagem(mestreAtual);
+    } catch(erro) {
+      console.error("Sorteio de Pokémon selvagem:", erro);
+      alert(erro?.message || "Não foi possível sortear o Pokémon.");
+      botao.disabled = false;
+    }
   });
   document.querySelector("#selvSoltar")?.addEventListener("click", async e => {
     e.currentTarget.disabled = true;
