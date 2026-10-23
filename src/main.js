@@ -12119,9 +12119,7 @@ async function colocarPokemonSelvagemNaCena(mestre) {
     throw new Error("Sorteie um Pokémon antes de colocá-lo na cena.");
   const slot = estado.banco[indice];
   if (!slot?.forma?.url) throw new Error("O Pokémon sorteado não está mais no banco.");
-  const emCena = await pokemonSelvagensEmCena(mestreAtual.id);
-  if (emCena.some(item => Number(item.metadata?.[META_SELVAGEM_SLOT]) === indice))
-    throw new Error("Esse slot já está em uso na cena. Retire o Pokémon antes de sortear novamente.");
+  // Slots são modelos reutilizáveis: várias instâncias do mesmo Pokémon podem coexistir.
   const alvo = await pontoUmGridNaFrenteDoTreinador(mestreAtual);
   const forma = slot.forma;
   const imagem = {url: forma.url, mime: forma.mime || "image/webp", width: Math.max(1, Number(forma.width) || 1), height: Math.max(1, Number(forma.height) || 1)};
@@ -12177,7 +12175,7 @@ function mostrarFichaMestrePokemonSelvagens(mestre) {
     </style>
     <section class="selvPainel">
     <h3>🌿 ENCONTROS COM POKÉMON SELVAGENS</h3>
-    <p>${ocupados}/${QUANTIDADE_POKEMON_SELVAGENS} Pokémon cadastrados. Escolha tokens que já possuem uma ficha Pokémon preenchida.</p>
+    <p>${ocupados}/${QUANTIDADE_POKEMON_SELVAGENS} Pokémon cadastrados. Cada slot é reutilizável: você pode gerar quantas cópias desejar, mesmo com outras no mapa.</p>
     <div class="selvGrade">${estado.banco.map((slot,i) => `<div class="selvSlot">
       ${slot ? `<img src="${esc(slot.forma.url)}" alt=""><small>${esc(slot.nome)}</small>
       <button data-selv-edit="${i}" type="button">POKÉDEX</button><button data-selv-remove="${i}" type="button" title="Remover">×</button>`
@@ -12269,10 +12267,9 @@ function mostrarFichaMestrePokemonSelvagens(mestre) {
     try {
       const mestreAtual = await pegarTokenAtualizado(mestre.id) || mestre;
       const novo = bancoPokemonSelvagem(mestreAtual);
-      const emCena = await pokemonSelvagensEmCena(mestre.id);
-      const usados = new Set(emCena.map(t => Number(t.metadata?.[META_SELVAGEM_SLOT])));
-      const indices = novo.banco.map((s,i) => s && !usados.has(i) ? i : -1).filter(i => i >= 0);
-      if (!indices.length) throw new Error("Não há Pokémon livres nos slots. Retire um encontro do mapa para sortear novamente.");
+      // Sorteamos entre todos os slots preenchidos, mesmo que já existam cópias em cena.
+      const indices = novo.banco.map((s,i) => s ? i : -1).filter(i => i >= 0);
+      if (!indices.length) throw new Error("Cadastre pelo menos um Pokémon nos 16 slots antes de sortear.");
       novo.resultado = {slotIndice:itemAleatorio(indices), comportamento:itemAleatorio(COMPORTAMENTOS_POKEMON_SELVAGENS),
         nature:naturePokemonSelvagem(), sorteadoEm:Date.now(), campoId:null};
       await salvarBancoPokemonSelvagem(mestreAtual, novo);
@@ -12284,9 +12281,11 @@ function mostrarFichaMestrePokemonSelvagens(mestre) {
     }
   });
   document.querySelector("#selvSoltar")?.addEventListener("click", async e => {
-    e.currentTarget.disabled = true;
+    const botao = e.currentTarget;
+    if (botao.disabled) return;
+    botao.disabled = true;
     try { await colocarPokemonSelvagemNaCena(mestre); }
-    catch(err) { console.error(err); alert(err.message || "Erro ao criar Pokémon."); e.currentTarget.disabled = false; }
+    catch(err) { console.error(err); alert(err.message || "Erro ao criar Pokémon."); botao.disabled = false; }
   });
   document.querySelector("#selvLimpar")?.addEventListener("click", async () => {
     const novo = bancoPokemonSelvagem(mestre); novo.resultado = null;
