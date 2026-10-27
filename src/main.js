@@ -2327,16 +2327,22 @@ async function bloquearMoveSeDebuffImpede(item, opcoes = {}) {
   // depois Confusão e, por último, Encanto antes do Move.
   if (pokemonEstaConfuso(atual)) {
     const nomePokemon = nomeFichaPokemon(atual) || atual.name || "Pokémon";
+    // Regra Mundo Perfeito: 1–4 libera o Move; 5–6 impede e causa dano sem tipo.
+    // Um teste por tentativa de Move, sem repetir no dano do mesmo Move.
     const resultado = await rolarNoDicePlusComResultado(
-      "1d20",
-      "Teste Confuso",
-      `${nomePokemon} • 10+ consegue agir`
+      "1d6",
+      "Teste de Confusão",
+      `${nomePokemon} • 1–4 sucesso; 5–6 falha`
     );
     if (!Number.isFinite(resultado)) return true;
-    if (Number(resultado) < 10) {
-      const proficiencia = Math.max(0, Math.trunc(Number(atual.metadata?.[`${PREFIX}/proficiencia`] ?? 0) || 0));
-      const dano = await aplicarDanoDiretoDebuff(atual, proficiencia);
-      alert(`${nomePokemon} não atacou porque está tonto. Sofreu ${dano.dano} de dano pela Confusão.`);
+    if (Number(resultado) >= 5) {
+      const nivelBruto = Number(atual.metadata?.[`${PREFIX}/pokemon-level`]);
+      const nivel = Number.isFinite(nivelBruto) && nivelBruto >= 1
+        ? Math.trunc(nivelBruto)
+        : 1;
+      const danoConfusao = Math.max(1, Math.floor(nivel / 2));
+      const dano = await aplicarDanoDiretoDebuff(atual, danoConfusao);
+      alert(`${nomePokemon} perdeu a ação por Confusão (1d6: ${resultado}). Dano sem tipo: ${dano.dano} de ${danoConfusao} (nível ${nivel} ÷ 2, mínimo 1).`);
       return true;
     }
   }
