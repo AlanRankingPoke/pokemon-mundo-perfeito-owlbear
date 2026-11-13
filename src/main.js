@@ -3914,13 +3914,19 @@ async function rolarNoDicePlusComResultado(formula, nome, tipo = '') {
     });
   });
 }
-const TIPOS_VISUAIS_HUD = [ "fundo", "vida", "hp-texto", "ca-circulo", "ca-texto", ...STATUS_DEBUFFS.map(
-(status) => `debuff-${status.id}`
-) ];
+// HUD v3: elementos vinculados ao token são modelos visuais, nunca cópias de personagens.
+const META_HUD_ESTADO = `${PREFIX}/hud-estado-v3`;
+const META_BOSS_HUD_ESTADO = `${PREFIX}/boss-hud-estado-v3`;
+const TIPOS_VISUAIS_HUD = [
+  "fundo", "vida", "hp-texto", "ca-circulo", "ca-texto", "debuff-confuso-contador",
+  ...STATUS_DEBUFFS.map((status) => `debuff-${status.id}`)
+];
 const filaHudPorToken = new Map();
 function prepararVisualHud(item) { const comportamentos = new Set( item.disableAttachmentBehavior || [] );
 comportamentos.add("SCALE");
 comportamentos.add("ROTATION");
+// Não copiar o HUD ao usar Ctrl+C / Ctrl+V no personagem.
+comportamentos.add("COPY");
 item.disableAttachmentBehavior = [ ...comportamentos ];
 item.rotation = 0;
 item.scale = { x: 1, y: 1 };
@@ -3929,6 +3935,83 @@ function ordenarHudMaisNovoPrimeiro(a, b) { const dataA = Date.parse(a.lastModif
 const dataB = Date.parse(b.lastModified || "") || 0;
 if (dataA !== dataB) { return dataB - dataA; }
 return String(a.id).localeCompare(String(b.id)); }
+// Atualização incremental: reutiliza cada elemento e seu ID, sem apagar/recriar a barra.
+// Serve para itens públicos e locais (Boss); nunca tenta modificar os IDs do Owlbear.
+async function reconciliarElementosHud(api, tokenId, chaveDono, chaveTipo, desejados, existentes) {
+  const agrupados = new Map();
+  const apagar = new Set();
+  for (const item of existentes) {
+    const tipo = item.metadata?.[chaveTipo];
+    if (item.attachedTo !== tokenId || !tipo || item.metadata?.[chaveDono] !== tokenId) {
+      apagar.add(item.id);
+      continue;
+    }
+    if (!agrupados.has(tipo)) agrupados.set(tipo, []);
+    agrupados.get(tipo).push(item);
+  }
+  const conservar = new Set();
+  const atualizar = new Map();
+  const adicionar = [];
+  for (const modelo of desejados) {
+    const tipo = modelo.metadata?.[chaveTipo];
+    const candidatos = agrupados.get(tipo) || [];
+    // Só reutilizar um item do mesmo tipo (SHAPE, TEXT ou IMAGE).
+    const existente = candidatos.find((c) => c.type === modelo.type && !conservar.has(c.id));
+    if (existente) {
+      conservar.add(existente.id);
+      atualizar.set(existente.id, modelo);
+    } else {
+      adicionar.push(modelo);
+    }
+  }
+  for (const item of existentes) if (!conservar.has(item.id)) apagar.add(item.id);
+  if (atualizar.size) {
+    await api.updateItems([...atualizar.keys()], (items) => {
+      for (const item of items) {
+        const modelo = atualizar.get(item.id);
+        if (!modelo) continue;
+        item.position = { ...modelo.position };
+        item.rotation = modelo.rotation;
+        item.scale = { ...modelo.scale };
+        item.zIndex = modelo.zIndex;
+        item.disableAutoZIndex = true;
+        item.attachedTo = tokenId;
+        item.locked = true;
+        item.disableHit = true;
+        item.disableAttachmentBehavior = [...modelo.disableAttachmentBehavior];
+        item.metadata = { ...item.metadata, ...modelo.metadata };
+        if (item.type === "SHAPE") {
+          item.width = modelo.width;
+          item.height = modelo.height;
+          item.shapeType = modelo.shapeType;
+          item.style = { ...modelo.style };
+        } else if (item.type === "TEXT") {
+          item.text = { ...modelo.text, style: { ...modelo.text.style } };
+        } else if (item.type === "IMAGE") {
+          item.image = { ...modelo.image };
+          item.grid = { ...modelo.grid, offset: { ...modelo.grid.offset } };
+        }
+      }
+    });
+  }
+  // Cria somente tipos que faltam; remove cópias antigas/órfãs ao final.
+  if (adicionar.length) await api.addItems(adicionar);
+  if (apagar.size) await api.deleteItems([...apagar]);
+  return { atualizados: atualizar.size, criados: adicionar.length, apagados: apagar.size };
+}
+
+// Conferência de integridade utilizada antes de ignorar um HUD supostamente atual.
+function hudCompleto(tokenId, existentes, tipos, chaveTipo, chaveAssinatura, assinatura) {
+  if (existentes.length !== tipos.length) return false;
+  const esperados = new Set(tipos);
+  for (const item of existentes) {
+    const tipo = item.metadata?.[chaveTipo];
+    if (item.attachedTo !== tokenId || !esperados.has(tipo) || item.metadata?.[chaveAssinatura] !== assinatura) return false;
+    esperados.delete(tipo);
+  }
+  return esperados.size === 0;
+}
+
 async function desduplicarHudToken( tokenId, tiposAtivos = TIPOS_VISUAIS_HUD ) { const ativos = new Set(tiposAtivos);
 if (ativos.size === 0) assinaturaHudPublicoPorToken?.delete?.(tokenId);
 const visuais = await OBR.scene.items.getItems( (item) => item.metadata?.[
@@ -3941,10 +4024,16 @@ for (const item of visuais) { const tipo = item.metadata?.[
 if (!porTipo.has(tipo)) { porTipo.set(tipo, []); }
 porTipo.get(tipo).push(item); }
 const apagar = [];
-for (const [tipo, itens] of porTipo) { const ordenados = [...itens].sort( ordenarHudMaisNovoPrimeiro );
-if (!ativos.has(tipo)) { apagar.push( ...ordenados.map( (item) => item.id ) );
-continue; }
-if (ordenados.length > 1) { apagar.push( ...ordenados .slice(1) .map((item) => item.id) ); } }
+for (const [tipo, itens] of porTipo) {
+  const ordenados = [...itens].sort(ordenarHudMaisNovoPrimeiro);
+  const validos = ordenados.filter((item) => item.attachedTo === tokenId);
+  if (!ativos.has(tipo) || validos.length === 0) {
+    apagar.push(...ordenados.map((item) => item.id));
+    continue;
+  }
+  const manter = validos[0].id;
+  apagar.push(...ordenados.filter((item) => item.id !== manter).map((item) => item.id));
+}
 if (apagar.length) { await OBR.scene.items.deleteItems( [...new Set(apagar)] ); } }
 let temporizadorCorrecaoHud = null;
 
@@ -3962,8 +4051,9 @@ async function corrigirHudExistente() {
     )
   ];
 
+  const conjuntoTokenIds = new Set(tokenIds);
   const tokens = await OBR.scene.items.getItems(
-    (item) => tokenIds.includes(item.id)
+    (item) => conjuntoTokenIds.has(item.id)
   );
   const tokensPorId = new Map(tokens.map((item) => [item.id, item]));
   const porTokenETipo = new Map();
@@ -3987,7 +4077,10 @@ async function corrigirHudExistente() {
     }
 
     const tokenDonoHud = tokensPorId.get(tokenId);
-    if (tokenDonoHud && pokemonEhBoss(tokenDonoHud)) {
+    if (tokenDonoHud && (
+      pokemonEhBoss(tokenDonoHud) ||
+      !["pokemon", "treinador"].includes(tokenDonoHud.metadata?.[`${PREFIX}/tipoFicha`])
+    )) {
       apagar.add(visual.id);
       continue;
     }
@@ -4012,6 +4105,19 @@ async function corrigirHudExistente() {
     } catch (erro) {
       console.warn("Não foi possível apagar todos os HUDs duplicados:", erro);
     }
+  }
+  // Também protege elementos anteriores à atualização contra Ctrl+C/Ctrl+V.
+  const corrigirCopia = visuais.filter((item) =>
+    !apagar.has(item.id) && !item.disableAttachmentBehavior?.includes("COPY")
+  ).map((item) => item.id);
+  if (corrigirCopia.length) {
+    await OBR.scene.items.updateItems(corrigirCopia, (items) => {
+      for (const item of items) {
+        item.disableAttachmentBehavior = [
+          ...new Set([...(item.disableAttachmentBehavior || []), "COPY"])
+        ];
+      }
+    });
   }
 }
 
@@ -4046,7 +4152,9 @@ function assinaturaEstadoHudPublico(token, hpAtual, hpMax, ca) {
   const debuffs = STATUS_DEBUFFS.filter((status) => debuffAtivoNoToken(token, status)).map((status) => status.id);
   return JSON.stringify([
     Number(hpAtual) || 0, Number(hpMax) || 0, Number(ca) || 0, debuffs,
-    turnosConfusaoRestantes(token), token?.scale?.x || 1, token?.scale?.y || 1, token?.image?.width || 0, token?.image?.height || 0
+    turnosConfusaoRestantes(token), token?.scale?.x || 1, token?.scale?.y || 1,
+    token?.rotation || 0, token?.image?.url || "", token?.image?.width || 0,
+    token?.image?.height || 0, token?.grid?.dpi || 0
   ]);
 }
 async function criarStatusNoToken( token, hpAtual, hpMax, ca ) {
@@ -4060,10 +4168,26 @@ if (pokemonEhBoss(token)) {
   return;
 }
 const assinaturaHud = assinaturaEstadoHudPublico(token, hpAtual, hpMax, ca);
-if (assinaturaHudPublicoPorToken.get(token.id) === assinaturaHud) return;
-return executarEmFilaHud( token.id, async () => { const antigos = await OBR.scene.items.getItems( (item) => item.metadata?.[
-`${PREFIX}/statusToken`
-] === token.id ); if (antigos.length) { await OBR.scene.items.deleteItems( antigos.map( (item) => item.id ) ); } const bounds = await OBR.scene.items.getItemBounds( [token.id] ); const larguraBarra = Math.max( 100, Math.min( 180, bounds.width * 0.85 ) ); const alturaBarra = Math.max( 20, Math.min( 30, larguraBarra * 0.16 ) ); const tamanhoCA = alturaBarra * 1.4; const espacoCA = alturaBarra * 0.35; const larguraTotal = larguraBarra + espacoCA + tamanhoCA; const inicioX = bounds.min.x + ( (bounds.width - larguraTotal) / 2 ); const barraY = bounds.max.y + Math.max( 8, bounds.height * 0.03 ); let porcentagem = hpMax > 0 ? hpAtual / hpMax : 0; porcentagem = Math.max( 0, Math.min( 1, porcentagem ) ); const larguraVida = larguraBarra * porcentagem; let corVida = "#34C759"; if (porcentagem <= 0.50) { corVida = "#FFD60A"; } if (porcentagem <= 0.25) { corVida = "#FF453A"; } const fundoBarra = prepararVisualHud( buildShape() .shapeType("RECTANGLE") .width(larguraBarra) .height(alturaBarra) .position({ x: inicioX, y: barraY }) .fillColor("#202020") .fillOpacity(1) .strokeColor("#000000") .strokeWidth(2) .layer("ATTACHMENT") .zIndex(0) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
+const geracaoAlvo = geracaoCenaHud;
+return executarEmFilaHud(token.id, async () => {
+  if (geracaoAlvo !== geracaoCenaHud || !(await OBR.scene.isReady())) return;
+  const presente = await OBR.scene.items.getItems([token.id]);
+  if (!presente.length || pokemonEhBoss(presente[0])) return;
+  const antigos = await OBR.scene.items.getItems(
+    (item) => item.metadata?.[`${PREFIX}/statusToken`] === token.id
+  );
+  const tiposAtivos = ["fundo", "hp-texto", "ca-circulo", "ca-texto"];
+  if (Number(hpAtual) > 0 && Number(hpMax) > 0) tiposAtivos.push("vida");
+  for (const status of STATUS_DEBUFFS) {
+    if (!debuffAtivoNoToken(token, status)) continue;
+    tiposAtivos.push(`debuff-${status.id}`);
+    if (status.id === "confuso" && turnosConfusaoRestantes(token) > 0) tiposAtivos.push("debuff-confuso-contador");
+  }
+  if (hudCompleto(token.id, antigos, tiposAtivos, `${PREFIX}/tipoVisual`, META_HUD_ESTADO, assinaturaHud)) {
+    assinaturaHudPublicoPorToken.set(token.id, assinaturaHud);
+    return;
+  }
+  const bounds = await OBR.scene.items.getItemBounds([token.id]); const larguraBarra = Math.max( 100, Math.min( 180, bounds.width * 0.85 ) ); const alturaBarra = Math.max( 20, Math.min( 30, larguraBarra * 0.16 ) ); const tamanhoCA = alturaBarra * 1.4; const espacoCA = alturaBarra * 0.35; const larguraTotal = larguraBarra + espacoCA + tamanhoCA; const inicioX = bounds.min.x + ( (bounds.width - larguraTotal) / 2 ); const barraY = bounds.max.y + Math.max( 8, bounds.height * 0.03 ); let porcentagem = hpMax > 0 ? hpAtual / hpMax : 0; porcentagem = Math.max( 0, Math.min( 1, porcentagem ) ); const larguraVida = larguraBarra * porcentagem; let corVida = "#34C759"; if (porcentagem <= 0.50) { corVida = "#FFD60A"; } if (porcentagem <= 0.25) { corVida = "#FF453A"; } const fundoBarra = prepararVisualHud( buildShape() .shapeType("RECTANGLE") .width(larguraBarra) .height(alturaBarra) .position({ x: inicioX, y: barraY }) .fillColor("#202020") .fillOpacity(1) .strokeColor("#000000") .strokeWidth(2) .layer("ATTACHMENT") .zIndex(0) .disableAutoZIndex(true) .attachedTo(token.id) .locked(true) .disableHit(true) .metadata({
 [`${PREFIX}/statusToken`]:
 token.id,
 [`${PREFIX}/tipoVisual`]:
@@ -4111,7 +4235,7 @@ status.id }) .build();
 // IMPORTANTE:
 // herdamos movimento do token,
 // mas NÃO herdamos escala nem rotação.
-const comportamentos = new Set( visual .disableAttachmentBehavior || [] ); comportamentos.add("SCALE"); comportamentos.add("ROTATION"); visual.disableAttachmentBehavior = [...comportamentos]; visuaisDebuff.push(visual);
+const comportamentos = new Set( visual .disableAttachmentBehavior || [] ); comportamentos.add("SCALE"); comportamentos.add("ROTATION"); comportamentos.add("COPY"); visual.disableAttachmentBehavior = [...comportamentos]; visuaisDebuff.push(visual);
 if (status.id === "confuso") {
   const restantes = turnosConfusaoRestantes(token);
   if (restantes > 0) {
@@ -4128,14 +4252,24 @@ if (status.id === "confuso") {
         [`${PREFIX}/debuffId`]: "confuso"
       }).build());
     const comportamentosContador = new Set(contador.disableAttachmentBehavior || []);
-    comportamentosContador.add("SCALE"); comportamentosContador.add("ROTATION");
+    comportamentosContador.add("SCALE"); comportamentosContador.add("ROTATION"); comportamentosContador.add("COPY");
     contador.disableAttachmentBehavior = [...comportamentosContador];
     visuaisDebuff.push(contador);
   }
 }
-} } const elementos = [ fundoBarra ]; if (barraVida) { elementos.push( barraVida ); } elementos.push( circuloCA, textoHP, textoCA, ...visuaisDebuff ); await OBR.scene.items.addItems( elementos ); const tiposAtivos = [ "fundo", "hp-texto", "ca-circulo", "ca-texto" ]; if (barraVida) { tiposAtivos.push("vida"); } for ( const status of debuffsAtivos ) { tiposAtivos.push(
-`debuff-${status.id}`
-); if (status.id === "confuso" && turnosConfusaoRestantes(token) > 0) tiposAtivos.push("debuff-confuso-contador"); } assinaturaHudPublicoPorToken.set(token.id, assinaturaHud); agendarDesduplicacaoHudToken(token.id, tiposAtivos); } ); }
+} }
+  const elementos = [fundoBarra];
+  if (barraVida) elementos.push(barraVida);
+  elementos.push(circuloCA, textoHP, textoCA, ...visuaisDebuff);
+  if (geracaoAlvo !== geracaoCenaHud || !(await OBR.scene.isReady())) return;
+  for (const item of elementos) item.metadata[META_HUD_ESTADO] = assinaturaHud;
+  await reconciliarElementosHud(
+    OBR.scene.items, token.id, `${PREFIX}/statusToken`, `${PREFIX}/tipoVisual`, elementos, antigos
+  );
+  assinaturaHudPublicoPorToken.set(token.id, assinaturaHud);
+  agendarDesduplicacaoHudToken(token.id, tiposAtivos);
+});
+}
 async function pegarHpCaDaTela(aplicarCalculadora = false) { let hpAtual = Number( document .querySelector("#hpAtual") .value );
 let hpMax = Number( document .querySelector("#hpMax") .value );
 const ca = Number( document .querySelector("#ca") .value );
@@ -4549,7 +4683,7 @@ botaoSalvar.style.display = "none";
 let temporizador = null;
 const programarSalvamento = (atraso = 700) => { if (temporizador) { clearTimeout(temporizador); }
 temporizador = setTimeout(() => { if (!document.body.contains(botaoSalvar)) { return; } botaoSalvar.click(); }, atraso); };
-app.querySelectorAll("input, textarea, select") .forEach((campo) => { if (campo.id === "alterarHp") { return; } if (campo.classList.contains("movimentoValor")) { return; } if (campo.classList.contains("megaConfigCampo")) { return; } campo.addEventListener("input", () => { programarSalvamento(500); }); campo.addEventListener("change", () => { programarSalvamento(40); }); campo.addEventListener("blur", () => { programarSalvamento(0); }); });
+app.querySelectorAll("input, textarea, select") .forEach((campo) => { if (campo.id === "alterarHp") { return; } if (campo.classList.contains("movimentoValor")) { return; } if (campo.classList.contains("megaConfigCampo")) { return; } campo.addEventListener("input", () => { programarSalvamento(600); }); campo.addEventListener("change", () => { programarSalvamento(220); }); campo.addEventListener("blur", () => { programarSalvamento(260); }); });
 app.querySelectorAll(".categoriaGolpe") .forEach((botao) => { botao.addEventListener("click", () => { programarSalvamento(220); }); }); }
 const CAMPOS_MOVIMENTACAO = [ { id: "movimentoCaminhada", metaId: "metaMovimentoCaminhada", chave: "movimento-caminhada" }, { id: "movimentoEscalada", metaId: "metaMovimentoEscalada", chave: "movimento-escalada" }, { id: "movimentoVoo", metaId: "metaMovimentoVoo", chave: "movimento-voo" }, { id: "movimentoNatacao", metaId: "metaMovimentoNatacao", chave: "movimento-natacao" }, { id: "movimentoEscavacao", metaId: "metaMovimentoEscavacao", chave: "movimento-escavacao" }, { id: "movimentoFlutuacao", metaId: "metaMovimentoFlutuacao", chave: "movimento-flutuacao" } ];
 function normalizarMovimentoBase(valor) { const numero = numeroDecimal(valor);
@@ -12655,9 +12789,18 @@ async function apagarHudBossPrivado(tokenId) {
 }
 
 async function criarHudBossPrivado(token, hpAtual, hpMax, ca) {
-  if (!(await usuarioAtualEhGm())) return;
-  await apagarHudBossPrivado(token.id);
+  if (!(await usuarioAtualEhGm()) || !(await OBR.scene.isReady())) return;
+  const geracaoAlvo = geracaoCenaHud;
   try {
+    const assinatura = JSON.stringify([
+      hpAtual, hpMax, ca, token?.scale?.x || 1, token?.scale?.y || 1,
+      token?.rotation || 0, token?.image?.url || "", token?.image?.width || 0,
+      token?.image?.height || 0, token?.grid?.dpi || 0
+    ]);
+    const antigos = await OBR.scene.local.getItems((item) => item.metadata?.[META_BOSS_HUD_TOKEN] === token.id);
+    const tipos = ["fundo", "hp", "ca-circulo", "ca-texto", "rotulo"];
+    if (Number(hpAtual) > 0) tipos.push("vida");
+    if (hudCompleto(token.id, antigos, tipos, `${PREFIX}/boss-hud-tipo`, META_BOSS_HUD_ESTADO, assinatura)) return;
     const bounds = await OBR.scene.items.getItemBounds([token.id]);
     const larguraBarra = Math.max(100, Math.min(180, bounds.width * 0.85));
     const alturaBarra = Math.max(20, Math.min(30, larguraBarra * 0.16));
@@ -12726,9 +12869,13 @@ async function criarHudBossPrivado(token, hpAtual, hpMax, ca) {
       .metadata({ ...meta, [`${PREFIX}/boss-hud-tipo`]: "rotulo" }).build());
     elementos.push(etiqueta);
 
-    await OBR.scene.local.addItems(elementos);
+    if (geracaoAlvo !== geracaoCenaHud || !(await OBR.scene.isReady())) return;
+    for (const item of elementos) item.metadata[META_BOSS_HUD_ESTADO] = assinatura;
+    await reconciliarElementosHud(
+      OBR.scene.local, token.id, META_BOSS_HUD_TOKEN, `${PREFIX}/boss-hud-tipo`, elementos, antigos
+    );
   } catch (erro) {
-    console.warn("Não foi possível criar o HUD privado do Boss:", erro);
+    console.warn("Não foi possível atualizar o HUD privado do Boss:", erro);
   }
 }
 
@@ -12899,10 +13046,52 @@ function cabecalhoMestre(token, paginaAtual) {
       </div>
     </div>
     ${menuMestre(paginaAtual)}
+    <div style="margin:4px 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button id="mestreRepararHuds" type="button" style="font-size:9px!important;padding:7px 10px!important;">🧹 REPARAR BARRAS / HUDs</button>
+      <span id="mestreReparoHudsAviso" style="font-size:9px;font-weight:800;color:#4b5563;"></span>
+    </div>
   `;
 }
 
 function ativarCabecalhoMestre(token) {
+  document.querySelector("#mestreRepararHuds")?.addEventListener("click", async (evento) => {
+    const botao = evento.currentTarget;
+    const aviso = document.querySelector("#mestreReparoHudsAviso");
+    if (!(await usuarioAtualEhGm())) {
+      if (aviso) aviso.textContent = "Somente o Mestre pode reparar os HUDs.";
+      return;
+    }
+    botao.disabled = true;
+    if (aviso) aviso.textContent = "Verificando os Pokémon da cena...";
+    try {
+      await corrigirHudExistente();
+      const pokemons = await OBR.scene.items.getItems((item) =>
+        item.type === "IMAGE" && ["pokemon", "treinador"].includes(item.metadata?.[`${PREFIX}/tipoFicha`])
+      );
+      let atualizados = 0;
+      for (const pokemon of pokemons) {
+        const temDadosDeHp = pokemon.metadata?.[`${PREFIX}/hpAtual`] !== undefined ||
+          pokemon.metadata?.[`${PREFIX}/hpMax`] !== undefined;
+        const hudExistente = await OBR.scene.items.getItems((item) =>
+          item.metadata?.[`${PREFIX}/statusToken`] === pokemon.id
+        );
+        if (!temDadosDeHp && hudExistente.length === 0) continue;
+        if (pokemonEhBoss(pokemon)) {
+          await atualizarHudBossPrivado(pokemon);
+        } else {
+          const dados = estadoHudPokemon(pokemon);
+          await criarStatusNoToken(pokemon, dados.hpAtual, dados.hpMax, dados.ca);
+        }
+        atualizados++;
+      }
+      if (aviso) aviso.textContent = `✓ ${atualizados} fichas de Pokémon/treinador conferidas.`;
+    } catch (erro) {
+      console.error("Erro no reparo manual dos HUDs:", erro);
+      if (aviso) aviso.textContent = "Falha no reparo. Veja o console para detalhes.";
+    } finally {
+      if (document.body.contains(botao)) botao.disabled = false;
+    }
+  });
   document.querySelector("#trocarTipo")?.addEventListener("click", () => trocarTipoFicha(token));
   ativarPersonalizacaoFicha(token);
   document.querySelector("#paginaMestre1")?.addEventListener("click", async () => {
@@ -13485,19 +13674,24 @@ document.querySelector('#colarFichaPokemon')?.addEventListener('click', async ()
 });
 }
 
-async function mostrarTokenSelecionado() { const selection = await OBR.player.getSelection();
-if ( !selection || selection.length === 0 ) { return; }
-const items = await OBR.scene.items.getItems( selection );
-if ( !items || items.length === 0 ) { return; }
+let versaoConsultaSelecao = 0;
+async function mostrarTokenSelecionado() {
+const versao = ++versaoConsultaSelecao;
+if (!(await OBR.scene.isReady())) return;
+const selection = await OBR.player.getSelection();
+if (!selection || selection.length === 0 || versao !== versaoConsultaSelecao) return;
+const items = await OBR.scene.items.getItems(selection);
+if (!items || items.length === 0 || versao !== versaoConsultaSelecao) return;
 const token = items[0];
 if (token.metadata?.[META_PAINEL_INICIATIVA] === true || token.metadata?.[META_PAINEL_INICIATIVA_FILHO]) { return; }
 const tipoFicha = token.metadata[
 `${PREFIX}/tipoFicha`
 ];
 if (pokemonEhBoss(token) && !(await usuarioAtualEhGm())) {
-  mostrarFichaPokemonBossOculta(token);
+  if (versao === versaoConsultaSelecao) mostrarFichaPokemonBossOculta(token);
   return;
 }
+if (versao !== versaoConsultaSelecao) return;
 try { if ( tipoFicha === "pokemon" ) { mostrarFichaPokemon( token );
 return; }
 if ( tipoFicha === "treinador" ) { mostrarFichaTreinadorPagina1( token );
@@ -13576,7 +13770,134 @@ function assinaturaBossDaCena(items) {
     .join("§");
 }
 
+// Acompanhamento leve do HUD: onChange já fornece os itens da cena inteira.
+// O mestre é o único responsável por reparos AUTOMÁTICOS; demais usuários apenas
+// atualizam seus próprios comandos explícitos, evitando vários clientes recriando barras.
+let timerReparoHud = null;
+let geracaoCenaHud = 0;
+let reparosPendentesHud = new Map();
+let filaReparoHud = Promise.resolve();
+
+function estadoHudPokemon(token) {
+  const hpAtual = Math.max(0, Number(token.metadata?.[`${PREFIX}/hpAtual`] ?? 100) || 0);
+  const hpMax = Math.max(1, Number(token.metadata?.[`${PREFIX}/hpMax`] ?? 100) || 1);
+  const caBase = Number(token.metadata?.[`${PREFIX}/ca`] ?? 10) || 0;
+  // A CA do treinador já é efetiva. O Pokémon pode somar evasão e Mega.
+  const ca = token.metadata?.[`${PREFIX}/tipoFicha`] === "treinador"
+    ? caBase
+    : caBase + (Number(token.metadata?.[`${PREFIX}/buff-evas`] ?? 0) || 0) + bonusCaMegaDoToken(token);
+  return { hpAtual, hpMax, ca };
+}
+
+function tiposHudEsperados(token, hpAtual, hpMax) {
+  const tipos = ["fundo", "hp-texto", "ca-circulo", "ca-texto"];
+  if (hpAtual > 0 && hpMax > 0) tipos.push("vida");
+  for (const status of STATUS_DEBUFFS) {
+    if (!debuffAtivoNoToken(token, status)) continue;
+    tipos.push(`debuff-${status.id}`);
+    if (status.id === "confuso" && turnosConfusaoRestantes(token) > 0) tipos.push("debuff-confuso-contador");
+  }
+  return tipos;
+}
+
+function observarIntegridadeHudDaCena(items) {
+  if (!Array.isArray(items)) return;
+  const pokemons = new Map();
+  const itensPorId = new Map(items.map((item) => [item.id, item]));
+  const visuais = new Map();
+  let anomalia = false;
+  for (const item of items) {
+    if (item.type === "IMAGE" && ["pokemon", "treinador"].includes(item.metadata?.[`${PREFIX}/tipoFicha`])) {
+      pokemons.set(item.id, item);
+    }
+    const donoId = item.metadata?.[`${PREFIX}/statusToken`];
+    if (!donoId) continue;
+    if (!visuais.has(donoId)) visuais.set(donoId, []);
+    visuais.get(donoId).push(item);
+    if (item.attachedTo !== donoId || !item.metadata?.[`${PREFIX}/tipoVisual`]) anomalia = true;
+  }
+  for (const [donoId, elementos] of visuais) {
+    const dono = itensPorId.get(donoId);
+    if (!dono || pokemonEhBoss(dono)) anomalia = true;
+    const pares = new Set();
+    for (const elemento of elementos) {
+      const tipo = elemento.metadata?.[`${PREFIX}/tipoVisual`];
+      if (pares.has(tipo)) anomalia = true;
+      pares.add(tipo);
+      if (!elemento.disableAttachmentBehavior?.includes("COPY")) anomalia = true;
+    }
+  }
+  const corrigir = new Map();
+  for (const pokemon of pokemons.values()) {
+    if (pokemonEhBoss(pokemon)) continue;
+    const existemVisuais = (visuais.get(pokemon.id) || []).length > 0;
+    // Não desenhar 100/100 artificial em fichas recém-criadas ainda vazias.
+    const temDadosDeHp = pokemon.metadata?.[`${PREFIX}/hpAtual`] !== undefined ||
+      pokemon.metadata?.[`${PREFIX}/hpMax`] !== undefined;
+    if (!temDadosDeHp && !existemVisuais) continue;
+    const { hpAtual, hpMax, ca } = estadoHudPokemon(pokemon);
+    const assinatura = assinaturaEstadoHudPublico(pokemon, hpAtual, hpMax, ca);
+    const existentes = visuais.get(pokemon.id) || [];
+    const tipos = tiposHudEsperados(pokemon, hpAtual, hpMax);
+    if (!hudCompleto(pokemon.id, existentes, tipos, `${PREFIX}/tipoVisual`, META_HUD_ESTADO, assinatura)) {
+      corrigir.set(pokemon.id, pokemon);
+    }
+  }
+  if (anomalia) agendarCorrecaoHudExistente(600);
+  if (!corrigir.size) return;
+  for (const [id, pokemon] of corrigir) reparosPendentesHud.set(id, pokemon);
+  if (timerReparoHud) clearTimeout(timerReparoHud);
+  const geracao = geracaoCenaHud;
+  timerReparoHud = setTimeout(() => {
+    timerReparoHud = null;
+    const pendentes = [...reparosPendentesHud.values()];
+    reparosPendentesHud.clear();
+    filaReparoHud = filaReparoHud.catch(() => {}).then(async () => {
+      if (geracao !== geracaoCenaHud || !(await OBR.scene.isReady())) return;
+      if (!(await usuarioAtualEhGm())) return;
+      // A fila serial e uma leitura atual evitam reparos com snapshots antigos.
+      for (const origem of pendentes) {
+        if (geracao !== geracaoCenaHud || !(await OBR.scene.isReady())) break;
+        const atual = (await OBR.scene.items.getItems([origem.id]))?.[0];
+        if (!atual || pokemonEhBoss(atual) || !["pokemon", "treinador"].includes(atual.metadata?.[`${PREFIX}/tipoFicha`])) continue;
+        const dados = estadoHudPokemon(atual);
+        await criarStatusNoToken(atual, dados.hpAtual, dados.hpMax, dados.ca);
+      }
+    }).catch((erro) => console.warn("Não foi possível reparar o HUD da cena:", erro));
+  }, 380);
+}
+
+async function reinicializarHudAoTrocarCena() {
+  geracaoCenaHud += 1;
+  assinaturaHudPublicoPorToken.clear();
+  filaHudPorToken.clear();
+  assinaturaRosterCenaAnterior = "";
+  assinaturaBossCenaAnterior = "";
+  reparosPendentesHud.clear();
+  if (timerReparoHud) clearTimeout(timerReparoHud);
+  timerReparoHud = null;
+  if (temporizadorCorrecaoHud) clearTimeout(temporizadorCorrecaoHud);
+  temporizadorCorrecaoHud = null;
+  for (const timer of temporizadoresDesduplicacaoHud.values()) clearTimeout(timer);
+  temporizadoresDesduplicacaoHud.clear();
+  if (timerMudancaCenaOtimizada) clearTimeout(timerMudancaCenaOtimizada);
+  if (temporizadorHudsBossPrivados) clearTimeout(temporizadorHudsBossPrivados);
+  if (sincronizacaoRosterEmCampoPendente) clearTimeout(sincronizacaoRosterEmCampoPendente);
+  temporizadorHudsBossPrivados = null;
+  sincronizacaoRosterEmCampoPendente = null;
+  timerMudancaCenaOtimizada = null;
+  itensMudancaCenaPendentes = null;
+  if (!(await OBR.scene.isReady())) return;
+  if (await usuarioAtualEhGm()) {
+    await corrigirHudExistente();
+    observarIntegridadeHudDaCena(await OBR.scene.items.getItems());
+  }
+  agendarSincronizacaoRosterEmCampo();
+  agendarSincronizacaoHudsBossPrivados(90);
+}
+
 function processarMudancaCenaOtimizada(items) {
+  observarIntegridadeHudDaCena(items);
   const assinaturaRoster = assinaturaRosterDaCena(items);
   if (assinaturaRoster !== assinaturaRosterCenaAnterior) {
     assinaturaRosterCenaAnterior = assinaturaRoster;
@@ -13602,7 +13923,45 @@ function agendarMudancaCenaOtimizada(items) {
 }
 
 let pluginInicializado = false;
-OBR.onReady( async () => { if (pluginInicializado) return; pluginInicializado = true; if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; } await limparPainelIniciativaMovelAntigo(); try { await corrigirHudExistente(); } catch (erro) { console.warn( "Não foi possível limpar o HUD existente:", erro ); } const app = document.querySelector("#app"); if (app) { const observerAutosave = new MutationObserver( () => ativarAutosaveDaTela() ); observerAutosave.observe( app, { childList: true, subtree: false } ); } await mostrarTokenSelecionado(); ativarAutosaveDaTela(); agendarSincronizacaoRosterEmCampo(); agendarSincronizacaoHudsBossPrivados(50); OBR.scene.items.onChange((items) => { agendarMudancaCenaOtimizada(items); }); OBR.player.onChange( async () => {
+OBR.onReady(async () => {
+  if (pluginInicializado) return;
+  pluginInicializado = true;
+  if (MODO_APRESENTADOR_INICIATIVA) { await iniciarApresentadorIniciativa(); return; }
+  await limparPainelIniciativaMovelAntigo();
+  const app = document.querySelector("#app");
+  if (app) {
+    const observerAutosave = new MutationObserver(() => ativarAutosaveDaTela());
+    observerAutosave.observe(app, { childList: true, subtree: false });
+  }
+  OBR.scene.items.onChange((items) => agendarMudancaCenaOtimizada(items));
+  OBR.scene.onReadyChange((ready) => {
+    if (ready) {
+      reinicializarHudAoTrocarCena().catch((erro) => console.warn("Erro ao abrir a cena:", erro));
+      mostrarTokenSelecionado().catch((erro) => console.warn("Erro na seleção após trocar a cena:", erro));
+    } else {
+      geracaoCenaHud += 1;
+      assinaturaHudPublicoPorToken.clear();
+      reparosPendentesHud.clear();
+      if (timerReparoHud) clearTimeout(timerReparoHud);
+      if (temporizadorCorrecaoHud) clearTimeout(temporizadorCorrecaoHud);
+      for (const timer of temporizadoresDesduplicacaoHud.values()) clearTimeout(timer);
+      temporizadoresDesduplicacaoHud.clear();
+      if (timerMudancaCenaOtimizada) clearTimeout(timerMudancaCenaOtimizada);
+      if (temporizadorHudsBossPrivados) clearTimeout(temporizadorHudsBossPrivados);
+      if (sincronizacaoRosterEmCampoPendente) clearTimeout(sincronizacaoRosterEmCampoPendente);
+      timerReparoHud = null;
+      timerMudancaCenaOtimizada = null;
+      temporizadorHudsBossPrivados = null;
+      sincronizacaoRosterEmCampoPendente = null;
+    }
+  });
+  if (await OBR.scene.isReady()) {
+    try { await reinicializarHudAoTrocarCena(); }
+    catch (erro) { console.warn("Não foi possível reparar os HUDs ao iniciar:", erro); }
+    await mostrarTokenSelecionado();
+  }
+  ativarAutosaveDaTela();
+  OBR.player.onChange(async () => {
     try {
       if (await tratarSelecaoAlvoCaptura()) return;
     } catch (erro) {
