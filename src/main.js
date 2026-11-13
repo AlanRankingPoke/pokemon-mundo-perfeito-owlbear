@@ -8895,6 +8895,18 @@ font-size:30px;
                 ${esc(token.metadata?.[META_POKEMON_ESPECIE] || 'Não selecionada')}
               </span>
             </div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:5px;flex-wrap:wrap;">
+              <button id="pokemonNatureAbrir" type="button" title="Escolher uma das 21 Natures"
+                style="min-height:28px!important;padding:4px 10px!important;font-size:11px!important;
+                font-weight:900;background:#fff0f0!important;color:#af1d1d!important;
+                border:1px solid #c62828!important;">
+                🍃 Nature
+              </button>
+              <span style="font-size:10px;font-weight:800;color:#6f7d92;max-width:200px;
+                overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" title="Nature atual">
+                ${esc(token.metadata?.[META_SELVAGEM_NATURE]?.nome || 'Não selecionada')}
+              </span>
+            </div>
           ` : ''}
           <div style="
             margin-top:4px;
@@ -8925,7 +8937,7 @@ font-size:30px;
       </div>
     </div>
     ${menuPokemon(paginaAtual)}
-    ${paginaAtual === 1 ? htmlSeletorEspeciePokemon() : ''}
+    ${paginaAtual === 1 ? htmlSeletorEspeciePokemon() + htmlSeletorNaturePokemon() : ''}
   `;
 }
 function ativarCabecalhoPokemon(token) {
@@ -9529,6 +9541,7 @@ app.innerHTML = `
   `;
 ativarCabecalhoPokemon(token);
 ativarSeletorEspeciePokemon(token);
+ativarSeletorNaturePokemon(token);
 ativarCalculoStatusPokemon();
 ativarRolagensSalvaguarda(token);
 ativarRolagemIniciativa(token);
@@ -13785,6 +13798,222 @@ function ativarSeletorEspeciePokemon(token) {
       carregando = false;
       busca.disabled = false;
       mais.disabled = false;
+    }
+  });
+ }
+
+// Nature manual na aba STATUS: usa a MESMA lista de 21 Natures do encontro selvagem.
+// Os valores de atributo da ficha são brutos. A inversão do efeito anterior acontece
+// antes da aplicação do novo; assim não acumulamos bônus em trocas ou cópias.
+const NOMES_STATUS_NATURE_PMP = Object.freeze({
+  for: 'Força', des: 'Destreza', con: 'Constituição',
+  int: 'Inteligência', sab: 'Sabedoria', car: 'Carisma', ca: 'CA'
+});
+const META_NATURE_APLICADA_PMP = `${PREFIX}/selvagem-nature-aplicada`;
+
+function naturezaPmpPorNome(nome) {
+  return NATURES_POKEMON_SELVAGENS.find((nature) => nature.nome === nome) || null;
+}
+
+function descricaoNaturePmp(nature) {
+  if (!nature || !nature.atributos || !Object.keys(nature.atributos).length) {
+    return 'Nenhuma alteração';
+  }
+  return Object.entries(nature.atributos)
+    .filter(([id, delta]) => NOMES_STATUS_NATURE_PMP[id] && Number.isFinite(Number(delta)) && Number(delta) !== 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .map(([id, delta]) => `${Number(delta) > 0 ? '+' : '−'}${Math.abs(Number(delta))} ${NOMES_STATUS_NATURE_PMP[id]}`)
+    .join(' • ') || 'Nenhuma alteração';
+}
+
+function definirNaturePmpNaFicha(metadata, nomeNature) {
+  if (!metadata || typeof metadata !== 'object') throw new Error('Ficha sem metadados.');
+  const novaNature = naturezaPmpPorNome(nomeNature);
+  if (!novaNature) throw new Error('Nature não cadastrada.');
+  const antigaRegistrada = metadata[META_SELVAGEM_NATURE];
+  const antigaNature = naturezaPmpPorNome(antigaRegistrada?.nome) ||
+    (antigaRegistrada && typeof antigaRegistrada === 'object' ? antigaRegistrada : null);
+  const estavaAplicada = metadata[META_NATURE_APLICADA_PMP] === true;
+  if (estavaAplicada && antigaNature?.nome === novaNature.nome) return false;
+
+  // Só desfaz se o marcador afirmar que o efeito antigo realmente foi aplicado.
+  // Isso preserva registros antigos que guardavam apenas o nome da Nature.
+  if (estavaAplicada && antigaNature) {
+    for (const atributo of POKEDEX_ATRIBUTOS_PMP) {
+      const delta = Number(antigaNature.atributos?.[atributo] ?? 0);
+      if (!Number.isFinite(delta) || !delta) continue;
+      const chave = `${PREFIX}/status-${atributo}`;
+      const bruto = metadata[chave];
+      const salvo = bruto === undefined || bruto === null || String(bruto).trim() === '' ? NaN : Number(bruto);
+      const legado = Number(metadata[`${PREFIX}/mod-${atributo}`] ?? 0);
+      const atual = Number.isFinite(salvo) ? salvo : 10 + (Number.isFinite(legado) ? legado * 2 : 0);
+      const semNature = Math.trunc(atual - delta);
+      metadata[chave] = semNature;
+      metadata[`${PREFIX}/mod-${atributo}`] = formatarBonus(modificadorPorStatus(semNature));
+    }
+    const deltaCa = Number(antigaNature.atributos?.ca ?? 0);
+    if (Number.isFinite(deltaCa) && deltaCa !== 0) {
+      const caAnterior = Number(metadata[`${PREFIX}/ca`]);
+      metadata[`${PREFIX}/ca`] = (Number.isFinite(caAnterior) ? caAnterior : 10) - deltaCa;
+    }
+  }
+
+  metadata[META_SELVAGEM_NATURE] = clonarDadosSimples(novaNature);
+  delete metadata[META_NATURE_APLICADA_PMP];
+  aplicarNatureSelvagem(metadata, novaNature);
+  // Normalizar modificadores dos seis atributos mesmo ao escolher No Nature.
+  for (const atributo of POKEDEX_ATRIBUTOS_PMP) {
+    const bruto = metadata[`${PREFIX}/status-${atributo}`];
+    if (bruto !== undefined && bruto !== null && String(bruto).trim() !== '') {
+      const n = Number(bruto);
+      if (Number.isFinite(n)) metadata[`${PREFIX}/mod-${atributo}`] = formatarBonus(modificadorPorStatus(n));
+    }
+  }
+  return true;
+}
+
+async function escolherNaturePokemonNoToken(token, nomeNature) {
+  if (!token?.id || token.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') {
+    throw new Error('Selecione um token com ficha de Pokémon.');
+  }
+  if (!naturezaPmpPorNome(nomeNature)) throw new Error('Nature desconhecida.');
+  if (!(await OBR.scene.isReady())) throw new Error('A cena não está pronta.');
+  await salvamentoBuffPendente.catch(() => {});
+  await salvamentoMovimentoPendente.catch(() => {});
+  const atual = await pegarTokenAtualizado(token.id);
+  if (!atual || atual.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') {
+    throw new Error('Este Pokémon não está mais na cena.');
+  }
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      if (item.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') continue;
+      definirNaturePmpNaFicha(item.metadata, nomeNature);
+    }
+  });
+  const atualizado = await pegarTokenAtualizado(token.id);
+  if (!atualizado || atualizado.metadata?.[META_SELVAGEM_NATURE]?.nome !== nomeNature) {
+    throw new Error('Não foi possível confirmar a Nature salva.');
+  }
+  let avisoHud = '';
+  try {
+    const m = atualizado.metadata;
+    const evasao = normalizarEstagioBuff(m[`${PREFIX}/buff-evas`] ?? 0, 'evas');
+    const caFinal = Number(m[`${PREFIX}/ca`] ?? 10) + evasao + bonusCaMegaDoToken(atualizado);
+    await criarStatusNoToken(atualizado, Number(m[`${PREFIX}/hpAtual`] ?? 100),
+      Number(m[`${PREFIX}/hpMax`] ?? 100), caFinal);
+  } catch (erro) {
+    console.warn('Nature salva, mas a atualização do HUD falhou:', erro);
+    avisoHud = ' Nature salva; revise o HUD na ficha do mestre.';
+  }
+  return {token: atualizado, avisoHud};
+}
+
+function htmlSeletorNaturePokemon() {
+  return `
+    <style>
+      .pmpNatureOverlay{display:none;position:fixed;inset:0;z-index:1000000;
+        padding:12px;background:rgba(8,15,28,.75);align-items:center;justify-content:center}
+      .pmpNatureOverlay.aberto{display:flex}
+      .pmpNaturePainel{display:flex;flex-direction:column;width:100%;max-width:500px;
+        max-height:92%;padding:14px;background:#fff;border:2px solid #c62828;
+        border-radius:15px;color:#172a44;box-shadow:0 14px 45px #0006}
+      .pmpNatureCabecalho{display:flex;align-items:center;justify-content:space-between;gap:8px}
+      .pmpNaturePainel input{width:100%;margin:9px 0!important;font-size:15px!important}
+      .pmpNatureLista{overflow-y:auto;flex:1;max-height:56vh;min-height:140px;
+        border:1px solid #d5dce6;border-radius:9px;background:#f7f9fd;padding:5px}
+      #app .pmpNatureOpcao{display:flex;width:100%;flex-direction:column;gap:3px;
+        text-align:left;padding:10px!important;margin:0 0 5px;background:#fff!important;
+        font-size:12px!important;white-space:normal!important}
+      .pmpNatureEfeito{font-size:11px;font-weight:700;color:#52647e}
+      #app .pmpNatureFechar{padding:4px 10px!important;font-size:20px!important}
+    </style>
+    <div id="pokemonNatureOverlay" class="pmpNatureOverlay" role="dialog"
+      aria-label="Escolher Nature do Pokémon" aria-modal="true" aria-hidden="true" tabindex="-1">
+      <div class="pmpNaturePainel">
+        <div class="pmpNatureCabecalho">
+          <strong style="font-size:17px">🍃 Escolher Nature</strong>
+          <button id="pokemonNatureFechar" class="pmpNatureFechar" type="button" aria-label="Fechar">×</button>
+        </div>
+        <input id="pokemonNatureBuscar" type="search" data-no-autosave="1"
+          placeholder="Pesquisar Nature..." autocomplete="off" spellcheck="false"
+          aria-label="Buscar Nature">
+        <div id="pokemonNatureLista" class="pmpNatureLista" role="listbox" aria-label="Natures disponíveis"></div>
+        <p id="pokemonNatureMensagem" role="status" style="font-size:11px;margin:8px 0 0!important">
+          Escolha uma Nature: o status do Pokémon será atualizado automaticamente.
+        </p>
+      </div>
+    </div>`;
+}
+
+function ativarSeletorNaturePokemon(token) {
+  const abrir = document.getElementById('pokemonNatureAbrir');
+  const overlay = document.getElementById('pokemonNatureOverlay');
+  const busca = document.getElementById('pokemonNatureBuscar');
+  const lista = document.getElementById('pokemonNatureLista');
+  const mensagem = document.getElementById('pokemonNatureMensagem');
+  if (!abrir || !overlay || !busca || !lista || !mensagem) return;
+  let salvando = false;
+  const fechar = () => {
+    if (salvando) return;
+    overlay.classList.remove('aberto');
+    overlay.setAttribute('aria-hidden','true');
+    abrir.focus();
+  };
+  const renderizar = () => {
+    const termo = normalizarBuscaPokedexPmp(busca.value);
+    const natures = NATURES_POKEMON_SELVAGENS.map((nature, indice) => ({ nature, indice }))
+      .filter(({nature}) => normalizarBuscaPokedexPmp(nature.nome).includes(termo));
+    lista.innerHTML = natures.map(({nature, indice}) => `
+      <button class="pmpNatureOpcao" type="button" data-nature-indice="${indice}"
+        role="option" title="Escolher ${esc(nature.nome)}">
+        <strong>${esc(nature.nome)}</strong>
+        <span class="pmpNatureEfeito">${esc(descricaoNaturePmp(nature))}</span>
+      </button>`).join('') || '<p style="padding:8px">Nenhuma Nature encontrada.</p>';
+  };
+  abrir.addEventListener('click', () => {
+    if (salvando) return;
+    // Evitar abrir dois modais de Status sobrepostos.
+    const modalEspecie = document.getElementById('pokemonEspecieOverlay');
+    modalEspecie?.classList.remove('aberto');
+    modalEspecie?.setAttribute('aria-hidden', 'true');
+    busca.value = '';
+    mensagem.textContent = 'Escolha uma Nature para alterar os atributos automaticamente.';
+    overlay.classList.add('aberto');
+    overlay.setAttribute('aria-hidden','false');
+    renderizar();
+    busca.focus();
+  });
+  busca.addEventListener('input', renderizar);
+  busca.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); fechar(); }
+    else if (e.key === 'Enter') {
+      const primeiro = lista.querySelector('[data-nature-indice]');
+      if (primeiro) { e.preventDefault(); primeiro.click(); }
+    }
+  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) fechar(); });
+  document.getElementById('pokemonNatureFechar')?.addEventListener('click', fechar);
+  lista.addEventListener('click', async (e) => {
+    const botao = e.target.closest('[data-nature-indice]');
+    if (!botao || salvando) return;
+    const indice = Number(botao.dataset.natureIndice);
+    if (!Number.isInteger(indice) || indice < 0 || indice >= NATURES_POKEMON_SELVAGENS.length) return;
+    const nature = NATURES_POKEMON_SELVAGENS[indice];
+    salvando = true;
+    mensagem.textContent = `Aplicando Nature ${nature.nome}...`;
+    busca.disabled = true;
+    try {
+      const resultado = await escolherNaturePokemonNoToken(token, nature.nome);
+      if (document.getElementById('pokemonNatureOverlay') !== overlay) return;
+      mostrarFichaPokemon(resultado.token);
+      const aviso = document.getElementById('pokemonEspecieAviso');
+      if (aviso) aviso.textContent = `✓ Nature ${nature.nome}: ${descricaoNaturePmp(nature)}.${resultado.avisoHud}`;
+    } catch (erro) {
+      console.error('Erro ao escolher Nature do Pokémon:', erro);
+      mensagem.textContent = `Erro: ${erro?.message || String(erro)}`;
+    } finally {
+      salvando = false;
+      busca.disabled = false;
     }
   });
 }
