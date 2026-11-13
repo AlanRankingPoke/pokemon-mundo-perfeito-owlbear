@@ -13554,6 +13554,63 @@ function mostrarFichaPokemonDebuffs(token) {
   });
 }
 
+// Pré-preenchimento de teste da PokédexPMP: Bulbasaur (registro #001).
+// Valores retirados do JSON fornecido para este projeto; nenhuma consulta online.
+const POKEDEX_BULBASAUR_LV1 = Object.freeze({
+  "hp": 17,
+  "ca": 13,
+  "nivel": 1,
+  "atributos": {
+    "for": 13,
+    "des": 12,
+    "con": 12,
+    "int": 6,
+    "sab": 10,
+    "car": 10
+  }
+});
+
+function aplicarBulbasaurLv1NaFicha(metadata) {
+  if (!metadata || typeof metadata !== "object") throw new Error("Ficha sem metadados.");
+  metadata[`${PREFIX}/hpAtual`] = POKEDEX_BULBASAUR_LV1.hp;
+  metadata[`${PREFIX}/hpMax`] = POKEDEX_BULBASAUR_LV1.hp;
+  metadata[`${PREFIX}/ca`] = POKEDEX_BULBASAUR_LV1.ca;
+  metadata[`${PREFIX}/pokemon-level`] = POKEDEX_BULBASAUR_LV1.nivel;
+  for (const [atributo, valor] of Object.entries(POKEDEX_BULBASAUR_LV1.atributos)) {
+    metadata[`${PREFIX}/status-${atributo}`] = valor;
+    metadata[`${PREFIX}/mod-${atributo}`] = formatarBonus(modificadorPorStatus(valor));
+  }
+  // Um Pokémon selvagem pode ter uma Nature própria. Reaplica-la a partir dos
+  // atributos BASE evita perder o efeito ou acumulá-lo a cada novo clique.
+  const natureza = metadata[META_SELVAGEM_NATURE];
+  if (natureza && typeof natureza === "object") {
+    delete metadata[`${PREFIX}/selvagem-nature-aplicada`];
+    aplicarNatureSelvagem(metadata, natureza);
+  }
+}
+
+async function preencherBulbasaurLv1NoToken(token) {
+  if (!token?.id || token.metadata?.[`${PREFIX}/tipoFicha`] !== "pokemon") {
+    throw new Error("Selecione primeiro um token com ficha de Pokémon.");
+  }
+  if (!(await OBR.scene.isReady())) throw new Error("A cena do Owlbear ainda não está pronta.");
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    if (items.length !== 1 || items[0].metadata?.[`${PREFIX}/tipoFicha`] !== "pokemon") {
+      throw new Error("A ficha foi alterada ou o token não está mais na cena.");
+    }
+    aplicarBulbasaurLv1NaFicha(items[0].metadata);
+  });
+  const atualizado = await pegarTokenAtualizado(token.id);
+  if (!atualizado) throw new Error("Os dados foram salvos, mas o token saiu da cena.");
+  const meta = atualizado.metadata;
+  const bonusEvasao = normalizarEstagioBuff(meta[`${PREFIX}/buff-evas`] ?? 0, "evas");
+  const caFinal = Number(meta[`${PREFIX}/ca`]) + bonusEvasao + bonusCaMegaDoToken(atualizado);
+  // Reutiliza o reparo incremental de HUD já presente no plugin (não cria token).
+  await criarStatusNoToken(atualizado, Number(meta[`${PREFIX}/hpAtual`]),
+    Number(meta[`${PREFIX}/hpMax`]), caFinal);
+  return atualizado;
+}
+
 function mostrarFichaPokemonPericias( token ) { const app = document.querySelector("#app");
 const valoresPericias = {};
 PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = valorPericiaComPadrao(
@@ -13608,6 +13665,14 @@ app.innerHTML = `
         <button id="copiarFichaPokemon" type="button" style="min-height:38px!important;padding:7px!important;font-size:9px;font-weight:900;cursor:pointer;">COPIAR FICHA</button>
         <button id="colarFichaPokemon" type="button" style="min-height:38px!important;padding:7px!important;font-size:9px;font-weight:900;cursor:pointer;">COLAR FICHA</button>
       </div>
+      <div style="margin-top:8px;">
+        <button id="preencherBulbasaurLv1" type="button" title="Preencher HP, CA, nível 1 e seis atributos com os valores oficiais do Bulbasaur da PokédexPMP" style="width:100%;min-height:42px!important;padding:9px 12px!important;font-size:11px!important;font-weight:900;cursor:pointer;border:1px solid #25684a!important;background:linear-gradient(180deg,#d7ffe0,#b2ecc8)!important;color:#153f2c!important;">
+          🌱 BULBASAUR
+        </button>
+        <div style="margin-top:5px;text-align:center;font-size:9px;color:#5b7283;font-weight:700;">
+          LV 1 · HP 17 · CA 13 · FOR 13 · DES 12 · CON 12 · INT 6 · SAB 10 · CAR 10
+        </div>
+      </div>
       <div id="mensagemCopiaFichaPokemon" style="min-height:15px;margin-top:5px;text-align:center;font-size:8px;font-weight:800;color:#6a7f99;">Use isso para passar a ficha para o token de uma evolução.</div>
     `;
 ativarCabecalhoPokemon(token);
@@ -13639,6 +13704,33 @@ document.querySelector('#salvarPokemonPericias')?.addEventListener('click', asyn
   await salvarPericiasPokemonDaTela();
   const mensagem = document.querySelector('#mensagemCopiaFichaPokemon');
   if (mensagem) mensagem.textContent = '✓ Perícias salvas.';
+});
+
+document.querySelector('#preencherBulbasaurLv1')?.addEventListener('click', async () => {
+  const botao = document.querySelector('#preencherBulbasaurLv1');
+  const mensagem = document.querySelector('#mensagemCopiaFichaPokemon');
+  if (!botao || botao.disabled) return;
+  botao.disabled = true;
+  botao.textContent = '⏳ PREENCHENDO BULBASAUR...';
+  if (mensagem) mensagem.textContent = 'Preenchendo ficha de Bulbasaur, nível 1...';
+  try {
+    await salvamentoBuffPendente.catch(() => {});
+    await salvamentoMovimentoPendente.catch(() => {});
+    const atualizado = await preencherBulbasaurLv1NoToken(token);
+    // Não reabrir uma ficha antiga se o jogador selecionou outro token.
+    if (document.querySelector('#preencherBulbasaurLv1') !== botao) return;
+    mostrarFichaPokemonPericias(atualizado);
+    const aviso = document.querySelector('#mensagemCopiaFichaPokemon');
+    if (aviso) aviso.textContent = '✓ Bulbasaur LV 1 aplicado! Consulte STATUS para conferir HP, CA e atributos.';
+  } catch (erro) {
+    console.error('Falha ao preencher Bulbasaur:', erro);
+    if (mensagem) mensagem.textContent = `Erro: ${erro?.message || String(erro)}`;
+  } finally {
+    if (document.querySelector('#preencherBulbasaurLv1') === botao) {
+      botao.disabled = false;
+      botao.textContent = '🌱 BULBASAUR';
+    }
+  }
 });
 
 document.querySelector('#copiarFichaPokemon')?.addEventListener('click', async () => {
