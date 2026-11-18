@@ -10858,14 +10858,56 @@ document .querySelectorAll(".rolarCritico") .forEach( (botao) => { botao.addEven
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
 `#golpe${numero}Categoria`
 ) ?.value || ""; if (!categoria) { alert( "Escolha se o move é FÍSICO ou ESPECIAL antes de rolar o crítico." ); return; } const formulaCritica = duplicarDadosFormula( formulaOriginal ); const formulaFinal = formulaDanoComBuff( numero, formulaCritica ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Crítico" ); } ); } );
-document .querySelectorAll(".rolarPassouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero })) return; const formulaOriginal = document .querySelector(
-`#golpe${numero}DanoCD`
-) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaComBuff = formulaDanoComBuff( numero, formulaOriginal, { incluirBonusMestres: false } ); if (!formulaComBuff) { return; } const formulaFinal =
-`(${formulaComBuff})/2`;
-await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Passou na CD" ); } ); } );
-document .querySelectorAll(".rolarReprovouCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero })) return; const formulaOriginal = document .querySelector(
-`#golpe${numero}DanoCD`
-) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Reprovou CD" ); } ); } );
+// Moves de CD: a mesma caixa Vant vale para os resultados de Passou e Reprovou.
+async function executarDanoCDComVantagem(botao, passouNaCD) {
+  if (botao.dataset.rolagemCdEmAndamento === "1") return;
+  const numero = Number(botao.dataset.golpe);
+  if (!Number.isInteger(numero) || numero < 1 || numero > 5) return;
+  botao.dataset.rolagemCdEmAndamento = "1";
+  botao.disabled = true;
+
+  try {
+    if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero })) return;
+    const formulaOriginal = document.querySelector(`#golpe${numero}DanoCD`)?.value?.trim();
+    if (!formulaOriginal) {
+      alert("A fórmula de dano da CD está vazia.");
+      return;
+    }
+
+    // Passou na CD mantém o cálculo original (metade do dano sem bônus de Mestres).
+    // Reprovou mantém o dano completo e os bônus previstos no Move.
+    const formulaComBuff = passouNaCD
+      ? formulaDanoComBuff(numero, formulaOriginal, { incluirBonusMestres: false })
+      : formulaDanoComBuff(numero, formulaOriginal);
+    if (!formulaComBuff) return;
+    const formulaFinal = passouNaCD ? `(${formulaComBuff})/2` : formulaComBuff;
+    const tipoResultado = passouNaCD ? "Passou na CD" : "Reprovou CD";
+    const nome = nomeGolpe(numero);
+
+    if (!document.querySelector(`#golpe${numero}Vantagem`)?.checked) {
+      await rolarNoDicePlus(formulaFinal, nome, tipoResultado);
+      return;
+    }
+
+    const primeiro = await rolarNoDicePlusComResultado(formulaFinal, nome, `${tipoResultado} · Vant 1/2`);
+    if (primeiro === null) return;
+    const segundo = await rolarNoDicePlusComResultado(formulaFinal, nome, `${tipoResultado} · Vant 2/2`);
+    if (segundo === null) return;
+    alert(`${nome} — ${tipoResultado} com Vantagem\\n1ª rolagem: ${primeiro}\\n2ª rolagem: ${segundo}\\nMaior resultado: ${Math.max(primeiro, segundo)}`);
+  } catch (erro) {
+    console.error("Erro ao rolar dano da CD:", erro);
+    alert("Não foi possível concluir a rolagem da CD.");
+  } finally {
+    delete botao.dataset.rolagemCdEmAndamento;
+    if (botao.isConnected) botao.disabled = false;
+  }
+}
+document.querySelectorAll(".rolarPassouCD").forEach((botao) => {
+  botao.addEventListener("click", () => executarDanoCDComVantagem(botao, true));
+});
+document.querySelectorAll(".rolarReprovouCD").forEach((botao) => {
+  botao.addEventListener("click", () => executarDanoCDComVantagem(botao, false));
+});
 document .querySelectorAll(".rolarCriticoCD") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero })) return; const formulaOriginal = document .querySelector(
 `#golpe${numero}DanoCD`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const categoria = document .querySelector(
