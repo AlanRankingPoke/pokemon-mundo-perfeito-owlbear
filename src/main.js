@@ -637,6 +637,137 @@ const ESTILO_FICHA = `<style> :root { --pm-bg: #f3f7fb; --pm-panel: #ffffff; --p
   color:#d2f3ff !important;
   -webkit-text-fill-color:#d2f3ff !important;
 }
+
+/* V19 - contraste focado nos 3 paineis corrigidos */
+/* MOVIMENTACAO: nao deixar caixas claras atras de legendas claras. */
+#app.temaEscuroFicha .movimentoGrid .movimentoTipo {
+  background:#0a2038 !important;
+  background-image:none !important;
+  border:1px solid #17b9ff !important;
+  color:#f1f9ff !important;
+  box-shadow:0 1px 5px rgba(5,160,245,.14) !important;
+}
+#app.temaEscuroFicha .movimentoGrid .movimentoTexto {
+  background:transparent !important;
+  color:#f3fbff !important;
+  min-width:0 !important;
+}
+#app.temaEscuroFicha .movimentoGrid .movimentoNome {
+  color:#f3fbff !important;
+  -webkit-text-fill-color:#f3fbff !important;
+  opacity:1 !important;
+  font-weight:900 !important;
+}
+#app.temaEscuroFicha .movimentoGrid .movimentoMeta {
+  color:#9bdcff !important;
+  -webkit-text-fill-color:#9bdcff !important;
+}
+#app.temaEscuroFicha .movimentoGrid .movimentoValor {
+  background:#061527 !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  border:1px solid #12bdff !important;
+}
+/* VANT: trocar o bloco branco por um controle compacto azul, com marca legivel. */
+#app.temaEscuroFicha .pmpMovePpGrupo .pmpMoveVantagemWrap {
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:5px !important;
+  background:#0c2c4b !important;
+  background-image:none !important;
+  border:1px solid #18beff !important;
+  border-radius:8px !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  padding:3px 7px !important;
+  min-height:30px !important;
+  white-space:nowrap !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .pmpMovePpGrupo .pmpMoveVantagemWrap span {
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  font-size:10px !important;
+  font-weight:900 !important;
+}
+#app.temaEscuroFicha .pmpMovePpGrupo input.pmpMoveVantagemCheck {
+  appearance:auto !important;
+  accent-color:#08baff !important;
+  background-color:#091a2d !important;
+  border:1px solid #2bd6ff !important;
+  width:15px !important;
+  height:15px !important;
+  min-height:15px !important;
+  margin:0 !important;
+  padding:0 !important;
+  opacity:1 !important;
+  cursor:pointer !important;
+}
+/* TALENTOS: cards, placeholders, descricoes e popup todos escuros/legiveis. */
+#app.temaEscuroFicha .pmpTalGrid {
+  align-items:start !important;
+  gap:8px !important;
+}
+#app.temaEscuroFicha .pmpTalGrid .pmpTalCard {
+  align-self:start !important;
+  height:auto !important;
+  min-width:0 !important;
+  background:#0a1d32 !important;
+  background-image:none !important;
+  color:#f4fbff !important;
+  border:1px solid #148bd7 !important;
+  box-shadow:0 3px 10px rgba(0,174,255,.09) !important;
+}
+#app.temaEscuroFicha .pmpTalCard .pmpTalTopo,
+#app.temaEscuroFicha .pmpTalCard .pmpTalTopo span {
+  color:#eaf7ff !important;
+  -webkit-text-fill-color:#eaf7ff !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .pmpTalCard .pmpTalNome {
+  background:#0b2c4b !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  border:1px solid #1ec2ff !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .pmpTalCard .pmpTalNome:disabled {
+  background:#10273c !important;
+  color:#cee6f5 !important;
+  -webkit-text-fill-color:#cee6f5 !important;
+  border-color:#2b678e !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .pmpTalCard .pmpTalDescricao {
+  display:block;
+  background:#07182b !important;
+  background-image:none !important;
+  color:#f4fbff !important;
+  -webkit-text-fill-color:#f4fbff !important;
+  border:1px solid #22bafb !important;
+  max-height:260px !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  white-space:pre-line !important;
+  overflow-wrap:anywhere !important;
+  line-height:1.55 !important;
+  font-size:11px !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .pmpTalCard .pmpTalDescricao[hidden] {
+  display:none !important;
+}
+#app.temaEscuroFicha .pmpTalModal,
+#app.temaEscuroFicha .pmpTalLista {
+  background:#091a2d !important;
+  color:#f4fbff !important;
+  border-color:#15a6ef !important;
+}
+#app.temaEscuroFicha .pmpTalModal :is(small,strong,span),
+#app.temaEscuroFicha #pmpTalStatus {
+  color:#d7efff !important;
+  -webkit-text-fill-color:#d7efff !important;
+}
 </style>`;
 
 // Preferência visual do participante, separada dos metadados dos tokens.
