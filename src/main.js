@@ -11226,7 +11226,7 @@ document .querySelector("#salvarPokemonMoves") .addEventListener( "click", async
 `${PREFIX}/talento-investida-poderosa`
 ] = novosTalentos.investidaPoderosa; novosGolpes.forEach( (golpe, index) => { const numero = index + 1; item.metadata[
 `${PREFIX}/golpe${numero}Tipo`
-] = golpe.tipo; // O seletor de catálogo salva os nomes dos 5 Moves; evitar sobrescrevê-los em gravações paralelas. item.metadata[
+] = golpe.tipo; /* O catálogo salva os nomes dos Moves separadamente, evitando sobrescrita em operações simultâneas. */ item.metadata[
 `${PREFIX}/golpe${numero}Categoria`
 ] = golpe.categoria; item.metadata[
 `${PREFIX}/golpe${numero}Acerto`
