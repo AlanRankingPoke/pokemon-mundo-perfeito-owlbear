@@ -8056,6 +8056,226 @@ function htmlPainelHabilidadePokemonPmp(habilidadeSalva, habilidadeMega) {
     </section>`;
 }
 
+
+// ===== ITENS POKÉDEXPMP (183): CATÁLOGO DE DESCRIÇÕES PARA FICHA =====
+// Biblioteca local somente para consulta. Efeitos de combate não são aplicados automaticamente.
+const ITENS_PMP_DESCRICOES = Object.freeze({"Ability Shield":"Enquanto segurado, a Habilidade Passiva do portador não pode ser alterada, substituída ou suprimida, e seus efeitos não podem ser ignorados por Moves ou Habilidades Passivas. Se um Pokémon com Ability Shield se transformar em outro Pokémon, seja usando o Move Transform ou a Habilidade Passiva Imposter, ele ainda copiará a Habilidade Passiva do oponente. Essa Habilidade Passiva copiada passará, então, a ser protegida.","Absorb Bulb":"Aumenta o Ataque Especial em 1 estágio. Ativado quando o Pokémon receber dano do tipo Água.","Adamant Orb":"Permite que Dialga troque de formas. Além disso, seus Moves dos tipos Aço e Dragão rolam o dano duas vezes, permitindo que você escolha o maior resultado.","Aguav Berry":"Restaura 3d10+5 PV. Ativado quando o Pokémon cai abaixo de 25% de PV, mas causa confusão caso seja de Natureza Energético, Impulsivo, Ingênuo, Curioso.","Air Balloon":"Pokémon que seguram isso se tornam “Elevados”. Estoura quando o portador é atingido por um ataque. Pokémon elevados não são afetados por Moves do tipo Terra, Spikes, Toxic Spikes, Sticky Web, a habilidade Arena Trap e qualquer forma de terreno difícil que se limite ao chão.","Apicot Berry":"Aumenta a Defesa Especial em 1 estágio. Ativado quando o Pokémon cai abaixo de 25% de PV.","Arceus Plate":"Altera o tipo do Arceus e do Move \"Judgment\". Além disso, os Moves do mesmo tipo do Arceus Plate usados pelo portador rolam os dados de dano duas vezes, mantendo a rolagem de maior resultado.","Aspear Berry":"Cura congelamento. Ativado quando o Pokémon é congelado.","Assault Vest":"O portador reduz todo dano recebido de ataques à distância em um valor igual ao seu bônus de proficiência, mas só pode usar Moves de dano.","Babiri Berry":"Pokémon sofre metade do dano de um Move do tipo aço. Ativado ao receber o dano.","Big Root":"Moves que roubam PV restauram um adicional de 1d12 PV (sem dano adicional ao alvo).","Black Belt":"O portador rola os dados de dano de seus Moves do tipo Lutador duas vezes, mantendo a rolagem de maior resultado.","Black Glasses":"O portador rola os dados de dano de seus Moves do tipo Sombrio duas vezes, mantendo a rolagem de maior resultado.","Black Sludge":"Restaura uma quantidade de PV igual ao bônus de proficiência no final de seus turnos, caso seja do tipo venenoso. Caso não seja do tipo venenoso, recebe dano sem tipo igual à metade de seu nível (arredondada para cima, mínimo de 2) no final de seus turnos.","Blue Orb":"Ativa a reversão primal de Kyogre","Blunder Policy":"Aumenta a Velocidade em 2 estágios. Ativado quando o Pokémon errar um ataque por falha na rolagem de acerto.","Booster Energy":"Quando segurado por um Pokémon com Protosynthesis sem luz solar intensa ativa, ou com Quark Drive fora de Electric Terrain, este item é consumido para ativar sua Habilidade Passiva. Enquanto estiver com um Pokémon Paradoxo, não pode ser transferido por Moves ou Habilidades Passivas, exceto no caso de Koraidon e Miraidon.","Bright Powder":"O portador recebe um bônus de +1 em sua Classe de Armadura e em todos os testes de resistência.","Bug Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Cell Battery":"Aumenta o Ataque em 1 estágio. Ativado quando o Pokémon receber dano do tipo Elétrico.","Charcoal":"O portador rola os dados de dano de seus Moves do tipo Fogo duas vezes, mantendo a rolagem de maior resultado.","Charti Berry":"Pokémon sofre metade do dano de um Move do tipo pedra. Ativado ao receber o dano.","Cheri Berry":"Cura paralisia. Ativado quando o Pokémon fica paralisado.","Chesto Berry":"Acorda da condição sonolento ou dormindo. Ativado quando o Pokémon fica sonolento ou adormece.","Chilan Berry":"Pokémon sofre metade do dano de um Move do tipo normal. Ativado ao receber o dano.","Choice Band":"O portador só pode utilizar o primeiro Move escolhido durante o combate até o fim da batalha ou até ser substituído. Em troca, o dano de seus ataques corpo a corpo é aumentado. Para cada 2 dados de dano, adicione +1 dado do mesmo tipo. Se restar 1 dado, adicione um bônus fixo igual a 1/4 do valor máximo desse dado, arredondado para cima.","Choice Scarf":"O portador só pode utilizar o primeiro Move escolhido durante o combate até o fim da batalha ou até ser substituído. Em troca, ele adiciona o bônus de proficiência em sua iniciativa, e seu deslocamento aumenta em 5 pés (1,5 metros).","Choice Specs":"O portador só pode utilizar o primeiro Move escolhido durante o combate até o fim da batalha ou até ser substituído. Em troca, o dano de seus ataques à distância é aumentado. Para cada 2 dados de dano, adicione +1 dado do mesmo tipo. Se restar 1 dado, adicione um bônus fixo igual a 1/4 do valor máximo desse dado, arredondado para cima.","Chople Berry":"Pokémon sofre metade do dano de um Move do tipo lutador. Ativado ao receber o dano.","Clear Amulet":"As Mudanças de Status do portador não podem ser reduzidas por Moves ou Habilidades Passivas de outras criaturas. Este item não o protege contra Haze ou Clear Smog, nem impede outros efeitos de um Move, como a troca causada por Parting Shot.","Coba Berry":"Pokémon sofre metade do dano de um Move do tipo voador. Ativado ao receber o dano.","Colbur Berry":"Pokémon sofre metade do dano de um Move do tipo sombrio. Ativado ao receber o dano.","Covert Cloak":"O portador ignora todos os efeitos secundários dos Moves de dano usados por outras criaturas. Este item não protege contra o efeito principal de Moves de Status, não impede efeitos aplicados ao próprio usuário do Move nem evita que Mudanças de Status sejam removidas por Clear Smog. O Covert Cloak também pode ser removido normalmente por Knock Off.","Cristal-Z":"Um fragmento concentrado de Poder-Z que permite a um Pokémon liberar um Z-Move devastador quando sincronizado com o Bracelete-Z de seu Treinador.","Custap Berry":"Faz com que você seja o primeiro a agir na rodada seguinte. Ativado quando o Pokémon cai abaixo de 25% de PV.","Damp Rock":"O portador aumenta a duração de seu Rain Dance e efeitos de chuva em 3 rodadas.","Dark Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Deep Sea Scale":"Enquanto um Clamperl segura isso, todo dano recebido de ataques à distância é reduzido pela metade","Deep Sea Tooth":"Enquanto um Clamperl segura isso, ele dobra os dados de dano de seus ataques à distância.","DNA Splicer":"Permite que Kyurem se funda com Reshiram ou Zekrom, tornando-o White Kyurem ou Black Kyurem.","Dragon Fang":"O portador rola os dados de dano de seus Moves do tipo Dragão duas vezes, mantendo a rolagem de maior resultado.","Dragon Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Eject Button":"Quando atingido por um ataque, o portador pode usar sua reação para ser trocado por outro Pokémon do grupo. (Limite de 1 por equipe).","Eject Pack":"Se o portador tiver alguma Mudança de Status reduzida, inclusive por causa do uso de seus próprios Moves, ele pode usar sua ação livre ou reação para automaticamente ser substituído por outro Pokémon do grupo.","Electric Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Electric Seed":"O portador tem sua Defesa aumentada em 1 estágio ao entrar em uma área afetada por Electric Terrain.","Enigma Berry":"Restaura 2d10+5 PV. Ativado quando o Pokémon recebe um dano super efetivo.","Everstone":"Enquanto segurado, o portador não pode evoluir. Quando segurado por um Pokémon durante uma tentativa de reprodução, o filhote herda a Natureza do portador deste item.","Eviolite":"Enquanto segurado, se o Pokémon possuir evolução e não estiver em seu último estágio evolutivo, ele reduz todo o dano recebido de ataques corpo a corpo ou à distância em um valor igual ao seu bônus de proficiência.","Fairy Feather":"O portador rola os dados de dano de seus Moves do tipo Fada duas vezes, mantendo a rolagem de maior resultado.","Fairy Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Fighting Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Figy Berry":"Restaura 3d10+5 PV. Ativado quando o Pokémon cai abaixo de 25% de PV, mas causa confusão caso seja de Natureza Sério, Tímido, Sereno, Teimoso.","Fire Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Flame Orb":"Enquanto segurado, este orbe inflige o status de queimado ao final de cada turno.","Float Stone":"O portador aumenta sua altura e alcance de salto em 3 metros e reduz o dano de queda em 2d6. Além disso, para Moves que dependem da escala de tamanho para calcular dano, ele é tratado como uma categoria de tamanho menor.","Flying Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Focus Band":"Quando o portador sofrer dano de um ataque que o faria desmaiar, role um d20. Em um resultado de 19 ou 20, ele não desmaia e permanece com 1 PV.","Focus Sash":"Se o portador estiver com seus PV totalmente cheios e o primeiro dano recebido for maior que metade de sua vida máxima, esse dano é reduzido pela metade. Se, mesmo reduzido pela metade, o golpe ainda for capaz de desmaiá-lo, o portador fica com 1 PV.","Ganlon Berry":"Aumenta a Defesa em 1 estágio. Ativado quando o Pokémon cai abaixo de 25% de PV.","Genesect Drives":"Cartuchos que mudam o tipo do Move \"Techno Blast\" do Genesect. Burn Drive: Fogo / Chill Drive: Gelo / Douse Drive: Água / Shock Drive: Elétrico","Ghost Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Gracidea":"Uma bela flor que permite que Shaymin mude de forma. Só pode ser utilizada durante o dia, entre 5h e 20h.","Grass Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Grassy Seed":"O portador tem sua Defesa aumentada em 1 estágio ao entrar em uma área afetada por Grassy Seed.","Grepa Berry":"Reduz a SAB de um Pokémon em 2 até o próximo descanso longo e aumenta sua Lealdade em 1 pelo mesmo período. Se Pokémon possuir pontos de EV gastos nesse atributo, ele pode redistribuir permanentemente os pontos removidos.","Griseous Orb":"Permite que Giratina troque de formas. Além disso, seus Moves dos tipos Dragão e Fantasma rolam o dano duas vezes, permitindo que você escolha o maior resultado.","Ground Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Haban Berry":"Pokémon sofre metade do dano de um Move do tipo dragão. Ativado ao receber o dano.","Hard Stone":"O portador rola os dados de dano de seus Moves do tipo Pedra duas vezes, mantendo a rolagem de maior resultado.","Heat Rock":"O portador aumenta a duração de seu Sunny Day e efeitos de sol intenso em 3 rodadas.","Heavy-Duty Boots":"O portador é imune aos efeitos de Stealth Rock, Spikes, Toxic Spikes e Sticky Web, mesmo que sejam ativados através de outros Moves.","Hondew Berry":"Reduz a DES de um Pokémon em 2 até o próximo descanso longo e aumenta sua Lealdade em 1 pelo mesmo período. Se Pokémon possuir pontos de EV gastos nesse atributo, ele pode redistribuir permanentemente os pontos removidos.","Iapapa Berry":"Restaura 3d10+5 PV. Ativado quando o Pokémon cai abaixo de 25% de PV, mas causa confusão caso seja de Natureza Apático, Astuto, Sociável, Apressado.","Ice Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Icy Rock":"O portador aumenta a duração de seu Hail e efeitos de neve em 3 rodadas.","Iron Ball":"O portador tem todos os seus deslocamentos reduzidos pela metade, e sua iniciativa é reduzida em um valor igual ao dobro do seu bônus de proficiência. Se for adquirido, perdido ou tiver seu efeito suprimido, isso não altera sua posição na iniciativa até o início da próxima rodada. Além disso, o portador é sempre considerado No Chão, sendo incapaz de voar e perdendo qualquer imunidade causada pelo tipo Voador e habilidades como Levitate, Eelevate, Magnet Rise ou Telekinesis. Todos os efeitos da Iron Ball são anulados por Klutz, Embargo e Magic Room.","Kasib Berry":"Pokémon sofre metade do dano de um Move do tipo fantasma. Ativado ao receber o dano.","Kebia Berry":"Pokémon sofre metade do dano de um Move do tipo venenoso. Ativado ao receber o dano.","Kee Berry":"Aumenta a Defesa em 1 estágio. Ativado após o Pokémon receber dano de um ataque corpo a corpo.","Kelpsy Berry":"Reduz a FOR de um Pokémon em 2 até o próximo descanso longo e aumenta sua Lealdade em 1 pelo mesmo período. Se Pokémon possuir pontos de EV gastos nesse atributo, ele pode redistribuir permanentemente os pontos removidos.","King's Rock":"Evolui Slowpoke e Poliwhirl. Em rolagens de ataque natural de 19 ou 20, o alvo recebe o status Atordoado.","Lagging Tail":"O portador sempre será o último na ordem de iniciativa, independentemente de sua Velocidade ou dos efeitos de Trick Room. Sua iniciativa é sempre definida como 1 ponto abaixo do menor valor atual na ordem de iniciativa do combate (exemplo: se o último a agir possui iniciativa 10, o portador terá iniciativa 9). Se for adquirido, perdido ou tiver seu efeito suprimido, isso não altera sua posição na ordem de iniciativa até o início da próxima rodada. Caso mais de um Pokémon possua este item, ambos rolam suas iniciativas normalmente, e o mais lento será considerado o último.","Lansat Berry":"Aumenta a Margem de Crítico em 2 estágios. Ativado quando o Pokémon cai abaixo de 25% de PV.","Leftovers":"Restaura uma quantidade de PV igual ao bônus de proficiência no final de cada um de seus turnos.","Leppa Berry":"Restaura 10 PP para um Move. Ativado quando o Pokémon fica sem PP para um Move.","Liechi Berry":"Aumenta o Ataque em 1 estágio. Ativado quando o Pokémon cai abaixo de 25% de PV.","Life Orb":"O portador aumenta o dano de seus Moves. Para cada 3 dados de dano, adicione +1 dado do mesmo tipo. Se restarem 1 ou 2 dados, role os dados restantes duas vezes, mantendo a rolagem de maior resultado. Além disso, ele perde uma quantidade de pontos de vida igual à metade do próprio nível (arredondada para baixo, mínimo de 2) ao causar dano com esse efeito. Este aumento de dano conta como 1 Ponto de Amplificação de Dano.","Light Ball":"Permite que Pikachu adicione o dobro do seu bônus de proficiência ao dano de seus ataques corpo a corpo e à distância.","Light Clay":"O portador aumenta a duração de Light Screen, Reflect ou Aurora Veil em 3 rodadas, se usados por ele.","Loaded Dice":"Ao acertar um Move de múltiplos golpes, o portador sempre atinge pelo menos quatro vezes. A rolagem para determinar a quantidade de golpes é feita normalmente, mas, se o total indicado for inferior a quatro, considere que o Move realiza quatro golpes.","Lucky Egg":"A experiência de batalha para este Pokémon é aumentada em 20%.","Lucky Punch":"Aumenta a Margem de Crítico da Chansey em 2 estágios ao entrar em batalha.","Lum Berry":"Cura qualquer condição de status negativa. Ativado quando o Pokémon é afetado por uma condição de status.","Luminous Moss":"Aumenta a Defesa Especial em 1 estágio. Ativado quando o Pokémon receber dano do tipo Água.","Lustrous Orb":"Permite que Palkia troque de formas. Além disso, seus Moves dos tipos Água e Dragão rolam o dano duas vezes, permitindo que você escolha o maior resultado.","Magnet":"O portador rola os dados de dano de seus Moves do tipo Elétrico duas vezes, mantendo a rolagem de maior resultado.","Mago Berry":"Restaura 3d10+5 PV. Ativado quando o Pokémon cai abaixo de 25% de PV, mas causa confusão caso seja de Natureza Corajoso, Sábio, Arrogante, Preguiçoso.","Maranga Berry":"Aumenta a Defesa Especial em 1 estágio. Ativado após o Pokémon receber dano de um ataque à distância.","Mega Pedra":"Uma pedra misteriosa que, quando segurada pelo Pokémon correspondente, permite que ele Mega Evolua durante a batalha em resposta à Pedra-Chave de seu Treinador.","Memory Disc":"Altera o tipo de Silvally e seu Move Multi Attack.","Mental Herb":"Se o portador estiver Encantado ou afetado por Taunt, Encore, Torment, Heal Block, Disable ou Cursed Body, ele pode usar uma ação livre em seu turno para ser curado de todos esses efeitos.","Metal Coat":"Evolui Onix e Scyther. O portador rola os dados de dano de seus Moves do tipo Aço duas vezes, mantendo a rolagem de maior resultado.","Metal Powder":"Quando segurado por Ditto, todo dano recebido de ataques corpo a corpo é reduzido pela metade. Esse efeito não funciona enquanto Ditto estiver transformado.","Micle Berry":"Aumenta a Precisão em 2 estágios. Ativado quando o Pokémon cai abaixo de 25% de PV.","Miracle Seed":"O portador rola os dados de dano de seus Moves do tipo Grama duas vezes, mantendo a rolagem de maior resultado.","Mirror Herb":"Quando um oponente aumentar um ou mais estágios de Mudança de Status, o portador pode consumir este item para receber os mesmos aumentos. Fora de combate, durante um descanso curto, o portador pode aprender um Egg Move compatível com sua espécie, desde que um Pokémon aliado presente conheça esse Move. Não é necessário que os Pokémon compartilhem o mesmo Egg Group ou sejam de gêneros diferentes.","Misty Seed":"O portador tem sua Defesa Especial aumentada em 1 estágio ao entrar em uma área afetada por Misty Seed.","Muscle Band":"O portador causa dano adicional igual à metade de seu bônus de proficiência (arredondado para baixo, mínimo de 1) com seus ataques corpo a corpo (uma vez por Move).","Mystic Water":"O portador rola os dados de dano de seus Moves do tipo Água duas vezes, mantendo a rolagem de maior resultado.","Máscara Alicerce":"Permite que Ogerpon assuma sua Forma Máscara Alicerce. Enquanto estiver usando esta máscara, Ogerpon rola os dados de dano de seus Moves duas vezes, mantendo a rolagem de maior resultado.","Máscara Fornalha":"Permite que Ogerpon assuma sua Forma Máscara Fornalha. Enquanto estiver usando esta máscara, Ogerpon rola os dados de dano de seus Moves duas vezes, mantendo a rolagem de maior resultado.","Máscara Nascente":"Permite que Ogerpon assuma sua Forma Máscara Nascente. Enquanto estiver usando esta máscara, Ogerpon rola os dados de dano de seus Moves duas vezes, mantendo a rolagem de maior resultado.","N-Lunarizer":"Permite que Necrozma se funda com Lunala para criar Necrozma Asas da Alvorada.","N-Solarizer":"Permite que Necrozma se funda com Solgaleo para criar Necrozma Crina do Anoitecer.","Never-Melt Ice":"O portador rola os dados de dano de seus Moves do tipo Gelo duas vezes, mantendo a rolagem de maior resultado.","Normal Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Occa Berry":"Pokémon sofre metade do dano de um Move do tipo fogo. Ativado ao receber o dano.","Oran Berry":"Restaura 2d4+2 PV. Ativado quando o Pokémon cai abaixo de 50% de PV.","Passho Berry":"Pokémon sofre metade do dano de um Move do tipo água. Ativado ao receber o dano.","Payapa Berry":"Pokémon sofre metade do dano de um Move do tipo psíquico. Ativado ao receber o dano.","Pecha Berry":"Cura envenenamento. Ativado quando o Pokémon é envenenado ou gravemente envenenado.","Persim Berry":"Cura confusão. Ativado quando o Pokémon fica confuso.","Petaya Berry":"Aumenta o Ataque Especial em 1 estágio. Ativado quando o Pokémon cai abaixo de 25% de PV.","Poison Barb":"O portador rola os dados de dano de seus Moves do tipo Venenoso duas vezes, mantendo a rolagem de maior resultado.","Poison Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Pomeg Berry":"Reduz a CON de um Pokémon em 2 até o próximo descanso longo e aumenta sua Lealdade em 1 pelo mesmo período. Se Pokémon possuir pontos de EV gastos nesse atributo, ele pode redistribuir permanentemente os pontos removidos.","Power Herb":"Se o portador usar um Move que possua turno de preparação (exceto Sky Drop), o portador pode usar sua ação livre para consumir este item e executar o Move no mesmo turno. Quaisquer aumentos de Mudanças de Status que ocorreriam nesse turno de preparação ainda são aplicados.","Prison Bottle":"Permite que Hoopa mude de forma.","Psychic Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Psychic Seed":"O portador tem sua Defesa Especial aumentada em 1 estágio ao entrar em uma área afetada por Psychic Seed.","Punching Glove":"O portador adiciona seu bônus de proficiência ao dano de Moves de soco, uma vez por Move. Além disso, esses Moves deixam de acionar efeitos de inimigos que se ativam ao contato corpo a corpo. Moves de soco são todos aqueles que possuem “Punch” no nome, além dos seguintes: Double Iron Bash, Hammer Arm, Headlong Rush, Ice Hammer, Meteor Mash, Plasma Fists, Rage Fist, Surging Strikes e Wicked Blow.","Qualot Berry":"Reduz a CA de um Pokémon em 2 até o próximo descanso longo e aumenta sua Lealdade em 1 pelo mesmo período.","Quick Claw":"No início de cada rodada, o portador rola 1d20. Com um resultado de 17 ou mais, ele age primeiro nessa rodada.","Rawst Berry":"Cura queimadura. Ativado quando o Pokémon é queimado.","Razor Claw":"Evolui Sneasel. A margem de crítico dos Moves do portador é aumentada em +3.","Razor Fang":"Evolui Gligar. Em rolagens de ataque natural de 19 ou 20, o alvo recebe o status Atordoado.","Razz Berry":"Quando segurado por um Pokémon em combate, o Treinador ganha +1 nas tentativas de captura. (Não consumível)","Red Orb":"Ativa a reversão primal de Groudon","Reins of Unity":"Permite que Calyrex se funda com Glastrier ou Spectrier, transformando-o em Ice Rider Calyrex ou Shadow Rider Calyrex, respectivamente.","Reveal Glass":"Permite que Thundurus, Landorus, Tornadus e Enamorus mudem de forma.","Rindo Berry":"Pokémon sofre metade do dano de um Move do tipo grama. Ativado ao receber o dano.","Rock Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Rocky Helmet":"Quando o portador sofre dano de um ataque corpo a corpo, o atacante recebe dano sem tipo igual ao bônus de proficiência do portador. Se uma criatura agarrar o portador por um agarrão que não tenha sido causado por um Move, ela também recebe esse dano ao final de cada turno do portador enquanto mantiver o agarrão.","Roseli Berry":"Pokémon sofre metade do dano de um Move do tipo fada. Ativado ao receber o dano.","Rusted Shield":"Quando um Zamazenta estiver segurando este item em batalha, ele se transforma em sua forma Escudo Coroado. Esse item também altera o Move Iron Head de Zamazenta para Behemoth Bash.","Rusted Sword":"Quando um Zacian estiver segurando este item em batalha, ele se transforma em sua forma Espada Coroada. Esse item também altera o Move Iron Head de Zacian para Behemoth Blade.","Safety Goggles":"O portador é imune a Moves que contenham “Powder” ou “Spore” em seus nomes, bem como ao dano causado por granizo ou tempestade de areia. Além disso, ele não pode ser afetado pela habilidade Effect Spore.","Salac Berry":"Aumenta a Velocidade em 1 estágio. Ativado quando o Pokémon cai abaixo de 25% de PV.","Scope Lens":"A margem de crítico dos Moves do portador é aumentada em +3.","Sharp Beak":"O portador rola os dados de dano de seus Moves do tipo Voador duas vezes, mantendo a rolagem de maior resultado.","Shed Shell":"Permite que o portador seja trocado (mas não fuja), mesmo que esteja sob o efeito de um Move, habilidade ou condição que o impeça de escapar, incluindo efeitos autoimpostos como Ingrain.","Shell Bell":"Restaura uma quantidade de PV igual à metade de seu nível (arredondado para cima, mínimo de 2) ao causar dano a pelo menos uma criatura com um Move danoso. Essa cura pode ocorrer apenas uma vez por rodada.","Shuca Berry":"Pokémon sofre metade do dano de um Move do tipo terra. Ativado ao receber o dano.","Silk Scarf":"O portador rola os dados de dano de seus Moves do tipo Normal duas vezes, mantendo a rolagem de maior resultado.","Silver Powder":"O portador rola os dados de dano de seus Moves do tipo Inseto duas vezes, mantendo a rolagem de maior resultado.","Sitrus Berry":"Restaura 2d10+5 PV. Ativado quando o Pokémon cai abaixo de 50% de PV.","Smoke Ball":"Garante um sucesso em uma tentativa de fugir de batalhas de Pokémon selvagens.","Smooth Rock":"O portador aumenta a duração de seus Moves de Sandstorm em 3 rodadas.","Snowball":"Aumenta o Ataque em 1 estágio. Ativado quando o Pokémon receber dano do tipo Gelo.","Soft Sand":"O portador rola os dados de dano de seus Moves do tipo Terra duas vezes, mantendo a rolagem de maior resultado.","Soothe Bell":"Redefine a classificação de Lealdade de um Pokémon para +0, mesmo sem o controle de SR. Caso o Pokémon já possua Lealdade 0 ou mais, as chances de aumentar a Lealdade são aumentadas (com base nas decisões de seu Mestre).","Soul Dew":"Permite que Latios e Latias rolem o dano de seus ataques do tipo Psíquico e Dragão duas vezes e escolha o maior resultado.","Spell Tag":"O portador rola os dados de dano de seus Moves do tipo Fantasma duas vezes, mantendo a rolagem de maior resultado.","Starf Berry":"Role 1d6 e aumente em 2 estágios o status correspondente. Ativado quando o Pokémon cai abaixo de 25% de PV. 1: Ataque / 2: Ataque Especial / 3: Defesa / 4: Defesa Especial / 5: Velocidade / 6: role novamente.","Steel Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Stick":"Aumenta a Margem de Crítico do Farfetch'd em 2 estágios ao entrar em batalha.","Tanga Berry":"Pokémon sofre metade do dano de um Move do tipo inseto. Ativado ao receber o dano.","Terrain Extender":"O portador aumenta em 3 rodadas a duração de Grassy Terrain, Misty Terrain, Electric Terrain e Psychic Terrain que tenham sido ativados por ele, seja por Move ou por habilidade passiva.","Thick Club":"Permite que Cubone, Marowak ou Alolan Marowak adicionem o dobro de seus bônus de proficiência às jogadas de dano de seus ataques corpo a corpo.","Throat Spray":"Aumenta o Ataque Especial em 1 estágio. Ativado quando o Pokémon usar um Move baseado em som.","Tomato Berry":"Reduz o deslocamento de um Pokémon em 10 pés (3 metros) até o próximo descanso longo e aumenta sua Lealdade em 1 pelo mesmo período.","Toxic Orb":"Enquanto segurado, este orbe inflige o status Gravemente Envenenado ao final de cada turno.","Twisted Spoon":"O portador rola os dados de dano de seus Moves do tipo Psíquico duas vezes, mantendo a rolagem de maior resultado.","Utility Umbrella":"O portador não é afetado pelos efeitos de chuva e de luz solar intensa. Todos os efeitos de tempestade de areia, tempestade de granizo e neve funcionam normalmente.","Wacan Berry":"Pokémon sofre metade do dano de um Move do tipo elétrico. Ativado ao receber o dano.","Water Gem":"Ao usar um Move danoso do mesmo tipo da gema, você pode consumi-la com uma ação livre para rolar os dados de dano duas vezes e escolher o maior resultado. Caso o tipo do Move seja alterado por algum efeito, como Pixilate ou Normalize, o tipo considerado será sempre o resultado após a modificação.","Weakness Policy":"Aumenta o Ataque e Ataque Especial em 2 estágios. Ativado quando o Pokémon receber dano de um Move super efetivo.","White Herb":"Se o portador estiver com algum estágio negativo em suas Mudanças de Status, ele pode usar uma ação livre em seu turno para remover todos esses efeitos.","Wide Lens":"O portador recebe um adicional de +1 nas rolagens de ataque e na CD de seus Moves.","Wiki Berry":"Restaura 3d10+5 PV. Ativado quando o Pokémon cai abaixo de 25% de PV, mas causa confusão caso seja de Natureza Determinado, Alegre, Prudente, Travesso.","Wise Glasses":"O portador causa dano adicional igual à metade de seu bônus de proficiência, arredondado para baixo, mínimo de 1, com seus ataques à distância (uma vez por Move).","Yache Berry":"Pokémon sofre metade do dano de um Move do tipo gelo. Ativado ao receber o dano."});
+const ITENS_PMP_NOMES = Object.freeze(Object.keys(ITENS_PMP_DESCRICOES).sort((a,b)=>a.localeCompare(b,'pt-BR')));
+const ITENS_PMP_BUSCA = Object.freeze(ITENS_PMP_NOMES.map((nome) => normalizarBuscaPokedexPmp(nome)));
+const ITENS_PMP_INDICE = new Map(ITENS_PMP_NOMES.map((nome,i)=>[ITENS_PMP_BUSCA[i], nome]));
+const META_ITEM_POKEMON_CATALOGO = `${PREFIX}/pokemon-item-catalogo`;
+
+function nomeCanonicoItemPokemonPmp(nome) {
+  const valor=String(nome ?? '').trim();
+  return valor ? (ITENS_PMP_INDICE.get(normalizarBuscaPokedexPmp(valor)) || '') : '';
+}
+
+function htmlPainelItemPokemonPmp(itemAtual) {
+  const nome = String(itemAtual ?? '').trim();
+  return `<section class="pokemonDetalhesCompactos pmpItemBloco" aria-label="Item do Pokémon">
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+      <button id="pokemonItemAbrir" type="button" aria-label="Escolher item do Pokémon"
+        style="min-height:30px!important;padding:5px 12px!important;font-size:12px!important;font-weight:900!important;
+        background:#e53935!important;color:#fff!important;border:1px solid #9d1818!important;">🔎 Item</button>
+      <span style="font-size:10px;color:#67768c;font-weight:700;">${ITENS_PMP_NOMES.length} disponíveis</span>
+    </div>
+    <button id="pokemonItemNome" type="button" aria-expanded="false" aria-controls="pokemonItemDescricao"
+      ${nome ? '' : 'disabled'}
+      style="display:block;margin-top:7px;width:100%;min-height:35px!important;padding:7px 10px!important;
+      text-align:left!important;font-size:13px!important;font-weight:900!important;white-space:normal;overflow-wrap:anywhere;">
+      ${nome ? esc(nome)+' ▾' : 'Nenhum item selecionado'}</button>
+    <div id="pokemonItemDescricao" role="region" hidden
+      style="margin-top:6px;padding:11px;background:#fffafa;border:1px solid #cfaaaa;border-radius:10px;color:#26364b;line-height:1.5;">
+      <strong id="pokemonItemDescricaoTitulo" style="display:block;margin-bottom:5px;"></strong>
+      <div id="pokemonItemDescricaoTexto" style="font-size:12px;white-space:pre-line;overflow-wrap:anywhere;"></div>
+    </div>
+    <div id="pokemonItemAviso" role="status" aria-live="polite"
+      style="font-size:11px;font-weight:700;color:#177044;min-height:13px;margin-top:5px;"></div>
+  </section>`;
+}
+
+function htmlSeletorItensPokemonPmp() {
+  return `<style>
+    .pmpItemOverlay{display:none;position:fixed;inset:0;z-index:1000011;padding:12px;
+      background:rgba(8,15,28,.77);align-items:center;justify-content:center;}
+    .pmpItemOverlay.aberto{display:flex;}
+    .pmpItemPainel{display:flex;flex-direction:column;width:100%;max-width:510px;max-height:92vh;
+      padding:14px;background:#fff;border:2px solid #c62828;border-radius:15px;color:#172a44;box-shadow:0 14px 45px #0006;}
+    .pmpItemTopo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+    .pmpItemLista{min-height:130px;max-height:58vh;overflow-y:auto;flex:1;border:1px solid #d5dce6;
+      border-radius:9px;background:#f7f9fd;padding:5px;}
+    #app .pmpItemOpcao{display:block;width:100%;text-align:left;padding:9px 10px!important;margin:0 0 4px;
+      background:#fff!important;font-size:12px!important;font-weight:800;overflow-wrap:anywhere;}
+    #app .pmpItemOpcao:focus{outline:2px solid #c62828;outline-offset:-2px;}
+  </style>
+  <div id="pokemonItemOverlay" class="pmpItemOverlay" role="dialog" aria-modal="true"
+    aria-label="Pesquisar itens do Pokémon" aria-hidden="true">
+    <div class="pmpItemPainel">
+      <div class="pmpItemTopo">
+        <strong style="font-size:16px">🔎 Escolher Item</strong>
+        <button id="pokemonItemFechar" type="button" aria-label="Fechar pesquisa de itens"
+          style="padding:4px 10px!important;min-height:29px!important;font-size:20px!important;">×</button>
+      </div>
+      <input id="pokemonItemBuscar" type="search" data-no-autosave="1"
+        placeholder="Pesquisar Leftovers, Life Orb, Berry..." autocomplete="off" spellcheck="false"
+        aria-label="Pesquisar entre 183 itens" style="width:100%;margin:10px 0 5px!important;font-size:15px!important;">
+      <div id="pokemonItemContador" style="font-size:11px;font-weight:800;margin:3px 0 7px;"></div>
+      <div id="pokemonItemLista" class="pmpItemLista" role="listbox" aria-label="Itens disponíveis"></div>
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:9px;">
+        <button id="pokemonItemMais" type="button" style="display:none;padding:6px 9px!important;">Mostrar mais</button>
+        <button id="pokemonItemRemover" type="button" style="padding:6px 9px!important;">Remover item</button>
+      </div>
+      <p id="pokemonItemMensagem" role="status" aria-live="polite"
+        style="font-size:11px;line-height:1.35;margin:7px 0 0!important;">Selecione um item para salvar.</p>
+    </div>
+  </div>`;
+}
+
+async function salvarItemPokemonPmp(token, nome) {
+  const entrada=String(nome ?? '').trim();
+  const nomeValido=entrada ? nomeCanonicoItemPokemonPmp(entrada) : '';
+  if (entrada && !nomeValido) throw new Error('Este item não consta na biblioteca PokédexPMP.');
+  if (!token?.id || token.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon')
+    throw new Error('Selecione um token com ficha Pokémon.');
+  if (!(await OBR.scene.isReady())) throw new Error('A cena não está pronta.');
+  const presente=await pegarTokenAtualizado(token.id);
+  if (!presente || presente.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon')
+    throw new Error('O Pokémon não está mais nesta cena.');
+  // Alterar exclusivamente este campo: não tocar em itens da mochila, HUDs, habilidades, HP ou Moves.
+  await OBR.scene.items.updateItems([token.id],(lista)=>{
+    for (const item of lista) {
+      if (item.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') continue;
+      item.metadata[META_ITEM_POKEMON_CATALOGO]=nomeValido;
+    }
+  });
+  const salvo=await pegarTokenAtualizado(token.id);
+  if (!salvo || String(salvo.metadata?.[META_ITEM_POKEMON_CATALOGO] ?? '') !== nomeValido)
+    throw new Error('Não foi possível confirmar o salvamento do item.');
+  token.metadata[META_ITEM_POKEMON_CATALOGO]=nomeValido;
+  return nomeValido;
+}
+
+function ativarSeletorItemPokemonPmp(token) {
+  const el=(id)=>document.getElementById(id);
+  const abrir=el('pokemonItemAbrir'), nome=el('pokemonItemNome');
+  const descricao=el('pokemonItemDescricao'), titulo=el('pokemonItemDescricaoTitulo');
+  const texto=el('pokemonItemDescricaoTexto'), aviso=el('pokemonItemAviso');
+  const overlay=el('pokemonItemOverlay'), buscar=el('pokemonItemBuscar');
+  const lista=el('pokemonItemLista'), contador=el('pokemonItemContador');
+  const mais=el('pokemonItemMais'), remover=el('pokemonItemRemover');
+  const fecharBotao=el('pokemonItemFechar'), mensagem=el('pokemonItemMensagem');
+  if (![abrir,nome,descricao,titulo,texto,aviso,overlay,buscar,lista,contador,mais,remover,fecharBotao,mensagem].every(Boolean)) return;
+
+  let atual=String(token.metadata?.[META_ITEM_POKEMON_CATALOGO] ?? '').trim();
+  let encontrados=ITENS_PMP_NOMES.map((_,i)=>i);
+  let limite=45;
+  let salvando=false;
+  const uiAtual=()=>el('pokemonItemAbrir')===abrir;
+  const atualizarNome=()=>{
+    if (!uiAtual()) return;
+    nome.disabled=!atual;
+    nome.textContent=atual ? `${atual} ▾` : 'Nenhum item selecionado';
+    nome.setAttribute('aria-expanded','false');
+    descricao.hidden=true;
+    titulo.textContent='';
+    texto.textContent='';
+    remover.disabled=!atual;
+  };
+  const fechar=(forcar=false)=>{
+    if (salvando && !forcar) return;
+    overlay.classList.remove('aberto');
+    overlay.setAttribute('aria-hidden','true');
+    if (uiAtual()) abrir.focus();
+  };
+  const renderizar=()=>{
+    if (!uiAtual()) return;
+    lista.innerHTML=encontrados.slice(0,limite).map((indice)=>{
+      const item=ITENS_PMP_NOMES[indice];
+      return `<button type="button" class="pmpItemOpcao" role="option" data-item-pmp="${indice}"
+        aria-selected="${atual===item}">${esc(item)}${atual===item?' ✓':''}</button>`;
+    }).join('') || '<p style="padding:8px;">Nenhum item encontrado.</p>';
+    contador.textContent=`${encontrados.length} resultado(s) entre ${ITENS_PMP_NOMES.length} itens`;
+    mais.style.display=encontrados.length>limite ? '' : 'none';
+  };
+  const filtrar=()=>{
+    const termo=normalizarBuscaPokedexPmp(buscar.value);
+    encontrados=[];
+    for(let i=0;i<ITENS_PMP_NOMES.length;i++) if(ITENS_PMP_BUSCA[i].includes(termo)) encontrados.push(i);
+    limite=45;
+    lista.scrollTop=0;
+    renderizar();
+  };
+  const escolher=async (item)=>{
+    if (salvando || !uiAtual()) return;
+    salvando=true;
+    buscar.disabled=true;
+    mais.disabled=true;
+    remover.disabled=true;
+    mensagem.textContent=item ? `Salvando ${item}...` : 'Removendo item...';
+    try {
+      const salvo=await salvarItemPokemonPmp(token,item);
+      if (!uiAtual()) return;
+      atual=salvo;
+      atualizarNome();
+      aviso.textContent=salvo ? `✓ ${salvo} salvo. Clique no nome para ver o efeito.` : '✓ Item removido.';
+      fechar(true);
+    } catch(erro) {
+      console.error('Falha ao salvar item do Pokémon:',erro);
+      if (uiAtual()) mensagem.textContent=`Erro: ${erro?.message||String(erro)}`;
+    } finally {
+      salvando=false;
+      if (uiAtual()) {
+        buscar.disabled=false;
+        mais.disabled=false;
+        remover.disabled=!atual;
+      }
+    }
+  };
+  nome.addEventListener('click',()=>{
+    if (!atual) return;
+    const expandir=descricao.hidden;
+    descricao.hidden=!expandir;
+    nome.setAttribute('aria-expanded',String(expandir));
+    nome.textContent=`${atual} ${expandir?'▴':'▾'}`;
+    if (expandir) {
+      titulo.textContent=atual;
+      const canonico=nomeCanonicoItemPokemonPmp(atual);
+      texto.textContent=canonico ? ITENS_PMP_DESCRICOES[canonico] :
+        'Item salvo em versão antiga. Selecione um item no catálogo para consultar seu efeito.';
+    }
+  });
+  abrir.addEventListener('click',()=>{
+    if(salvando)return;
+    overlay.classList.add('aberto');
+    overlay.setAttribute('aria-hidden','false');
+    buscar.value='';
+    mensagem.textContent='Escolha um item do PokédexPMP.';
+    filtrar();
+    buscar.focus();
+  });
+  buscar.addEventListener('input',filtrar);
+  buscar.addEventListener('keydown',(evento)=>{
+    if (evento.key==='Escape') {evento.preventDefault();fechar();}
+    if (evento.key==='Enter') {
+      const primeiro=lista.querySelector('[data-item-pmp]');
+      if(primeiro){evento.preventDefault();primeiro.click();}
+    }
+  });
+  fecharBotao.addEventListener('click',()=>fechar());
+  overlay.addEventListener('click',(evento)=>{if(evento.target===overlay)fechar();});
+  mais.addEventListener('click',()=>{limite+=45;renderizar();});
+  remover.addEventListener('click',()=>{if(!remover.disabled)escolher('');});
+  lista.addEventListener('click',(evento)=>{
+    const botao=evento.target.closest('[data-item-pmp]');
+    if(!botao || salvando)return;
+    const indice=Number(botao.dataset.itemPmp);
+    const item=ITENS_PMP_NOMES[indice];
+    if(Number.isInteger(indice)&&item)escolher(item);
+  });
+  atualizarNome();
+}
+// ===== FIM ITENS POKÉDEXPMP =====
+
 function htmlSeletorHabilidadePokemonPmp() {
   return `
     <style>
@@ -8323,6 +8543,7 @@ app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoPokemon(token, 1)}
     ${htmlSeletorHabilidadePokemonPmp()}
+    ${htmlSeletorItensPokemonPmp()}
     <div id="pokemonEspecieAviso" aria-live="polite"
       style="font-size:11px;font-weight:800;color:#16764d;min-height:14px;margin:0 0 6px;"></div>
     <div class="statusGrid statusGridPokemon" style="
@@ -8571,6 +8792,7 @@ app.innerHTML = `
               >
             </div>
             ${htmlPainelHabilidadePokemonPmp(habilidadeNormal, habilidadeMegaStatus)}
+            ${htmlPainelItemPokemonPmp(token.metadata?.[META_ITEM_POKEMON_CATALOGO])}
       </div>
     </div>
     <hr class="hrMovimento">
@@ -8725,6 +8947,7 @@ ativarCabecalhoPokemon(token);
 ativarSeletorEspeciePokemon(token);
 ativarSeletorNaturePokemon(token);
 ativarSeletorHabilidadePokemonPmp(token);
+ativarSeletorItemPokemonPmp(token);
 ativarCalculoStatusPokemon();
 ativarIndicadoresBonusStatusPokemon(token);
 ativarRolagensSalvaguarda(token);
