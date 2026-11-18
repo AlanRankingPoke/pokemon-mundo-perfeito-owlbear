@@ -413,7 +413,142 @@ const ESTILO_FICHA = `<style> :root { --pm-bg: #f3f7fb; --pm-panel: #ffffff; --p
 #app .fichaCabecalho .fichaAcoesCabecalho{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:center!important;gap:5px!important;flex:0 0 119px!important;width:119px!important;min-width:119px!important;}
 #app .fichaCabecalho .fichaAcoesCabecalho #personalizarFicha,#app .fichaCabecalho .fichaAcoesCabecalho #trocarTipo{display:flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;width:100%!important;min-width:0!important;height:36px!important;min-height:36px!important;padding:6px 5px!important;border:1px solid #202020!important;border-radius:10px!important;font-size:9px!important;line-height:1.1!important;font-weight:900!important;text-align:center!important;white-space:nowrap!important;}
 #app .pmpStatusSomenteLeitor{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important;clip-path:inset(50%)!important;white-space:nowrap!important;}
+
+/* V16 - Tema escuro local: aplicado apenas no navegador do participante. */
+#app.temaEscuroFicha {
+  --pm-bg:#040810; --pm-panel:#091321; --pm-panel-soft:#0d1e33;
+  --pm-line:#178ce6; --pm-text:#f5faff; --pm-muted:#c9deef;
+  --pm-blue:#00b7ff; --pm-blue-strong:#12d9ff; --pm-blue-soft:#0d2440;
+  --pm-red:#00b7ff; --pm-shadow:0 6px 20px rgba(0,153,255,.12);
+  color:#f5faff !important;
+  min-height:100vh !important;
+  background:#03070e !important;
+  background-image:linear-gradient(160deg,#03060c,#09182b) !important;
+}
+#app.temaEscuroFicha.fichaPersonalizada {
+  background-color:#03070e !important;
+  background-image:linear-gradient(rgba(0,0,0,var(--ficha-overlay,.65)),rgba(0,0,0,var(--ficha-overlay,.65))),var(--ficha-bg-image) !important;
+  background-size:cover !important;
+  background-position:center !important;
+}
+#app.temaEscuroFicha :is(h1,h2,h3,h4,h5,h6,p,label,small,span,strong,summary,legend,output,li,th,td,dt,dd),
+#app.temaEscuroFicha :is(.fichaSubtitulo,.iniciativaTitulo,.classeHabTexto,.classeResumoNivel,.treinadorPokemonNome,.treinadorPokemonTitulo,.pokemonStatusCampo p,.capturaTreinadorTitulo,.painelPersonalizacaoTitulo),
+#app.temaEscuroFicha :is(.capturaAlvoNome,.classeRecursoTopo,.classeCampoTexto,.origemHab,.classeHab) {
+  color:#f4faff !important;
+  -webkit-text-fill-color:currentColor;
+}
+#app.temaEscuroFicha :is(h2,h3,.classeTitulo,.clasOriTitulo,.talEspCabecalho) {
+  background:linear-gradient(90deg,#0b2745,#08111f) !important;
+  color:#48d8ff !important;
+  border-color:#1378cb !important;
+}
+#app.temaEscuroFicha :is(.statusCard,.pokemonStatusPrincipal,.pokemonStatusCampo,.pokemonCalculadoraCard,.proficienciaLinha,.iniciativaBloco,
+  .treinadorPokemonSecao,.treinadorPokemonSlot,.seletorRosterPainel,.seletorRosterPokemon,.classeCard,.classeHab,.classeRecurso,
+  .origemCard,.origemHab,.mfRecursoOriginal,.capturaTreinadorCard,.capturaAlvoCard,.pokemonPericiasCompactas > div,
+  .pokemonDetalhesCompactos,.slotTalEsp,.talEspSecao,.rivalBloco,.selvCard,.npcBancoSlot,.npcInfo,.npcResultadoInfo,
+  .pmpMoveCampo,.pmpMovePpCategoriaLinha,.pmpMovePpGrupo,.pmpMoveDescricao,.pmpMovesModal,
+  .pmpMovesResultados,.painelPersonalizacaoFicha,.guiaTalEspLista,details) {
+  background:rgba(9,20,35,.97) !important;
+  background-image:none !important;
+  color:#f5faff !important;
+  border-color:#197bcc !important;
+  box-shadow:0 2px 10px rgba(0,183,255,.10) !important;
+}
+#app.temaEscuroFicha.fichaPersonalizada :is(.fichaCabecalho,.statusCard,.pokemonStatusPrincipal,.pokemonStatusCampo,
+  .pokemonCalculadoraCard,.proficienciaLinha,.treinadorPokemonSecao,.treinadorPokemonSlot,.seletorRosterPainel,
+  .classeCard,.classeHab,.classeRecurso,.origemCard,.origemHab,.painelPersonalizacaoFicha,details) {
+  background:rgba(5,13,24,.95) !important;
+  backdrop-filter:blur(4px);
+}
+#app.temaEscuroFicha :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),textarea,select,option,
+ .pokemonStatusCampo input,.pokemonCalculadoraCard #alterarHp,.movimentoValor) {
+  background:#0a1729 !important;
+  background-image:none !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  border:1px solid #1688df !important;
+  box-shadow:none !important;
+  caret-color:#39d6ff !important;
+}
+#app.temaEscuroFicha input::placeholder,#app.temaEscuroFicha textarea::placeholder {color:#98bad7 !important;opacity:1 !important;}
+#app.temaEscuroFicha :is(input,textarea,select):focus {
+  border-color:#47e0ff !important;
+  outline:1px solid #47e0ff !important;
+  box-shadow:0 0 0 3px rgba(0,195,255,.24) !important;
+}
+#app.temaEscuroFicha :is(input[type="checkbox"],input[type="radio"],input[type="range"]) {
+  accent-color:#00baff !important;
+}
+#app.temaEscuroFicha button,
+#app.temaEscuroFicha .painelPersonalizacaoAcoes button,
+#app.temaEscuroFicha .fichaCabecalho .fichaAcoesCabecalho :is(#personalizarFicha,#trocarTipo),
+#app.temaEscuroFicha.fichaPersonalizada button:not([style*="background"]):not([class*="ativo"]) {
+  background:#0b1d33 !important;
+  background-image:none !important;
+  color:#f2fbff !important;
+  -webkit-text-fill-color:#f2fbff !important;
+  border-color:#16baff !important;
+  box-shadow:0 0 7px rgba(0,187,255,.10) !important;
+}
+#app.temaEscuroFicha button:hover:not(:disabled) {
+  background:#123c62 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  border-color:#4be3ff !important;
+  box-shadow:0 0 13px rgba(0,194,255,.28) !important;
+}
+#app.temaEscuroFicha button:disabled {opacity:.48 !important;box-shadow:none !important;}
+#app.temaEscuroFicha :is(.talentoCombate.ativo,.classeAcao.ativo,.treinadorPokemonMover.ativo),
+#app.temaEscuroFicha :is([id^="paginaPokemon"],[id^="paginaTreinador"])[style*="opacity:1"] {
+  background:linear-gradient(135deg,#0068be,#0cbbf3) !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  border-color:#6ae7ff !important;
+  box-shadow:0 0 13px rgba(0,195,255,.28) !important;
+}
+#app.temaEscuroFicha .pokemonStatusCampo p,#app.temaEscuroFicha .pokemonCalculadoraCard .calculadoraTitulo {
+  color:#d5efff !important;
+}
+#app.temaEscuroFicha :is(.painelPersonalizacaoFicha,.pmpMovesModal,.guiaTalEspOverlay,.pmpMovesOverlay) {
+  color:#ffffff !important;
+}
+#app.temaEscuroFicha :is(.painelPersonalizacaoLinha,.pokemonDetalhesCompactos,hr) {
+  border-color:#1682cd !important;
+}
+#app.temaEscuroFicha hr {background:#1682cd !important;}
+#app.temaEscuroFicha .painelPersonalizacaoTitulo {color:#4be5ff !important;}
+#app.temaEscuroFicha .painelTemaEscuroRotulo {
+  display:flex !important;align-items:center !important;justify-content:space-between !important;
+  gap:12px !important;cursor:pointer !important;margin-bottom:4px !important;
+}
+#app.temaEscuroFicha .painelTemaEscuroRotulo input {width:20px !important;height:20px !important;min-height:20px !important;cursor:pointer;}
+#app .painelTemaEscuroRotulo {
+  display:flex !important;align-items:center !important;justify-content:space-between !important;
+  gap:12px !important;cursor:pointer !important;margin-bottom:4px !important;
+}
+#app .painelTemaEscuroRotulo input {width:20px!important;height:20px!important;min-height:20px!important;padding:0!important;cursor:pointer;}
+#app.temaEscuroFicha .painelTemaEscuroNota {color:#aaccdf !important;}
 </style>`;
+
+// Preferência visual do participante, separada dos metadados dos tokens.
+// localStorage é isolado por navegador/origem: não muda a aparência de outras pessoas.
+const CHAVE_TEMA_ESCURO_FICHA = `${PREFIX}/tema-escuro-local-v1`;
+let temaEscuroFichaSessao = false;
+function lerTemaEscuroFichaLocal() {
+  try { return localStorage.getItem(CHAVE_TEMA_ESCURO_FICHA) === "1"; }
+  catch (_) { return temaEscuroFichaSessao; }
+}
+function aplicarTemaEscuroFichaLocal(ativo = lerTemaEscuroFichaLocal()) {
+  const app = document.querySelector("#app");
+  if (app) app.classList.toggle("temaEscuroFicha", !!ativo);
+  return !!ativo;
+}
+function alterarTemaEscuroFichaLocal(ativo) {
+  temaEscuroFichaSessao = !!ativo;
+  try { localStorage.setItem(CHAVE_TEMA_ESCURO_FICHA, ativo ? "1" : "0"); }
+  catch (_) { /* mantém o tema nesta sessão mesmo sem armazenamento local */ }
+  aplicarTemaEscuroFichaLocal(ativo);
+}
 
 const DB_PERSONALIZACAO_FICHA = "pokemon-mundo-perfeito-personalizacao";
 const STORE_PERSONALIZACAO_FICHA = "fundos";
@@ -562,6 +697,7 @@ async function abrirPainelPersonalizacaoFicha(token) {
 
   const configuracao = await lerPersonalizacaoFicha(token.id);
   const overlayInicial = Math.round(Math.max(.18, Math.min(.92, Number(configuracao?.overlay ?? .58))) * 100);
+  const temaEscuroAtivo = lerTemaEscuroFichaLocal();
   const painel = document.createElement("div");
   painel.id = "painelPersonalizacaoFicha";
   painel.className = "painelPersonalizacaoFicha";
@@ -579,8 +715,18 @@ async function abrirPainelPersonalizacaoFicha(token) {
       <label for="overlayFundoFicha"><span>VÉU DE LEITURA</span><strong id="valorOverlayFundoFicha">${overlayInicial}%</strong></label>
       <input id="overlayFundoFicha" type="range" min="18" max="92" step="1" value="${overlayInicial}">
     </div>
-    <p style="margin:8px 0 0!important;font-size:8px!important;color:#555!important;font-weight:800!important;text-align:center;">
-      Fundo salvo apenas neste navegador e nesta ficha.
+    <div class="painelPersonalizacaoLinha">
+      <label class="painelTemaEscuroRotulo" for="temaEscuroFichaCheck">
+        <span>🌙 TEMA ESCURO</span>
+        <input id="temaEscuroFichaCheck" type="checkbox" ${temaEscuroAtivo ? "checked" : ""}
+          aria-label="Ativar tema escuro neste navegador">
+      </label>
+      <p class="painelTemaEscuroNota" style="font-size:9px!important;margin:3px 0!important;">
+        Fundo preto, texto branco e detalhes azul neon. Só para você neste navegador.
+      </p>
+    </div>
+    <p style="margin:8px 0 0!important;font-size:8px!important;color:#8394a9!important;font-weight:800!important;text-align:center;">
+      Imagem de fundo salva apenas neste navegador e nesta ficha.
     </p>`;
   app.appendChild(painel);
 
@@ -589,6 +735,8 @@ async function abrirPainelPersonalizacaoFicha(token) {
   const remover = painel.querySelector("#removerFundoFicha");
   const slider = painel.querySelector("#overlayFundoFicha");
   const valorSlider = painel.querySelector("#valorOverlayFundoFicha");
+  const checkTemaEscuro = painel.querySelector("#temaEscuroFichaCheck");
+  checkTemaEscuro?.addEventListener("change", () => alterarTemaEscuroFichaLocal(checkTemaEscuro.checked));
 
   painel.querySelector("#fecharPersonalizacaoFicha")?.addEventListener("click", () => painel.remove());
   escolher?.addEventListener("click", () => arquivo?.click());
@@ -629,6 +777,7 @@ async function abrirPainelPersonalizacaoFicha(token) {
 }
 
 function ativarPersonalizacaoFicha(token) {
+  aplicarTemaEscuroFichaLocal();
   document.querySelector("#personalizarFicha")?.addEventListener("click", () => void abrirPainelPersonalizacaoFicha(token));
   void aplicarPersonalizacaoFicha(token);
 }
