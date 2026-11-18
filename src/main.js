@@ -3035,20 +3035,28 @@ function agendarCorrecaoHudExistente(atraso = 450) {
   if (temporizadorCorrecaoHud) clearTimeout(temporizadorCorrecaoHud);
   temporizadorCorrecaoHud = setTimeout(() => {
     temporizadorCorrecaoHud = null;
-    corrigirHudExistente().catch((erro) => {
+    Promise.resolve().then(async () => {
+      // Evita limpeza concorrente disparada pelo Mestre e todos os jogadores.
+      if (!(await OBR.scene.isReady()) || !(await usuarioAtualEhGm())) return;
+      await corrigirHudExistente();
+    }).catch((erro) => {
       console.warn("Não foi possível limpar HUD duplicado:", erro);
     });
   }, atraso);
 }
 const temporizadoresDesduplicacaoHud = new Map();
 function agendarDesduplicacaoHudToken(tokenId, tiposAtivos, atraso = 900) {
+  const geracao = geracaoCenaHud;
   const anterior = temporizadoresDesduplicacaoHud.get(tokenId);
   if (anterior) clearTimeout(anterior);
   const timer = setTimeout(() => {
     temporizadoresDesduplicacaoHud.delete(tokenId);
-    desduplicarHudToken(tokenId, tiposAtivos).catch((erro) =>
-      console.warn("Não foi possível conferir o HUD deste token:", erro)
-    );
+    if (geracao !== geracaoCenaHud) return;
+    Promise.resolve().then(async () => {
+      if (!(await OBR.scene.isReady()) || !(await usuarioAtualEhGm())) return;
+      if (geracao !== geracaoCenaHud) return;
+      await desduplicarHudToken(tokenId, tiposAtivos);
+    }).catch((erro) => console.warn("Não foi possível conferir o HUD deste token:", erro));
   }, atraso);
   temporizadoresDesduplicacaoHud.set(tokenId, timer);
 }
@@ -3972,7 +3980,12 @@ function bonusCarismaMentor(token) {
   return Math.max(1, modificadorTreinador(token, 'car'));
 }
 
-function formulaGuloseimaMentor(nivel) {
+function formulaGuloseimaMentor(nivel, token = null) {
+  const apenasPokechefLv5 = token?.__muitasFacesEmprestado === 'mentor-pokemon:5' ||
+    (token?.metadata?.[META_TREINADOR_CLASSE] === 'versatil' &&
+     classeAtivaNoNivel(token, 'mentor-pokemon', 5) &&
+     !classeAtivaNoNivel(token, 'mentor-pokemon', 9));
+  if (apenasPokechefLv5) return "2d4+2";
   if (nivel >= 15) return "4d6+6";
   if (nivel >= 9) return "2d8+4";
   return "2d4+2";
@@ -4038,8 +4051,13 @@ function nomeAtributoCriador(d6) {
 }
 
 function classeAtivaNoNivel(token, classeId, nivelMinimo) {
-  return token?.metadata?.[META_TREINADOR_CLASSE] === classeId &&
-    nivelTreinadorNormalizado(token?.metadata?.[`${PREFIX}/treinador-nivel`] ?? 1) >= nivelMinimo;
+  const nivel = nivelTreinadorNormalizado(token?.metadata?.[`${PREFIX}/treinador-nivel`] ?? 1);
+  if (nivel < nivelMinimo) return false;
+  if (token?.metadata?.[META_TREINADOR_CLASSE] === classeId) return true;
+  if (token?.metadata?.[META_TREINADOR_CLASSE] !== 'versatil' || nivel < 9) return false;
+  const configuracao = normalizarMuitasFaces(token?.metadata?.[META_VERSATIL_MUITAS_FACES_CONFIG]);
+  // Exige a habilidade EXATA; escolher um recurso não concede o caminho inteiro.
+  return configuracao.escolhas.includes(`${classeId}:${nivelMinimo}`);
 }
 
 function bonusCapturaColecionador(token) {
@@ -4245,6 +4263,38 @@ function normalizarMuitasFaces(valor) {
   });
   return {modo,escolhas:resultado};
 }
+// Reaproveita a MESMA interface produzida pelo caminho original.
+// A renderização auxiliar não altera o DOM real nem registra eventos.
+function htmlRecursoOriginalMuitasFaces(token, id) {
+  const recurso = RECURSOS_MUITAS_FACES_POR_ID.get(id);
+  if (!recurso || !token?.metadata) return '';
+  const fonte = {
+    ...token,
+    __muitasFacesEmprestado: recurso.id,
+    metadata: { ...token.metadata, [META_TREINADOR_CLASSE]: recurso.classeId }
+  };
+  const conteudo = mostrarFichaTreinadorClasOri(fonte, true);
+  if (typeof conteudo !== 'string' || !conteudo) return '';
+  const template = document.createElement('template');
+  template.innerHTML = conteudo;
+  const bloco = Array.from(template.content.querySelectorAll('.classeHab'))
+    .find(el => el.querySelector('.classeHabTopo span')?.textContent?.trim() === `LV. ${recurso.nivel}`);
+  return bloco ? `<div class="mfRecursoOriginal" data-mf-recurso="${esc(recurso.id)}">${bloco.outerHTML}</div>` : '';
+}
+
+function htmlRecursosOriginaisMuitasFaces(token, nivelTreinador) {
+  if (nivelTreinador < 9 || token?.metadata?.[META_TREINADOR_CLASSE] !== 'versatil') return '';
+  const config = normalizarMuitasFaces(token.metadata[META_VERSATIL_MUITAS_FACES_CONFIG]);
+  const ids = config.escolhas.filter(Boolean);
+  if (ids.length !== (config.modo === 'dois' ? 2 : 1)) return '';
+  const recursos = ids.map(id => htmlRecursoOriginalMuitasFaces(token, id)).filter(Boolean);
+  if (recursos.length !== ids.length) return '';
+  return `<div id="muitasFacesRecursosAtivos" style="display:grid;gap:10px;margin-top:12px;">
+    <div class="classeRecursoTopo"><span>RECURSOS HERDADOS ATIVOS</span><strong>${recursos.length}</strong></div>
+    ${recursos.join('')}
+  </div>`;
+}
+
 function htmlEscolhaMuitasFaces(token, nivelTreinador) {
   const dados=normalizarMuitasFaces(token.metadata[META_VERSATIL_MUITAS_FACES_CONFIG]);
   const legado=String(token.metadata[META_VERSATIL_MUITAS_FACES_ESCOLHA]||'').trim();
@@ -4259,6 +4309,7 @@ function htmlEscolhaMuitasFaces(token, nivelTreinador) {
      <button type="button" id="muitasFacesSalvar" class="classeAcao classeAcaoCheia" ${nivelTreinador>=9?'':'disabled'}>SALVAR RECURSOS ESCOLHIDOS</button>
      <div id="muitasFacesAviso" role="status" aria-live="polite" style="font-size:10px;margin-top:5px;color:#20834c"></div>
      ${legado?`<details style="margin-top:8px"><summary>Anotação anterior preservada</summary><div style="white-space:pre-line;font-size:11px;overflow-wrap:anywhere">${esc(legado)}</div></details>`:''}
+     ${htmlRecursosOriginaisMuitasFaces(token, nivelTreinador)}
    </div>`;
 }
 function ativarEscolhaMuitasFaces(token,nivel) {
@@ -4304,14 +4355,24 @@ function ativarEscolhaMuitasFaces(token,nivel) {
         for(const item of items)if(item.metadata?.[META_TREINADOR_CLASSE]==='versatil')item.metadata[META_VERSATIL_MUITAS_FACES_CONFIG]=dados;
       });
       token.metadata[META_VERSATIL_MUITAS_FACES_CONFIG]=dados;
-      aviso.textContent='✓ Recursos escolhidos salvos no treinador.';
+      aviso.textContent='✓ Recursos escolhidos salvos. Ativando os controles originais...';
+      const confirmado=await pegarTokenAtualizado(token.id);
+      if(confirmado){
+        mostrarFichaTreinadorClasOri(confirmado);
+        document.querySelector('#detalhesClasseSelecionada')?.classList.add('aberto');
+        const seta=document.querySelector('#setaClasseSelecionada');
+        if(seta)seta.textContent='RECOLHER ▴';
+      }
     }catch(erro){aviso.textContent=`Erro: ${erro?.message||String(erro)}`;}
-    finally{ocupado=false;salvar.disabled=false;renderizar();}
+    finally{
+      ocupado=false;
+      if(container.isConnected){salvar.disabled=false;renderizar();}
+    }
   });
   renderizar();
 }
 
-function mostrarFichaTreinadorClasOri(token) {
+function mostrarFichaTreinadorClasOri(token, somenteConteudoClasse = false) {
   const app = document.querySelector("#app");
   const classe = classeTreinadorPorId(token.metadata[META_TREINADOR_CLASSE]);
   const nivelTreinador = nivelTreinadorNormalizado(token.metadata[`${PREFIX}/treinador-nivel`] ?? 1);
@@ -4472,7 +4533,7 @@ function mostrarFichaTreinadorClasOri(token) {
     }
 
     if (classe.id === "mentor-pokemon") {
-      const formulaGuloseima = formulaGuloseimaMentor(nivelTreinador);
+      const formulaGuloseima = formulaGuloseimaMentor(nivelTreinador, token);
       const inspiracaoNome = mentorInspiracaoTipo === "ataque" ? "ATAQUE" : mentorInspiracaoTipo === "dano" ? "DANO" : mentorInspiracaoTipo === "ca" ? "CA" : "NENHUM";
 
       return `
@@ -5014,6 +5075,10 @@ function mostrarFichaTreinadorClasOri(token) {
     return "";
   };
 
+  // Usado por Muitas Faces para apresentar exatamente o recurso da classe de origem.
+  // Nenhuma alteração na cena, renderização ou listener acontece nesse caminho.
+  if (somenteConteudoClasse) return conteudoClasse();
+
   const botoesOrigem = () => {
     if (!origem) return "";
     if (origem.id === "atleta") return `<button type="button" class="origemRolar" id="rolarAtletismoOrigem">🎲 ROLAR ATLETISMO COM VANTAGEM</button>`;
@@ -5308,7 +5373,7 @@ function mostrarFichaTreinadorClasOri(token) {
   document.querySelector("#usarMentorPokechef")?.addEventListener("click", async () => {
     const atual = usosClasseAs(token, META_MENTOR_POKECHEF_USOS);
     if (atual <= 0) return;
-    const formula = formulaGuloseimaMentor(nivelTreinador);
+    const formula = formulaGuloseimaMentor(nivelTreinador, token);
     const resultado = await rolarNoDicePlusComResultado(formula, "Pokéchef", "Guloseima Comestível • PV Temporários");
     if (resultado === null) return;
     await salvarEstadoClasse(token, { [META_MENTOR_POKECHEF_USOS]: atual - 1 });
