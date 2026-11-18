@@ -167,6 +167,48 @@ function statusBaseDoToken(token, atributo) {
   return 10 + (mod * 2);
 }
 
+function statusBaseTreinadorDoToken(token, atributo) {
+  const salvo = token?.metadata?.[`${PREFIX}/treinador-status-${atributo}`];
+  const numeroSalvo = Number(String(salvo ?? "").trim().replace(",", "."));
+  if (Number.isFinite(numeroSalvo)) return Math.trunc(numeroSalvo);
+  const modAntigo = Number(String(token?.metadata?.[`${PREFIX}/treinador-mod-${atributo}`] ?? "0").trim().replace(",", "."));
+  const mod = Number.isFinite(modAntigo) ? Math.trunc(modAntigo) : 0;
+  return 10 + (mod * 2);
+}
+
+function statusBaseEspecieNaturePokemon(token, atributo) {
+  const nomeEspecie = String(token?.metadata?.[META_POKEMON_ESPECIE] ?? "").trim();
+  const especie = nomeEspecie ? POKEDEX_ESPECIES_POR_NOME.get(nomeEspecie) : null;
+  if (!especie) return null;
+  const indice = POKEDEX_ATRIBUTOS_PMP.indexOf(atributo);
+  if (indice < 0) return null;
+  const valorBase = Number(especie[4 + indice]);
+  if (!Number.isFinite(valorBase)) return null;
+  const nature = token?.metadata?.[META_SELVAGEM_NATURE];
+  const deltaNature = Number(nature?.atributos?.[atributo] ?? 0);
+  return Math.trunc(valorBase + (Number.isFinite(deltaNature) ? deltaNature : 0));
+}
+
+function bonusPontosStatusPokemon(token, atributo, valorAtual = undefined) {
+  const base = statusBaseEspecieNaturePokemon(token, atributo);
+  if (!Number.isFinite(base)) return 0;
+  const atualBruto = valorAtual === undefined ? statusBaseDoToken(token, atributo) : Number(valorAtual);
+  const atual = Number.isFinite(atualBruto) ? Math.trunc(atualBruto) : base;
+  return atual - base;
+}
+
+function mapaBonusPontosStatusPokemon(token) {
+  return Object.fromEntries(ATRIBUTOS.map((atributo) => [atributo, bonusPontosStatusPokemon(token, atributo)]));
+}
+
+function rotuloBonusPontosStatus(valor) {
+  const numero = Math.trunc(Number(valor) || 0);
+  if (!numero) return "";
+  const sinal = numero > 0 ? "+" : "";
+  const sufixo = Math.abs(numero) === 1 ? "pt" : "pts";
+  return `${sinal}${numero} ${sufixo}`;
+}
+
 function statusTotalDoToken(token, atributo) {
   return statusBaseDoToken(token, atributo) + bonusStatusMegaDoToken(token, atributo);
 }
@@ -4304,11 +4346,12 @@ hpAtual -= danoCalculado; } else if (operador === "=") { hpAtual = valor; } else
 return null; } }
 hpAtual = Math.max( 0, Math.min( hpAtual, hpMax ) );
 return { hpAtual, hpMax, ca, caBase, calculadoraAplicada: aplicarCalculadora && alterarHp !== "" }; }
-function criarLinhaAtributos( titulo, tipo, valores ) { const ehSalvaguarda = tipo.includes("save");
+function criarLinhaAtributos( titulo, tipo, valores, opcoes = {} ) { const ehSalvaguarda = tipo.includes("save");
 const ehModificador = tipo.includes("mod");
-const ehStatusPokemon = tipo === "status";
-const ehModificadorPokemon = tipo === "mod";
+const ehStatus = tipo === "status" || tipo === "treinador-status";
+const ehModificadorCalculado = tipo === "mod" || tipo === "treinador-mod";
 const rolavel = ehSalvaguarda || ehModificador;
+const bonusLabels = opcoes?.bonusLabels && typeof opcoes.bonusLabels === "object" ? opcoes.bonusLabels : null;
 const caixas = ATRIBUTOS.map( (atributo) => { const tipoRolagem = ehSalvaguarda ? "Salvaguarda" : "Modificador"; const botao = rolavel
 ? `
               <button
@@ -4332,6 +4375,10 @@ const caixas = ATRIBUTOS.map( (atributo) => { const tipoRolagem = ehSalvaguarda 
               </button>
             `
 : "";
+const bonusTexto = bonusLabels ? rotuloBonusPontosStatus(bonusLabels[atributo]) : "";
+const bonusHtml = bonusLabels ? `
+            <div id="${tipo}-${atributo}-bonus" style="min-height:12px;margin-top:2px;font-size:10px;line-height:1;font-weight:900;color:#c62828;">${esc(bonusTexto)}</div>
+          ` : "";
 return `
           <div style="
             flex:1;
@@ -4347,11 +4394,11 @@ return `
             </div>
             <input
               id="${tipo}-${atributo}"
-              type="${ehStatusPokemon ? "number" : "text"}"
-              ${ehStatusPokemon ? 'step="1"' : ''}
-              ${ehModificadorPokemon ? 'readonly title="Calculado automaticamente pelo Status"' : ''}
+              type="${ehStatus ? "number" : "text"}"
+              ${ehStatus ? 'step="1"' : ''}
+              ${ehModificadorCalculado ? 'readonly title="Calculado automaticamente pelo Status"' : ''}
               value="${esc(valores[atributo])}"
-              placeholder="${ehStatusPokemon ? "10" : "+0"}"
+              placeholder="${ehStatus ? "10" : "+0"}"
               style="
                 width:100%;
                 box-sizing:border-box;
@@ -4359,6 +4406,7 @@ return `
                 padding:5px 2px;
               "
             >
+            ${bonusHtml}
             ${botao}
           </div>
         `;
@@ -4393,6 +4441,40 @@ function ativarCalculoStatusPokemon() {
       if (!Number.isFinite(numero)) return;
       campoMod.value = formatarBonus(modificadorPorStatus(numero));
       campoMod.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    campoStatus.addEventListener("input", atualizar);
+    campoStatus.addEventListener("change", atualizar);
+    atualizar();
+  }
+}
+
+function ativarIndicadoresBonusStatusPokemon(token) {
+  for (const atributo of ATRIBUTOS) {
+    const campoStatus = document.querySelector(`#status-${atributo}`);
+    const rotulo = document.querySelector(`#status-${atributo}-bonus`);
+    if (!campoStatus || !rotulo) continue;
+    const atualizar = () => {
+      const numero = Number(String(campoStatus.value ?? "").trim().replace(",", "."));
+      const bonus = bonusPontosStatusPokemon(token, atributo, numero);
+      rotulo.textContent = rotuloBonusPontosStatus(bonus);
+    };
+    campoStatus.addEventListener("input", atualizar);
+    campoStatus.addEventListener("change", atualizar);
+    atualizar();
+  }
+}
+
+function ativarCalculoStatusTreinador() {
+  for (const atributo of ATRIBUTOS) {
+    const campoStatus = document.querySelector(`#treinador-status-${atributo}`);
+    const campoMod = document.querySelector(`#treinador-mod-${atributo}`);
+    if (!campoStatus || !campoMod) continue;
+    const atualizar = () => {
+      const numero = Number(String(campoStatus.value ?? "").trim().replace(",", "."));
+      if (!Number.isFinite(numero)) return;
+      campoMod.value = formatarBonus(modificadorPorStatus(numero));
+      campoMod.dispatchEvent(new Event("input", { bubbles: true }));
+      campoMod.dispatchEvent(new Event("change", { bubbles: true }));
     };
     campoStatus.addEventListener("input", atualizar);
     campoStatus.addEventListener("change", atualizar);
@@ -7875,10 +7957,13 @@ function formatarBonusFormula(valor) {
 function mostrarFichaTreinadorPagina1(token) {
   const app = document.querySelector("#app");
 
+  const statusAtributosTreinador = {};
   const modificadores = {};
   const salvaguardas = {};
   ATRIBUTOS.forEach((atributo) => {
-    modificadores[atributo] = token.metadata[`${PREFIX}/treinador-mod-${atributo}`] ?? "";
+    const statusBase = statusBaseTreinadorDoToken(token, atributo);
+    statusAtributosTreinador[atributo] = statusBase;
+    modificadores[atributo] = formatarBonus(modificadorPorStatus(statusBase));
     salvaguardas[atributo] = token.metadata[`${PREFIX}/treinador-save-${atributo}`] ?? "";
   });
 
@@ -8051,6 +8136,7 @@ function mostrarFichaTreinadorPagina1(token) {
       </div>
     </div>
 
+    ${criarLinhaAtributos("Status", "treinador-status", statusAtributosTreinador)}
     ${criarLinhaAtributos("Modificadores", "treinador-mod", modificadores)}
     ${criarLinhaAtributos("Salva-guardas", "treinador-save", salvaguardas)}
     <br>
@@ -8058,6 +8144,7 @@ function mostrarFichaTreinadorPagina1(token) {
   `;
 
   ativarCabecalhoTreinador(token);
+  ativarCalculoStatusTreinador();
   ativarRolagensSalvaguarda(token);
   ativarRolagemIniciativaTreinador(token);
   ativarCalculadoraHpTreinador();
@@ -8366,10 +8453,14 @@ function mostrarFichaTreinadorPagina1(token) {
     const novoCdCaptura = novoCdCapturaTexto === "" ? "" : Math.max(0, Math.trunc(numeroTreinador(novoCdCapturaTexto)));
     const novoBonusCaptura = Math.trunc(numeroTreinador(campoBonusPokebola?.value));
     const novoBonusCa = Math.trunc(numeroTreinador(campoBonusCa?.value));
+    const novosStatusTreinador = {};
     const novosModificadores = {};
     const novasSalvaguardas = {};
     ATRIBUTOS.forEach((atributo) => {
-      novosModificadores[atributo] = document.querySelector(`#treinador-mod-${atributo}`)?.value.trim() || "";
+      const statusBruto = Number(String(document.querySelector(`#treinador-status-${atributo}`)?.value ?? "").trim().replace(",", "."));
+      const statusFinal = Number.isFinite(statusBruto) ? Math.trunc(statusBruto) : statusBaseTreinadorDoToken(token, atributo);
+      novosStatusTreinador[atributo] = statusFinal;
+      novosModificadores[atributo] = formatarBonus(modificadorPorStatus(statusFinal));
       novasSalvaguardas[atributo] = document.querySelector(`#treinador-save-${atributo}`)?.value.trim() || "";
     });
 
@@ -8393,6 +8484,7 @@ function mostrarFichaTreinadorPagina1(token) {
         item.metadata[`${PREFIX}/treinador-captura-bonus`] = novoBonusCaptura;
         item.metadata[`${PREFIX}/treinador-captura-cd`] = novoCdCaptura;
         ATRIBUTOS.forEach((atributo) => {
+          item.metadata[`${PREFIX}/treinador-status-${atributo}`] = novosStatusTreinador[atributo];
           item.metadata[`${PREFIX}/treinador-mod-${atributo}`] = novosModificadores[atributo];
           item.metadata[`${PREFIX}/treinador-save-${atributo}`] = novasSalvaguardas[atributo];
         });
@@ -9741,7 +9833,8 @@ app.innerHTML = `
     ${criarLinhaAtributos(
         "Status",
         "status",
-        statusAtributos
+        statusAtributos,
+        { bonusLabels: mapaBonusPontosStatusPokemon(token) }
     )}
     ${criarLinhaAtributos(
         "Modificadores",
@@ -9771,6 +9864,7 @@ ativarSeletorEspeciePokemon(token);
 ativarSeletorNaturePokemon(token);
 ativarSeletorHabilidadePokemonPmp(token);
 ativarCalculoStatusPokemon();
+ativarIndicadoresBonusStatusPokemon(token);
 ativarRolagensSalvaguarda(token);
 ativarRolagemIniciativa(token);
 ativarCalculadoraHp();
