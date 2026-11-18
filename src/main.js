@@ -2832,7 +2832,7 @@ function valorPericiaComPadrao(valorSalvo, valorAutomatico) {
   return texto !== "" ? texto : valorAutomatico;
 }
 
-function esc(valor) { return String(valor ?? "") .replaceAll("&", "&amp;") .replaceAll('"', "&quot;") .replaceAll("<", "&lt;") .replaceAll(">", "&gt;"); }
+function esc(valor) { return String(valor ?? "") .replaceAll("&", "&") .replaceAll('"', """) .replaceAll("<", "<") .replaceAll(">", ">"); }
 function limparRotuloDice(texto) { return String(texto || "") .replace(/[#+\-*/(),]/g, " ") .replace(/\s+/g, " ") .trim(); }
 function formatarBonus(valor) { const numero = Number(valor) || 0;
 return numero > 0 ? `+${numero}` : `${numero}`;
@@ -9872,7 +9872,8 @@ function estadoMovePokemonPmp(token, numero) {
     nome: cadastro?.id || nomeAnterior,
     max,
     ilimitado,
-    atual: ppInteiroLimitadoPmp(meta[`${PREFIX}/golpe${n}PPAtual`], max)
+    atual: ppInteiroLimitadoPmp(meta[`${PREFIX}/golpe${n}PPAtual`], max),
+    vantagem: meta[`${PREFIX}/golpe${n}VantagemDano`] === true || meta[`${PREFIX}/golpe${n}VantagemDano`] === 1 || meta[`${PREFIX}/golpe${n}VantagemDano`] === "1" || meta[`${PREFIX}/golpe${n}VantagemDano`] === "true"
   };
 }
 function htmlCategoriaMovePmp(numero, categoriaInicial, ehAtaque) {
@@ -9906,7 +9907,10 @@ function htmlCampoMovePokemonPmp(token, numero, categoriaInicial, ehAtaque) {
           <button id="golpe${n}PPMenos" type="button" class="pmpMovePpAjuste" title="Gastar 1 PP" aria-label="Diminuir 1 PP do Move ${n}">−</button>
           <output id="golpe${n}PPValor" aria-live="polite">${e.ilimitado ? '∞' : (e.atual === null ? '—' : e.atual)}${e.ilimitado ? '' : ' / ' + (e.max === null ? '—' : e.max)}</output>
           <button id="golpe${n}PPMais" type="button" class="pmpMovePpAjuste" title="Recuperar 1 PP" aria-label="Aumentar 1 PP do Move ${n}">+</button>
-          <button id="golpe${n}PPRestaurar" type="button" class="pmpMovePpRestaurar" title="Restaurar PP máximo">Restaurar</button>
+          <label class="pmpMoveVantagemWrap" title="Rolar o dano duas vezes e usar o maior resultado">
+            <input id="golpe${n}Vantagem" type="checkbox" class="pmpMoveVantagemCheck" ${e.vantagem ? 'checked' : ''}>
+            <span>Vant</span>
+          </label>
         </div>
         ${htmlCategoriaMovePmp(n, categoriaInicial, ehAtaque)}
       </div>
@@ -9929,7 +9933,8 @@ function htmlSeletorMovesPokemonPmp() {
       #app .pmpMovePpGrupo strong{font-size:10px;padding-right:2px;}
       #app .pmpMovePpGrupo output{display:inline-block;min-width:42px;text-align:center;font-size:12px;font-weight:900;font-variant-numeric:tabular-nums;}
       #app .pmpMovePpGrupo button.pmpMovePpAjuste{flex:0 0 27px;width:27px;min-width:27px;min-height:29px!important;height:29px!important;padding:2px!important;font-size:14px!important;}
-      #app .pmpMovePpGrupo button.pmpMovePpRestaurar{flex:0 0 auto;min-height:29px!important;height:29px!important;padding:3px 6px!important;font-size:10px!important;}
+      #app .pmpMoveVantagemWrap{display:inline-flex;align-items:center;gap:5px;min-height:29px;padding:2px 8px;border:1px solid #202020;border-radius:9px;background:#fff;color:#111;font-size:10px;font-weight:900;cursor:pointer;user-select:none;white-space:nowrap;}
+      #app .pmpMoveVantagemCheck{margin:0;accent-color:#b71c1c;cursor:pointer;}
       #app .pmpMoveCategoria{display:flex;align-items:center;gap:4px;flex:0 1 auto;min-width:0;flex-wrap:nowrap;}
       #app .pmpMoveCategoria button.pmpMoveCategoriaBotao{width:auto;min-width:61px;min-height:29px!important;height:29px!important;padding:3px 5px!important;font-size:9px!important;font-weight:900!important;white-space:nowrap;}
       #app .pmpMoveApenasLeitor{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;}
@@ -9984,7 +9989,31 @@ async function salvarEstadoMovePokemonPmp(token, numero, proposta) {
     }
   });
   Object.assign(token.metadata, patch);
-  return { id: nome, nome, max, ilimitado, atual };
+  return {
+    id: nome,
+    nome,
+    max,
+    ilimitado,
+    atual,
+    vantagem: presente.metadata?.[`${PREFIX}/golpe${n}VantagemDano`] === true || presente.metadata?.[`${PREFIX}/golpe${n}VantagemDano`] === 1 || presente.metadata?.[`${PREFIX}/golpe${n}VantagemDano`] === "1" || presente.metadata?.[`${PREFIX}/golpe${n}VantagemDano`] === "true"
+  };
+}
+async function salvarVantagemMovePokemonPmp(token, numero, ativa) {
+  const n = validarNumeroSlotMovePmp(numero);
+  if (!token?.id || token.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') throw new Error('Selecione uma ficha de Pokémon.');
+  if (!(await OBR.scene.isReady())) throw new Error('A cena do Owlbear não está pronta.');
+  const presente = await pegarTokenAtualizado(token.id);
+  if (!presente || presente.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') throw new Error('O Pokémon não está mais na cena.');
+  const valor = !!ativa;
+  const patch = { [`${PREFIX}/golpe${n}VantagemDano`]: valor };
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      if (item.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') continue;
+      Object.assign(item.metadata, patch);
+    }
+  });
+  Object.assign(token.metadata, patch);
+  return valor;
 }
 // Dados complementares provenientes dos JSONs originais do PokédexPMP.
 function detalhesEstruturadosMovePmp(move) {
@@ -10033,9 +10062,9 @@ function ativarSeletorMovesPokemonPmp(token) {
     const campoNome = el(`golpe${n}Nome`), nome = el(`golpe${n}NomeEscolhido`);
     const resumo = el(`golpe${n}Resumo`), descricao = el(`golpe${n}Descricao`);
     const ppValor = el(`golpe${n}PPValor`), menos = el(`golpe${n}PPMenos`);
-    const mais = el(`golpe${n}PPMais`), restaurar = el(`golpe${n}PPRestaurar`);
+    const mais = el(`golpe${n}PPMais`), vantagem = el(`golpe${n}Vantagem`);
     const aviso = el(`golpe${n}PPAviso`), lupa = el(`golpe${n}AbrirPesquisa`);
-    if (![campoNome,nome,resumo,descricao,ppValor,menos,mais,restaurar,aviso,lupa].every(Boolean)) return;
+    if (![campoNome,nome,resumo,descricao,ppValor,menos,mais,vantagem,aviso,lupa].every(Boolean)) return;
     campoNome.value = estado.nome;
     resumo.textContent = estado.nome || `Move ${n}`;
     nome.textContent = estado.nome ? `${estado.nome} ${descricao.hidden ? '▾' : '▴'}` : '🔎 Pesquisar golpe';
@@ -10044,7 +10073,8 @@ function ativarSeletorMovesPokemonPmp(token) {
     const temPp = !!info && Number.isInteger(estado.max);
     menos.disabled = ocupado || !temPp || estado.atual <= 0;
     mais.disabled = ocupado || !temPp || estado.atual >= estado.max;
-    restaurar.disabled = ocupado || !temPp || estado.atual >= estado.max;
+    vantagem.checked = !!estado.vantagem;
+    vantagem.disabled = ocupado;
     nome.disabled = ocupado;
     lupa.disabled = ocupado;
     aviso.textContent = !estado.nome ? 'Pesquise um golpe.' : !info ? 'Golpe personalizado antigo: use a lupa para encontrar no catálogo.' : estado.ilimitado ? 'PP ilimitado; não é necessário gastar PP.' : !temPp ? 'Este golpe não possui PP definido no catálogo.' : '';
@@ -10087,8 +10117,9 @@ function ativarSeletorMovesPokemonPmp(token) {
     busca.disabled = true;
     mensagem.textContent = `Salvando Move ${n}...`;
     try {
+      const anterior = estados.get(n);
       const novoEstado = await salvarEstadoMovePokemonPmp(token, n, proposta);
-      estados.set(n, novoEstado);
+      estados.set(n, { ...anterior, ...novoEstado, vantagem: (novoEstado.vantagem ?? anterior?.vantagem ?? false) });
       if (uiAtual()) {
         el(`golpe${n}Descricao`).hidden = true;
         if (encerrarModal) fechar(true);
@@ -10135,8 +10166,28 @@ function ativarSeletorMovesPokemonPmp(token) {
     el(`golpe${n}PPMais`)?.addEventListener('click', () => {
       const e=estados.get(n);if(Number.isInteger(e.max)) persistir(n,{id:e.id,atual:e.atual+1},'PP recuperado.');
     });
-    el(`golpe${n}PPRestaurar`)?.addEventListener('click', () => {
-      const e=estados.get(n);if(Number.isInteger(e.max)) persistir(n,{id:e.id,atual:e.max},'PP restaurado.');
+    el(`golpe${n}Vantagem`)?.addEventListener('change', async (evento) => {
+      if (ocupado || !uiAtual()) return;
+      const marcado = !!evento.currentTarget?.checked;
+      ocupado = true;
+      renderizarTodos();
+      mostrarMais.disabled = true;
+      busca.disabled = true;
+      mensagem.textContent = `Salvando Vant do Move ${n}...`;
+      try {
+        const valor = await salvarVantagemMovePokemonPmp(token, n, marcado);
+        const atual = estados.get(n) || estadoMovePokemonPmp(token, n);
+        estados.set(n, { ...atual, vantagem: valor });
+        mensagem.textContent = valor ? `✓ Vant ativada no Move ${n}.` : `✓ Vant desativada no Move ${n}.`;
+      } catch (erro) {
+        console.error(`Não foi possível salvar a Vant do Move ${n}:`, erro);
+        mensagem.textContent = `Erro: ${erro?.message || String(erro)}`;
+      } finally {
+        ocupado = false;
+        busca.disabled = false;
+        mostrarMais.disabled = false;
+        if (uiAtual()) {renderizarTodos(); if (numeroAtivo !== null) renderizarResultados();}
+      }
     });
   }
   fecharBotao.addEventListener('click', () => fechar());
@@ -11147,7 +11198,10 @@ document .querySelectorAll(".rolarAcerto") .forEach( (botao) => { botao.addEvent
 ) .value .trim(); if (!formula) { alert( "A fórmula de acerto está vazia." ); return; } const formulaFinal = formulaAcertoComTalentos( numero, formula ); await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Acerto" ); } ); } );
 document .querySelectorAll(".rolarDano") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero, usarLiberacao: true })) return; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
-) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Dano" ); } ); } );
+) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const formulaFinal = formulaDanoComBuff( numero, formulaOriginal ); if (!formulaFinal) { return; } const usarVantagem = !!document.querySelector(`#golpe${numero}Vantagem`)?.checked; if (!usarVantagem) { await rolarNoDicePlus( formulaFinal, nomeGolpe(numero), "Dano" ); return; } const resultado1 = await rolarNoDicePlusComResultado( formulaFinal, nomeGolpe(numero), "Dano (Vant 1/2)" ); if (resultado1 === null) { return; } const resultado2 = await rolarNoDicePlusComResultado( formulaFinal, nomeGolpe(numero), "Dano (Vant 2/2)" ); if (resultado2 === null) { return; } const maior = Math.max(resultado1, resultado2); alert(`${nomeGolpe(numero)} — Dano com Vantagem
+1ª rolagem: ${resultado1}
+2ª rolagem: ${resultado2}
+Maior resultado: ${maior}`); } ); } );
 document .querySelectorAll(".rolarDobrarDados") .forEach( (botao) => { botao.addEventListener( "click", async () => { const numero = botao.dataset.golpe; if (await bloquearMoveSeDebuffImpede(token, { numeroGolpe: numero, usarLiberacao: true })) return; const formulaOriginal = document .querySelector(
 `#golpe${numero}Dano`
 ) .value .trim(); if (!formulaOriginal) { alert( "A fórmula de dano está vazia." ); return; } const campoDobras = document.querySelector(
