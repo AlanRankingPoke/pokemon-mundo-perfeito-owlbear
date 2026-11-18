@@ -55,6 +55,7 @@ const META_AS_TROCA_RAPIDA_USOS = `${PREFIX}/classe-as-troca-rapida-usos`;
 const META_VERSATIL_APOIADOR_USOS = `${PREFIX}/classe-versatil-apoiador-usos`;
 const META_VERSATIL_TALENTO_DIA = `${PREFIX}/classe-versatil-talento-dia`;
 const META_VERSATIL_MUITAS_FACES_ESCOLHA = `${PREFIX}/classe-versatil-muitas-faces-escolha`;
+const META_VERSATIL_MUITAS_FACES_CONFIG = `${PREFIX}/classe-versatil-muitas-faces-config`;
 const META_MENTOR_INSPIRACAO_USADA = `${PREFIX}/classe-mentor-inspiracao-usada`;
 const META_MENTOR_INSPIRACAO_TIPO = `${PREFIX}/classe-mentor-inspiracao-tipo`;
 const META_MENTOR_POKECHEF_USOS = `${PREFIX}/classe-mentor-pokechef-usos`;
@@ -4222,6 +4223,89 @@ function opcoesPericiasOrigemRival() {
   ).join("");
 }
 
+// Recursos reais da ficha de cada caminho: lvl 2, 5 e 9 (exclui o Versátil).
+const RECURSOS_MUITAS_FACES = Object.freeze([{"id":"treinador-as:2","classeId":"treinador-as","nivel":2,"titulo":"TREINADOR ÁS","descricao":"Começando no 2º nível, todos os seus Pokémon recebem +1 em suas rolagens de ataque e dano. Esse bônus é apenas uma regra da classe e não altera automaticamente as fichas dos Pokémon."},{"id":"treinador-as:5","classeId":"treinador-as","nivel":5,"titulo":"MESTRE DE BATALHA","descricao":"Você possui uma reserva de dados de batalha (d6) igual a 1 + seu modificador de Sabedoria, mínimo de 1. Depois de uma rolagem inicial, pode usar um desses dados para acrescentar o resultado a uma única rolagem de ataque ou dano de um de seus Pokémon."},{"id":"treinador-as:9","classeId":"treinador-as","nivel":9,"titulo":"RITMO DE COMBATE","descricao":"Seus Pokémon ganham +3 metros de deslocamento. Além disso, ao realizar uma rolagem de iniciativa, você pode rolar 1d6 adicional. Esta parte de deslocamento é apenas descritiva e não altera automaticamente a ficha do Pokémon."},{"id":"mentor-pokemon:2","classeId":"mentor-pokemon","nivel":2,"titulo":"MENTOR POKÉMON","descricao":"Uma vez por descanso curto, como ação bônus, você inspira todos os Pokémon aliados. Até o seu próximo turno, escolha ATAQUE, DANO ou CA; todos os Pokémon aliados adicionam seu modificador de Carisma, mínimo de 1, ao valor escolhido."},{"id":"mentor-pokemon:5","classeId":"mentor-pokemon","nivel":5,"titulo":"POKÉCHEF","descricao":"Você prepara Guloseimas Comestíveis para Pokémon. No 5º nível elas concedem 2d4+2 PV temporários. Você pode usar este recurso um número de vezes igual a 1 + seu modificador de Sabedoria e repõe os usos a cada descanso longo."},{"id":"mentor-pokemon:9","classeId":"mentor-pokemon","nivel":9,"titulo":"TUTOR CAPACITADO","descricao":"A partir do 9º nível, suas TMs podem ser usadas duas vezes antes de serem quebradas. Além disso, sua Guloseima Comestível passa a conceder 2d8+4 pontos de vida temporários."},{"id":"enfermeiro:2","classeId":"enfermeiro","nivel":2,"titulo":"ENFERMEIRO","descricao":"Ao escolher este caminho, você ganha proficiência em Medicina; se já for proficiente, torna-se especialista. A cada descanso longo ou visita ao Centro Pokémon, escolha até 6 Pokémon para receber PV temporários iguais ao seu nível de Treinador."},{"id":"enfermeiro:5","classeId":"enfermeiro","nivel":5,"titulo":"CORAÇÃO PURO","descricao":"Você possui uma reserva de cura igual ao seu nível de Treinador × 5. Com uma ação, pode tocar uma criatura voluntária que não esteja incapacitada e restaurar qualquer quantidade de PV dessa reserva."},{"id":"enfermeiro:9","classeId":"enfermeiro","nivel":9,"titulo":"ESPÍRITO DE CURA","descricao":"Quando você usar um consumível que cure um Pokémon ou seu Pokémon usar um Move de cura, role os dados duas vezes e use o maior resultado. Fora de combate, até duas vezes por descanso longo, você pode curar 1 PV de um Pokémon Incapacitado."},{"id":"pesquisador:2","classeId":"pesquisador","nivel":2,"titulo":"PESQUISADOR","descricao":"Escolha Arcanismo, História, Investigação, Natureza ou Religião para ganhar proficiência; se já for proficiente, torna-se especialista. Você sabe onde encontrar uma espécie registrada como vista em sua Pokédex e seu Pokémon inicial pode aprender pelo menos um Move do próximo nível em que receberia novos Moves."},{"id":"pesquisador:5","classeId":"pesquisador","nivel":5,"titulo":"ANALISTA","descricao":"Como ação bônus, faça um teste de Investigação CD 12 para analisar um Pokémon e obter seu nível, habilidade passiva e Natureza conforme o Mestre definir. Pokémon aliados recebem +2 na CA e nos testes de resistência contra o alvo analisado até o fim do combate."},{"id":"pesquisador:9","classeId":"pesquisador","nivel":9,"titulo":"ESPECIALISTA EM APRENDIZADO","descricao":"Todos os seus Pokémon recebem um Talento extra ao chegarem ao nível 10. Além disso, quando um Pokémon aliado sofrer dano de um Move, você pode orientá-lo: se falhou numa resistência, terá vantagem na próxima contra o mesmo Move; se foi atingido por jogada de acerto, o próximo ataque desse Move será feito com desvantagem. O efeito termina após esse próximo uso."},{"id":"comandante:2","classeId":"comandante","nivel":2,"titulo":"COMANDANTE","descricao":"Ao escolher este caminho, a Lealdade do seu Pokémon inicial aumenta para Leal. Além disso, qualquer novo Pokémon capturado recebe +1 em Lealdade. Este efeito é descritivo e não altera automaticamente as fichas dos Pokémon."},{"id":"comandante:5","classeId":"comandante","nivel":5,"titulo":"LÍDER INSPIRADOR","descricao":"Após 10 minutos inspirando seus aliados, escolha até seis criaturas amistosas, incluindo você, a até 9 metros. Cada uma recebe PV temporários iguais ao seu nível de Treinador + modificador de Carisma."},{"id":"comandante:9","classeId":"comandante","nivel":9,"titulo":"MOSTRE-ME O QUE VOCÊ TEM","descricao":"Escolha entre Dano Dobrado, que permite a um Pokémon dobrar todos os dados de dano de um Move antes da rolagem, ou Move de Nível Superior, que permite ativar um único Move de um nível acima dos Moves que ele pode aprender atualmente. Os dois efeitos não podem ser usados no mesmo Move e não combinam com outras mecânicas de combate, exceto Mega Evolução."},{"id":"colecionador-pokemon:2","classeId":"colecionador-pokemon","nivel":2,"titulo":"COLECIONADOR POKÉMON","descricao":"A partir do 2º nível, seu teste de captura passa a usar 3 × seu Bônus de Proficiência. A área de Captura da aba STATUS aplica esse multiplicador automaticamente."},{"id":"colecionador-pokemon:5","classeId":"colecionador-pokemon","nivel":5,"titulo":"TENHO QUE PEGAR TODOS","descricao":"Uma vez por descanso longo, você pode fazer um teste de captura com vantagem mesmo que o alvo não esteja sofrendo uma condição de status negativa. Sempre que falhar numa captura, o plugin rola 1d4 automaticamente; em um resultado 4, a Pokébola é recuperada."},{"id":"colecionador-pokemon:9","classeId":"colecionador-pokemon","nivel":9,"titulo":"ESPECIALISTA EM CAPTURA","descricao":"Pokémon capturados por você são enviados ao PC com saúde plena e sem Condições de Status. Além disso, seu modificador de Carisma é adicionado automaticamente às tentativas de captura. A cada 40 espécies diferentes completamente catalogadas, role 2d6 e receba uma recompensa para cada dado; resultados iguais concedem o mesmo brinde duas vezes."},{"id":"guru:2","classeId":"guru","nivel":2,"titulo":"GURU","descricao":"Você ganha proficiência em Persuasão; se já for proficiente, torna-se especialista. Pokémon que ainda não podem ser controlados por você passam a usar Lealdade Indiferente em vez de Desleal até a Atualização de Controle correspondente."},{"id":"guru:5","classeId":"guru","nivel":5,"titulo":"MENTE","descricao":"Quando um de seus Pokémon fizer um teste de resistência de Sabedoria, você pode adicionar seu modificador de Sabedoria à jogada. Ao rolar um d6 para resistir ao efeito Confusão, seus Pokémon rolam duas vezes e ficam com o melhor resultado."},{"id":"guru:9","classeId":"guru","nivel":9,"titulo":"CORPO","descricao":"Todos os seus Pokémon passam a ter acesso a duas Habilidades Passivas, desde que possuam mais de uma. Uma Habilidade Oculta substitui uma das passivas; caso o Pokémon possua apenas uma passiva não oculta, a Habilidade Oculta é adicionada como segunda. O talento Incansável pode ser aprendido por todos os seus Pokémon ao alcançarem o nível 10."},{"id":"criador-pokemon:2","classeId":"criador-pokemon","nivel":2,"titulo":"CRIADOR DE POKÉMON","descricao":"Você domina incubação e IVs. Sempre que chocar um ovo, pode rolar 1d100 para determinar as horas de incubação e seis d20 para os IVs de Força, Destreza, Constituição, Inteligência, Sabedoria e Carisma. Cada d20 vale: 1 = -2; 2–3 = -1; 4–17 = +0; 18–19 = +1; 20 = +2."},{"id":"criador-pokemon:5","classeId":"criador-pokemon","nivel":5,"titulo":"CUIDADO E CARINHO","descricao":"Ao rolar a incubação, role 1d100 duas vezes e mantenha o maior resultado. Ao chocar um ovo, pode rolar 1d6 para definir qual atributo terá um IV herdado e decidir se usa o valor da mãe ou do pai. Também pode rolar a Natureza do filhote duas vezes e escolher o resultado desejado."},{"id":"criador-pokemon:9","classeId":"criador-pokemon","nivel":9,"titulo":"BOA GENÉTICA","descricao":"Ao chocar um ovo, você pode escolher 1 atributo para possuir IV máximo ou conceder um talento ao Pokémon. Ao tentar criar um Pokémon Brilhante, o d100 precisa ser 91+ se um dos pais for Brilhante ou 86+ se ambos forem Brilhantes."},{"id":"tatico:2","classeId":"tatico","nivel":2,"titulo":"TÁTICO","descricao":"Sua reserva de Pontos Táticos é igual ao seu nível de Treinador. Ao recuperar PV de um Pokémon através de item ou Move, você pode gastar Pontos Táticos para aumentar a cura em 1d6 para cada ponto gasto. A reserva é reiniciada após descanso longo."},{"id":"tatico:5","classeId":"tatico","nivel":5,"titulo":"GOLPE DIRECIONADO","descricao":"Você pode gastar 2 Pontos Táticos para rolar o dano de um ataque duas vezes e usar o maior total."},{"id":"tatico:9","classeId":"tatico","nivel":9,"titulo":"AUMENTE SUAS DEFESAS","descricao":"Quando seu Pokémon for alvo de um Move danoso, você pode usar uma reação para gastar Pontos Táticos e adicioná-los à CA ou a um teste de resistência, até fazer o ataque falhar ou passar na CD."},{"id":"patrulheiro:2","classeId":"patrulheiro","nivel":2,"titulo":"PATRULHEIRO","descricao":"Você ganha proficiência em Natureza e Sobrevivência; caso já seja proficiente, torna-se especialista. Além disso, seu deslocamento de caminhada aumenta em 3 metros. Esses ajustes permanecem descritivos para serem registrados na ficha conforme necessário."},{"id":"patrulheiro:5","classeId":"patrulheiro","nivel":5,"titulo":"CONEXÃO PROFUNDA","descricao":"Você compreende melhor gestos, sons e emoções dos Pokémon e pode usar o Capture Styler para estabelecer uma cooperação temporária. Faça um teste de Adestrar Animais: CD 10 para Pokémon amistoso, CD 15 para neutro e CD 20 para incomodado. Em sucesso, ele coopera por 1 hora, +1 hora para cada 5 pontos acima da CD. O Styler possui usos iguais ao seu modificador de Sabedoria, mínimo 1."},{"id":"patrulheiro:9","classeId":"patrulheiro","nivel":9,"titulo":"LIGAÇÃO FORTE","descricao":"Uma vez por descanso longo, você pode criar vínculos com até dois Pokémon. Além disso, dobra sua proficiência em Adestrar Animais para acalmar um Pokémon raivoso ou encontrar um Pokémon perdido, e aprende um assobio capaz de chamar seus Pokémon em um raio de 200 metros quando puderem ouvi-lo."},{"id":"capanga:2","classeId":"capanga","nivel":2,"titulo":"CAPANGA","descricao":"Sua reserva de Pontos Sombrios é igual ao seu nível de Treinador. Depois que um oponente fizer uma rolagem de ataque contra um de seus Pokémon, você pode gastar qualquer quantidade de Pontos Sombrios para reduzir o total da rolagem, caso isso faça o ataque falhar. Um 20 natural não pode ser reduzido e a rolagem natural continua valendo para efeitos secundários."},{"id":"capanga:5","classeId":"capanga","nivel":5,"titulo":"ENCRENCA EM DOBRO","descricao":"Você pode gastar 3 Pontos Sombrios para obter vantagem em qualquer teste de perícia, jogada de ataque ou teste de resistência feito por você ou por um de seus Pokémon. Quando um inimigo obtiver 1 natural em uma jogada de ataque contra um de seus Pokémon, recupere 1 Ponto Sombrio."},{"id":"capanga:9","classeId":"capanga","nivel":9,"titulo":"RENDA-SE AGORA","descricao":"Como reação, você pode gastar 4 Pontos Sombrios para adicionar um nível de resistência a um Move que cause dano a um de seus Pokémon: Vulnerável → Neutro, Neutro → Resistente, Resistente → Imune."}]);
+const RECURSOS_MUITAS_FACES_POR_ID = new Map(RECURSOS_MUITAS_FACES.map(r=>[r.id,r]));
+function normalizarMuitasFaces(valor) {
+  const origem=valor && typeof valor==='object' ? valor : {};
+  const modo=origem.modo==='um'?'um':'dois';
+  const permitidos=RECURSOS_MUITAS_FACES.filter(r=>modo==='dois'?r.nivel===2:(r.nivel===5||r.nivel===9));
+  const ids=new Set(permitidos.map(r=>r.id));
+  const escolhas=Array.isArray(origem.escolhas)?origem.escolhas:[];
+  const usados=new Set();
+  const resultado=Array.from({length:modo==='dois'?2:1},(_,i)=>{
+    const id=String(escolhas[i]||'');
+    if(!ids.has(id)||usados.has(id))return '';
+    usados.add(id);return id;
+  });
+  return {modo,escolhas:resultado};
+}
+function htmlEscolhaMuitasFaces(token, nivelTreinador) {
+  const dados=normalizarMuitasFaces(token.metadata[META_VERSATIL_MUITAS_FACES_CONFIG]);
+  const legado=String(token.metadata[META_VERSATIL_MUITAS_FACES_ESCOLHA]||'').trim();
+  return `<div class="classeRecurso" id="muitasFacesPainel">
+     <div class="classeRecursoTopo"><span>RECURSOS DE OUTROS CAMINHOS</span><strong>LV. 9</strong></div>
+     <label for="muitasFacesModo">Escolha a combinação autorizada:</label>
+     <select id="muitasFacesModo" class="classeSelect" ${nivelTreinador>=9?'':'disabled'}>
+       <option value="dois" ${dados.modo==='dois'?'selected':''}>Dois recursos de nível 2</option>
+       <option value="um" ${dados.modo==='um'?'selected':''}>Um recurso de nível 5 ou 9</option>
+     </select>
+     <div id="muitasFacesSeletores" style="margin:7px 0;display:grid;gap:7px;"></div>
+     <button type="button" id="muitasFacesSalvar" class="classeAcao classeAcaoCheia" ${nivelTreinador>=9?'':'disabled'}>SALVAR RECURSOS ESCOLHIDOS</button>
+     <div id="muitasFacesAviso" role="status" aria-live="polite" style="font-size:10px;margin-top:5px;color:#20834c"></div>
+     ${legado?`<details style="margin-top:8px"><summary>Anotação anterior preservada</summary><div style="white-space:pre-line;font-size:11px;overflow-wrap:anywhere">${esc(legado)}</div></details>`:''}
+   </div>`;
+}
+function ativarEscolhaMuitasFaces(token,nivel) {
+  const modoEl=document.getElementById('muitasFacesModo'), container=document.getElementById('muitasFacesSeletores'), salvar=document.getElementById('muitasFacesSalvar'), aviso=document.getElementById('muitasFacesAviso');
+  if(!modoEl||!container||!salvar||!aviso||nivel<9)return;
+  let state=normalizarMuitasFaces(token.metadata[META_VERSATIL_MUITAS_FACES_CONFIG]);let ocupado=false;
+  const descricao=(id)=>RECURSOS_MUITAS_FACES_POR_ID.get(id)?.descricao||'';
+  const renderizar=()=>{
+    const quantidade=state.modo==='dois'?2:1;
+    const disponiveis=RECURSOS_MUITAS_FACES.filter(r=>state.modo==='dois'?r.nivel===2:(r.nivel===5||r.nivel===9));
+    container.innerHTML=Array.from({length:quantidade},(_,i)=>{
+      const id=state.escolhas[i]||'';
+      return `<div style="border:1px solid #d6dce7;border-radius:8px;padding:7px;background:#fff">
+        <label for="muitasFacesSlot${i}">${state.modo==='dois'?`Recurso de 2º nível ${i+1}`:'Recurso de 5º ou 9º nível'}</label>
+        <select class="classeSelect" id="muitasFacesSlot${i}" data-mf-slot="${i}" ${ocupado?'disabled':''}>
+          <option value="">— ESCOLHER RECURSO —</option>
+          ${disponiveis.filter(r=>r.id===id||!state.escolhas.includes(r.id)).map(r=>{
+            const classe=CLASSES_TREINADOR_POR_ID.get(r.classeId);
+            return `<option value="${esc(r.id)}" ${r.id===id?'selected':''}>${esc(classe?.nome||r.classeId)} · LV. ${r.nivel} · ${esc(r.titulo)}</option>`;
+          }).join('')}
+        </select>
+        <div style="font-size:11px;white-space:pre-line;line-height:1.45;margin-top:5px;overflow-wrap:anywhere;">${esc(descricao(id))}</div>
+      </div>`;
+    }).join('');
+    container.querySelectorAll('[data-mf-slot]').forEach(select=>select.addEventListener('change',()=>{
+      const i=Number(select.dataset.mfSlot);state.escolhas[i]=select.value;renderizar();
+    }));
+  };
+  modoEl.addEventListener('change',()=>{state=normalizarMuitasFaces({modo:modoEl.value,escolhas:[]});aviso.textContent='';renderizar();});
+  salvar.addEventListener('click',async()=>{
+    if(ocupado)return;
+    const ids=state.escolhas.filter(Boolean);const quantidade=state.modo==='dois'?2:1;
+    if(ids.length!==quantidade||new Set(ids).size!==quantidade){aviso.textContent=`Selecione ${quantidade} recurso(s) diferente(s).`;return;}
+    if(token.metadata?.[META_TREINADOR_CLASSE]!=='versatil')return;
+    ocupado=true;salvar.disabled=true;aviso.textContent='Salvando...';
+    try{
+      const dados=normalizarMuitasFaces(state);
+      if(dados.escolhas.filter(Boolean).length!==quantidade)throw new Error('Seleção inválida.');
+      const atual=await pegarTokenAtualizado(token.id);
+      if(!atual||atual.metadata?.[META_TREINADOR_CLASSE]!=='versatil'||nivelTreinadorNormalizado(atual.metadata?.[`${PREFIX}/treinador-nivel`]??1)<9)
+        throw new Error('É necessário ser Versátil de nível 9 ou superior.');
+      await OBR.scene.items.updateItems([token.id],items=>{
+        for(const item of items)if(item.metadata?.[META_TREINADOR_CLASSE]==='versatil')item.metadata[META_VERSATIL_MUITAS_FACES_CONFIG]=dados;
+      });
+      token.metadata[META_VERSATIL_MUITAS_FACES_CONFIG]=dados;
+      aviso.textContent='✓ Recursos escolhidos salvos no treinador.';
+    }catch(erro){aviso.textContent=`Erro: ${erro?.message||String(erro)}`;}
+    finally{ocupado=false;salvar.disabled=false;renderizar();}
+  });
+  renderizar();
+}
+
 function mostrarFichaTreinadorClasOri(token) {
   const app = document.querySelector("#app");
   const classe = classeTreinadorPorId(token.metadata[META_TREINADOR_CLASSE]);
@@ -4232,7 +4316,6 @@ function mostrarFichaTreinadorClasOri(token) {
   const trocaRapidaUsos = usosClasseAs(token, META_AS_TROCA_RAPIDA_USOS);
   const versatilApoiadorUsos = usosClasseAs(token, META_VERSATIL_APOIADOR_USOS);
   const versatilTalentoDia = talentoTreinadorPorId(token.metadata[META_VERSATIL_TALENTO_DIA]);
-  const versatilMuitasFacesEscolha = String(token.metadata[META_VERSATIL_MUITAS_FACES_ESCOLHA] ?? "");
   const mentorInspiracaoUsada = token.metadata[META_MENTOR_INSPIRACAO_USADA] === true;
   const mentorInspiracaoTipo = String(token.metadata[META_MENTOR_INSPIRACAO_TIPO] ?? "");
   const mentorBonusCar = bonusCarismaMentor(token);
@@ -4363,11 +4446,7 @@ function mostrarFichaTreinadorClasOri(token) {
           nivel: 9,
           liberado: nivel9,
           texto: "No 9º nível, você pode escolher dois recursos de 2º nível ou um recurso de 5º ou 9º nível de qualquer outro caminho de Treinador.",
-          extra: `
-            <div class="classeRecurso">
-              <div class="classeRecursoTopo"><span>RECURSOS ESCOLHIDOS</span><strong>ANOTAÇÃO</strong></div>
-              <textarea class="classeTextoLivre" id="versatilMuitasFacesEscolha" placeholder="Escreva aqui os recursos escolhidos em Muitas Faces...">${esc(versatilMuitasFacesEscolha)}</textarea>
-            </div>`
+          extra: htmlEscolhaMuitasFaces(token, nivelTreinador)
         })}
         ${blocoClasseAs({
           titulo: "TROCA DE HABILIDADE",
@@ -5192,12 +5271,7 @@ function mostrarFichaTreinadorClasOri(token) {
     await redesenharClasseAberta();
   });
 
-  const campoMuitasFaces = document.querySelector("#versatilMuitasFacesEscolha");
-  campoMuitasFaces?.addEventListener("blur", async () => {
-    const valor = String(campoMuitasFaces.value || "");
-    if (valor === String(token.metadata[META_VERSATIL_MUITAS_FACES_ESCOLHA] ?? "")) return;
-    await salvarEstadoClasse(token, { [META_VERSATIL_MUITAS_FACES_ESCOLHA]: valor });
-  });
+  ativarEscolhaMuitasFaces(token, nivelTreinador);
 
   document.querySelector("#salvarVersatilTalentoDia")?.addEventListener("click", async () => {
     const seletor = document.querySelector("#versatilTalentoDia");
@@ -7704,7 +7778,7 @@ function menuPokemon(paginaAtual) {
     <div class="fichaAbas" style="display:flex;gap:6px;margin-bottom:15px;flex-wrap:wrap;">
       ${aba("paginaPokemon1", 1, "STATUS")}
       ${aba("paginaPokemon2", 2, "MOVES / BUFFS")}
-      ${aba("paginaPokemon3", 3, "PERÍCIAS")}
+      ${aba("paginaPokemon3", 3, "TALENT/PERÍCIAS")}
       ${aba("paginaPokemon4", 4, "DEBUFFS")}
       ${aba("paginaPokemon5", 5, "MEGA")}
     </div>
@@ -9416,7 +9490,7 @@ const lerTalentoAtivo = (id) => { const valor = token.metadata[
 `${PREFIX}/talento-${id}`
 ];
 return ( valor === true || valor === 1 || valor === "1" || valor === "true" ); };
-const talentosCombate = { mestreCorpo: lerTalentoAtivo("mestre-corpo"), mestreDistancia: lerTalentoAtivo("mestre-distancia"), atacanteBestial: lerTalentoAtivo("atacante-bestial"), disputador: lerTalentoAtivo("disputador"), investidaPoderosa: lerTalentoAtivo("investida-poderosa") };
+const talentosCombate = { mestreCorpo: lerTalentoAtivo("mestre-corpo"), mestreDistancia: lerTalentoAtivo("mestre-distancia"), atacanteBestial: lerTalentoAtivo("atacante-bestial"), investidaPoderosa: lerTalentoAtivo("investida-poderosa") };
 const golpes = [];
 for ( let i = 1; i <= 5; i++ ) { golpes.push({ tipo: token.metadata[
 `${PREFIX}/golpe${i}Tipo`
@@ -10090,7 +10164,6 @@ app.innerHTML = `
       <input id="talento-mestre-corpo" type="hidden" value="${talentosCombate.mestreCorpo ? "1" : "0"}">
       <input id="talento-mestre-distancia" type="hidden" value="${talentosCombate.mestreDistancia ? "1" : "0"}">
       <input id="talento-atacante-bestial" type="hidden" value="${talentosCombate.atacanteBestial ? "1" : "0"}">
-      <input id="talento-disputador" type="hidden" value="${talentosCombate.disputador ? "1" : "0"}">
       <input id="talento-investida-poderosa" type="hidden" value="${talentosCombate.investidaPoderosa ? "1" : "0"}">
       <button type="button" class="talentoCombate ${talentosCombate.mestreCorpo ? "ativo" : ""}" data-talento="mestre-corpo"
         style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.mestreCorpo ? "1" : "0.55"}; border:${talentosCombate.mestreCorpo ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.mestreCorpo ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.mestreCorpo ? "#fff" : ""}; box-shadow:${talentosCombate.mestreCorpo ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
@@ -10103,10 +10176,6 @@ app.innerHTML = `
       <button type="button" class="talentoCombate ${talentosCombate.atacanteBestial ? "ativo" : ""}" data-talento="atacante-bestial"
         style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.atacanteBestial ? "1" : "0.55"}; border:${talentosCombate.atacanteBestial ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.atacanteBestial ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.atacanteBestial ? "#fff" : ""}; box-shadow:${talentosCombate.atacanteBestial ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
         ATACANTE BESTIAL
-      </button>
-      <button type="button" class="talentoCombate ${talentosCombate.disputador ? "ativo" : ""}" data-talento="disputador"
-        style="min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.disputador ? "1" : "0.55"}; border:${talentosCombate.disputador ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.disputador ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.disputador ? "#fff" : ""}; box-shadow:${talentosCombate.disputador ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
-        DISPUTADOR
       </button>
       <button type="button" class="talentoCombate ${talentosCombate.investidaPoderosa ? "ativo" : ""}" data-talento="investida-poderosa"
         style="grid-column:1 / -1; min-height:30px !important; padding:4px 5px !important; font-size:9px; line-height:1.05; font-weight:bold; cursor:pointer; opacity:${talentosCombate.investidaPoderosa ? "1" : "0.55"}; border:${talentosCombate.investidaPoderosa ? "2px solid #d97706" : "1px solid #666"}; background:${talentosCombate.investidaPoderosa ? "linear-gradient(180deg,#f59e0b 0%,#ea7c09 100%)" : ""}; color:${talentosCombate.investidaPoderosa ? "#fff" : ""}; box-shadow:${talentosCombate.investidaPoderosa ? "0 2px 7px rgba(217,119,6,.32)" : ""};">
@@ -10203,9 +10272,10 @@ nome || `Move ${numero}`;
 };
 campoNome.addEventListener( "input", atualizarResumo );
 campoNome.addEventListener( "change", atualizarResumo ); }
-function talentoCombateAtivo(id) { return ( document
-.querySelector(`#talento-${id}`)
-?.value === "1" ); }
+function talentoCombateAtivo(id) {
+  if(id === "disputador") return talentosPokemonCatalogados(token).includes("Disputador");
+  return document.querySelector(`#talento-${id}`)?.value === "1";
+}
 function atualizarVisualTalento(botao, ativo) { botao.classList.toggle("ativo", ativo);
 botao.style.opacity = ativo ? "1" : "0.55"; }
 document .querySelectorAll(".talentoCombate") .forEach( (botao) => { botao.addEventListener( "click", () => { const id = botao.dataset.talento; const campo = document.querySelector(
@@ -10456,7 +10526,7 @@ document .querySelectorAll(".alterarBuffMove") .forEach( (botao) => { botao.addE
 ); if (!campoBuff || !delta) { return; } const atual = normalizarEstagioBuff( campoBuff.value, buffId ); const novo = normalizarEstagioBuff( atual + delta, buffId ); campoBuff.value = String(novo); campoBuff.dispatchEvent( new Event( "input", { bubbles: true } ) ); campoBuff.dispatchEvent( new Event( "change", { bubbles: true } ) ); } ); } );
 document .querySelector("#salvarPokemonMoves") .addEventListener( "click", async () => { const novosBuffs = {}; BUFFS.forEach( (buff) => { novosBuffs[buff.id] = normalizarEstagioBuff( document .querySelector(
 `#buff-${buff.id}`
-) .value, buff.id ); } ); const novosTalentos = { mestreCorpo: talentoCombateAtivo("mestre-corpo"), mestreDistancia: talentoCombateAtivo("mestre-distancia"), atacanteBestial: talentoCombateAtivo("atacante-bestial"), disputador: talentoCombateAtivo("disputador"), investidaPoderosa: talentoCombateAtivo("investida-poderosa") }; const novosGolpes = []; for ( let i = 1; i <= 5; i++ ) { const tipoCampo = document .querySelector(
+) .value, buff.id ); } ); const novosTalentos = { mestreCorpo: talentoCombateAtivo("mestre-corpo"), mestreDistancia: talentoCombateAtivo("mestre-distancia"), atacanteBestial: talentoCombateAtivo("atacante-bestial"), investidaPoderosa: talentoCombateAtivo("investida-poderosa") }; const novosGolpes = []; for ( let i = 1; i <= 5; i++ ) { const tipoCampo = document .querySelector(
 `#golpe${i}Tipo`
 ) .value; const categoriaCampo = document .querySelector(
 `#golpe${i}Categoria`
@@ -10489,8 +10559,6 @@ document .querySelector("#salvarPokemonMoves") .addEventListener( "click", async
 ] = novosTalentos.mestreDistancia; item.metadata[
 `${PREFIX}/talento-atacante-bestial`
 ] = novosTalentos.atacanteBestial; item.metadata[
-`${PREFIX}/talento-disputador`
-] = novosTalentos.disputador; item.metadata[
 `${PREFIX}/talento-investida-poderosa`
 ] = novosTalentos.investidaPoderosa; novosGolpes.forEach( (golpe, index) => { const numero = index + 1; item.metadata[
 `${PREFIX}/golpe${numero}Tipo`
@@ -13747,6 +13815,132 @@ function ativarSeletorNaturePokemon(token) {
   });
 }
 
+// ===== TALENTOS DE POKÉMON — 39 DESCRIÇÕES DO POKÉDEXPMP =====
+const META_POKEMON_TALENTOS_CATALOGO = `${PREFIX}/pokemon-talentos-catalogo`;
+const TALENTOS_PMP_DESCRICOES = Object.freeze({"Aumento de CA":"A CA do seu Pokémon aumenta em 1. Esse bônus é incluído nas evoluções de um Pokémon.","Corpo Apto":"O corpo deste Pokémon é treinado para aprender e lutar contra doenças por longos períodos de tempo. O status 'Período de Carência' para este Pokémon é estendido por três rodadas após ser curado da condição. Período de Carência: Quando um Pokémon se recupera de uma condição de status, ele não pode sucumbir à mesma condição até o final de seu próximo turno.","Acrobata":"Você se torna mais ágil, ganhando os seguintes benefícios: \n• Aumente seu valor de Destreza em 1. \n• Você ganha proficiência na perícia Acrobacia. Se já for proficiente, passa a ser especialista, podendo aplicar o dobro do seu bônus de proficiência nos testes realizados com ela. \n• Como uma ação bônus, você pode fazer um teste de Destreza (Acrobacia) CD 15. Se você for bem-sucedido, o terreno difícil não lhe custará movimento extra até o final do turno atual.","Ator":"Perito em mímica e dramaturgia, você recebe os seguintes benefícios:\n• Aumente seu valor de Carisma em 1, até o máximo de 20.\n• Você tem vantagem em testes de Carisma (Atuação) e Carisma (Enganação) quando você estiver tentando se passar por uma pessoa diferente.\n• Você pode imitar a articulação de outra pessoa ou os sons feitos por outras criaturas. Você deve ter ouvido a pessoa falando ou ouvido a criatura fazendo o som por, pelo menos, 1 minuto. Um sucesso num teste de Sabedoria (Intuição) resistido pelo seu teste de Carisma (Enganação) permite que um ouvinte determine que o efeito é falso.","Alerta":"Sempre à espera de perigo, você ganha os seguintes benefícios:\n• Você recebe +5 de bônus em iniciativa.\n• Você não pode ser surpreso enquanto estiver consciente.\n• Outras criaturas não ganham vantagem nas jogadas de ataque contra você por estarem escondidas de você.","Atleta (DES)":"Você passou por extenso treinamento físico para ganhar os seguintes benefícios:\n• Aumente seu valor de Força ou Destreza em 1.\n• Quando você estiver caído, se levantar requer apenas 1,5 metro do seu deslocamento.\n• Escalar não custa movimento adicional a você.\n• Você pode realizar um salto em distância correndo ou um salto em altura correndo se movendo apenas um passo de ajuste de 1,5 metro, ao invés de 3 metros.","Atleta (FOR)":"Você passou por extenso treinamento físico para ganhar os seguintes benefícios:\n• Aumente seu valor de Força ou Destreza em 1.\n• Quando você estiver caído, se levantar requer apenas 1,5 metro do seu deslocamento.\n• Escalar não custa movimento adicional a você.\n• Você pode realizar um salto em distância correndo ou um salto em altura correndo se movendo apenas um passo de ajuste de 1,5 metro, ao invés de 3 metros.","Musculoso":"Você se torna mais forte, ganhando os seguintes benefícios:\n• Aumente seu valor de Força em 1.\n• Você ganha proficiência em Atletismo. Se você já é proficiente na habilidade, você adiciona o dobro de seu bônus de proficiência aos testes que fizer com ela.\n• Você conta como se fosse um tamanho maior para determinar sua capacidade de carga.","Investida Poderosa":"Quando você usa a ação de Disparada, você pode usar sua ação bônus para realizar um ataque corpo-a-corpo ou para empurrar uma criatura. Se você se mover, pelo menos, 3 metros em linha reta, imediatamente antes de realizar essa ação bônus, você pode tanto ganhar +5 de bônus na jogada de dano do ataque (se você escolher realizar um ataque corpo-a-corpo e atingir) ou empurrar o alvo até 3 metros de você (se você escolher empurrar e for bem sucedido).","Resistente":"Duro e resistente, você ganha os seguintes benefícios:\n• Aumente seu valor de Constituição em 1.\n• Quando você rolar um Dado de Vida para recuperar pontos de vida, o valor mínimo de pontos de vida que você recupera dessa rolagem será igual a duas vezes seu modificador de Constituição (mínimo de 2).","Move Extra":"Seu Pokémon pode conhecer até cinco Moves em vez de quatro. Outros talentos que concedem Moves, como Explorador dos Céus, Explorador dos Mares e Explorador das Profundezas, não se acumulam com este talento.","Mestre de Combate Corpo a Corpo":"Seu Pokémon é um mestre do combate corpo a corpo.\n• Ganhe vantagem em todos os ataques de oportunidade.\n• Antes de fazer um ataque corpo a corpo, você pode escolher sofrer uma penalidade de -5 na jogada de ataque. Se o ataque acertar, você adiciona +10 ao dano do ataque (uma vez por Move).","Mobilidade":"Você é excepcionalmente rápido e ágil. Você ganha os seguintes benefícios:\n• Seu deslocamento aumenta em 3 metros.\n• Quando você usa a ação de Disparada, mover-se através de terreno difícil não lhe custa qualquer movimento adicional neste turno.\n• Quando você realiza um ataque corpo a corpo contra uma criatura, você não provoca ataques de oportunidade para essa criatura pelo resto do turno, independentemente de ter atingido ou não.","Observador":"Rápido em perceber os detalhes do ambiente, você ganha os seguintes benefícios:\n• Aumente seu valor de Inteligência ou Sabedoria em 1. O atributo não aumenta automaticamente, coloque via pontos extras.\n• Se você puder ver a boca de uma criatura enquanto ela fala um idioma que você compreende, você pode interpretar o que ela está dizendo ao ler os seus lábios.\n• Você tem +5 de bônus nos seus valores passivos de Sabedoria (Percepção) e Inteligência (Investigação).","Perceptivo":"Você aprimora seus sentidos até que eles se tornem afiados. Você ganha os seguintes benefícios:\n• Aumente seu valor de Sabedoria em 1.\n• Você ganha proficiência em Percepção. Se você já é proficiente na habilidade, você adiciona o dobro de seu bônus de proficiência aos testes que fizer com ela.\n• Estar em uma área levemente obscurecida não impõe desvantagem em seus testes de Sabedoria (Percepção) se você puder ver e ouvir.","Escultor de Poder":"Este Pokémon é capaz de esculpir o poder de seus Moves em torno de seus aliados. Para Moves de área de efeito que este Pokémon ativa, escolha 1 + MOVE aliados no alcance para não receberem os danos ou efeitos deste Move","Dedos RÁpidos":"Seus dedos ágeis e agilidade permitem que você execute prestidigitação. Você ganha os seguintes benefícios:\n• Aumente seu valor de Destreza em 1.\n• Você ganha proficiência na perícia Prestidigitação. Se já for proficiente, passa a ser especialista, podendo aplicar o dobro do seu bônus de proficiência nos testes realizados com ela.\n• Como uma ação bônus, você pode fazer um teste de Destreza (Prestidigitação) para plantar algo em outra pessoa, esconder um objeto em uma criatura, levantar uma bolsa ou tirar algo do bolso.","Mestre de Combate à Distância":"Seu Pokémon é um atirador de elite.\n• Seus ataques à distância ignoram metade e três quartos da cobertura. \n• Antes de fazer um ataque à distância, você pode escolher receber uma penalidade de -5 na jogada de ataque ou na CD do Move. Fazendo isso, você adiciona +10 ao dano do ataque (uma vez por Move). No caso de Moves que exigem um teste de CD, o bônus de dano só é aplicado se o alvo falhar no teste.\n• Com uma ação de movimento, você pode mirar em um alvo que possa ver dentro do alcance de seu ataque. Isso anula a desvantagem em seus ataques à distância contra um alvo naquele turno, caso algum inimigo esteja engajado em combate corpo a corpo contra você.","Resiliente (CAR)":"Escolha um valor de habilidade. Você ganha os seguintes benefícios:\n• Aumente o valor de habilidade escolhido em 1.\n• Você ganha proficiência em testes de resistência usando a habilidade escolhida.","Resiliente (CON)":"Escolha um valor de habilidade. Você ganha os seguintes benefícios:\n• Aumente o valor de habilidade escolhido em 1.\n• Você ganha proficiência em testes de resistência usando a habilidade escolhida.","Resiliente (DES)":"Escolha um valor de habilidade. Você ganha os seguintes benefícios:\n• Aumente o valor de habilidade escolhido em 1.\n• Você ganha proficiência em testes de resistência usando a habilidade escolhida.","Resiliente (INT)":"Escolha um valor de habilidade. Você ganha os seguintes benefícios:\n• Aumente o valor de habilidade escolhido em 1.\n• Você ganha proficiência em testes de resistência usando a habilidade escolhida.","Resiliente (FOR)":"Escolha um valor de habilidade. Você ganha os seguintes benefícios:\n• Aumente o valor de habilidade escolhido em 1.\n• Você ganha proficiência em testes de resistência usando a habilidade escolhida.","Resiliente (SAB)":"Escolha um valor de habilidade. Você ganha os seguintes benefícios:\n• Aumente o valor de habilidade escolhido em 1.\n• Você ganha proficiência em testes de resistência usando a habilidade escolhida.","Atacante Bestial":"Uma vez por turno, quando você rolar o dano para um ataque corpo a corpo, você pode jogar novamente o dado de dano e usar qualquer dos valores. Esta habilidade é cumulativa com outras fontes que permitam rolar o dado de dano mais de uma vez e escolher o valor.","Sentinela":"Você domina técnicas para obter vantagem a cada vez que qualquer inimigo baixar a guarda, ganhando os seguintes benefícios:\n• Quando você atinge uma criatura com um ataque de oportunidade, o deslocamento da criatura se torna 0 pelo resto do turno.\n• As criaturas provocam ataques de oportunidade de você mesmo se realizarem a ação de Desengajar antes de saírem do seu alcance.\n• Quando uma criatura a até 1,5 metro de você realizar um ataque contra um alvo diferente de você (e o alvo não possuir esse talento), você pode usar sua reação para realizar um ataque corpo-a-corpo contra a criatura atacante.","Perito":"Você ganha proficiência em qualquer combinação de três perícias à sua escolha. ","Sorrateiro":"Você sabe como se esconder melhor. Você ganha os seguintes benefícios:\n• Aumente seu valor de Destreza em 1.\n• Você ganha proficiência na perícia Furtividade. Se já for proficiente, passa a ser especialista, podendo aplicar o dobro do seu bônus de proficiência nos testes realizados com ela.\n• Se estiver escondido, você pode se mover até 3 metros ao arlivre sem se revelar se terminar o movimento em uma posição onde não esteja claramente visível.","Adepto de Terreno":"Você desenvolveu técnicas de combate e sobrevivência adaptadas a um ambiente específico. Ao selecionar este talento, escolha um terreno entre: Praia, Oceano, Rio e Lago, Pântano, Floresta, Selva, Campo, Savana, Colina, Montanha, Cânion, Caverna, Deserto, Neve, Vulcão, Ruínas ou Cidades. Este talento não concede benefícios durante batalhas de Ginásio.\n\t\tEnquanto estiver no terreno escolhido, você recebe os seguintes benefícios:\n\t\t•    Recebe +2 nas jogadas de ataque;\n\t\t•    Ignora o custo adicional de terrenos difíceis naturais;\n\t\t•    Recebe +2 em testes de Natureza, Percepção e Sobrevivência diretamente relacionados ao ambiente;\n\t\t•    Uma vez por turno, ao atingir uma criatura com um Move danoso, você causa dano adicional igual ao seu bônus de proficiência.","Incansável":"Seu Pokémon passa por horas de treinamento rigoroso que o mantém em batalha por mais tempo do que um Pokémon médio. Ganhe +1 PP para cada Move.","Robusto":"Seu máximo de pontos de vida aumenta em um valor igual a duas vezes seu nível quando você adquire esse talento. Toda vez que você ganhar um nível, após isso, seu máximo de pontos de vida aumenta em 2 pontos de vida adicionais.","Disputador":"Você desenvolveu técnicas especializadas para agarrar, conter e imobilizar seus oponentes. Você recebe os seguintes benefícios:\n\t\t• Suas jogadas de ataque contra uma criatura agarrada por você possuem vantagem, em vez da desvantagem normalmente causada pelo agarrão. Esse benefício não se aplica enquanto você estiver Impedido.\n\t\t• Você pode usar sua ação para tentar imobilizar uma criatura já agarrada por você. Para fazer isso, faça outro teste de agarrar. Se você for bem-sucedido, você e a criatura permanecerão impedidos até que o agarrão termine. Esse efeito independe do tamanho da criatura agarrada.\n\t\t• Quando uma criatura tenta usar seu movimento para deixar seu alcance sem desengajar, você pode usar sua reação para tentar agarrar o alvo antes que ele se mova.\n\t\t• Você possui vantagem em testes contra agarrões que não tenham sido ativados por Moves.","Controlador de Área":"Os Moves em área (como círculos e cones) usados por este Pokémon têm o alcance dobrado. Além disso, você pode ajustar livremente o tamanho da área de efeito, reduzindo-a até o valor desejado.","Esquivo":"Pré-requisito: Destreza 13 ou maior. Você é especialista em espreitar através das sombras. Você ganha os seguintes benefícios:\n• Você pode tentar se esconder quando estiver levemente obscurecido para a criatura de quem você está tentando se esconder.\n• Quando você estiver escondido de uma criatura e errar um ataque à distância contra ela, realizar esse ataque não revelará sua posição.\n• Penumbra não impõem desvantagem nos seus testes de Sabedoria (Percepção) relacionados a visão.","Explorador dos CÉus":"Pré-requisito: Pokémon de nível 8, com velocidade de voo, e que seja capaz de aprender o Move Fly, mesmo que por TM ou Tutor. O Pokémon aprende o Move Fly e o mantém sempre memorizado além de seus outros Moves. Além disso:\n• Ignora os efeitos de neblina espessa, ventos fortes ou tempestades que não sejam causados por Moves.\n• Se for de tamanho médio ou maior, pode carregar seu Treinador nas costas com segurança enquanto voa, garantindo que ele não seja atingido por ataques, mesmo com área de efeito. Se for Grande ou maior, pode carregar até quatro criaturas de tamanho Médio adicionais.\n• Enquanto estiver ao ar livre, não pode perder o senso de direção.\n• Ao voar, pode viajar em velocidade rápida por até 8 horas sem sofrer níveis de exaustão.","Explorador dos Mares":"Pré-requisito: Pokémon de nível 8, com velocidade de natação, e que seja capaz de aprender o Move Waterfall ou Dive, mesmo que por TM ou Tutor. O Pokémon aprende um Move à sua escolha entre Waterfall e Dive e o mantém sempre memorizado além de seus outros Moves. Além disso:\n• Ignora os efeitos de redemoinhos, tempestades e correntes marítimas que não sejam causados por Moves.\n• Pode mover-se em velocidade normal enquanto se esconde debaixo d’água.\n• Se for de tamanho médio ou maior, pode carregar seu Treinador nas costas, protegendo-o dos efeitos de sufocamento e pressão. Se for Grande ou maior, pode carregar até quatro criaturas de tamanho Médio adicionais.\n• Enquanto estiver na água, não pode perder o senso de direção.\n• Ao nadar, pode viajar em velocidade de caminhada rápida por até 8 horas sem sofrer níveis de exaustão.\n• Seu Treinador ainda precisa de equipamentos de mergulho para respirar e enxergar debaixo d’água.","Explorador das Profundezas":"Pré-requisito: Pokémon de nível 8, com velocidade de escavação, e que seja capaz de aprender o Move Dig ou Strength, mesmo que por TM ou Tutor. O Pokémon aprende um Move à sua escolha entre Dig e Strength e o mantém sempre memorizado além de seus outros Moves. Além disso:\n• Pode escavar através de qualquer terreno, inclusive terreno sólido.\n• Pode mover-se em velocidade normal enquanto se esconde no subsolo.\n• Se for de tamanho médio ou maior, pode carregar seu Treinador nas costas, protegendo-o dos perigos subterrâneos. Se for Grande ou maior, pode carregar até quatro criaturas de tamanho Médio adicionais.\n• Enquanto estiver subterrâneo, não pode perder o senso de direção.\n• Ao cavar, pode viajar em alta velocidade por até 8 horas sem sofrer níveis de exaustão.\n• Pode destruir e mover grandes rochedos. Rochas maciças requerem um teste de Força CD 15. Em uma falha, o Pokémon sofre dano sem tipo igual ao seu nível.","Explorador de Cavernas":"Acostumado a explorar túneis, cavernas e ruínas antigas, você aprendeu a reconhecer os perigos naturais e os segredos ocultos desses ambientes. Sua experiência em locais subterrâneos lhe concede os seguintes benefícios:\n• Você tem vantagem em testes de Sabedoria (Percepção) e Inteligência (Investigação) feitos para detectar passagens ocultas, estruturas instáveis, formações frágeis ou entradas escondidas em cavernas, ruínas ou montanhas.\n• Você tem vantagem em testes de resistência feitos para evitar desmoronamentos, gases tóxicos naturais, terrenos escorregadios ou outras condições ambientais perigosas.\n• Você possui resistência a danos causados por quedas de rochas, desabamentos e outros perigos naturais encontrados em ambientes subterrâneos.\n• Você pode mapear e explorar ambientes rochosos ou subterrâneos sem reduzir seu ritmo de viagem, mantendo-se atento a possíveis ameaças e rotas alternativas.","Mente Afiada":"Você tem uma mente que pode cronometrar o tempo e memorizar direção e detalhes com precisão absurda. Você ganha os seguintes benefícios:\n• Aumente seu valor de Inteligência em 1.\n• Você sempre sabe qual a direção do norte.\n• Você sempre sabe o número de horas restantes para o próximo nascer ou pôr do sol.\n• Você pode relembrar, com precisão, qualquer coisa que você tenha visto ou ouvido no último mês."});
+const TALENTOS_PMP_NOMES = Object.freeze(Object.keys(TALENTOS_PMP_DESCRICOES).sort((a,b) => a.localeCompare(b,'pt-BR')));
+const TALENTOS_PMP_BUSCA = TALENTOS_PMP_NOMES.map((nome) => normalizarBuscaPokedexPmp(nome));
+function talentosPokemonCatalogados(token) {
+  const valores = token?.metadata?.[META_POKEMON_TALENTOS_CATALOGO];
+  return Array.from({length:6}, (_,i) => {
+    const nome = Array.isArray(valores) ? String(valores[i] ?? '') : '';
+    return Object.prototype.hasOwnProperty.call(TALENTOS_PMP_DESCRICOES,nome) ? nome : '';
+  });
+}
+async function salvarTalentoPokemonCatalogado(token, indice, talentoNome) {
+  if (!token?.id || token.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') throw new Error('Selecione um Pokémon.');
+  if (!Number.isInteger(indice) || indice<0 || indice>=6) throw new Error('Slot de talento inválido.');
+  const nome = String(talentoNome||'');
+  if (nome && !Object.prototype.hasOwnProperty.call(TALENTOS_PMP_DESCRICOES,nome)) throw new Error('Talento fora do catálogo.');
+  if (!(await OBR.scene.isReady())) throw new Error('A cena não está pronta.');
+  const atual = await pegarTokenAtualizado(token.id);
+  if (!atual || atual.metadata?.[`${PREFIX}/tipoFicha`] !== 'pokemon') throw new Error('Pokémon não encontrado na cena.');
+  const slots = talentosPokemonCatalogados(atual);
+  if (nome && slots.some((valor, i) => i!==indice && valor===nome)) throw new Error('Este talento já está selecionado em outro slot.');
+  slots[indice] = nome;
+  await OBR.scene.items.updateItems([token.id], (items)=>{
+    for(const item of items) if(item.metadata?.[`${PREFIX}/tipoFicha`] === 'pokemon') {
+      item.metadata[META_POKEMON_TALENTOS_CATALOGO] = [...slots];
+    }
+  });
+  token.metadata[META_POKEMON_TALENTOS_CATALOGO]=[...slots];
+  return slots;
+}
+function htmlTalentosPokemonCatalogo(token) {
+  const slots=talentosPokemonCatalogados(token);
+  return `<style>
+    .pmpTalGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 12px;}
+    .pmpTalCard{min-width:0;border:1px solid #d6a5a5;border-radius:10px;padding:8px;background:#fffafa;}
+    .pmpTalTopo{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:5px;font-size:11px;font-weight:900;}
+    #app .pmpTalBuscar{min-height:30px!important;padding:5px 8px!important;font-size:10px!important;}
+    #app .pmpTalNome{margin-top:6px;width:100%;min-height:32px!important;padding:5px!important;text-align:left!important;font-size:11px!important;overflow-wrap:anywhere;}
+    #app .pmpTalRemover{min-height:27px!important;padding:3px 7px!important;font-size:10px!important;}
+    .pmpTalDescricao{white-space:pre-line;overflow-wrap:anywhere;background:#fff;padding:8px;border:1px solid #e9baba;border-radius:8px;font-size:11px;line-height:1.5;margin-top:6px;}
+    .pmpTalOverlay{display:none;position:fixed;inset:0;z-index:1000026;background:#101827c9;padding:10px;align-items:center;justify-content:center;}
+    .pmpTalOverlay.aberto{display:flex;}
+    .pmpTalModal{width:100%;max-width:500px;max-height:92vh;display:flex;flex-direction:column;padding:12px;background:white;color:#182a40;border:2px solid #c62828;border-radius:12px;}
+    .pmpTalLista{overflow:auto;max-height:55vh;min-height:160px;background:#f8f9fc;border:1px solid #cdd8e7;border-radius:9px;padding:5px;}
+    #app .pmpTalOpcao{display:block;width:100%;text-align:left;margin-bottom:4px;padding:8px!important;font-size:12px!important;}
+    @media(max-width:360px){.pmpTalGrid{grid-template-columns:1fr;}}
+  </style>
+  <h3 style="margin:5px 0 7px!important">Talentos de Pokémon</h3>
+  <div class="pmpTalGrid">${slots.map((talento,i)=>`<section class="pmpTalCard" data-talento-slot="${i}">
+    <div class="pmpTalTopo"><span>Talento ${i+1}</span><button type="button" class="pmpTalRemover" data-talento-remover="${i}" ${talento?'':'disabled'} title="Remover talento">×</button></div>
+    <button type="button" class="pmpTalBuscar" data-talento-buscar="${i}">🔎 Pesquisar talento</button>
+    <button type="button" class="pmpTalNome" data-talento-nome="${i}" aria-expanded="false" ${talento?'':'disabled'}>${talento?esc(talento)+' ▾':'Nenhum talento selecionado'}</button>
+    <div class="pmpTalDescricao" data-talento-descricao="${i}" hidden></div>
+  </section>`).join('')}</div>
+  <div id="pmpTalStatus" role="status" aria-live="polite" style="font-size:11px;min-height:14px;color:#177044"></div>
+  <div id="pmpTalOverlay" class="pmpTalOverlay" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Escolher talento Pokémon">
+   <div class="pmpTalModal">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><strong id="pmpTalTitulo">Escolher talento</strong><button type="button" id="pmpTalFechar">×</button></div>
+    <input type="search" data-no-autosave="1" id="pmpTalPesquisa" placeholder="Pesquisar entre 39 talentos..." autocomplete="off" style="width:100%;margin:9px 0!important">
+    <small id="pmpTalContagem" style="margin-bottom:6px"></small>
+    <div id="pmpTalLista" class="pmpTalLista" role="listbox"></div>
+    <small id="pmpTalMensagem" role="status" style="margin-top:8px"></small>
+   </div>
+  </div>`;
+}
+function ativarTalentosPokemonCatalogo(token) {
+  const get=(id)=>document.getElementById(id);
+  const overlay=get('pmpTalOverlay'), pesquisa=get('pmpTalPesquisa'), lista=get('pmpTalLista');
+  const titulo=get('pmpTalTitulo'), contagem=get('pmpTalContagem'), mensagem=get('pmpTalMensagem'), status=get('pmpTalStatus');
+  if(![overlay,pesquisa,lista,titulo,contagem,mensagem,status].every(Boolean))return;
+  let slots=talentosPokemonCatalogados(token), ativo=null, ocupado=false;
+  const uiAtual=()=>get('pmpTalOverlay')===overlay;
+  const redesenhar=()=>{
+    for(let i=0;i<6;i++){
+      const nome=document.querySelector(`[data-talento-nome="${i}"]`);
+      const remover=document.querySelector(`[data-talento-remover="${i}"]`);
+      const desc=document.querySelector(`[data-talento-descricao="${i}"]`);
+      if(!nome||!desc||!remover)continue;
+      nome.textContent=slots[i]?`${slots[i]} ${desc.hidden?'▾':'▴'}`:'Nenhum talento selecionado';
+      nome.disabled=!slots[i]||ocupado;nome.setAttribute('aria-expanded',String(!desc.hidden));
+      remover.disabled=!slots[i]||ocupado;
+      if (!desc.hidden)desc.textContent=TALENTOS_PMP_DESCRICOES[slots[i]]||'';
+    }
+  };
+  const fechar=()=>{if(ocupado)return;overlay.classList.remove('aberto');overlay.setAttribute('aria-hidden','true');};
+  let resultados=TALENTOS_PMP_NOMES.map((_,i)=>i);
+  const renderizar=()=>{
+    if(!uiAtual())return;
+    const livres=resultados.filter(i=>!slots.some((nome,k)=>k!==ativo&&nome===TALENTOS_PMP_NOMES[i]));
+    lista.innerHTML=livres.map(i=>`<button type="button" class="pmpTalOpcao" data-talento-escolha="${i}" role="option">${esc(TALENTOS_PMP_NOMES[i])}${slots[ativo]===TALENTOS_PMP_NOMES[i]?' ✓':''}</button>`).join('')||'<p>Nenhum talento disponível.</p>';
+    contagem.textContent=`${livres.length} talento(s) encontrado(s) de ${TALENTOS_PMP_NOMES.length}`;
+  };
+  const filtrar=()=>{const termo=normalizarBuscaPokedexPmp(pesquisa.value);resultados=[];for(let i=0;i<TALENTOS_PMP_NOMES.length;i++)if(TALENTOS_PMP_BUSCA[i].includes(termo))resultados.push(i);renderizar();};
+  const salvar=async(i,nome)=>{
+    if(ocupado||!uiAtual())return;
+    ocupado=true;mensagem.textContent='Salvando talento...';
+    try{
+      slots=await salvarTalentoPokemonCatalogado(token,i,nome);
+      document.querySelectorAll('[data-talento-descricao]').forEach(el=>el.hidden=true);
+      status.textContent=nome?`✓ Talento ${i+1}: ${nome} salvo.`:`✓ Talento ${i+1} removido.`;
+      overlay.classList.remove('aberto');overlay.setAttribute('aria-hidden','true');
+    }catch(erro){mensagem.textContent=`Erro: ${erro?.message||String(erro)}`;status.textContent=mensagem.textContent;}
+    finally{ocupado=false;redesenhar();}
+  };
+  document.querySelectorAll('[data-talento-buscar]').forEach(botao=>botao.addEventListener('click',()=>{
+    if(ocupado)return;ativo=Number(botao.dataset.talentoBuscar);pesquisa.value='';titulo.textContent=`🔎 Talento ${ativo+1} — escolher`;
+    mensagem.textContent='Escolha um talento para este slot.';overlay.classList.add('aberto');overlay.setAttribute('aria-hidden','false');filtrar();pesquisa.focus();
+  }));
+  document.querySelectorAll('[data-talento-nome]').forEach(botao=>botao.addEventListener('click',()=>{
+    const i=Number(botao.dataset.talentoNome);if(!slots[i])return;
+    const painel=document.querySelector(`[data-talento-descricao="${i}"]`);
+    painel.hidden=!painel.hidden;redesenhar();
+  }));
+  document.querySelectorAll('[data-talento-remover]').forEach(botao=>botao.addEventListener('click',()=>salvar(Number(botao.dataset.talentoRemover),'')));
+  lista.addEventListener('click',evento=>{const botao=evento.target.closest('[data-talento-escolha]');if(!botao||ativo===null||ocupado)return;
+    const indice=Number(botao.dataset.talentoEscolha);if(Number.isInteger(indice)&&TALENTOS_PMP_NOMES[indice])salvar(ativo,TALENTOS_PMP_NOMES[indice]);
+  });
+  pesquisa.addEventListener('input',filtrar);
+  pesquisa.addEventListener('keydown',evento=>{if(evento.key==='Escape'){evento.preventDefault();fechar();}if(evento.key==='Enter'){const b=lista.querySelector('[data-talento-escolha]');if(b){evento.preventDefault();b.click();}}});
+  get('pmpTalFechar')?.addEventListener('click',fechar);
+  overlay.addEventListener('click',evento=>{if(evento.target===overlay)fechar();});
+  redesenhar();
+}
+// ===== FIM TALENTOS DE POKÉMON =====
+
 function mostrarFichaPokemonPericias( token ) { const app = document.querySelector("#app");
 const valoresPericias = {};
 PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPericias[ pericia.id ] = valorPericiaComPadrao(
@@ -13756,7 +13950,7 @@ PERICIAS.forEach( (grupo) => { grupo.pericias.forEach( (pericia) => { valoresPer
 app.innerHTML = `
       ${ESTILO_FICHA}
       ${cabecalhoPokemon(token, 3)}
-
+      ${htmlTalentosPokemonCatalogo(token)}
       <div style="
         display:flex;
         align-items:center;
@@ -13804,6 +13998,7 @@ app.innerHTML = `
       <div id="mensagemCopiaFichaPokemon" style="min-height:15px;margin-top:5px;text-align:center;font-size:8px;font-weight:800;color:#6a7f99;">Use isso para passar a ficha para o token de uma evolução.</div>
     `;
 ativarCabecalhoPokemon(token);
+ativarTalentosPokemonCatalogo(token);
 ativarRolagensPericiasPokemon();
 const salvarPericiasPokemonDaTela = async () => {
   const novasPericias = {};
