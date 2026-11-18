@@ -22,6 +22,9 @@ const META_TREINADOR_POKEMONS = `${PREFIX}/treinador-pokemons`;
 const META_TREINADOR_ESPECIALIZACOES = `${PREFIX}/treinador-especializacoes`;
 const META_TREINADOR_TALENTOS = `${PREFIX}/treinador-talentos`;
 const META_TREINADOR_ORIGEM = `${PREFIX}/treinador-origem`;
+const META_TREINADOR_REGIAO = `${PREFIX}/treinador-regiao`;
+const META_TREINADOR_REGIAO_CONFIG = `${PREFIX}/treinador-regiao-config`;
+const META_TREINADOR_REGIAO_USOS = `${PREFIX}/treinador-regiao-usos`;
 const META_TREINADOR_CLASSE = `${PREFIX}/treinador-classe`;
 const META_TREINADOR_POKEDOLS = `${PREFIX}/treinador-pokedols`;
 const META_TREINADOR_MOCHILA = `${PREFIX}/treinador-mochila`;
@@ -768,6 +771,166 @@ const ESTILO_FICHA = `<style> :root { --pm-bg: #f3f7fb; --pm-panel: #ffffff; --p
   color:#d7efff !important;
   -webkit-text-fill-color:#d7efff !important;
 }
+
+/* V21 - regioes apenas descritivas + polimento extra do tema escuro */
+#app.temaEscuroFicha .movimentoGrid,
+#app.temaEscuroFicha .movimentoGrid .movimentoTipo,
+#app.temaEscuroFicha .movimentoGrid .movimentoTexto {
+  background:#091a2d !important;
+  background-image:none !important;
+}
+#app.temaEscuroFicha .movimentoGrid .movimentoTipo {
+  border:1px solid #15b9ff !important;
+  box-shadow:0 2px 8px rgba(0,185,255,.11) !important;
+}
+#app.temaEscuroFicha .movimentoGrid .movimentoNome,
+#app.temaEscuroFicha .movimentoGrid .movimentoMeta {
+  color:#effaff !important;
+  -webkit-text-fill-color:#effaff !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .movimentoGrid .movimentoMeta {
+  color:#92ddff !important;
+  -webkit-text-fill-color:#92ddff !important;
+}
+#app.temaEscuroFicha .classeResumoNivel,
+#app.temaEscuroFicha .classeHab,
+#app.temaEscuroFicha .classeRecurso,
+#app.temaEscuroFicha .origemCard,
+#app.temaEscuroFicha .regiaoCard,
+#app.temaEscuroFicha .regiaoDetalhes,
+#app.temaEscuroFicha .origemDetalhes,
+#app.temaEscuroFicha #muitasFacesSeletores > div,
+#app.temaEscuroFicha #muitasFacesPainel details,
+#app.temaEscuroFicha .guiaClasseOpcao,
+#app.temaEscuroFicha .guiaOrigemOpcao {
+  background:#091a2d !important;
+  background-image:none !important;
+  color:#f5fbff !important;
+  border-color:#178ee0 !important;
+}
+#app.temaEscuroFicha .classeHabTopo,
+#app.temaEscuroFicha .classeRecursoTopo,
+#app.temaEscuroFicha .guiaClasseTopo,
+#app.temaEscuroFicha .guiaOrigemTopo,
+#app.temaEscuroFicha .origemCardTopo,
+#app.temaEscuroFicha .regiaoCard .origemCardTopo {
+  background:#0c2744 !important;
+  background-image:none !important;
+  color:#ffffff !important;
+  border-color:#16b1ff !important;
+}
+#app.temaEscuroFicha .classeHabTopo strong,
+#app.temaEscuroFicha .classeHabTopo span,
+#app.temaEscuroFicha .classeRecursoTopo strong,
+#app.temaEscuroFicha .classeRecursoTopo span,
+#app.temaEscuroFicha .origemNome,
+#app.temaEscuroFicha .origemSeta,
+#app.temaEscuroFicha .guiaClasseOpcaoNome,
+#app.temaEscuroFicha .guiaOrigemOpcaoNome {
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .classeHabEstado {
+  background:#173b58 !important;
+  color:#effcff !important;
+  -webkit-text-fill-color:#effcff !important;
+  border:1px solid #4ae0ff !important;
+  border-radius:999px !important;
+  padding:5px 10px !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .classeHab.bloqueada .classeHabEstado {
+  background:#253645 !important;
+  color:#d8ebf7 !important;
+  -webkit-text-fill-color:#d8ebf7 !important;
+  border-color:#5d7b94 !important;
+}
+#app.temaEscuroFicha .classeHabTexto,
+#app.temaEscuroFicha .origemTexto,
+#app.temaEscuroFicha .regiaoDetalhes,
+#app.temaEscuroFicha .guiaClasseOpcaoTexto,
+#app.temaEscuroFicha .guiaOrigemOpcaoTexto,
+#app.temaEscuroFicha .guiaOrigemOpcaoHab,
+#app.temaEscuroFicha #muitasFacesAviso,
+#app.temaEscuroFicha .origemHabilidade {
+  color:#f4fbff !important;
+  -webkit-text-fill-color:#f4fbff !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .guiaOrigemOpcaoHab,
+#app.temaEscuroFicha .origemHabilidade,
+#app.temaEscuroFicha #muitasFacesAviso {
+  color:#59e0ff !important;
+  -webkit-text-fill-color:#59e0ff !important;
+}
+#app.temaEscuroFicha .classeSelect,
+#app.temaEscuroFicha #muitasFacesSeletores select,
+#app.temaEscuroFicha .regiaoCard select,
+#app.temaEscuroFicha .origemCard select,
+#app.temaEscuroFicha .classeHab input,
+#app.temaEscuroFicha .classeHab textarea,
+#app.temaEscuroFicha .classeRecurso input,
+#app.temaEscuroFicha .classeRecurso textarea,
+#app.temaEscuroFicha .classeRecurso select {
+  background:#0b2139 !important;
+  background-image:none !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  border:1px solid #16a9ef !important;
+}
+#app.temaEscuroFicha .classeHab input::placeholder,
+#app.temaEscuroFicha .classeRecurso input::placeholder,
+#app.temaEscuroFicha textarea::placeholder {
+  color:#bad7ea !important;
+  -webkit-text-fill-color:#bad7ea !important;
+}
+#app.temaEscuroFicha .origemRemover,
+#app.temaEscuroFicha .guiaClasseFechar,
+#app.temaEscuroFicha .guiaOrigemFechar {
+  background:#0b2745 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  border:1px solid #11b8ff !important;
+}
+#app.temaEscuroFicha .classeAcoes,
+#app.temaEscuroFicha .classeAcoesTripla,
+#app.temaEscuroFicha .classeAcoesDupla {
+  background:transparent !important;
+}
+#app.temaEscuroFicha .classeAcao,
+#app.temaEscuroFicha .classeRestaurar,
+#app.temaEscuroFicha .regiaoSalvar,
+#app.temaEscuroFicha #muitasFacesSalvar,
+#app.temaEscuroFicha [data-regiao-uso] {
+  background:#0b2745 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  border:1px solid #15bfff !important;
+}
+#app.temaEscuroFicha .classeAcao:hover:not(:disabled),
+#app.temaEscuroFicha .classeRestaurar:hover:not(:disabled),
+#app.temaEscuroFicha #muitasFacesSalvar:hover:not(:disabled),
+#app.temaEscuroFicha [data-regiao-uso]:hover:not(:disabled),
+#app.temaEscuroFicha .origemCardTopo:hover,
+#app.temaEscuroFicha .guiaClasseOpcao:hover,
+#app.temaEscuroFicha .guiaOrigemOpcao:hover {
+  border-color:#63e7ff !important;
+  box-shadow:0 0 14px rgba(0,195,255,.18) !important;
+}
+#app.temaEscuroFicha .pmpMovePpGrupo .pmpMoveVantagemWrap,
+#app.temaEscuroFicha .pmpMovePpGrupo .pmpMoveVantagemWrap * {
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  opacity:1 !important;
+}
+#app.temaEscuroFicha .pmpMovePpGrupo input.pmpMoveVantagemCheck {
+  appearance:auto !important;
+  accent-color:#09bfff !important;
+  opacity:1 !important;
+}
+
 </style>`;
 
 // Preferência visual do participante, separada dos metadados dos tokens.
@@ -3857,12 +4020,12 @@ function ativarRolagemIniciativaTreinador(token) {
     const numero = Number(String(valor ?? "").trim().replace(",", "."));
     return Number.isNaN(numero) ? 0 : numero;
   };
-  const atualizar = () => { campoIniciativa.value = String(numeroCampo(campoDestreza.value)); };
+  const atualizar = () => { campoIniciativa.value = String(numeroCampo(campoDestreza.value)+bonusRegiaoIniciativa(token)); };
   campoDestreza.addEventListener("input", atualizar);
   campoDestreza.addEventListener("change", atualizar);
 
   botaoRolar.addEventListener("click", async () => {
-    const formula = formulaSalvaguarda(numeroCampo(campoDestreza.value));
+    const formula = formulaSalvaguarda(numeroCampo(campoDestreza.value)+bonusRegiaoIniciativa(token));
     if (!formula) { alert("Não foi possível calcular a iniciativa."); return; }
     const total = await rolarNoDicePlusComResultado(formula, "Iniciativa");
     if (total === null) return;
@@ -4815,6 +4978,114 @@ function ativarEscolhaMuitasFaces(token,nivel) {
   renderizar();
 }
 
+// Regiões de origem, segundo a tabela enviada pelo mestre.
+// Os bônus são sempre derivados da base salva; nunca são somados permanentemente à base.
+const REGIOES_TREINADOR = Object.freeze([
+  {id:'alola',nome:'Alola',resumo:'HABILIDADE REGIONAL',habilidade:'Natureza',
+    texto:'Vantagem para compreender Pokémon. Pode fazer um teste de Carisma após capturar um Pokémon para conceder +1 de Lealdade inicial.'},
+  {id:'hoenn',nome:'Hoenn',resumo:'HABILIDADE REGIONAL',habilidade:'Sobrevivência',
+    texto:'Escolhe um bioma (Costa, Deserto, Floresta ou Montanha), recebendo benefícios de locomoção ou exploração, além de vantagens no ambiente escolhido.'},
+  {id:'johto',nome:'Johto',resumo:'HABILIDADE REGIONAL',habilidade:'História',
+    texto:'Pode repetir um teste falho de SAB ou CAR uma vez por descanso curto ou longo. Também aprende temporariamente uma perícia por descanso longo.'},
+  {id:'kalos',nome:'Kalos',resumo:'HABILIDADE REGIONAL',habilidade:'Persuasão',
+    texto:'Pode repetir resultados naturais de 1 ou 2 em testes de perícia ou resistência. Uma vez por descanso longo, transforma um 19 natural em sucesso crítico nesses testes.'},
+  {id:'kanto',nome:'Kanto',resumo:'HABILIDADE REGIONAL',habilidade:'Investigação',
+    texto:'Começa com um Talento extra, desde que ele não conceda benefícios aos seus Pokémon.'},
+  {id:'sinnoh',nome:'Sinnoh',resumo:'HABILIDADE REGIONAL',habilidade:'Atletismo',
+    texto:'Proficiência em resistências de CON, +2 na CA e redução de dano de 1d12 + CON usando reação, uma vez por descanso curto ou longo.'},
+  {id:'unova',nome:'Unova',resumo:'HABILIDADE REGIONAL',habilidade:'Intuição',
+    texto:'Ganha proficiência em mais duas perícias e pode obter vantagem em testes sociais em ambientes urbanos uma vez por descanso longo.'},
+  {id:'galar',nome:'Galar',resumo:'HABILIDADE REGIONAL',habilidade:'Intimidação',
+    texto:'Vantagem em resistências de SAB contra medo e pressão psicológica e em testes de Atuação para impressionar multidões.'}
+]);
+const REGIOES_TREINADOR_MAP = new Map(REGIOES_TREINADOR.map(r=>[r.id,r]));
+const BIOMAS_HOENN = Object.freeze(['Costa','Deserto','Floresta','Montanha']);
+const PERICIAS_TREINADOR_VALIDAS = PERICIAS.flatMap(g=>g.pericias);
+const TALENTOS_KANTO_PERMITIDOS = Object.freeze([
+  'acrobata','atleta','ator','dedos-rapidos','disputador','esquivo','explorador-cavernas',
+  'mente-afiada','musculoso','observador','resistente','robusto','sorrateiro','sortudo',
+  'perceptivo','perito','resiliente'
+]);
+function regiaoTreinador(token) { return REGIOES_TREINADOR_MAP.get(token?.metadata?.[META_TREINADOR_REGIAO]) || null; }
+function configRegiaoTreinador(token) {
+  const orig = token?.metadata?.[META_TREINADOR_REGIAO_CONFIG];
+  const c = orig && typeof orig === 'object' ? orig : {};
+  const attrs = ATRIBUTOS;
+  const kantoModo = c.kantoModo === 'dois' ? 'dois' : 'um';
+  const kantoAtributo = attrs.includes(c.kantoAtributo) ? c.kantoAtributo : '';
+  const kantoPrimeiro = attrs.includes(c.kantoPrimeiro) ? c.kantoPrimeiro : '';
+  const kantoSegundo = attrs.includes(c.kantoSegundo) && c.kantoSegundo !== kantoPrimeiro ? c.kantoSegundo : '';
+  const galarPrioridade = c.galarPrioridade === 'for' ? 'for' : 'des';
+  const hoennBioma = BIOMAS_HOENN.includes(c.hoennBioma) ? c.hoennBioma : '';
+  const periciaExtra1 = PERICIAS_TREINADOR_VALIDAS.some(p=>p.id===c.periciaExtra1) ? c.periciaExtra1 : '';
+  const periciaExtra2 = PERICIAS_TREINADOR_VALIDAS.some(p=>p.id===c.periciaExtra2) && c.periciaExtra2 !== periciaExtra1 ? c.periciaExtra2 : '';
+  const periciaJohto = PERICIAS_TREINADOR_VALIDAS.some(p=>p.id===c.periciaJohto) ? c.periciaJohto : '';
+  const talentoKanto = TALENTOS_KANTO_PERMITIDOS.includes(c.talentoKanto) ? c.talentoKanto : '';
+  return {kantoModo,kantoAtributo,kantoPrimeiro,kantoSegundo,galarPrioridade,
+    hoennBioma,periciaExtra1,periciaExtra2,periciaJohto,talentoKanto};
+}
+function bonusAtributosRegiao(token) { return {}; }
+function bonusRegiaoIniciativa(token) { return 0; }
+function bonusRegiaoCA(token) { return 0; }
+function regiaoPericiaProficiente(token, id) { return false; }
+function totalStatusTreinadorRegiao(token, atributo) {
+  return statusBaseTreinadorDoToken(token, atributo);
+}
+function recalcularTreinadorComRegiao(metadata) {
+  const token = { metadata };
+  for (const atributo of ATRIBUTOS) {
+    const base = statusBaseTreinadorDoToken(token, atributo);
+    metadata[`${PREFIX}/treinador-status-${atributo}`] = base;
+    metadata[`${PREFIX}/treinador-mod-${atributo}`] = formatarBonus(modificadorPorStatus(base));
+  }
+  const des = Number(metadata[`${PREFIX}/treinador-mod-des`]) || 0;
+  const con = Number(metadata[`${PREFIX}/treinador-mod-con`]) || 0;
+  const lvl = nivelTreinadorNormalizado(metadata[`${PREFIX}/treinador-nivel`] ?? 1);
+  const hpMax = calcularHpMaxTreinador(lvl, con);
+  const hpAtualBruto = Number(metadata[`${PREFIX}/hpAtual`]);
+  metadata[`${PREFIX}/hpMax`] = hpMax;
+  metadata[`${PREFIX}/hpAtual`] = Number.isFinite(hpAtualBruto) ? Math.max(0, Math.min(hpMax, hpAtualBruto)) : hpMax;
+  metadata[`${PREFIX}/ca`] = calcularCaTreinador(des, Number(metadata[`${PREFIX}/treinador-ca-bonus`]) || 0);
+  metadata[`${PREFIX}/treinador-iniciativa`] = des;
+}
+async function salvarRegiaoTreinador(token, id, config = null) {
+  if (!token?.id) throw new Error('Selecione uma ficha de treinador.');
+  if (id && !REGIOES_TREINADOR_MAP.has(id)) throw new Error('Região desconhecida.');
+  const atual = await pegarTokenAtualizado(token.id);
+  if (!atual || atual.metadata?.[`${PREFIX}/tipoFicha`] !== 'treinador') throw new Error('O treinador não foi encontrado na cena.');
+  await OBR.scene.items.updateItems([token.id], items => {
+    for (const item of items) {
+      if (item.metadata?.[`${PREFIX}/tipoFicha`] !== 'treinador') continue;
+      const m = item.metadata;
+      const bases = Object.fromEntries(ATRIBUTOS.map(a => [a, statusBaseTreinadorDoToken(item, a)]));
+      for (const [a, base] of Object.entries(bases)) m[`${PREFIX}/treinador-status-${a}`] = base;
+      const mudouDeRegiao = m[META_TREINADOR_REGIAO] !== (id || null);
+      m[META_TREINADOR_REGIAO] = id || null;
+      m[META_TREINADOR_REGIAO_CONFIG] = id ? {} : {};
+      if (mudouDeRegiao) m[META_TREINADOR_REGIAO_USOS] = {};
+      recalcularTreinadorComRegiao(m);
+    }
+  });
+  const result = await pegarTokenAtualizado(token.id);
+  if (result) Object.assign(token.metadata, result.metadata);
+  return result;
+}
+async function salvarEstadoUsoRegiao(token, chave, valor) {
+  const atualizado = await pegarTokenAtualizado(token.id);
+  if (!atualizado || !regiaoTreinador(atualizado)) return null;
+  const atual = atualizado.metadata[META_TREINADOR_REGIAO_USOS];
+  const usos = atual && typeof atual === 'object' ? { ...atual } : {};
+  usos[chave] = valor;
+  await atualizarMetadataToken(atualizado, { [META_TREINADOR_REGIAO_USOS]: usos });
+  return atualizado;
+}
+function regiaoUsoAtivo(token, chave) {
+  return token?.metadata?.[META_TREINADOR_REGIAO_USOS]?.[chave] === true;
+}
+function htmlConfiguracaoRegiaoTreinador(token) {
+  return '';
+}
+
 function mostrarFichaTreinadorClasOri(token, somenteConteudoClasse = false) {
   const app = document.querySelector("#app");
   const classe = classeTreinadorPorId(token.metadata[META_TREINADOR_CLASSE]);
@@ -4857,6 +5128,7 @@ function mostrarFichaTreinadorClasOri(token, somenteConteudoClasse = false) {
   const capangaPontosMax = maxPontosCapanga(nivelTreinador);
   const capangaPontos = pontosCapangaAtuais(token, nivelTreinador);
   const origem = origemTreinadorPorId(token.metadata[META_TREINADOR_ORIGEM]);
+  const regiao = regiaoTreinador(token);
   const rivalLicao = token.metadata[META_RIVAL_LICAO] === true;
   const rivalRevanche = token.metadata[META_RIVAL_REVANCHE] === true;
   const rivalSequencia = Math.max(0, Math.min(3, Math.trunc(Number(token.metadata[META_RIVAL_SEQUENCIA]) || 0)));
@@ -5588,6 +5860,21 @@ function mostrarFichaTreinadorClasOri(token, somenteConteudoClasse = false) {
       .guiaClasseOverlay{display:none;position:fixed;z-index:5001;inset:0;background:rgba(13,26,43,.55);padding:16px;overflow:auto}.guiaClasseOverlay.aberto{display:block}.guiaClasseTopo{position:sticky;top:-16px;z-index:2;background:#fff;margin:-16px -16px 10px;padding:13px 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #dce6f0}.guiaClasseTopo h3{margin:0;color:#7f1d1d;font-size:14px}.guiaClasseTopo p{margin:2px 0 0;color:#8798aa;font-size:8px;font-weight:700}.guiaClasseFechar{width:30px!important;height:30px!important;min-height:30px!important;padding:0!important;border-radius:50%!important;font-size:15px!important}.guiaClasseLista{display:grid;gap:7px}.guiaClasseOpcao{width:100%;padding:10px!important;border:1px solid #cfdeee!important;border-radius:10px!important;background:#fff!important;text-align:left!important;cursor:pointer}.guiaClasseOpcaoNome{display:block;font-size:11px;font-weight:1000;color:#a61b1b}.guiaClasseOpcaoTexto{display:block;margin-top:4px;font-size:8px;line-height:1.35;font-weight:700;color:#5b6f87}
       .origemVazia{display:block;width:100%;max-width:390px;min-height:52px!important;margin:0 auto!important;border:1.5px dashed #d3a0a0!important;border-radius:11px!important;background:#fffafa!important;color:#8f1d1d!important;font-weight:900!important;font-size:10px!important;text-align:center!important;cursor:pointer}
       .origemCard{width:100%;max-width:410px;margin:0 auto;border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden;box-shadow:0 2px 7px rgba(33,70,110,.06);text-align:left}
+      .regiaoCard{width:100%;max-width:410px;margin:auto;border:1px solid #cddcec;border-radius:11px;background:#fff;overflow:hidden}
+      .regiaoDetalhes{padding:10px;border-top:1px solid #dce6f0;display:none;font-size:11px;line-height:1.45;color:#33475f}
+      .regiaoDetalhes.aberto{display:grid;gap:8px}
+      .regiaoDetalhes label{display:grid;gap:4px;font-weight:900;font-size:10px}
+      .regiaoDetalhes select{width:100%;min-height:34px;padding:5px;font-size:11px}
+      .regiaoNota{padding:8px;border:1px solid #e3afaf;border-radius:8px;font-size:10px;line-height:1.5;background:#fffafa}
+      .regiaoUso{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px;padding:7px;border:1px solid #dce6f0;border-radius:8px}
+      .regiaoUso strong{font-size:10px}.regiaoUso button{min-height:30px!important;padding:5px!important;font-size:9px!important}
+      .regiaoSalvar{min-height:35px!important;font-size:10px!important;font-weight:900!important}
+      #app.temaEscuroFicha :is(.regiaoCard,.regiaoDetalhes,.regiaoNota,.regiaoUso){background:#0b1c30!important;color:#f3faff!important;border-color:#16c7ff!important}
+      #app.temaEscuroFicha .regiaoCard :is(strong,label,p,span,button){color:#f3faff!important}
+      #app.temaEscuroFicha .regiaoCard select{background:#071425!important;color:#fff!important;border-color:#16c7ff!important}
+      #app.temaEscuroFicha #guiaRegioesTreinador,
+      #app.temaEscuroFicha #guiaRegioesTreinador :is(.guiaOrigemTopo,.guiaOrigemLista,.guiaOrigemOpcao){background:#071525!important;border-color:#16c7ff!important;color:#f4fbff!important}
+      #app.temaEscuroFicha #guiaRegioesTreinador :is(.guiaOrigemOpcaoNome,.guiaOrigemOpcaoHab,.guiaOrigemOpcaoTexto){color:#f4fbff!important}
       .origemCardTopo{position:relative;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 52px 10px 11px;background:#fffafa;border:0;cursor:pointer;text-align:center}
       .origemNome{display:block;width:100%;font-size:12px;font-weight:1000;color:#a61b1b;letter-spacing:.4px;text-align:center}
       .origemSeta{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:9px;color:#8f1d1d;font-weight:1000;white-space:nowrap}
@@ -5658,6 +5945,41 @@ function mostrarFichaTreinadorClasOri(token, somenteConteudoClasse = false) {
         </div>
       ` : `<button type="button" class="origemVazia" id="escolherOrigemTreinador">＋ ESCOLHER ORIGEM</button>`}
     </section>
+
+
+    <section class="clasOriSecao" id="secaoRegiaoTreinador">
+      <div class="clasOriTitulo"><div><h3>REGIÃO</h3><p>Escolha sua região de origem. A região apenas exibe a habilidade regional, sem conceder pontos automáticos.</p></div></div>
+      ${regiao ? `
+        <div class="regiaoCard">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 31px;gap:5px;align-items:center;padding:5px;">
+            <button type="button" class="origemCardTopo" id="abrirRegiaoSelecionada">
+              <span class="origemNome">${esc(regiao.nome)}</span><span class="origemSeta" id="setaRegiaoSelecionada">VER ▾</span>
+            </button>
+            <button type="button" class="origemRemover" id="removerRegiaoTreinador" title="Remover região">×</button>
+          </div>
+          <div class="regiaoDetalhes" id="detalhesRegiaoSelecionada">
+            <div class="origemHabilidade">HABILIDADE REGIONAL: ${esc(regiao.habilidade || regiao.resumo || regiao.nome)}</div>
+            <div class="origemTexto">${esc(regiao.texto)}</div>
+            ${htmlConfiguracaoRegiaoTreinador(token)}
+          </div>
+        </div>
+      ` : `<button type="button" class="origemVazia" id="escolherRegiaoTreinador">＋ ESCOLHER REGIÃO</button>`}
+    </section>
+
+    <div class="guiaOrigemOverlay" id="guiaRegioesTreinador">
+      <div class="guiaOrigemTopo">
+        <div><h3>GUIA DE REGIÕES</h3><p>Selecione uma região de origem.</p></div>
+        <button type="button" class="guiaOrigemFechar" id="fecharGuiaRegioes">×</button>
+      </div>
+      <div class="guiaOrigemLista">
+        ${REGIOES_TREINADOR.map(item=>`
+          <button type="button" class="guiaOrigemOpcao" data-regiao-escolha="${item.id}">
+            <span class="guiaOrigemOpcaoNome">${esc(item.nome)}</span>
+            <span class="guiaOrigemOpcaoHab">HABILIDADE: ${esc(item.habilidade || item.resumo || item.nome)}</span>
+            <span class="guiaOrigemOpcaoTexto">${esc(item.texto)}</span>
+          </button>`).join('')}
+      </div>
+    </div>
 
     <div class="guiaClasseOverlay" id="guiaClassesTreinador">
       <div class="guiaClasseTopo">
@@ -6165,6 +6487,87 @@ function mostrarFichaTreinadorClasOri(token, somenteConteudoClasse = false) {
     const gasto = Math.max(1, Math.min(5, Math.trunc(Number(document.querySelector("#taticoCdGasto")?.value) || 1)));
     if (!(await gastarPontosTatico(gasto))) return;
     await redesenharClasseAberta();
+  });
+
+  // Região é uma escolha única. Bloqueio local evita cliques concorrentes.
+  const overlayRegioes=document.querySelector('#guiaRegioesTreinador');
+  const abrirRegioes=()=>overlayRegioes?.classList.add('aberto');
+  const fecharRegioes=()=>overlayRegioes?.classList.remove('aberto');
+  let regiaoSalvando=false;
+  const persistirRegiao=async(id, config=null)=>{
+    if(regiaoSalvando) return;
+    regiaoSalvando=true;
+    try {
+      const atualizado=await salvarRegiaoTreinador(token,id,config);
+      fecharRegioes();
+      if(atualizado) {mostrarFichaTreinadorClasOri(atualizado);document.querySelector('#detalhesRegiaoSelecionada')?.classList.add('aberto');const seta=document.querySelector('#setaRegiaoSelecionada');if(seta)seta.textContent='RECOLHER ▴';}
+    }catch(e){console.error('Erro ao salvar região:',e);alert(`Não foi possível salvar a região: ${e?.message||String(e)}`);}
+    finally{regiaoSalvando=false;}
+  };
+  document.querySelector('#escolherRegiaoTreinador')?.addEventListener('click',abrirRegioes);
+  document.querySelector('#fecharGuiaRegioes')?.addEventListener('click',fecharRegioes);
+  overlayRegioes?.addEventListener('click',e=>{if(e.target===overlayRegioes) fecharRegioes();});
+  document.querySelectorAll('[data-regiao-escolha]').forEach(b=>b.addEventListener('click',()=>persistirRegiao(b.dataset.regiaoEscolha,{})));
+  document.querySelector('#removerRegiaoTreinador')?.addEventListener('click',()=>persistirRegiao(null,{}));
+  document.querySelector('#abrirRegiaoSelecionada')?.addEventListener('click',()=>{
+    const p=document.querySelector('#detalhesRegiaoSelecionada');
+    const seta=document.querySelector('#setaRegiaoSelecionada');
+    if(!p)return;
+    const aberto=!p.classList.contains('aberto');p.classList.toggle('aberto',aberto);
+    if(seta)seta.textContent=aberto?'RECOLHER ▴':'VER ▾';
+  });
+  const getVal=id=>document.getElementById(id)?.value||'';
+  document.querySelector('#regiaoKantoModo')?.addEventListener('change',e=>{
+    document.querySelector('#regiaoKantoUm').style.display=e.target.value==='um'?'block':'none';
+    document.querySelector('#regiaoKantoDois').style.display=e.target.value==='dois'?'grid':'none';
+  });
+  document.querySelector('#regiaoKantoPrimeiro')?.addEventListener('change',e=>{
+    const s=document.querySelector('#regiaoKantoSegundo');if(s && s.value===e.target.value)s.value='';
+  });
+  document.querySelector('#regiaoUnova1')?.addEventListener('change',e=>{
+    const s=document.querySelector('#regiaoUnova2');if(s && s.value===e.target.value)s.value='';
+  });
+  document.querySelector('#salvarRegiaoConfig')?.addEventListener('click',()=>{
+    const config={...configRegiaoTreinador(token)};
+    if(regiao?.id==='kanto'){
+      config.kantoModo=getVal('regiaoKantoModo');config.kantoAtributo=getVal('regiaoKantoAtributo');
+      config.kantoPrimeiro=getVal('regiaoKantoPrimeiro');config.kantoSegundo=getVal('regiaoKantoSegundo');
+      config.talentoKanto=getVal('regiaoTalentoKanto');
+      if(config.kantoModo==='dois' && config.kantoPrimeiro && config.kantoPrimeiro===config.kantoSegundo) {
+        alert('Escolha dois atributos diferentes em Kanto.');return;
+      }
+    }
+    if(regiao?.id==='galar')config.galarPrioridade=getVal('regiaoGalar');
+    if(regiao?.id==='hoenn')config.hoennBioma=getVal('regiaoHoennBioma');
+    if(regiao?.id==='unova'){
+      config.periciaExtra1=getVal('regiaoUnova1');config.periciaExtra2=getVal('regiaoUnova2');
+      if(config.periciaExtra1 && config.periciaExtra1===config.periciaExtra2) {alert('As perícias extras de Unova devem ser diferentes.');return;}
+    }
+    if(regiao?.id==='johto')config.periciaJohto=getVal('regiaoJohtoPericia');
+    persistirRegiao(regiao.id,config);
+  });
+  document.querySelectorAll('[data-regiao-uso]').forEach(b=>b.addEventListener('click',async()=>{
+    if(b.disabled)return;b.disabled=true;
+    try {
+      const atualizado=await salvarEstadoUsoRegiao(token,b.dataset.regiaoUso,b.dataset.usado!=='1');
+      if(atualizado){mostrarFichaTreinadorClasOri(atualizado);document.querySelector('#detalhesRegiaoSelecionada')?.classList.add('aberto');const seta=document.querySelector('#setaRegiaoSelecionada');if(seta)seta.textContent='RECOLHER ▴';}
+    }catch(e){console.error(e);alert('Não foi possível salvar o uso do recurso.');}
+    finally{if(b.isConnected)b.disabled=false;}
+  }));
+  document.querySelector('#rolarReducaoSinnoh')?.addEventListener('click',async()=>{
+    const b=document.querySelector('#rolarReducaoSinnoh');if(b.disabled)return;
+    if(regiaoUsoAtivo(token,'reducao')){alert('A reação já foi usada. Recarregue após o descanso apropriado.');return;}
+    b.disabled=true;
+    try{
+      const atual=await pegarTokenAtualizado(token.id);if(!atual || regiaoTreinador(atual)?.id!=='sinnoh')return;
+      const valor=modificadorTreinador(atual,'con');
+      const resultado=await rolarNoDicePlusComResultado(`1d12${valor>=0?'+':''}${valor}`, 'Sinnoh — redução de dano','Reação');
+      if(resultado===null)return;
+      const salvo=await salvarEstadoUsoRegiao(atual,'reducao',true);
+      alert(`Redução de dano da reação: ${resultado}`);
+      if(salvo){mostrarFichaTreinadorClasOri(salvo);document.querySelector('#detalhesRegiaoSelecionada')?.classList.add('aberto');const seta=document.querySelector('#setaRegiaoSelecionada');if(seta)seta.textContent='RECOLHER ▴';}
+    }catch(e){console.error(e);alert('Não foi possível rolar a redução.');}
+    finally{if(b.isConnected)b.disabled=false;}
   });
 
   const overlay = document.querySelector("#guiaOrigensTreinador");
@@ -7410,10 +7813,13 @@ function mostrarFichaTreinadorPagina1(token) {
   const modificadores = {};
   const salvaguardas = {};
   ATRIBUTOS.forEach((atributo) => {
-    const statusBase = statusBaseTreinadorDoToken(token, atributo);
-    statusAtributosTreinador[atributo] = statusBase;
-    modificadores[atributo] = formatarBonus(modificadorPorStatus(statusBase));
-    salvaguardas[atributo] = token.metadata[`${PREFIX}/treinador-save-${atributo}`] ?? "";
+    const statusEfetivo = totalStatusTreinadorRegiao(token, atributo);
+    statusAtributosTreinador[atributo] = statusEfetivo;
+    modificadores[atributo] = formatarBonus(modificadorPorStatus(statusEfetivo));
+    const salvo = token.metadata[`${PREFIX}/treinador-save-${atributo}`];
+    salvaguardas[atributo] = salvo !== undefined && String(salvo).trim() !== '' ? salvo :
+      (atributo==='con' && regiaoTreinador(token)?.id==='sinnoh'
+        ? formatarBonus(modificadorPorStatus(statusEfetivo)+(Number(token.metadata[`${PREFIX}/treinador-proficiencia`])||0)) : '');
   });
 
   const nivelTreinador = nivelTreinadorNormalizado(token.metadata[`${PREFIX}/treinador-nivel`] ?? 1);
@@ -7423,7 +7829,7 @@ function mostrarFichaTreinadorPagina1(token) {
   const hpAtualSalvo = Number(token.metadata[`${PREFIX}/hpAtual`] ?? hpMax);
   const hpAtual = Math.max(0, Math.min(Number.isFinite(hpAtualSalvo) ? hpAtualSalvo : hpMax, hpMax));
   const bonusCaManual = Math.trunc(numeroTreinador(token.metadata[`${PREFIX}/treinador-ca-bonus`] ?? 0));
-  const ca = calcularCaTreinador(modDes, bonusCaManual);
+  const ca = calcularCaTreinador(modDes, bonusCaManual + bonusRegiaoCA(token));
   const proficiencia = token.metadata[`${PREFIX}/treinador-proficiencia`] ?? 0;
   const bonusCaptura = token.metadata[`${PREFIX}/treinador-captura-bonus`] ?? 0;
   const cdCaptura = token.metadata[`${PREFIX}/treinador-captura-cd`] ?? "";
@@ -7431,7 +7837,7 @@ function mostrarFichaTreinadorPagina1(token) {
   const multiplicadorCaptura = multiplicadorProfCaptura(token);
   const bonusCarCaptura = bonusCapturaColecionador(token);
   const formulaCapturaTexto = `1d20 + ${multiplicadorCaptura}×Prof + Bônus da Pokébola${bonusCarCaptura !== 0 ? ` ${formatarBonusFormula(bonusCarCaptura)}` : ""}`;
-  const iniciativa = modDes;
+  const iniciativa = modDes + bonusRegiaoIniciativa(token);
 
   app.innerHTML = `
     ${ESTILO_FICHA}
@@ -7638,7 +8044,7 @@ function mostrarFichaTreinadorPagina1(token) {
       try {
         const des = Math.trunc(numeroTreinador(campoDes?.value));
         const bonus = Math.trunc(numeroTreinador(campoBonusCa?.value));
-        const novaCa = calcularCaTreinador(des, bonus);
+        const novaCa = calcularCaTreinador(des, bonus + bonusRegiaoCA(token));
         const hpAtualHud = Math.max(0, Math.trunc(numeroTreinador(campoHpAtual?.value)));
         const hpMaxHud = Math.max(1, Math.trunc(numeroTreinador(campoHpMax?.value)));
 
@@ -7665,10 +8071,10 @@ function mostrarFichaTreinadorPagina1(token) {
   const atualizarCaAutomatica = (sincronizarHud = false) => {
     const des = Math.trunc(numeroTreinador(campoDes?.value));
     const bonus = Math.trunc(numeroTreinador(campoBonusCa?.value));
-    const novaCa = calcularCaTreinador(des, bonus);
+    const novaCa = calcularCaTreinador(des, bonus + bonusRegiaoCA(token));
     if (campoCa) campoCa.value = String(novaCa);
     if (campoCaVisivel) campoCaVisivel.textContent = String(novaCa);
-    if (textoFormulaCa) textoFormulaCa.textContent = `10 ${formatarBonusFormula(des)} DES ${formatarBonusFormula(bonus)} bônus = ${novaCa}`;
+    if (textoFormulaCa) textoFormulaCa.textContent = `10 ${formatarBonusFormula(des)} DES ${formatarBonusFormula(bonus)} bônus ${formatarBonusFormula(bonusRegiaoCA(token))} região = ${novaCa}`;
     if (sincronizarHud) sincronizarCaTreinadorComHud();
   };
 
@@ -7908,13 +8314,20 @@ function mostrarFichaTreinadorPagina1(token) {
     ATRIBUTOS.forEach((atributo) => {
       const statusBruto = Number(String(document.querySelector(`#treinador-status-${atributo}`)?.value ?? "").trim().replace(",", "."));
       const statusFinal = Number.isFinite(statusBruto) ? Math.trunc(statusBruto) : statusBaseTreinadorDoToken(token, atributo);
-      novosStatusTreinador[atributo] = statusFinal;
+      novosStatusTreinador[atributo] = statusFinal - (bonusAtributosRegiao(token)[atributo] || 0);
       novosModificadores[atributo] = formatarBonus(modificadorPorStatus(statusFinal));
       novasSalvaguardas[atributo] = document.querySelector(`#treinador-save-${atributo}`)?.value.trim() || "";
+      // Um bônus automático de Sinnoh não pode virar um bônus permanente ao mudar de região.
+      if (atributo === 'con' && regiaoTreinador(token)?.id === 'sinnoh' &&
+          !String(token.metadata?.[`${PREFIX}/treinador-save-con`] ?? '').trim() &&
+          novasSalvaguardas.con === formatarBonus(modificadorPorStatus(statusFinal) +
+            (Number(token.metadata[`${PREFIX}/treinador-proficiencia`]) || 0))) {
+        novasSalvaguardas.con = '';
+      }
     });
 
     const hpMaxAutomatico = calcularHpMaxTreinador(novoNivel, novosModificadores.con);
-    const caAutomatica = calcularCaTreinador(novosModificadores.des, novoBonusCa);
+    const caAutomatica = calcularCaTreinador(novosModificadores.des, novoBonusCa + bonusRegiaoCA(token));
     const hpAtualFinal = Math.max(0, Math.min(dados.hpAtual, hpMaxAutomatico));
 
     await OBR.scene.items.updateItems([token.id], (items) => {
@@ -7926,7 +8339,7 @@ function mostrarFichaTreinadorPagina1(token) {
         item.metadata[`${PREFIX}/treinador-ca-bonus`] = novoBonusCa;
         item.metadata[`${PREFIX}/treinador-nivel`] = novoNivel;
         item.metadata[`${PREFIX}/treinador-proficiencia`] = novaProficiencia;
-        item.metadata[`${PREFIX}/treinador-iniciativa`] = Math.trunc(numeroTreinador(novosModificadores.des));
+        item.metadata[`${PREFIX}/treinador-iniciativa`] = Math.trunc(numeroTreinador(novosModificadores.des)) + bonusRegiaoIniciativa(token);
         delete item.metadata[`${PREFIX}/treinador-iniciativa-alerta`];
         delete item.metadata[`${PREFIX}/treinador-iniciativa-habilidade`];
         delete item.metadata[`${PREFIX}/treinador-iniciativa-dobrar`];
@@ -7945,7 +8358,7 @@ function mostrarFichaTreinadorPagina1(token) {
     if (campoCa) campoCa.value = String(caAutomatica);
     if (campoCaVisivel) campoCaVisivel.textContent = String(caAutomatica);
     const campoIniciativa = document.querySelector("#iniciativa");
-    if (campoIniciativa) campoIniciativa.value = String(Math.trunc(numeroTreinador(novosModificadores.des)));
+    if (campoIniciativa) campoIniciativa.value = String(Math.trunc(numeroTreinador(novosModificadores.des)) + bonusRegiaoIniciativa(token));
     if (dados.calculadoraAplicada) document.querySelector("#alterarHp").value = "";
     await criarStatusNoToken(token, hpAtualFinal, hpMaxAutomatico, caAutomatica);
   });
@@ -7957,7 +8370,8 @@ function mostrarFichaTreinadorPerNot(token) {
     grupo.pericias.forEach((pericia) => {
       valoresPericias[pericia.id] = valorPericiaComPadrao(
         token.metadata[`${PREFIX}/pericia-${pericia.id}`],
-        bonusAutomaticoPericiaTreinador(token, grupo.atributo)
+        formatarBonus(modificadorTreinador(token, atributoIdDaPericia(grupo.atributo)) +
+          (regiaoPericiaProficiente(token,pericia.id) ? Math.trunc(Number(token.metadata[`${PREFIX}/treinador-proficiencia`])||0):0))
       );
     });
   });
@@ -7995,7 +8409,8 @@ function mostrarFichaTreinadorPerNot(token) {
           grupo.pericias.forEach((pericia) => {
             const chave = `${PREFIX}/pericia-${pericia.id}`;
             const valor = String(novasPericias[pericia.id] ?? "").trim();
-            const automatico = bonusAutomaticoPericiaTreinador(token, grupo.atributo);
+            const automatico = formatarBonus(modificadorTreinador(token, atributoIdDaPericia(grupo.atributo)) +
+              (regiaoPericiaProficiente(token,pericia.id) ? Math.trunc(Number(token.metadata[`${PREFIX}/treinador-proficiencia`])||0):0));
             const jaPersonalizada = String(token.metadata?.[chave] ?? "").trim() !== "";
             if (!valor || (!jaPersonalizada && valor === automatico)) delete item.metadata[chave];
             else item.metadata[chave] = valor;
