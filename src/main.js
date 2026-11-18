@@ -126,7 +126,7 @@ function normalizarDistribuicaoMega(valor) {
   for (const id of MEGA_MOVIMENTOS) {
     base.movimentos[id] = Math.max(0, Math.trunc(Number(origem.movimentos?.[id]) || 0));
   }
-  base.habilidade = String(origem.habilidade ?? "");
+  base.habilidade = String(origem.habilidade ?? "").trim();
   return base;
 }
 
@@ -528,19 +528,182 @@ const ESTILO_FICHA = `<style> :root { --pm-bg: #f3f7fb; --pm-panel: #ffffff; --p
 }
 #app .painelTemaEscuroRotulo input {width:20px!important;height:20px!important;min-height:20px!important;padding:0!important;cursor:pointer;}
 #app.temaEscuroFicha .painelTemaEscuroNota {color:#aaccdf !important;}
+/* V17: corrigir superficies com estilos claros inline que sobreviviam ao tema V16. */
+#app.temaEscuroFicha :is(div,section,article,fieldset,details)[style*="background"]:not(.pmpHabilidadeOverlay):not(.pmpItemOverlay):not(.pmpMovesOverlay):not(.painelPersonalizacaoMascara) {
+  background-color:#0a192c !important;
+  background-image:none !important;
+  color:#f3fbff !important;
+  border-color:#1788df !important;
+}
+#app.temaEscuroFicha :is(.movimentoLinha,.movimentoCampo,.movimentoConteudo,.movimentoBotao,.movimentoInfo,
+  .talEspSlot,.talEspSlotCard,.talEspPainel,.talEspItem,.talEspCabecalho,
+  .slotTalEsp,.pokemonTalentSlot,.talentoSlot,.statusDebuffCard,.debuffCard,
+  .debuffExplicacao,.debuffDescricao,.debuffResumo,.debuffAjuda,
+  .megaConfigCard,.megaConfigCampo,.megaDistribuicao,.megaEvolucaoBloco,
+  #megaEvolucaoCard,#megaDistribuicaoCard,#megaConfigPainel,
+  .pokemonDetalhesCompactos,.pmpHabilidadeBloco,.pmpItemBloco,
+  .pmpHabilidadePainel,.pmpItemPainel,.classeRecurso,.classeCard,.classeHab,
+  .pmpHabilidadeLista,.pmpItemLista,.pmpMovesResultados,
+  .pmpHabilidadeDescricao,.pmpItemDescricao,.talEspDescricao,.fichaGrupo) {
+  background:#0a182a !important;
+  background-image:none !important;
+  color:#f5fbff !important;
+  border-color:#168cdd !important;
+}
+#app.temaEscuroFicha :is(div,span,strong,small,p,label,legend,h1,h2,h3,h4,h5,h6,li,summary)[style*="color:"] {
+  color:#eaf8ff !important;
+  -webkit-text-fill-color:#eaf8ff !important;
+}
+#app.temaEscuroFicha :is(h2,h3,.iniciativaTitulo,.pokemonStatusTitulo,.movimentoTitulo,.classeTitulo,.talEspCabecalho) {
+  color:#42d7ff !important;
+  -webkit-text-fill-color:#42d7ff !important;
+}
+#app.temaEscuroFicha :is(.movimentoNome,.movimentoMeta,.capturaAlvoAjuda,.pokemonStatusCampo p,
+  .megaConfigCampo,.talEspSlot,.talEspSlotCard,.debuffCard,.classeHabTexto,
+  .painelPersonalizacaoFicha,.pmpHabilidadeDescricaoTexto,.pmpItemDescricaoTexto) {
+  color:#eaf7ff !important;
+}
+#app.temaEscuroFicha :is(button,input[type="button"],input[type="submit"]),
+#app.temaEscuroFicha :is(button,input[type="button"])[style*="background"] {
+  background:#092441 !important;
+  background-image:none !important;
+  color:#f6fbff !important;
+  -webkit-text-fill-color:#f6fbff !important;
+  border:1px solid #12b9ff !important;
+}
+#app.temaEscuroFicha :is(button,.categoriaGolpe)[class*="ativo"],
+#app.temaEscuroFicha :is(button,.classeAcao)[aria-pressed="true"],
+#app.temaEscuroFicha :is([id^="paginaPokemon"],[id^="paginaTreinador"])[style*="opacity:1"] {
+  background:linear-gradient(135deg,#006fb5,#00bfff) !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  border-color:#71eaff !important;
+}
+#app.temaEscuroFicha :is(.movimentoValor,.statusCard input,.megaConfigCampo,
+  [id^="megaAtributo"],[id^="megaMovimento"],#megaCaValor,
+  .talEspCampo,.debuffAviso,.capturaFormula) {
+  background-color:#0b2039 !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  border-color:#168cdd !important;
+}
+#app.temaEscuroFicha :is(.debuffIcone,.debuffSigla,img,svg) {filter:none !important;}
+#app.temaEscuroFicha :is(input,textarea,select,button):focus-visible {
+  outline:2px solid #52e5ff !important;
+  outline-offset:1px !important;
+}
+#app.temaEscuroFicha :is(.pmpHabilidadePainel,.pmpItemPainel,.pmpMovesModal,.megaHabilidadeModal),
+#app.temaEscuroFicha :is(.pmpHabilidadeLista,.pmpItemLista,.megaHabilidadeResultados) {
+  background:#09192c !important;
+  color:#f5fbff !important;
+  border-color:#198cdf !important;
+}
+/* O status positivo em vermelho de versões antigas vira azul neon, mantendo a leitura. */
+#app.temaEscuroFicha :is(.pokemonStatusPrincipal,.talEspSecao,.classeCard,.debuffDescricao) {
+  box-shadow:0 3px 12px rgba(0,190,255,.09) !important;
+}
+#app.temaEscuroFicha #megaTokenReferencia,
+#app.temaEscuroFicha #megaTokenReferencia option,
+#app.temaEscuroFicha #megaHabilidadeBusca,
+#app.temaEscuroFicha :is(.megaConfigCampo,.pokemonStatusCampo input) {
+  background:#0b223b !important;
+  background-image:none !important;
+  color:#f4fbff !important;
+  -webkit-text-fill-color:#f4fbff !important;
+  border-color:#0baaff !important;
+}
+#app.temaEscuroFicha :is(#botaoMegaEvolucao,#retirarMegaEvolucao,#definirMegaEvolucao,
+  #pokemonEspecieAbrir,#pokemonNatureAbrir,#pokemonHabilidadeAbrir,#pokemonItemAbrir,
+  #personalizarFicha,#trocarTipo) {
+  background:#09365c !important;
+  background-image:none !important;
+  color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
+  border:1px solid #18c0ff !important;
+  box-shadow:0 2px 10px rgba(0,190,255,.17) !important;
+}
+#app.temaEscuroFicha :is(#botaoMegaEvolucao,#retirarMegaEvolucao,#definirMegaEvolucao,
+  #pokemonEspecieAbrir,#pokemonNatureAbrir,#pokemonHabilidadeAbrir,#pokemonItemAbrir):disabled {
+  background:#0d2136 !important;
+  color:#bddced !important;
+  -webkit-text-fill-color:#bddced !important;
+  border-color:#246791 !important;
+  opacity:.75 !important;
+}
+#app.temaEscuroFicha #megaConfigSalvaTexto,
+#app.temaEscuroFicha #megaReferenciaTexto,
+#app.temaEscuroFicha #megaEstadoTexto,
+#app.temaEscuroFicha #megaMensagem {
+  color:#d2f3ff !important;
+  -webkit-text-fill-color:#d2f3ff !important;
+}
 </style>`;
 
 // Preferência visual do participante, separada dos metadados dos tokens.
 // localStorage é isolado por navegador/origem: não muda a aparência de outras pessoas.
 const CHAVE_TEMA_ESCURO_FICHA = `${PREFIX}/tema-escuro-local-v1`;
 let temaEscuroFichaSessao = false;
+// Estilos inline com !important são mais fortes que regras CSS externas.
+// Guardamos os valores originais em WeakMap para restaurar o tema claro sem tocar nos dados do token.
+const temaEscuroInlineOriginal = new WeakMap();
+const temaEscuroInlineModificados = new Set();
+function restaurarEstilosInlineTemaFicha() {
+  for (const el of temaEscuroInlineModificados) {
+    const propriedades = temaEscuroInlineOriginal.get(el);
+    if (!propriedades) continue;
+    for (const [prop, estado] of Object.entries(propriedades)) {
+      if (estado.valor) el.style.setProperty(prop, estado.valor, estado.prioridade);
+      else el.style.removeProperty(prop);
+    }
+    temaEscuroInlineOriginal.delete(el);
+  }
+  temaEscuroInlineModificados.clear();
+}
+function reforcarContrasteInlineTemaFicha(app) {
+  if (!app || typeof getComputedStyle !== 'function') return;
+  const salvar = (el, prop) => {
+    let originais = temaEscuroInlineOriginal.get(el);
+    if (!originais) { originais = {}; temaEscuroInlineOriginal.set(el, originais); }
+    if (!Object.hasOwn(originais, prop)) {
+      originais[prop] = {valor:el.style.getPropertyValue(prop), prioridade:el.style.getPropertyPriority(prop)};
+      temaEscuroInlineModificados.add(el);
+    }
+  };
+  const escurecer = (el, estilo) => {
+    salvar(el, 'background');
+    el.style.setProperty('background', estilo, 'important');
+    salvar(el, 'color');
+    el.style.setProperty('color', '#f5fbff', 'important');
+    salvar(el, '-webkit-text-fill-color');
+    el.style.setProperty('-webkit-text-fill-color', '#f5fbff', 'important');
+    salvar(el, 'border-color');
+    el.style.setProperty('border-color', '#159de7', 'important');
+  };
+  // Apenas controles e superfícies com background inline explícito, não imagens/sprites.
+  const elementos = app.querySelectorAll('button,select,textarea,input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),div[style*="background"],section[style*="background"],fieldset[style*="background"]');
+  for (const el of elementos) {
+    if (el.matches('img,svg,.fichaAvatar,.debuffIcone,.pmpHabilidadeOverlay,.pmpItemOverlay,.pmpMovesOverlay,.megaHabilidadeOverlay')) continue;
+    const est = getComputedStyle(el);
+    const fundo = est.backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    const luminoso = fundo && ((Number(fundo[1]) + Number(fundo[2]) + Number(fundo[3])) / 3 > 90);
+    const gradienteAntigo = el.style.getPropertyValue('background').match(/#e53935|#b71c1c|#9b7cff|#6f52d9|#f[0-9a-f]{5}|white/i);
+    const controle = el.matches('button,select,textarea,input');
+    if (luminoso || gradienteAntigo || (controle && el.style.getPropertyPriority('background') === 'important')) {
+      escurecer(el, controle ? '#0b233d' : '#0b1b30');
+    }
+  }
+}
 function lerTemaEscuroFichaLocal() {
   try { return localStorage.getItem(CHAVE_TEMA_ESCURO_FICHA) === "1"; }
   catch (_) { return temaEscuroFichaSessao; }
 }
 function aplicarTemaEscuroFichaLocal(ativo = lerTemaEscuroFichaLocal()) {
   const app = document.querySelector("#app");
-  if (app) app.classList.toggle("temaEscuroFicha", !!ativo);
+  if (app) {
+    if (!ativo) restaurarEstilosInlineTemaFicha();
+    app.classList.toggle("temaEscuroFicha", !!ativo);
+    if (ativo) reforcarContrasteInlineTemaFicha(app);
+  }
   return !!ativo;
 }
 function alterarTemaEscuroFichaLocal(ativo) {
@@ -8643,7 +8806,15 @@ function ativarSeletorHabilidadePokemonPmp(token) {
   const mensagem = document.getElementById('pokemonHabilidadeMensagem');
   if (![abrir,nome,descricao,tituloDescricao,textoDescricao,aviso,overlay,busca,lista,contador,mais,limpar,mensagem].every(Boolean)) return;
 
-  let atual = String(token.metadata?.[`${PREFIX}/pokemon-habilidade`] ?? '').trim();
+  const habilidadeMegaAtiva = megaAtivaNoToken(token) ? String(distribuicaoMegaDoToken(token).habilidade ?? '').trim() : '';
+  const megaAtivaComHabilidade = !!habilidadeMegaAtiva;
+  let atual = megaAtivaComHabilidade ? habilidadeMegaAtiva
+    : String(token.metadata?.[`${PREFIX}/pokemon-habilidade`] ?? '').trim();
+  if (megaAtivaComHabilidade) {
+    abrir.disabled = true;
+    abrir.title = 'Na forma Mega, escolha a habilidade na aba MEGA. A habilidade normal permanece salva.';
+    limpar.disabled = true;
+  }
   let encontrados = [];
   let limite = 60;
   let salvando = false;
@@ -8654,7 +8825,7 @@ function ativarSeletorHabilidadePokemonPmp(token) {
     descricao.hidden = true;
     tituloDescricao.textContent = '';
     textoDescricao.textContent = '';
-    limpar.disabled = !atual;
+    limpar.disabled = !atual || megaAtivaComHabilidade;
   };
   const fechar = (forcar = false) => {
     if (salvando && !forcar) return;
@@ -8682,7 +8853,7 @@ function ativarSeletorHabilidadePokemonPmp(token) {
     renderizar();
   };
   const escolher = async (habilidade) => {
-    if (salvando) return;
+    if (salvando || megaAtivaComHabilidade) return;
     salvando = true;
     busca.disabled = true;
     limpar.disabled = true;
@@ -8721,7 +8892,7 @@ function ativarSeletorHabilidadePokemonPmp(token) {
     }
   });
   abrir.addEventListener('click', () => {
-    if (salvando) return;
+    if (salvando || megaAtivaComHabilidade) return;
     overlay.classList.add('aberto');
     overlay.setAttribute('aria-hidden', 'false');
     busca.value = '';
@@ -9069,7 +9240,7 @@ app.innerHTML = `
                 value="${iniciativaDobrar ? "1" : "0"}"
               >
             </div>
-            ${htmlPainelHabilidadePokemonPmp(habilidadeNormal, habilidadeMegaStatus)}
+            ${htmlPainelHabilidadePokemonPmp(megaAtivaStatus && habilidadeMegaStatus ? habilidadeMegaStatus : habilidadeNormal, '')}
             ${htmlPainelItemPokemonPmp(token.metadata?.[META_ITEM_POKEMON_CATALOGO])}
       </div>
     </div>
@@ -11023,8 +11194,31 @@ const htmlMegaMovimentos = MEGA_MOVIMENTOS.map((id) => `
         <div style="font-size:8px;font-weight:900;color:#806b99;margin:8px 0 4px;">MOVIMENTAÇÃO</div>
         <div style="display:grid;grid-template-columns:1fr;gap:5px;">${htmlMegaMovimentos}</div>
 
-        <div style="font-size:8px;font-weight:900;color:#806b99;margin:8px 0 4px;">HABILIDADE PASSIVA DA MEGA</div>
-        <textarea id="megaHabilidadeNova" class="megaConfigCampo" rows="3" placeholder="Escreva a habilidade que substituirá a habilidade normal enquanto a Mega estiver ativa..." style="width:100%;box-sizing:border-box;resize:vertical;">${esc(megaDistribuicaoInicial.habilidade)}</textarea>
+        <div style="font-size:9px;font-weight:900;color:#48b7ed;margin:8px 0 4px;">HABILIDADE PASSIVA DA MEGA</div>
+        <input id="megaHabilidadeNova" type="hidden" value="${esc(megaDistribuicaoInicial.habilidade)}" data-no-autosave="1">
+        <button id="megaHabilidadeAbrir" type="button" class="megaHabilidadeAbrir" aria-label="Pesquisar habilidade da Mega">🔎 Habilidade</button>
+        <button id="megaHabilidadeNome" type="button" class="megaHabilidadeNome" aria-controls="megaHabilidadeDescricao" aria-expanded="false">${esc(megaDistribuicaoInicial.habilidade || 'Nenhuma habilidade escolhida')} ▾</button>
+        <div id="megaHabilidadeDescricao" hidden class="megaHabilidadeDescricao"><strong id="megaHabilidadeDescricaoTitulo"></strong><div id="megaHabilidadeDescricaoTexto" style="white-space:pre-line;margin-top:5px"></div></div>
+        <style>
+          #app .megaHabilidadeAbrir{display:block;min-height:32px!important;padding:5px 11px!important;font-size:11px!important;font-weight:900!important;margin-bottom:6px}
+          #app .megaHabilidadeNome{display:block;width:100%;text-align:left!important;padding:8px 11px!important;min-height:36px!important;font-weight:900!important;font-size:12px!important}
+          #app .megaHabilidadeDescricao{margin:6px 0;padding:10px;border:1px solid #1788df;border-radius:9px;line-height:1.4;background:#f8fbff;font-size:12px}
+          .megaHabilidadeOverlay{position:fixed;inset:0;z-index:1000065;background:rgba(2,8,20,.84);display:none;align-items:center;justify-content:center;padding:12px}
+          .megaHabilidadeOverlay.aberto{display:flex}
+          .megaHabilidadeModal{width:100%;max-width:500px;max-height:90vh;display:flex;flex-direction:column;gap:9px;background:#fff;color:#192d43;border:2px solid #1389d1;border-radius:12px;padding:13px;box-shadow:0 12px 35px #0008}
+          .megaHabilidadeResultados{overflow-y:auto;min-height:140px;max-height:52vh;padding:6px;border:1px solid #d1dce8;border-radius:8px;background:#f5f8fb}
+          #app .megaHabilidadeOpcao{display:block;width:100%;margin:0 0 4px;padding:8px 10px!important;font-weight:800;font-size:12px;text-align:left!important}
+          #app.temaEscuroFicha .megaHabilidadeDescricao{background:#0a182a!important;color:#f5fbff!important}
+        </style>
+        <div id="megaHabilidadeOverlay" class="megaHabilidadeOverlay" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Escolher habilidade da Mega">
+          <div class="megaHabilidadeModal">
+            <div style="display:flex;gap:10px;align-items:center;justify-content:space-between"><strong>🔎 Escolher habilidade Mega</strong><button id="megaHabilidadeFechar" type="button" aria-label="Fechar">×</button></div>
+            <input id="megaHabilidadeBusca" type="search" data-no-autosave="1" autocomplete="off" placeholder="Pesquisar entre 328 habilidades..." aria-label="Pesquisar habilidade">
+            <div id="megaHabilidadeContador" style="font-size:11px;font-weight:800"></div>
+            <div id="megaHabilidadeResultados" class="megaHabilidadeResultados" role="listbox"></div>
+            <div style="display:flex;gap:8px;justify-content:space-between;align-items:center"><button id="megaHabilidadeMais" type="button">Mostrar mais</button><button id="megaHabilidadeLimpar" type="button">Remover habilidade</button></div>
+          </div>
+        </div>
         <div id="megaConfigSalvaTexto" style="min-height:11px;margin-top:4px;text-align:center;font-size:8px;font-weight:800;color:#7d6998;">Configuração salva no próprio Pokémon.</div>
       </div>
 
@@ -11143,15 +11337,18 @@ const salvarEditorMega = async () => {
   distribuicaoMegaEdicao.habilidade = campoMegaHabilidade?.value ?? distribuicaoMegaEdicao.habilidade;
   if (!megaConfigDoToken(token)) {
     if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Ajustes prontos. Defina o token Mega para salvar no Pokémon.";
-    return;
+    return true;
   }
   try {
     const configSalvo = await salvarDistribuicaoMega(token, distribuicaoMegaEdicao);
     distribuicaoMegaEdicao = normalizarDistribuicaoMega(configSalvo.distribuicao);
     if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "✓ Configuração Mega salva.";
     atualizarEditorMega();
+    return true;
   } catch (erro) {
+    console.error('Falha ao salvar configuração da Mega:', erro);
     if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = erro?.message || "Não foi possível salvar a configuração Mega.";
+    return false;
   }
 };
 
@@ -11179,12 +11376,87 @@ document.querySelectorAll(".megaAjuste").forEach((botao) => {
   });
 });
 
+// A habilidade da Mega só pode ser escolhida no catálogo original, sem texto livre.
 if (campoMegaHabilidade) {
-  campoMegaHabilidade.addEventListener("input", () => {
-    distribuicaoMegaEdicao.habilidade = campoMegaHabilidade.value;
-    if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "Salvando habilidade Mega...";
-    programarSalvarEditorMega(500);
-  });
+  const el = (id) => document.getElementById(id);
+  const abrirHabilidade = el('megaHabilidadeAbrir'), botaoNome = el('megaHabilidadeNome');
+  const desc = el('megaHabilidadeDescricao'), tituloDesc = el('megaHabilidadeDescricaoTitulo');
+  const textoDesc = el('megaHabilidadeDescricaoTexto'), overlay = el('megaHabilidadeOverlay');
+  const busca = el('megaHabilidadeBusca'), resultados = el('megaHabilidadeResultados');
+  const contador = el('megaHabilidadeContador'), mais = el('megaHabilidadeMais');
+  const limpar = el('megaHabilidadeLimpar'), fecharBotao = el('megaHabilidadeFechar');
+  if ([abrirHabilidade,botaoNome,desc,tituloDesc,textoDesc,overlay,busca,resultados,contador,mais,limpar,fecharBotao].every(Boolean)) {
+    let encontrados = HABILIDADES_PMP_NOMES.map((_,i)=>i);
+    let limite = 45;
+    let ocupado = false;
+    const uiAtual=()=>el('megaHabilidadeAbrir')===abrirHabilidade;
+    const nomeAtual=()=>String(campoMegaHabilidade.value||'').trim();
+    const atualizarNome=()=>{
+      if (!uiAtual()) return;
+      const valor=nomeAtual();
+      botaoNome.textContent=valor?`${valor} ▾`:'Nenhuma habilidade escolhida ▾';
+      botaoNome.setAttribute('aria-expanded','false');
+      desc.hidden=true;
+      limpar.disabled=!valor;
+    };
+    const fechar=()=>{
+      overlay.classList.remove('aberto');
+      overlay.setAttribute('aria-hidden','true');
+      if (uiAtual()) abrirHabilidade.focus();
+    };
+    const renderizar=()=>{
+      if(!uiAtual())return;
+      resultados.innerHTML=encontrados.slice(0,limite).map(i=>`<button type="button" class="megaHabilidadeOpcao" role="option" data-mega-hab-indice="${i}">${esc(HABILIDADES_PMP_NOMES[i])}</button>`).join('')||'<p>Nenhuma habilidade encontrada.</p>';
+      contador.textContent=`${encontrados.length} habilidade(s) encontrada(s)`;
+      mais.style.display=encontrados.length>limite?'':'none';
+    };
+    const filtrar=()=>{
+      const termo=normalizarBuscaPokedexPmp(busca.value);
+      encontrados=[];
+      for(let i=0;i<HABILIDADES_PMP_NOMES.length;i++) if(normalizarBuscaPokedexPmp(HABILIDADES_PMP_NOMES[i]).includes(termo)) encontrados.push(i);
+      limite=45;resultados.scrollTop=0;renderizar();
+    };
+    const escolher=async(valor)=>{
+      if(ocupado||!uiAtual())return;
+      const canonico=valor?nomeCanonicoHabilidadePokemonPmp(valor):'';
+      if(valor&&!canonico)return;
+      ocupado=true;
+      abrirHabilidade.disabled=true;
+      try {
+        if(temporizadorSalvarMega){clearTimeout(temporizadorSalvarMega);temporizadorSalvarMega=null;}
+        const anterior=distribuicaoMegaEdicao.habilidade;
+        distribuicaoMegaEdicao.habilidade=canonico;
+        campoMegaHabilidade.value=canonico;
+        const salvo=await salvarEditorMega();
+        if (salvo === false) {
+          distribuicaoMegaEdicao.habilidade=anterior;
+          campoMegaHabilidade.value=anterior;
+          throw new Error('Não foi possível salvar a habilidade Mega. Tente novamente.');
+        }
+        // O token Mega ainda pode não estar definido: preservar escolha no editor.
+        if(uiAtual()){atualizarNome();fechar();}
+      } catch(erro) {
+        console.error('Erro ao salvar habilidade Mega:',erro);
+        if(uiAtual()&&textoMegaConfigSalva)textoMegaConfigSalva.textContent=erro?.message||String(erro);
+      } finally {ocupado=false;if(uiAtual())abrirHabilidade.disabled=false;}
+    };
+    abrirHabilidade.addEventListener('click',()=>{if(ocupado||!uiAtual())return;overlay.classList.add('aberto');overlay.setAttribute('aria-hidden','false');busca.value='';filtrar();busca.focus();});
+    botaoNome.addEventListener('click',()=>{
+      if(!nomeAtual()){abrirHabilidade.click();return;}
+      desc.hidden=!desc.hidden;
+      botaoNome.setAttribute('aria-expanded',String(!desc.hidden));
+      botaoNome.textContent=`${nomeAtual()} ${desc.hidden?'▾':'▴'}`;
+      if(!desc.hidden){tituloDesc.textContent=nomeAtual();const canonico=nomeCanonicoHabilidadePokemonPmp(nomeAtual());textoDesc.textContent=canonico?HABILIDADES_PMP_DESCRICOES[canonico]:'Habilidade de uma ficha antiga. Escolha uma habilidade com a lupa para ver a descrição.';}
+    });
+    busca.addEventListener('input',filtrar);
+    busca.addEventListener('keydown',evento=>{if(evento.key==='Escape'){evento.preventDefault();fechar();}if(evento.key==='Enter'){const primeiro=resultados.querySelector('[data-mega-hab-indice]');if(primeiro){evento.preventDefault();primeiro.click();}}});
+    resultados.addEventListener('click',evento=>{const botao=evento.target.closest('[data-mega-hab-indice]');if(!botao)return;const indice=Number(botao.dataset.megaHabIndice);if(Number.isInteger(indice)&&HABILIDADES_PMP_NOMES[indice])escolher(HABILIDADES_PMP_NOMES[indice]);});
+    fecharBotao.addEventListener('click',fechar);
+    overlay.addEventListener('click',evento=>{if(evento.target===overlay)fechar();});
+    mais.addEventListener('click',()=>{limite+=45;renderizar();});
+    limpar.addEventListener('click',()=>escolher(''));
+    atualizarNome();
+  }
 }
 
 const atualizarVisualMega = (ativa) => {
@@ -11273,6 +11545,8 @@ if (botaoDefinirMega && seletorMega) {
       }
       distribuicaoMegaEdicao = normalizarDistribuicaoMega(config.distribuicao);
       if (campoMegaHabilidade) campoMegaHabilidade.value = distribuicaoMegaEdicao.habilidade;
+      const nomeMegaExibido = document.getElementById('megaHabilidadeNome');
+      if (nomeMegaExibido) nomeMegaExibido.textContent = distribuicaoMegaEdicao.habilidade ? `${distribuicaoMegaEdicao.habilidade} ▾` : 'Nenhuma habilidade escolhida ▾';
       atualizarVisualMega(false);
       atualizarEditorMega();
       if (textoMegaConfigSalva) textoMegaConfigSalva.textContent = "✓ Forma e distribuição Mega salvas.";
@@ -11290,6 +11564,8 @@ if (botaoMega) {
   botaoMega.addEventListener("click", async () => {
     botaoMega.disabled = true;
     try {
+      if (temporizadorSalvarMega) { clearTimeout(temporizadorSalvarMega); temporizadorSalvarMega = null; }
+      await salvarEditorMega();
       await ativarMegaEvolucao(token);
       atualizarVisualMega(true);
       if (mensagemMega) mensagemMega.textContent = "Mega Evolução ativada.";
