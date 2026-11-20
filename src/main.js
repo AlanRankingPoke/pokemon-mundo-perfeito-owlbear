@@ -8364,19 +8364,18 @@ function mostrarFichaTreinadorPagina1(token) {
   });
 }
 function mostrarFichaTreinadorPerNot(token) {
-  const app = document.querySelector("#app");
+  const app = document.querySelector('#app');
   const valoresPericias = {};
   PERICIAS.forEach((grupo) => {
     grupo.pericias.forEach((pericia) => {
       valoresPericias[pericia.id] = valorPericiaComPadrao(
         token.metadata[`${PREFIX}/pericia-${pericia.id}`],
         formatarBonus(modificadorTreinador(token, atributoIdDaPericia(grupo.atributo)) +
-          (regiaoPericiaProficiente(token,pericia.id) ? Math.trunc(Number(token.metadata[`${PREFIX}/treinador-proficiencia`])||0):0))
+          (regiaoPericiaProficiente(token, pericia.id) ? Math.trunc(Number(token.metadata[`${PREFIX}/treinador-proficiencia`]) || 0) : 0))
       );
     });
   });
-  const anotacoes = token.metadata[`${PREFIX}/treinador-anotacoes`] ?? "";
-
+  const anotacoes = token.metadata[`${PREFIX}/treinador-anotacoes`] ?? '';
   app.innerHTML = `
     ${ESTILO_FICHA}
     ${cabecalhoTreinador(token, 3)}
@@ -8390,28 +8389,40 @@ function mostrarFichaTreinadorPerNot(token) {
       style="width:100%;min-height:250px;box-sizing:border-box;padding:10px;resize:vertical;font-family:Arial,sans-serif;line-height:1.4;"
     >${esc(anotacoes)}</textarea>
     <br><br>
-    <button id="salvarTreinadorPerNot" style="width:100%;padding:10px;font-weight:bold;cursor:pointer;">Salvar Perícias / Anotações</button>
+    <button id="salvarTreinadorPerNot" type="button" style="width:100%;padding:10px;font-weight:bold;cursor:pointer;">Salvar Perícias / Anotações</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;">
+      <button id="copiarFichaTreinador" type="button" style="min-height:38px!important;padding:7px!important;font-size:9px;font-weight:900;cursor:pointer;">📋 COPIAR FICHA</button>
+      <button id="colarFichaTreinador" type="button" style="min-height:38px!important;padding:7px!important;font-size:9px;font-weight:900;cursor:pointer;">📥 COLAR FICHA</button>
+    </div>
+    <div id="mensagemCopiaFichaTreinador" role="status" aria-live="polite" style="min-height:16px;margin-top:5px;text-align:center;font-size:10px;font-weight:800;color:#6a7f99;">Copia os dados do treinador sem duplicar os Pokémon da equipe/PC.</div>
   `;
 
   ativarCabecalhoTreinador(token);
   ativarRolagensPericiasTreinador();
-  document.querySelector("#salvarTreinadorPerNot")?.addEventListener("click", async () => {
+  const mensagem = document.querySelector('#mensagemCopiaFichaTreinador');
+  const copiar = document.querySelector('#copiarFichaTreinador');
+  const colar = document.querySelector('#colarFichaTreinador');
+  const salvar = document.querySelector('#salvarTreinadorPerNot');
+  let operacaoEmAndamento = false;
+
+  const salvarPericiasTreinadorDaTela = async () => {
     const novasPericias = {};
     PERICIAS.forEach((grupo) => {
       grupo.pericias.forEach((pericia) => {
-        novasPericias[pericia.id] = document.querySelector(`#pericia-${pericia.id}`)?.value.trim() || "";
+        novasPericias[pericia.id] = document.querySelector(`#pericia-${pericia.id}`)?.value.trim() || '';
       });
     });
-    const novasAnotacoes = document.querySelector("#treinadorAnotacoes")?.value ?? "";
+    const novasAnotacoes = document.querySelector('#treinadorAnotacoes')?.value ?? '';
     await OBR.scene.items.updateItems([token.id], (items) => {
       for (const item of items) {
+        if (item.metadata?.[`${PREFIX}/tipoFicha`] !== 'treinador') continue;
         PERICIAS.forEach((grupo) => {
           grupo.pericias.forEach((pericia) => {
             const chave = `${PREFIX}/pericia-${pericia.id}`;
-            const valor = String(novasPericias[pericia.id] ?? "").trim();
+            const valor = String(novasPericias[pericia.id] ?? '').trim();
             const automatico = formatarBonus(modificadorTreinador(token, atributoIdDaPericia(grupo.atributo)) +
-              (regiaoPericiaProficiente(token,pericia.id) ? Math.trunc(Number(token.metadata[`${PREFIX}/treinador-proficiencia`])||0):0));
-            const jaPersonalizada = String(token.metadata?.[chave] ?? "").trim() !== "";
+              (regiaoPericiaProficiente(token, pericia.id) ? Math.trunc(Number(token.metadata[`${PREFIX}/treinador-proficiencia`]) || 0) : 0));
+            const jaPersonalizada = String(token.metadata?.[chave] ?? '').trim() !== '';
             if (!valor || (!jaPersonalizada && valor === automatico)) delete item.metadata[chave];
             else item.metadata[chave] = valor;
           });
@@ -8419,6 +8430,61 @@ function mostrarFichaTreinadorPerNot(token) {
         item.metadata[`${PREFIX}/treinador-anotacoes`] = novasAnotacoes;
       }
     });
+    token.metadata[`${PREFIX}/treinador-anotacoes`] = novasAnotacoes;
+  };
+
+  salvar?.addEventListener('click', async () => {
+    if (operacaoEmAndamento) return;
+    try { await salvarPericiasTreinadorDaTela(); }
+    catch (erro) { console.error('Erro ao salvar Perícias/Notas:', erro); if (mensagem) mensagem.textContent = erro?.message || 'Não foi possível salvar.'; }
+  });
+
+  copiar?.addEventListener('click', async () => {
+    if (operacaoEmAndamento) return;
+    operacaoEmAndamento = true;
+    if (copiar) copiar.disabled = true;
+    if (colar) colar.disabled = true;
+    try {
+      // Garante que qualquer edição recente na aba também entre na cópia.
+      await salvarPericiasTreinadorDaTela();
+      const atualizado = await pegarTokenAtualizado(token.id);
+      if (!atualizado) throw new Error('Treinador não encontrado na cena.');
+      const pacote = guardarCopiaFichaTreinador(atualizado);
+      if (mensagem) mensagem.textContent = `✓ Ficha de ${pacote.nomeOrigem} copiada.`;
+    } catch (erro) {
+      console.error('Erro ao copiar ficha do treinador:', erro);
+      if (mensagem) mensagem.textContent = erro?.message || 'Não foi possível copiar a ficha.';
+    } finally {
+      operacaoEmAndamento = false;
+      if (copiar?.isConnected) copiar.disabled = false;
+      if (colar?.isConnected) colar.disabled = false;
+    }
+  });
+
+  colar?.addEventListener('click', async () => {
+    if (operacaoEmAndamento) return;
+    const pacote = lerCopiaFichaTreinador();
+    if (!pacote) {
+      if (mensagem) mensagem.textContent = 'Nenhuma ficha de treinador foi copiada ainda.';
+      return;
+    }
+    if (!confirm(`Colar a ficha de ${pacote.nomeOrigem || 'Treinador'} neste treinador? Os dados atuais serão substituídos, mas os Pokémon vinculados a este token serão preservados.`)) return;
+    operacaoEmAndamento = true;
+    if (copiar) copiar.disabled = true;
+    if (colar) colar.disabled = true;
+    try {
+      const atualizado = await colarCopiaFichaTreinadorNoToken(token, pacote);
+      mostrarFichaTreinadorPerNot(atualizado);
+      const mensagemNova = document.querySelector('#mensagemCopiaFichaTreinador');
+      if (mensagemNova) mensagemNova.textContent = `✓ Ficha de ${pacote.nomeOrigem || 'Treinador'} colada com sucesso.`;
+    } catch (erro) {
+      console.error('Erro ao colar ficha do treinador:', erro);
+      if (mensagem) mensagem.textContent = erro?.message || 'Não foi possível colar a ficha.';
+    } finally {
+      operacaoEmAndamento = false;
+      if (copiar?.isConnected) copiar.disabled = false;
+      if (colar?.isConnected) colar.disabled = false;
+    }
   });
 }
 
@@ -12276,6 +12342,118 @@ async function colarCopiaFichaPokemonNoToken(token, pacote) {
   return atualizado || token;
 }
 
+
+// ============================================================
+// COPIAR / COLAR FICHA DE TREINADOR (separado de Pokémon)
+// ============================================================
+const CHAVE_COPIA_FICHA_TREINADOR = `${PREFIX}/ficha-treinador-copiada-v1`;
+let fichaTreinadorCopiadaMemoria = null;
+
+// Os Pokémon do roster e o alvo de captura são vínculos com outros tokens:
+// nunca cloná-los, pois isso causaria dois treinadores com a mesma equipe/PC.
+const METADATA_NAO_COPIAR_FICHA_TREINADOR = new Set([
+  META_TREINADOR_POKEMONS,
+  META_TREINADOR_CAPTURA_ALVO,
+  META_POKEMON_DONO_TREINADOR,
+  META_POKEMON_SLOT_TREINADOR,
+  META_INICIATIVA_TRACKER,
+  META_TURNO_INICIATIVA,
+  META_SAIU_DO_CAMPO,
+  META_PAINEL_INICIATIVA,
+  META_PAINEL_INICIATIVA_FILHO,
+  `${PREFIX}/tipoFicha`,
+  `${PREFIX}/statusToken`,
+  `${PREFIX}/tipoVisual`,
+  `${PREFIX}/roll-result`,
+  `${PREFIX}/roll-error`,
+  META_CAPTURA_LOCK
+]);
+
+function metadataEhDaFichaTreinador(chave) {
+  const k = String(chave ?? '');
+  if (!k.startsWith(`${PREFIX}/`) || METADATA_NAO_COPIAR_FICHA_TREINADOR.has(k)) return false;
+  // Só dados de treinador. Exclui automaticamente metadados de Pokémon, GM,
+  // NPC, HUD, iniciativa e recursos de outras entidades.
+  return k.startsWith(`${PREFIX}/treinador-`) ||
+    k.startsWith(`${PREFIX}/pericia-`) ||
+    k.startsWith(`${PREFIX}/classe-`) ||
+    k.startsWith(`${PREFIX}/origem-`) ||
+    k === `${PREFIX}/hpAtual` || k === `${PREFIX}/hpMax` || k === `${PREFIX}/ca`;
+}
+
+function criarPacoteCopiaFichaTreinador(token) {
+  if (token?.metadata?.[`${PREFIX}/tipoFicha`] !== 'treinador') {
+    throw new Error('Só é possível copiar uma ficha de treinador.');
+  }
+  const metadata = {};
+  for (const [chave, valor] of Object.entries(token.metadata || {})) {
+    if (metadataEhDaFichaTreinador(chave)) metadata[chave] = clonarDadosSimples(valor);
+  }
+  return {
+    versao: 1,
+    tipoFicha: 'treinador',
+    nomeOrigem: String(token.name || 'Treinador'),
+    copiadoEm: Date.now(),
+    metadata
+  };
+}
+
+function guardarCopiaFichaTreinador(token) {
+  const pacote = criarPacoteCopiaFichaTreinador(token);
+  fichaTreinadorCopiadaMemoria = pacote;
+  try { localStorage.setItem(CHAVE_COPIA_FICHA_TREINADOR, JSON.stringify(pacote)); } catch (_) {}
+  return pacote;
+}
+
+function pacoteCopiaTreinadorValido(pacote) {
+  return pacote?.versao === 1 && pacote?.tipoFicha === 'treinador' &&
+    pacote.metadata && typeof pacote.metadata === 'object' &&
+    !Array.isArray(pacote.metadata);
+}
+
+function lerCopiaFichaTreinador() {
+  if (pacoteCopiaTreinadorValido(fichaTreinadorCopiadaMemoria)) return fichaTreinadorCopiadaMemoria;
+  try {
+    const bruto = localStorage.getItem(CHAVE_COPIA_FICHA_TREINADOR);
+    if (!bruto) return null;
+    const pacote = JSON.parse(bruto);
+    if (pacoteCopiaTreinadorValido(pacote)) {
+      fichaTreinadorCopiadaMemoria = pacote;
+      return pacote;
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function colarCopiaFichaTreinadorNoToken(token, pacote) {
+  if (!token?.id || !pacoteCopiaTreinadorValido(pacote)) {
+    throw new Error('Não há uma ficha de treinador válida para colar.');
+  }
+  if (!(await OBR.scene.isReady())) throw new Error('A cena não está pronta.');
+  const presente = await pegarTokenAtualizado(token.id);
+  if (!presente || presente.metadata?.[`${PREFIX}/tipoFicha`] !== 'treinador') {
+    throw new Error('Selecione um token que já tenha ficha de treinador.');
+  }
+  const dados = Object.entries(pacote.metadata).filter(([k]) => metadataEhDaFichaTreinador(k));
+  await OBR.scene.items.updateItems([token.id], (items) => {
+    for (const item of items) {
+      if (item.metadata?.[`${PREFIX}/tipoFicha`] !== 'treinador') continue;
+      for (const chave of Object.keys(item.metadata || {})) {
+        if (metadataEhDaFichaTreinador(chave)) delete item.metadata[chave];
+      }
+      for (const [chave, valor] of dados) item.metadata[chave] = clonarDadosSimples(valor);
+      // Preserva o tipo da ficha, o token/arte, os vínculos do roster de destino
+      // e qualquer identificador persistente da cena.
+    }
+  });
+  const atualizado = await pegarTokenAtualizado(token.id);
+  if (!atualizado) throw new Error('A ficha foi colada, mas o token não pôde ser relido.');
+  const hpAtual = Number(atualizado.metadata[`${PREFIX}/hpAtual`] ?? 0);
+  const hpMax = Number(atualizado.metadata[`${PREFIX}/hpMax`] ?? 0);
+  const ca = Number(atualizado.metadata[`${PREFIX}/ca`] ?? 10);
+  await criarStatusNoToken(atualizado, hpAtual, hpMax, ca);
+  return atualizado;
+}
 
 // ============================================================
 // FICHA DO MESTRE
